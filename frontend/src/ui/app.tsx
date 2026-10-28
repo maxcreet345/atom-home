@@ -138,7 +138,7 @@ function Overview({ home, registry, config, modules, player, host, runner, toggl
   const temp = climate ? (typeof climate.primary.attributes.temperature === 'number' ? climate.primary.attributes.temperature : null) : null, cur = climate ? (typeof climate.primary.attributes.current_temperature === 'number' ? climate.primary.attributes.current_temperature : null) : null;
   const tempAction = climate ? actionsFor(climate).find(a => a.id === 'temperature') : undefined;
   const step = (dir: 1 | -1) => { if (climate && tempAction && temp !== null) void runner.run(climate, tempAction, Math.round((temp + dir * (tempAction.step ?? 0.5)) * 10) / 10); };
-  const tile = (x: HomeDevice, section: Section = 'home') => <AccessoryTile device={x} name={inRoomName(x, roomOf(x))} room={roomOf(x)} pending={runner.busy.has(x.key)} onToggle={canToggle(x) ? () => toggle(x) : undefined} onOpen={() => go({ section, device: x.key })} t={t} lang={lang} />;
+  const tile = (x: HomeDevice, section: Section = 'home') => <AccessoryTile device={x} name={canToggle(x) ? inRoomName(x, roomOf(x)) : x.name} room={canToggle(x) ? roomOf(x) : undefined} pending={runner.busy.has(x.key)} onToggle={canToggle(x) ? () => toggle(x) : undefined} onOpen={() => go({ section, device: x.key })} t={t} lang={lang} />;
   return <div className="hm-home ah-home ah-grid ah-face" data-face="home-modular">
     <ClockTile now={now} lang={lang} />
     {climate && <ThermostatTile device={climate} sub={roomOf(climate)} target={temp} current={cur} onStep={tempAction ? step : undefined} onOpen={() => go({ section: 'climate', device: climate.key })} t={t} lang={lang} disabled={runner.busy.has(climate.key)} />}
@@ -179,7 +179,7 @@ function LightsPage({ devices, runner, toggle, go, t, lang, roomName }: Common &
   const on = devices.filter(d => isOn(d.primary));
   if (!devices.length) return <p className="hm-muted">{t('ui.nodevices')}</p>;
   return <div className="hm-light-page"><div className="hm-toolbar"><span>{on.length ? t('overview.lights.on', { n: on.length }) : t('overview.lights.off')}</span>{on.length > 0 && <button type="button" className="hm-pill" onClick={() => on.forEach(toggle)}>{t('ui.lightsOff')}</button>}</div>
-    <Tiles devices={devices} section="lights" runner={runner} toggle={toggle} go={go} t={t} lang={lang} nameOf={d => inRoomName(d, roomName(d.roomId))} roomOf={d => roomName(d.roomId)} /></div>;
+    <Tiles devices={devices} section="lights" runner={runner} toggle={toggle} go={go} t={t} lang={lang} nameOf={d => canToggle(d) ? inRoomName(d, roomName(d.roomId)) : d.name} roomOf={d => canToggle(d) ? roomName(d.roomId) : undefined as unknown as string} /></div>;
 }
 function ClimatePage({ devices, runner, go, t, lang, roomName }: Common & { devices: HomeDevice[]; roomName: (id: string) => string }) {
   if (!devices.length) return <p className="hm-muted">{t('ui.nodevices')}</p>;
@@ -205,5 +205,5 @@ function SystemsPage({ devices, runner, toggle, go, t, lang, roomName }: Common 
   const groups: Array<[Kind[], string]> = [[['leak', 'alarm', 'valve', 'lock', 'alarm_panel', 'opening', 'motion'], t('overview.leaks') + ' · ' + t('kind.alarm_panel')], [['environment', 'measurement'], t('overview.air')], [['socket', 'switch', 'fan', 'cover'], t('section.systems')], [['media', 'camera'], t('kind.media')], [['weather', 'person'], t('section.weather')]];
   const rendered = groups.filter(([kinds]) => devices.some(d => kinds.includes(d.kind)));
   if (!rendered.length) return <p className="hm-muted">{t('ui.nodevices')}</p>;
-  return <div className="hm-systems">{rendered.map(([kinds, title]) => <Block title={title}><Tiles devices={devices.filter(d => kinds.includes(d.kind))} section="systems" runner={runner} toggle={toggle} go={go} t={t} lang={lang} nameOf={d => inRoomName(d, roomName(d.roomId))} roomOf={d => roomName(d.roomId)} /></Block>)}</div>;
+  return <div className="hm-systems">{rendered.map(([kinds, title]) => <Block title={title}><Tiles devices={devices.filter(d => kinds.includes(d.kind))} section="systems" runner={runner} toggle={toggle} go={go} t={t} lang={lang} nameOf={d => canToggle(d) ? inRoomName(d, roomName(d.roomId)) : d.name} roomOf={d => canToggle(d) ? roomName(d.roomId) : undefined as unknown as string} /></Block>)}</div>;
 }
