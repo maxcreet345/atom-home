@@ -73,8 +73,10 @@ const READ_KINDS = ['environment', 'measurement', 'leak', 'opening', 'motion', '
 export function AccessoryTile({ device, name, sub, room, pending, onToggle, onOpen, t, lang, wide }: { device: HomeDevice; name?: string; sub?: string; room?: string; pending: boolean; onToggle?: () => void; onOpen: () => void; t: T; lang: Lang; wide?: boolean }) {
   const e = device.primary, on = isOn(e) || (device.kind === 'climate' && e.state !== 'off' && e.available), active = e.available && on && !READ_KINDS.includes(device.kind);
   const alert = e.available && (device.kind === 'leak' || device.kind === 'alarm') && e.state === 'on';
-  const reads = READ_KINDS.includes(device.kind) || device.kind === 'climate';
-  const color = tileColor(device), label = name ?? device.name, line2 = sub ?? (device.kind === 'climate' ? tileStatus(device, t, lang) : [reads ? tileStatus(device, t, lang) : '', room ?? ''].filter(Boolean).join(' · '));
+  const color = tileColor(device), label = name ?? device.name;
+  // second line: the room for things you switch; the state (plus the room unless the name already ends with it) for everything else
+  const roomShown = room && !label.trim().toLowerCase().endsWith(room.trim().toLowerCase()) ? room : '';
+  const line2 = sub ?? (device.kind === 'climate' ? tileStatus(device, t, lang) : onToggle ? roomShown : [tileStatus(device, t, lang), roomShown].filter(Boolean).join(' · '));
   // long press (500 ms) opens details, like a press-and-hold on a HomeView module
   const hold = useRef<ReturnType<typeof setTimeout> | null>(null), held = useRef(false);
   const down = () => { held.current = false; hold.current = setTimeout(() => { held.current = true; onOpen(); }, 500); };
@@ -94,7 +96,7 @@ export function ThermostatTile({ device, sub, target, current, onStep, onOpen, t
   return <div className={`ah-tile ah-thermo hm-card ${on ? 'is-on' : ''} ${e.available ? '' : 'is-off'}`} data-device-key={device.key} style={`--tile:${tileColor(device)}`}>
     <button type="button" className="ah-tile-hit" onClick={onOpen} aria-label={`${t('ui.details')}: ${device.name}`}>
       <span className="ah-thermo-value"><b>{target === null ? (current === null ? '—' : num(current, lang, 0)) : num(target, lang, target % 1 ? 1 : 0)}</b>{current !== null && target !== null && <small>{t('ui.now')} {num(current, lang)}°</small>}</span>
-      <span className="ah-tile-text"><strong>{device.name}</strong><small>{sub ?? (on ? stateText(e, t, lang) : t('state.off'))}</small></span>
+      <span className="ah-tile-text"><strong>{device.name}</strong><small>{sub && !device.name.trim().toLowerCase().endsWith(sub.trim().toLowerCase()) ? sub : (on ? stateText(e, t, lang) : t('state.off'))}</small></span>
     </button>
     {onStep && <><button type="button" className="ah-chev is-down" aria-label="−" disabled={disabled || !e.available} onClick={() => onStep(-1)}><Icon name="back" size={22} /></button><button type="button" className="ah-chev is-up" aria-label="+" disabled={disabled || !e.available} onClick={() => onStep(1)}><Icon name="back" size={22} /></button></>}
   </div>;

@@ -285,9 +285,17 @@
 
 /* v0.8.5 second pass */
 .hm-shell .ah-module .hm-status-text span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal;font-size:11px;line-height:1.15}
-.hm-shell .ah-module .hm-status-text strong{font-size:clamp(20px,17cqw,26px)}.hm-shell .ah-module .hm-status-icon{width:24px;height:24px}.hm-shell .ah-module .hm-status-icon svg{width:14px;height:14px}
+.hm-shell .ah-module .hm-status-text strong{font-size:clamp(22px,22cqw,34px)}.hm-shell .ah-module .hm-status-icon{width:24px;height:24px}.hm-shell .ah-module .hm-status-icon svg{width:14px;height:14px}
 .hm-shell .ah-module .hm-status-text{margin-top:auto}
 .hm-shell .at-boiler .hm-pill,.hm-shell .at-feeder .hm-pill,.hm-shell .at-feeder .hm-round,.hm-shell .at-boiler .hm-round{background:var(--ah-group)}
 .hm-shell .at-feeder .hm-pill.is-primary{background:var(--ah-accent)}
 .hm-shell .at-spark.is-empty{display:none}
 .hm-shell .hm-badge.tone-warning{background:#ff9f0a26;color:#b36b00}.hm-shell.ah-shell[data-theme="dark"] .hm-badge.tone-warning{color:#ffb84d}.hm-shell .at-boiler-head .hm-badge{margin-left:auto}
+.hm-shell .hm-fold>summary svg{transition:transform .2s;color:var(--ah-muted)}.hm-shell .hm-fold[open]>summary svg{transform:rotate(90deg)}
+.hm-shell .hm-toolbar>span::first-letter{text-transform:uppercase}
+
+/* dark theme: readable placeholders and warning tiles inside module cards */
+.hm-shell .at-field input::placeholder,.hm-shell .at-field textarea::placeholder{color:var(--ah-muted);opacity:.55}
+.hm-shell.ah-shell[data-theme="dark"] .at-boiler-tile.is-warning,.hm-shell.ah-shell[data-theme="dark"] .at-feeder .at-boiler-tile.is-warning{background:#ff9f0a2e;border:1px solid #ff9f0a66;color:var(--ah-ink)}
+.hm-shell.ah-shell[data-theme="dark"] .at-boiler-tile.is-warning small{color:#ffd9a3}.hm-shell.ah-shell[data-theme="dark"] .at-boiler-tile.is-warning strong,.hm-shell.ah-shell[data-theme="dark"] .at-boiler-tile.is-warning span{color:#ffc266}
+.hm-shell.ah-shell[data-theme="dark"] .at-feeder-warn span{background:#ff9f0a2e;color:#ffc266}
