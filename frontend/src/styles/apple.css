@@ -286,7 +286,7 @@
 /* v0.8.5 second pass */
 .hm-shell .ah-module .hm-status-text span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal;font-size:11px;line-height:1.15}
 .hm-shell .ah-module .hm-status-text strong{font-size:clamp(20px,17cqw,26px)}.hm-shell .ah-module .hm-status-icon{width:24px;height:24px}.hm-shell .ah-module .hm-status-icon svg{width:14px;height:14px}
-@container (max-width:130px){.hm-shell .ah-module .hm-status-icon{display:none}}
+.hm-shell .ah-module .hm-status-text{margin-top:auto}
 .hm-shell .at-boiler .hm-pill,.hm-shell .at-feeder .hm-pill,.hm-shell .at-feeder .hm-round,.hm-shell .at-boiler .hm-round{background:var(--ah-group)}
 .hm-shell .at-feeder .hm-pill.is-primary{background:var(--ah-accent)}
 .hm-shell .at-spark.is-empty{display:none}
