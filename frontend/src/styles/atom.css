@@ -59,3 +59,11 @@
 .hm-shell button.at-camera-q{position:absolute;right:10px;top:10px;background:#000a;color:#fff;cursor:pointer;min-height:28px}
 .hm-shell .at-go2rtc video{width:100%;height:100%;display:block}
 .hm-shell button.at-camera-q:disabled{opacity:.45;cursor:default}
+
+/* pet feeder module */
+.hm-shell .at-feeder{display:flex;flex-direction:column;gap:12px;padding:14px 16px;flex:none}.hm-shell .at-feeder-head{display:flex;align-items:center;gap:12px}.hm-shell .at-feeder-head>div{flex:1;min-width:0;display:grid}.hm-shell .at-feeder-head small{color:var(--hm-muted);font-size:13px}
+.hm-shell .at-feeder-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.is-narrow .at-feeder-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.hm-shell .at-feeder-warn{display:flex;flex-wrap:wrap;gap:8px}.hm-shell .at-feeder-warn span{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#ffb02e22;color:var(--hm-amber,#ffb02e);font-size:13px;font-weight:600}
+.hm-shell .at-feeder-feed{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.hm-shell .at-feeder-feed .hm-stepper{justify-content:flex-start;gap:10px}.hm-shell .at-feeder-feed .hm-round{width:44px;height:44px}.hm-shell .at-feeder-dose{min-width:110px;display:grid;text-align:center}.hm-shell .at-feeder-dose strong{font-size:20px}.hm-shell .at-feeder-dose small{color:var(--hm-muted);font-size:12px}
+.hm-shell .at-feeder-confirm{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border-radius:14px;background:var(--hm-inset,#ffffff0a);border:1px solid var(--hm-line)}.hm-shell .at-feeder-note{font-size:13px;color:var(--hm-muted)}
+.hm-shell .at-feeder-plan strong{font-size:15px;line-height:1.3;white-space:normal}
