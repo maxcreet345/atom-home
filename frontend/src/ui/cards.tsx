@@ -74,7 +74,7 @@ export function AccessoryTile({ device, name, sub, room, pending, onToggle, onOp
   const e = device.primary, on = isOn(e) || (device.kind === 'climate' && e.state !== 'off' && e.available), active = e.available && on && !READ_KINDS.includes(device.kind);
   const alert = e.available && (device.kind === 'leak' || device.kind === 'alarm') && e.state === 'on';
   const reads = READ_KINDS.includes(device.kind) || device.kind === 'climate';
-  const color = tileColor(device), label = name ?? device.name, line2 = sub ?? [reads ? tileStatus(device, t, lang) : '', room ?? ''].filter(Boolean).join(' · ');
+  const color = tileColor(device), label = name ?? device.name, line2 = sub ?? (device.kind === 'climate' ? tileStatus(device, t, lang) : [reads ? tileStatus(device, t, lang) : '', room ?? ''].filter(Boolean).join(' · '));
   // long press (500 ms) opens details, like a press-and-hold on a HomeView module
   const hold = useRef<ReturnType<typeof setTimeout> | null>(null), held = useRef(false);
   const down = () => { held.current = false; hold.current = setTimeout(() => { held.current = true; onOpen(); }, 500); };
@@ -103,7 +103,7 @@ export function ThermostatTile({ device, sub, target, current, onStep, onOpen, t
 export function ClockTile({ now, lang }: { now: Date; lang: Lang }) {
   const h = now.getHours() % 12, m = now.getMinutes(), hourA = (h + m / 60) * 30, minA = m * 6;
   const date = new Intl.DateTimeFormat(lang === 'ru' ? 'ru-RU' : lang === 'ro' ? 'ro-RO' : 'en-GB', { weekday: 'short', day: 'numeric' }).format(now);
-  const nums = Array.from({ length: 12 }, (_, i) => { const a = (i + 1) * 30 * Math.PI / 180; return <text x={50 + 33 * Math.sin(a)} y={50 - 33 * Math.cos(a) + 2.3} textAnchor="middle" fontSize="6.4" fontWeight="600">{i + 1}</text>; });
+  const nums = Array.from({ length: 12 }, (_, i) => { const a = (i + 1) * 30 * Math.PI / 180; return <text x={50 + 32 * Math.sin(a)} y={50 - 32 * Math.cos(a) + 2.1} textAnchor="middle" fontSize={i + 1 >= 10 ? 5 : 5.6} fontWeight="600" letterSpacing="-0.3">{i + 1}</text>; });
   return <div className="ah-tile ah-clock hm-card" aria-label={date}>
     <svg viewBox="0 0 100 100" aria-hidden="true">
       <circle cx="50" cy="50" r="46" className="ah-clock-face" />

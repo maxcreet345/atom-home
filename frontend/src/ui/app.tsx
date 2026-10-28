@@ -35,8 +35,8 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
   const lang = config.home.language, t = useMemo(() => translator(lang), [lang]);
   const home = useMemo(() => discover(registry, config), [registry, config]);
   const modules = useMemo(() => activeModules(registry, config), [registry, config]);
-  const player = (dev: HomeDevice, mode: 'tile' | 'stage') => { const m = modules.find(x => x.def.Player && x.entities.camera === dev.primary.id); const P = m?.def.Player; return m && P ? <P key={`${m.def.id}:${dev.key}:${mode}`} entities={m.entities} options={m.options} host={host} t={t} lang={lang} mode={mode} /> : null; };
   const [view, setView] = useState<View>(() => decode(navigationWindow.location.hash));
+  const player = (dev: HomeDevice, mode: 'tile' | 'stage') => { if (mode === 'tile' && view.device) return null; /* one stream at a time: the sheet's stage replaces the tile player */ const m = modules.find(x => x.def.Player && x.entities.camera === dev.primary.id); const P = m?.def.Player; return m && P ? <P key={`${m.def.id}:${dev.key}:${mode}`} entities={m.entities} options={m.options} host={host} t={t} lang={lang} mode={mode} /> : null; };
   useEffect(() => { const pop = () => setView(decode(navigationWindow.location.hash)); navigationWindow.addEventListener('popstate', pop); navigationWindow.addEventListener('hashchange', pop); return () => { navigationWindow.removeEventListener('popstate', pop); navigationWindow.removeEventListener('hashchange', pop); }; }, [navigationWindow]);
   const go = (next: Partial<View>) => { const v = { section: view.section, room: null, device: null, ...next } as View; navigationWindow.history.pushState(null, '', encode(v)); setView(v); };
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set()), [toast, setToast] = useState(''), [confirm, setConfirm] = useState<{ device: HomeDevice; action: Action; value?: unknown } | null>(null);
