@@ -19,7 +19,7 @@ try {
     const text = sel => page.evaluate(sel => document.querySelector(sel)?.innerText ?? '', sel);
     check(`${tag}/compact-card-on-overview`, /Кормушка/.test(await text('[data-module-card="pet_feeder"].hm-status')) && /\d+ g/.test(await text('[data-module-card="pet_feeder"].hm-status')), { text: await text('[data-module-card="pet_feeder"].hm-status') });
     await shot('home');
-    const go = label => page.evaluate(label => { let b = [...document.querySelectorAll('.hm-sidebar nav button, .hm-tabbar button')].find(e => e.innerText.trim() === label); if (!b) { document.querySelector('.hm-tabbar button:last-child')?.click(); return 'more'; } b.click(); return 'ok'; }, label);
+    const go = label => page.evaluate(label => { const map = { 'Обзор': 'home', 'Комнаты': 'rooms', 'Свет': 'lights', 'Климат': 'climate', 'Уборка': 'cleaning', 'Энергия': 'energy', 'Системы': 'systems', 'Настройка': 'setup' }; location.hash = '#' + (map[label] ?? 'home'); return 'ok'; }, label);
     if (await go('Системы') === 'more') { await page.waitForTimeout(300); await page.evaluate(() => [...document.querySelectorAll('.hm-more button')].find(e => e.innerText.trim() === 'Системы')?.click()); }
     await page.waitForTimeout(600); await shot('systems');
     const card = await text('.at-feeder');

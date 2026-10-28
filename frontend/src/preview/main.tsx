@@ -5,12 +5,11 @@ import { normaliseConfig } from '../model/config.ts';
 import { localStore, memoryStore } from '../runtime/store.ts';
 import type { Registry } from '../model/registry.ts';
 import base from '../styles/base.css?inline';
-import home from '../styles/home.css?inline';
-import light from '../styles/theme-light.css?inline';
+import home from '../styles/apple.css?inline';
 import atom from '../styles/atom.css?inline';
 /** Isolated preview: a frozen registry + states snapshot, commands rejected and recorded. Used by QA and screenshots. */
 export async function mountPreview(root: HTMLElement, snapshot: Registry, config: unknown, viewport?: { width: number; height: number }) {
-  const style = document.createElement('style'); style.textContent = base + home + light + atom; document.head.append(style);
+  const style = document.createElement('style'); style.textContent = base + home + atom; document.head.append(style);
   const host = previewHost(snapshot);
   const store = config === undefined ? localStore() : memoryStore(config);
   const loaded = await store.load(); let cfg = loaded.config; const warnings = loaded.warnings;

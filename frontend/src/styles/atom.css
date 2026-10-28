@@ -1,65 +1,22 @@
 /* Atom Home additions on top of the V18 design system: photo-less tiles, climate grid, placeholders. */
-.hm-shell .at-room{position:relative;overflow:hidden;text-align:left;border:0;padding:0}
-.hm-shell .at-room-art{position:absolute;inset:0;display:grid;place-items:center;color:#ffffff22;background:linear-gradient(145deg,#2a3a55,#1b2436)}
-.hm-shell .at-room::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#0b131e80 0,#0b131e00 40%,#0b131ef0 100%);pointer-events:none}
-.hm-shell .at-room .hm-room-top,.hm-shell .at-room .hm-room-bottom{z-index:1}
 .hm-shell .at-light-art{position:absolute;inset:0;display:grid;place-items:center;color:#ffffff1a;background:linear-gradient(160deg,#2a3a55,#141c2b)}
 .hm-shell .at-light.is-on .at-light-art{color:#f2c27955;background:linear-gradient(160deg,#4a3a1e,#1b2436)}
-.hm-shell .at-placeholder{display:grid;place-items:center;align-content:center;gap:8px;min-height:160px;color:var(--hm-muted)}
-.hm-shell .at-camera-img{width:100%;height:100%;object-fit:cover;display:block}
-.hm-shell .at-climate-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.is-narrow .at-climate-grid{grid-template-columns:minmax(0,1fr)}.is-wide.is-portrait .at-climate-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-.hm-shell .at-climate{display:flex;flex-direction:column;gap:10px;padding:14px}.hm-shell .at-climate.is-off{opacity:.7}
-.hm-shell .at-climate-body{display:flex;align-items:center;justify-content:space-between;gap:12px}.hm-shell .at-climate-now{display:grid}.hm-shell .at-climate-now b{font-size:34px;font-weight:650;line-height:1}.hm-shell .at-climate-now b i{font-style:normal;font-size:.5em;vertical-align:top;color:var(--hm-muted)}.hm-shell .at-climate-now small{color:var(--hm-muted);font-size:12.5px}
-.hm-shell .at-list{gap:12px}.hm-shell .at-device{display:flex;flex-direction:column;gap:10px;padding:10px 12px}.hm-shell .at-device .hm-row{border:0;box-shadow:none;background:none;padding:0}
-.hm-shell .at-actions{gap:8px}
-.hm-shell .at-room-hero{min-height:110px;display:flex;align-items:center;padding:16px 18px;background:linear-gradient(145deg,#2a3a55,#1b2436);color:#f4f7fc}
-.hm-shell .hm-home.at-no-quick{grid-template-areas:"media" "status" "rooms"}.is-wide.is-landscape .hm-home.at-no-quick{grid-template-areas:"media status" "media rooms";grid-template-rows:auto minmax(0,1fr)}
-.hm-shell .at-weather .weather-current{align-items:center}
-.hm-shell .hm-stepper{display:flex;align-items:center;gap:8px}
-.hm-shell .hm-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.hm-shell .hm-home-media.at-single{grid-template-columns:minmax(0,1fr)}
-.hm-shell .hm-home.at-no-media{grid-template-areas:"status" "quick" "rooms"}.hm-shell .hm-home.at-no-media.at-no-quick{grid-template-areas:"status" "rooms"}.is-wide.is-landscape .hm-home.at-no-media{grid-template-areas:"status" "quick" "rooms";grid-template-rows:auto auto minmax(0,1fr)}.is-wide.is-landscape .hm-home.at-no-media.at-no-quick{grid-template-areas:"status" "rooms";grid-template-rows:auto minmax(0,1fr)}
-.is-wide.is-landscape .hm-home.at-no-media .hm-home-status{grid-template-columns:repeat(5,minmax(0,1fr))}.is-wide.is-landscape .hm-home.at-no-media .hm-thermo{grid-column:span 2}
-.is-wide .hm-home.at-no-media .hm-home-rooms .hm-room{height:150px}
 /* configurator */
-.hm-shell .at-setup{display:flex;flex-direction:column;gap:14px}.hm-shell .at-setup-tabs{align-self:flex-start;flex-wrap:wrap}
-.hm-shell .at-setup-row{flex-direction:column;align-items:stretch;gap:8px;padding:8px 12px 10px}.hm-shell .at-setup-main{display:flex;align-items:center;gap:10px;min-height:52px}.hm-shell .at-setup-main .hm-row-open{min-height:48px;padding:0}.hm-shell .at-setup-row.is-off .hm-row-text{opacity:.55}
-.hm-shell .at-setup-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;padding:6px 0 4px;border-top:1px solid var(--hm-line)}.hm-shell .at-setup-form .hm-fold{grid-column:1/-1}
-.hm-shell .at-field{display:grid;gap:4px;font-size:13px;color:var(--hm-muted)}.hm-shell .at-field input,.hm-shell .at-field select,.hm-shell .at-search{min-height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--hm-line);background:var(--hm-card);color:var(--hm-ink);font-size:15px}
-.hm-shell .at-search{flex:1;max-width:360px}.hm-shell .at-json{width:100%;min-height:200px;padding:10px 12px;border-radius:12px;border:1px solid var(--hm-line);background:var(--hm-card);color:var(--hm-ink);font:13px/1.4 ui-monospace,Menlo,monospace;resize:vertical}
-.hm-shell .at-setup-new{display:grid;gap:10px;padding:16px}.hm-shell .at-setup-new h3{font-size:17px}
-.hm-shell .at-setup-home{display:grid;gap:12px;max-width:640px}.hm-shell .at-note{position:absolute;right:24px;bottom:20px;z-index:6}
-.hm-shell .at-setting-row{padding:8px 14px;border-radius:16px;background:var(--hm-card);border:1px solid var(--hm-line);border-bottom:1px solid var(--hm-line)}
 /* sidebar: many sections + setup must never spill over the connection button */
-.hm-shell.at-shell .hm-sidebar nav{overflow:hidden;gap:4px}.hm-shell.at-shell .hm-sidebar nav button{flex:0 1 auto;min-height:48px;padding:4px 2px;gap:3px;font-size:12px}
-.hm-shell.at-shell .hm-sidebar nav button.at-setup-nav{margin-top:auto;border-top:1px solid #ffffff14;border-radius:0 0 16px 16px}
-.hm-shell.at-shell.is-short .hm-sidebar nav button{min-height:40px;font-size:11px}
 /* thermostat and status cards wrap when the panel shares the screen with the HA sidebar */
-.hm-shell.at-shell .hm-home-status{container-type:inline-size}
-@container (max-width:720px){.hm-shell.at-shell .hm-thermo{flex-wrap:wrap}.hm-shell.at-shell .hm-thermo-head{flex-basis:100%}.hm-shell.at-shell .hm-thermo .hm-stepper{flex:1;justify-content:flex-start}.hm-shell.at-shell .hm-home-status{grid-template-columns:repeat(2,minmax(0,1fr))}.hm-shell.at-shell .hm-thermo{grid-column:1/-1}}
-.hm-shell.at-shell .hm-main{container-type:inline-size}
-@container (max-width:900px){.hm-shell.at-shell .at-climate-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@container (max-width:560px){.hm-shell.at-shell .at-climate-grid{grid-template-columns:minmax(0,1fr)}}
 /* photos and modules */
-.hm-shell .at-photo-field{grid-column:1/-1}.hm-shell .at-photo-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.hm-shell .at-photo-thumb{width:84px;height:56px;border-radius:12px;object-fit:cover;background:var(--hm-inset-2,#ffffff12);display:grid;place-items:center;color:var(--hm-muted)}
-.hm-shell .at-upload{position:relative;overflow:hidden;cursor:pointer}.hm-shell .at-upload input{position:absolute;inset:0;opacity:0;cursor:pointer}
-.hm-shell .hm-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .hm-shell .at-boiler{display:flex;flex-direction:column;gap:12px;padding:14px 16px}.hm-shell .at-boiler-head{display:flex;align-items:center;gap:12px}.hm-shell .at-boiler-head>div{flex:1;min-width:0;display:grid}.hm-shell .at-boiler-head strong{font-size:16px}.hm-shell .at-boiler-head small{color:var(--hm-muted);font-size:13px}.hm-shell .at-boiler-head .hm-status-icon.is-on{color:var(--hm-amber);box-shadow:0 0 18px #e9a22455}
 .hm-shell .at-boiler-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.is-narrow .at-boiler-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 .hm-shell .at-boiler-tile{display:grid;gap:2px;padding:10px 12px;border-radius:14px;background:var(--hm-inset,#ffffff0a);border:1px solid var(--hm-line)}.hm-shell .at-boiler-tile small{font-size:12px;color:var(--hm-muted)}.hm-shell .at-boiler-tile strong{font-size:19px;font-weight:650;white-space:nowrap}.hm-shell .at-boiler-tile>span{font-size:12px;color:var(--hm-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hm-shell .at-boiler-tile.is-warning{background:#fff8ec;border-color:#f3d6a3}.hm-shell .at-boiler-tile.is-warning strong,.hm-shell .at-boiler-tile.is-warning>span{color:#b8781a}
 .hm-shell .at-spark{display:block;width:100%;height:28px;margin-top:4px}.hm-shell .at-spark-line{fill:none;stroke:var(--hm-blue);stroke-width:1.8}.hm-shell .at-spark-area{fill:#3d6ef21f}.hm-shell .at-spark-band{fill:#1fa86614}.hm-shell .at-spark.is-empty path{stroke:#1b2a4a26;stroke-dasharray:3 3;fill:none}
 /* overview with a module status card: four columns on a landscape tablet so two rows still fit */
 /* with a module status card the light card steps aside: thermostat on its own row, then a 2×2 of statuses */
-.hm-shell.at-shell.is-wide .hm-home-status.has-module{grid-template-columns:repeat(2,minmax(0,1fr))}.hm-shell.at-shell.is-wide .hm-home-status.has-module .hm-thermo{grid-column:1/-1}
 .hm-shell.at-shell .at-boiler{flex:none}
-.hm-shell.at-shell.daily-fit-screen .at-climate{padding:12px;gap:8px}.hm-shell.at-shell.daily-fit-screen .at-climate-grid{gap:10px}.hm-shell.at-shell.daily-fit-screen .at-boiler{padding:12px 14px;gap:8px}.hm-shell.at-shell.daily-fit-screen .at-boiler-tile{padding:8px 10px}.hm-shell.at-shell.daily-fit-screen .at-climate-now b{font-size:30px}
-
 /* go2rtc module: live stage inside the device sheet and the HD/SD switch */
 .hm-shell .at-camera-stage{border-radius:var(--hm-radius);margin:0 0 14px}.hm-shell .at-camera-stage video{object-fit:contain}
 .hm-shell button.at-camera-q{position:absolute;right:10px;top:10px;background:#000a;color:#fff;cursor:pointer;min-height:28px}
 .hm-shell .at-go2rtc video{width:100%;height:100%;display:block}
 .hm-shell button.at-camera-q:disabled{opacity:.45;cursor:default}
-
 /* pet feeder module */
 .hm-shell .at-feeder{display:flex;flex-direction:column;gap:12px;padding:14px 16px;flex:none}.hm-shell .at-feeder-head{display:flex;align-items:center;gap:12px}.hm-shell .at-feeder-head>div{flex:1;min-width:0;display:grid}.hm-shell .at-feeder-head small{color:var(--hm-muted);font-size:13px}
 .hm-shell .at-feeder-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.is-narrow .at-feeder-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -67,7 +24,6 @@
 .hm-shell .at-feeder-feed{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.hm-shell .at-feeder-feed .hm-stepper{justify-content:flex-start;gap:10px}.hm-shell .at-feeder-feed .hm-round{width:44px;height:44px}.hm-shell .at-feeder-dose{min-width:110px;display:grid;text-align:center}.hm-shell .at-feeder-dose strong{font-size:20px}.hm-shell .at-feeder-dose small{color:var(--hm-muted);font-size:12px}
 .hm-shell .at-feeder-confirm{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border-radius:14px;background:var(--hm-inset,#ffffff0a);border:1px solid var(--hm-line)}.hm-shell .at-feeder-note{font-size:13px;color:var(--hm-muted)}
 .hm-shell .at-feeder-plan strong{font-size:15px;line-height:1.3;white-space:normal}
-
 /* stock device illustrations */
 .hm-shell .at-device-art{display:block;border-radius:inherit}.hm-shell .at-device-art.is-fill{position:absolute;inset:0;width:100%;height:100%}
 .hm-shell .hm-thumb,.hm-shell .hm-sheet-photo,.hm-shell .at-light-art{position:relative}.hm-shell .at-light-art .at-device-art{opacity:.9}.hm-shell .at-light.is-on .at-light-art .at-device-art{opacity:1}

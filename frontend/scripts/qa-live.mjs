@@ -22,7 +22,7 @@ try {
     }, true);
     await page.waitForFunction(() => !!document.querySelector('atom-home-panel')?.shadowRoot?.querySelector('.at-shell .hm-page'), null, { timeout: 15000 }); await page.waitForTimeout(900);
     const tag = `${w}x${h}`;
-    const info = await page.evaluate(() => { const r = document.querySelector('atom-home-panel').shadowRoot; return { rooms: r.querySelectorAll('.at-room').length, title: r.querySelector('h1')?.innerText, nav: [...r.querySelectorAll('.hm-sidebar nav button, .hm-tabbar button')].map(b => b.innerText.trim()), ws: window.ws }; });
+    const info = await page.evaluate(() => { const r = document.querySelector('atom-home-panel').shadowRoot; return { rooms: r.querySelectorAll('.ah-tile').length, title: r.querySelector('h1')?.innerText, nav: [...r.querySelectorAll('.hm-sidebar nav button, .hm-tabbar button')].map(b => b.innerText.trim()), ws: window.ws }; });
     check(`${tag}/renders-from-registry`, info.rooms >= 8 && info.title === 'Мой дом', info);
     check(`${tag}/registry-read-via-ws`, ['config/area_registry/list', 'config/device_registry/list', 'config/entity_registry/list', 'atom_home/config/get'].every(t => info.ws.includes(t)));
     await page.screenshot({ path: resolve(out, `${tag}-home.png`) });
@@ -31,9 +31,9 @@ try {
     // state update propagates: flip a light on in hass.states, reassign hass
     await page.evaluate(() => { const h = window.hassObj; const id = Object.keys(h.states).find(k => k.startsWith('light.') && h.states[k].state === 'off'); h.states = { ...h.states, [id]: { ...h.states[id], state: 'on' } }; window.flipped = id; window.el.hass = h; });
     await page.waitForTimeout(400);
-    check(`${tag}/state-change-redraws`, await page.evaluate(() => { const r = document.querySelector('atom-home-panel').shadowRoot; return !window.ws.slice(4).includes('config/entity_registry/list') && [...r.querySelectorAll('.at-room .hm-lit')].some(e => /1/.test(e.innerText)); }), { flipped: await page.evaluate(() => window.flipped), ws: await page.evaluate(() => window.ws.slice(4)), status: await page.evaluate(() => document.querySelector('atom-home-panel').shadowRoot.querySelector('.hm-status .hm-status-text strong')?.innerText) });
+    check(`${tag}/state-change-redraws`, await page.evaluate(() => { const r = document.querySelector('atom-home-panel').shadowRoot; return !window.ws.slice(4).includes('config/entity_registry/list') && !!r.querySelector('.ah-tile.kind-light.is-on'); }), { flipped: await page.evaluate(() => window.flipped), ws: await page.evaluate(() => window.ws.slice(4)), status: await page.evaluate(() => document.querySelector('atom-home-panel').shadowRoot.querySelector('.hm-status .hm-status-text strong')?.innerText) });
     // configurator saves through WS and survives a re-render
-    const go = label => page.evaluate(label => { const r = document.querySelector('atom-home-panel').shadowRoot; let b = [...r.querySelectorAll('.hm-sidebar nav button, .hm-tabbar button')].find(e => e.innerText.trim() === label); if (!b) { [...r.querySelectorAll('.hm-tabbar button')].find(e => e.innerText.trim() === 'Ещё')?.click(); return 'more'; } b.click(); return true; }, label);
+    const go = label => page.evaluate(label => { const map = { 'Обзор': 'home', 'Комнаты': 'rooms', 'Свет': 'lights', 'Климат': 'climate', 'Уборка': 'cleaning', 'Энергия': 'energy', 'Системы': 'systems', 'Настройка': 'setup' }; location.hash = '#' + (map[label] ?? 'home'); return 'ok'; }, label);
     if (await go('Настройка') === 'more') { await page.waitForTimeout(300); await page.evaluate(() => { const r = document.querySelector('atom-home-panel').shadowRoot; [...r.querySelectorAll('.hm-more button')].find(e => e.innerText.trim() === 'Настройка')?.click(); }); }
     await page.waitForTimeout(500); await page.screenshot({ path: resolve(out, `${tag}-setup.png`) });
     await page.evaluate(() => { const r = document.querySelector('atom-home-panel').shadowRoot; r.querySelector('.at-setup-row .hm-switch')?.click(); }); await page.waitForTimeout(500);

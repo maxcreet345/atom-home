@@ -15,9 +15,9 @@ try {
   await page.waitForSelector('.at-shell'); await page.waitForTimeout(800);
   const $ = sel => page.evaluate(sel => !!document.querySelector(sel), sel);
   const shot = name => page.screenshot({ path: resolve(out, name + '.png') });
-  const countSystems = async () => { await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Системы')?.click()); await page.waitForTimeout(500); return page.evaluate(() => document.querySelectorAll('.hm-systems .hm-row').length); };
+  const countSystems = async () => { await page.evaluate(() => (location.hash = '#systems')); await page.waitForTimeout(500); return page.evaluate(() => document.querySelectorAll('.hm-systems .ah-tile').length); };
   const before = await countSystems();
-  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Настройка')?.click()); await page.waitForTimeout(600); await shot('setup-devices');
+  await page.evaluate(() => (location.hash = '#setup')); await page.waitForTimeout(600); await shot('setup-devices');
   check('setup-opens', await $('.at-setup'));
   // 1. hide the first valve/leak device in the list via its toggle
   const key = await page.evaluate(() => { const row = [...document.querySelectorAll('.at-setup-row')].find(r => /Кран воды/.test(r.innerText)); row?.querySelector('.hm-switch')?.click(); return row?.dataset.deviceKey ?? null; });
@@ -26,19 +26,19 @@ try {
   check('hide-device-saved', key !== null && stored.devices?.[key]?.enabled === false, { key, stored: stored.devices?.[key] });
   const after = await countSystems(); check('hidden-device-leaves-systems', after === before - 1, { before, after });
   // 2. rename a room
-  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Настройка')?.click()); await page.waitForTimeout(400);
+  await page.evaluate(() => (location.hash = '#setup')); await page.waitForTimeout(400);
   await page.evaluate(() => [...document.querySelectorAll('.at-setup-tabs button')].find(b => b.innerText.trim() === 'Комнаты')?.click()); await page.waitForTimeout(300);
   await page.evaluate(() => { const row = [...document.querySelectorAll('.at-setup-row')].find(r => r.dataset.roomId === 'kukhnia'); const input = row?.querySelector('input[type=text]'); input.value = 'Кухня-столовая'; input.dispatchEvent(new Event('change', { bubbles: true })); });
   await page.waitForTimeout(300); await shot('setup-rooms');
-  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Комнаты')?.click()); await page.waitForTimeout(500);
+  await page.evaluate(() => (location.hash = '#rooms')); await page.waitForTimeout(500);
   check('room-renamed-everywhere', await page.evaluate(() => [...document.querySelectorAll('.at-room')].some(r => r.innerText.includes('Кухня-столовая'))));
   // 3. add a custom button with confirm and press it → confirm dialog → confirm → one rejected command
-  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Настройка')?.click()); await page.waitForTimeout(400);
+  await page.evaluate(() => (location.hash = '#setup')); await page.waitForTimeout(400);
   await page.evaluate(() => [...document.querySelectorAll('.at-setup-tabs button')].find(b => b.innerText.trim() === 'Кнопки')?.click()); await page.waitForTimeout(300);
   await page.evaluate(() => { const f = document.querySelector('.at-setup-new'); const [label, service, entity, data] = f.querySelectorAll('input[type=text]'); const set = (el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }; set(label, 'Весь свет выкл'); set(service, 'light.turn_off'); set(entity, 'all'); set(data, ''); });
   await page.evaluate(() => [...document.querySelectorAll('.at-setup-new button')].find(b => b.innerText.includes('Добавить'))?.click()); await page.waitForTimeout(400); await shot('setup-buttons');
   check('button-saved', await page.evaluate(() => JSON.parse(localStorage.getItem('atom-home:config')).buttons.length === 1));
-  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Обзор')?.click()); await page.waitForTimeout(600);
+  await page.evaluate(() => (location.hash = '#home')); await page.waitForTimeout(600);
   check('button-on-overview', await $('.hm-scene-custom'));
   await page.evaluate(() => document.querySelector('.hm-scene-custom .hm-scene-hit')?.click()); await page.waitForTimeout(300);
   check('button-asks-confirmation', await $('.hm-confirm'));
@@ -47,17 +47,17 @@ try {
   check('button-calls-service-once', log.length === 1 && log[0].domain === 'light' && log[0].service === 'turn_off' && log[0].data.entity_id === 'all', { log });
   await shot('overview-after-button');
   // 4. export/import
-  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Настройка')?.click()); await page.waitForTimeout(400);
+  await page.evaluate(() => (location.hash = '#setup')); await page.waitForTimeout(400);
   await page.evaluate(() => [...document.querySelectorAll('.at-setup-tabs button')].find(b => b.innerText.trim() === 'Дом')?.click()); await page.waitForTimeout(300);
   await page.evaluate(() => [...document.querySelectorAll('.at-setup-home .hm-chips button')].find(b => b.innerText.includes('Экспорт'))?.click()); await page.waitForTimeout(200);
   const exported = await page.evaluate(() => document.querySelector('.at-json').value); let parsed = null; try { parsed = JSON.parse(exported); } catch {}
   check('export-valid-json', !!parsed && parsed.rooms?.kukhnia?.name === 'Кухня-столовая' && parsed.buttons?.length === 1);
   await page.evaluate(() => { const ta = document.querySelector('.at-json'); const c = JSON.parse(ta.value); c.home.name = 'Casa Atom'; delete c.rooms.kukhnia; ta.value = JSON.stringify(c); ta.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.evaluate(() => [...document.querySelectorAll('.at-setup-home .hm-chips button')].find(b => b.innerText.includes('Импорт'))?.click()); await page.waitForTimeout(500); await shot('setup-home-after-import');
-  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Обзор')?.click()); await page.waitForTimeout(500);
+  await page.evaluate(() => (location.hash = '#home')); await page.waitForTimeout(500);
   check('import-applies-name', await page.evaluate(() => document.querySelector('.hm-head h1')?.innerText.trim() === 'Casa Atom'));
   check('import-persisted', await page.evaluate(() => JSON.parse(localStorage.getItem('atom-home:config')).home.name === 'Casa Atom' && !JSON.parse(localStorage.getItem('atom-home:config')).rooms.kukhnia));
-  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Настройка')?.click()); await page.waitForTimeout(400);
+  await page.evaluate(() => (location.hash = '#setup')); await page.waitForTimeout(400);
   // 5. upload a room photo (preview store keeps it as a data URL) and see it on the room tile
   await page.evaluate(() => [...document.querySelectorAll('.at-setup-tabs button')].find(b => b.innerText.trim() === 'Комнаты')?.click()); await page.waitForTimeout(300);
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFklEQVQIW2P8z8DwnwEIGBlgDBgDAAz6A/3tPDhNAAAAAElFTkSuQmCC', 'base64');
@@ -65,39 +65,39 @@ try {
   await input.setInputFiles({ name: 'bath.png', mimeType: 'image/png', buffer: png }); await page.waitForTimeout(1200);
   const photo = await page.evaluate(() => JSON.parse(localStorage.getItem('atom-home:config')).rooms?.vannaia?.photo ?? null);
   check('photo-uploaded-into-config', typeof photo === 'string' && photo.startsWith('data:image/jpeg;base64,'), { len: photo?.length });
-  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Комнаты')?.click()); await page.waitForTimeout(500);
+  await page.evaluate(() => (location.hash = '#rooms')); await page.waitForTimeout(500);
   check('photo-shown-on-room-tile', await page.evaluate(() => document.querySelector('.at-room[data-room-id="vannaia"] img.hm-photo')?.getAttribute('src')?.startsWith('data:image/jpeg') === true));
   check('stock-art-on-other-rooms', await page.evaluate(() => document.querySelector('.at-room[data-room-id="kukhnia"] img.hm-photo')?.getAttribute('src')?.includes('room-kitchen') === true));
   await shot('rooms-with-photo');
   // 6. modules tab lists the boiler as detected; disabling removes its card from Climate
-  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Климат')?.click()); await page.waitForTimeout(500);
+  await page.evaluate(() => (location.hash = '#climate')); await page.waitForTimeout(500);
   check('boiler-module-card-on-climate', await $('.at-boiler')); await shot('climate-with-boiler');
-  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Настройка')?.click()); await page.waitForTimeout(400);
+  await page.evaluate(() => (location.hash = '#setup')); await page.waitForTimeout(400);
   await page.evaluate(() => [...document.querySelectorAll('.at-setup-tabs button')].find(b => b.innerText.trim() === 'Модули')?.click()); await page.waitForTimeout(300); await shot('setup-modules');
   check('module-detected-in-setup', await page.evaluate(() => /Обнаружен/.test(document.querySelector('[data-module-id="boiler_ebus"]')?.innerText ?? '')));
   await page.evaluate(() => document.querySelector('[data-module-id="boiler_ebus"] .hm-switch')?.click()); await page.waitForTimeout(400);
-  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Климат')?.click()); await page.waitForTimeout(500);
+  await page.evaluate(() => (location.hash = '#climate')); await page.waitForTimeout(500);
   check('module-disabled-removes-card', !(await $('.at-boiler')));
   // 6b. go2rtc camera module: detected in setup with the add-on slug suggested; overview tile carries the player mount (preview host has no WS, so it reports "unavailable" without errors)
-  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Настройка')?.click()); await page.waitForTimeout(300);
+  await page.evaluate(() => (location.hash = '#setup')); await page.waitForTimeout(300);
   await page.evaluate(() => [...document.querySelectorAll('.at-setup-tabs button')].find(b => b.innerText.trim() === 'Модули')?.click()); await page.waitForTimeout(300);
   check('go2rtc-module-detected-in-setup', await page.evaluate(() => /Обнаружен/.test(document.querySelector('[data-module-id="camera_go2rtc"]')?.innerText ?? '') && !!document.querySelector('[data-module-id="camera_go2rtc"] input[placeholder="a889bffc_go2rtc"]')));
   await page.evaluate(() => { const i = document.querySelector('[data-module-id="camera_go2rtc"] input[placeholder="auto"]'); i.value = 'criuleni_c700_h264'; i.dispatchEvent(new Event('change', { bubbles: true })); }); await page.waitForTimeout(300);
   check('go2rtc-stream-option-persisted', await page.evaluate(() => JSON.parse(localStorage.getItem('atom-home:config')).modules.camera_go2rtc.options.stream === 'criuleni_c700_h264'));
-  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Обзор')?.click()); await page.waitForTimeout(600); await shot('home-go2rtc-tile');
+  await page.evaluate(() => (location.hash = '#home')); await page.waitForTimeout(600); await shot('home-go2rtc-tile');
   check('go2rtc-player-mounted-on-overview', await page.evaluate(() => { const m = document.querySelector('.hm-camera-tile .at-go2rtc'); return !!m && m.dataset.stream === 'criuleni_c700_h264' && m.dataset.playerStatus === 'error'; }));
   await page.evaluate(() => document.querySelector('.hm-camera-tile')?.click()); await page.waitForTimeout(500); await shot('sheet-go2rtc-stage');
-  check('go2rtc-stage-in-sheet', await page.evaluate(() => !!document.querySelector('.hm-sheet .at-camera-stage .at-go2rtc')));
+  check('go2rtc-stage-in-sheet', await page.evaluate(() => !!document.querySelector('.hm-sheet .at-camera-stage .at-go2rtc')), await page.evaluate(() => ({ sheet: !!document.querySelector('.hm-sheet'), stage: !!document.querySelector('.at-camera-stage'), title: document.querySelector('.hm-sheet h2')?.innerText })));
   await page.keyboard.press('Escape'); await page.waitForTimeout(300);
   // 6c. stock device art: light tiles and rows carry an SVG illustration guessed from the kind; the configurator can switch it off per device
-  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Свет')?.click()); await page.waitForTimeout(500); await shot('lights-art');
-  check('device-art-on-light-tile-without-photo', await page.evaluate(() => { const tiles = [...document.querySelectorAll('.at-light')]; return tiles.length > 0 && tiles.every(x => x.querySelector('img.hm-photo') || x.querySelector('svg[data-art]')); }));
-  await page.evaluate(() => document.querySelector('.at-light[data-device-key="e:light.yeelink_ceila_fed1_light"] .hm-light-more')?.click()); await page.waitForTimeout(400);
+  await page.evaluate(() => (location.hash = '#lights')); await page.waitForTimeout(500); await shot('lights-art');
+  check('light-tiles-with-glyph', await page.evaluate(() => { const tiles = [...document.querySelectorAll('.ah-tile.kind-light')]; return tiles.length > 0 && tiles.every(x => x.querySelector('.ah-glyph svg')); }));
+  await page.evaluate(() => document.querySelector('.ah-tile[data-device-key="e:light.yeelink_ceila_fed1_light"] .ah-tile-more')?.click()); await page.waitForTimeout(400);
   check('light-art-in-sheet-head', await page.evaluate(() => /^(light|chandelier)$/.test(document.querySelector('.hm-sheet .hm-sheet-photo svg[data-art]')?.dataset.art ?? '')), await page.evaluate(() => ({ sheet: !!document.querySelector('.hm-sheet'), tile: !!document.querySelector('.at-light[data-device-key="e:light.yeelink_ceila_fed1_light"]'), keys: [...document.querySelectorAll('.at-light')].slice(0, 2).map(x => x.dataset.deviceKey), photo: document.querySelector('.hm-sheet .hm-sheet-photo')?.innerHTML.slice(0, 120) }))); await shot('sheet-art');
   await page.keyboard.press('Escape'); await page.waitForTimeout(300);
-  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Системы')?.click()); await page.waitForTimeout(500); await shot('systems-art');
-  check('device-art-on-rows', (await page.evaluate(() => document.querySelectorAll('.hm-row .hm-thumb svg[data-art]').length)) >= 5);
-  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Настройка')?.click()); await page.waitForTimeout(400);
+  await page.evaluate(() => (location.hash = '#systems')); await page.waitForTimeout(500); await shot('systems-art');
+  check('systems-tiles-grouped', (await page.evaluate(() => document.querySelectorAll('.hm-systems .ah-tile').length)) >= 10);
+  await page.evaluate(() => (location.hash = '#setup')); await page.waitForTimeout(400);
   await page.evaluate(() => [...document.querySelectorAll('.at-setup-tabs button')].find(b => b.innerText.trim() === 'Устройства')?.click()); await page.waitForTimeout(300);
   await page.evaluate(() => document.querySelector('[data-device-key="e:light.yeelink_ceila_fed1_light"] .hm-row-open')?.click()); await page.waitForTimeout(300);
   await page.evaluate(() => { const s = document.querySelector('[data-device-key="e:light.yeelink_ceila_fed1_light"] .at-art-field select'); s.value = 'none'; s.dispatchEvent(new Event('change', { bubbles: true })); }); await page.waitForTimeout(400);

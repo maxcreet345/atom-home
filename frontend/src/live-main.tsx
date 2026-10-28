@@ -5,8 +5,7 @@ import { haStore } from './runtime/ha-store.ts';
 import { normaliseConfig, type HouseConfig } from './model/config.ts';
 import type { Registry } from './model/registry.ts';
 import base from './styles/base.css?inline';
-import home from './styles/home.css?inline';
-import light from './styles/theme-light.css?inline';
+import home from './styles/apple.css?inline';
 import atom from './styles/atom.css?inline';
 
 const REGISTRY_REFRESH_MS = 5 * 60 * 1000;
@@ -37,7 +36,7 @@ export class AtomHomePanel extends HTMLElement {
     const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
     root.replaceChildren();
     const style = document.createElement('style');
-    style.textContent = base + home + light + atom + ':host{display:block;position:relative;width:100%;height:calc(100vh - var(--header-height,0px));min-height:0;overflow:hidden}';
+    style.textContent = base + home + atom + ':host{display:block;position:relative;width:100%;height:calc(100vh - var(--header-height,0px));min-height:0;overflow:hidden}';
     this.mount = document.createElement('div'); this.mount.style.height = '100%';
     root.append(style, this.mount);
     this.observer = new ResizeObserver(() => this.measure()); this.observer.observe(this);

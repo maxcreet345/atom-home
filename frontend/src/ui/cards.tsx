@@ -48,4 +48,75 @@ export function DeviceRow({ device, name, pending, onToggle, onOpen, t, lang }: 
 export function Section({ title, action, children, className = '' }: { title: string; action?: ComponentChildren; children: ComponentChildren; className?: string }) {
   return <section className={`hm-section ${className}`}><div className="hm-section-head"><h2>{title}</h2>{action}</div>{children}</section>;
 }
+/** homeOS (Apple HomeView «Home Modular» face) tiles: square modules in a grid. An accessory module shows a large glyph, the name and a second line
+ * (room for things you switch, the value for things you read). Tap = toggle when the device has one, else open; the small corner button always opens details. */
+export const KIND_COLOR: Record<string, string> = { light: '#ffcc00', switch: '#30d158', socket: '#30d158', climate: '#ff9f0a', fan: '#64d2ff', cover: '#a2845e', lock: '#0a84ff', vacuum: '#5e5ce6', media: '#bf5af2', camera: '#8e8e93', weather: '#32ade6', environment: '#30d158', measurement: '#30d158', leak: '#32ade6', opening: '#0a84ff', motion: '#0a84ff', alarm: '#ff3b30', alarm_panel: '#0a84ff', valve: '#32ade6', energy: '#30d158', person: '#0a84ff', generic: '#8e8e93' };
+export function tileColor(device: HomeDevice): string {
+  const e = device.primary;
+  if (!e.available) return '#8e8e93';
+  if (device.kind === 'leak' || device.kind === 'alarm') return e.state === 'on' ? '#ff3b30' : KIND_COLOR[device.kind];
+  if (device.kind === 'climate') return e.state === 'off' ? '#8e8e93' : e.state === 'cool' ? '#34aadc' : '#ff9f0a';
+  if (device.kind === 'opening') return e.state === 'on' ? '#ff9f0a' : '#30d158';
+  if (device.kind === 'motion') return e.state === 'on' ? '#ff9f0a' : '#8e8e93';
+  if (['light', 'switch', 'socket', 'fan', 'media', 'vacuum', 'cover', 'lock'].includes(device.kind)) return isOn(e) ? KIND_COLOR[device.kind] : '#8e8e93';
+  return KIND_COLOR[device.kind] ?? '#8e8e93';
+}
+export function tileStatus(device: HomeDevice, t: T, lang: Lang): string {
+  const e = device.primary;
+  if (!e.available) return t('state.unavailable');
+  if (device.kind === 'climate') { const cur = typeof e.attributes.current_temperature === 'number' ? e.attributes.current_temperature : null, target = typeof e.attributes.temperature === 'number' ? e.attributes.temperature : null; return e.state === 'off' ? (cur === null ? t('state.off') : `${t('state.off')} · ${num(cur, lang)}°`) : `${target === null ? '—' : num(target, lang) + '°'}${cur === null ? '' : ` · ${num(cur, lang)}°`}`; }
+  if (device.kind === 'light' && isOn(e) && typeof e.attributes.brightness === 'number') return `${t('state.on')} · ${Math.round(e.attributes.brightness / 2.55)} %`;
+  return stateText(e, t, lang);
+}
+const READ_KINDS = ['environment', 'measurement', 'leak', 'opening', 'motion', 'person', 'weather', 'camera', 'energy', 'alarm'];
+export function AccessoryTile({ device, name, sub, pending, onToggle, onOpen, t, lang, wide }: { device: HomeDevice; name?: string; sub?: string; pending: boolean; onToggle?: () => void; onOpen: () => void; t: T; lang: Lang; wide?: boolean }) {
+  const e = device.primary, on = isOn(e) || (device.kind === 'climate' && e.state !== 'off' && e.available), active = e.available && on && !READ_KINDS.includes(device.kind);
+  const alert = e.available && (device.kind === 'leak' || device.kind === 'alarm') && e.state === 'on';
+  const color = tileColor(device), label = name ?? device.name, line2 = sub ?? (READ_KINDS.includes(device.kind) || device.kind === 'climate' ? tileStatus(device, t, lang) : '');
+  return <div className={`ah-tile hm-card ${active ? 'is-on' : ''} ${alert ? 'is-alert' : ''} ${e.available ? '' : 'is-off'} ${pending ? 'is-pending' : ''} ${wide ? 'is-wide' : ''} kind-${device.kind}`} data-device-key={device.key} style={`--tile:${color}`}>
+    <button type="button" className="ah-tile-hit hm-light-hit" disabled={pending || !e.available && !!onToggle} onClick={onToggle ?? onOpen} aria-label={onToggle ? `${label}: ${on ? t('action.off') : t('action.on')}` : `${t('ui.details')}: ${label}`}>
+      <span className="ah-glyph">{device.photo ? <img src={device.photo} alt="" loading="lazy" /> : <Icon name={device.icon ?? iconOfKind[device.kind] ?? 'generic'} size={34} />}</span>
+      <span className="ah-tile-text"><strong>{label}</strong>{line2 && <small>{line2}</small>}</span>
+    </button>
+    <button type="button" className="ah-tile-more hm-light-more" aria-label={`${t('ui.details')}: ${label}`} onClick={onOpen}><Icon name="more" size={16} /></button>
+  </div>;
+}
+/** 2×2 thermostat module: big target number, chevrons at the bottom corners, name and room underneath. */
+export function ThermostatTile({ device, sub, target, current, onStep, onOpen, t, lang, disabled }: { device: HomeDevice; sub?: string; target: number | null; current: number | null; onStep?: (dir: 1 | -1) => void; onOpen: () => void; t: T; lang: Lang; disabled?: boolean }) {
+  const e = device.primary, on = e.available && e.state !== 'off';
+  return <div className={`ah-tile ah-thermo hm-card ${on ? 'is-on' : ''} ${e.available ? '' : 'is-off'}`} data-device-key={device.key} style={`--tile:${tileColor(device)}`}>
+    <button type="button" className="ah-tile-hit" onClick={onOpen} aria-label={`${t('ui.details')}: ${device.name}`}>
+      <span className="ah-thermo-value"><b>{target === null ? (current === null ? '—' : num(current, lang, 0)) : num(target, lang, target % 1 ? 1 : 0)}</b>{current !== null && target !== null && <small>{t('ui.now')} {num(current, lang)}°</small>}</span>
+      <span className="ah-tile-text"><strong>{device.name}</strong><small>{sub ?? (on ? stateText(e, t, lang) : t('state.off'))}</small></span>
+    </button>
+    {onStep && <><button type="button" className="ah-chev is-down" aria-label="−" disabled={disabled || !e.available} onClick={() => onStep(-1)}><Icon name="back" size={22} /></button><button type="button" className="ah-chev is-up" aria-label="+" disabled={disabled || !e.available} onClick={() => onStep(1)}><Icon name="back" size={22} /></button></>}
+  </div>;
+}
+/** 1×1 analog clock module with numerals (homeOS clock face). */
+export function ClockTile({ now, lang }: { now: Date; lang: Lang }) {
+  const h = now.getHours() % 12, m = now.getMinutes(), hourA = (h + m / 60) * 30, minA = m * 6;
+  const date = new Intl.DateTimeFormat(lang === 'ru' ? 'ru-RU' : lang === 'ro' ? 'ro-RO' : 'en-GB', { weekday: 'short', day: 'numeric' }).format(now);
+  const nums = Array.from({ length: 12 }, (_, i) => { const a = (i + 1) * 30 * Math.PI / 180; return <text x={50 + 38 * Math.sin(a)} y={50 - 38 * Math.cos(a) + 3.5} textAnchor="middle" fontSize="9.5" fontWeight="600">{i + 1}</text>; });
+  return <div className="ah-tile ah-clock hm-card" aria-label={date}>
+    <svg viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="50" r="48" className="ah-clock-face" />
+      <g className="ah-clock-nums">{nums}</g>
+      <line x1="50" y1="50" x2={50 + 22 * Math.sin(hourA * Math.PI / 180)} y2={50 - 22 * Math.cos(hourA * Math.PI / 180)} className="ah-hand is-hour" />
+      <line x1="50" y1="50" x2={50 + 32 * Math.sin(minA * Math.PI / 180)} y2={50 - 32 * Math.cos(minA * Math.PI / 180)} className="ah-hand is-min" />
+      <circle cx="50" cy="50" r="2.4" className="ah-hand-cap" />
+    </svg>
+    <small className="ah-clock-date">{date}</small>
+  </div>;
+}
+/** 1×1 scene module (owner's quick button). */
+export function SceneTile({ icon, label, onClick, t }: { icon: string; label: string; onClick: () => void; t: T }) {
+  return <div className="ah-tile ah-scene hm-card hm-scene hm-scene-custom"><button type="button" className="ah-tile-hit hm-scene-hit" onClick={onClick}><span className="ah-glyph hm-scene-icon"><Icon name={icon} size={34} /></span><span className="ah-tile-text"><strong>{label}</strong><small>{t('action.custom')}</small></span></button></div>;
+}
+/** 1×1 reading module: big value, label underneath (energy, weather, air). */
+export function ValueTile({ icon, value, unit, label, sub, color, onClick, className = '' }: { icon: string; value: string; unit?: string; label: string; sub?: string; color: string; onClick?: () => void; className?: string }) {
+  return <div className={`ah-tile ah-value hm-card ${className}`} style={`--tile:${color}`}><button type="button" className="ah-tile-hit" onClick={onClick} disabled={!onClick}><span className="ah-value-head"><Icon name={icon} size={18} /></span><span className="ah-value-num"><b>{value}</b>{unit && <i>{unit}</i>}</span><span className="ah-tile-text"><strong>{label}</strong>{sub && <small>{sub}</small>}</span></button></div>;
+}
+export function Pill({ icon, color, label, value, onClick, className = '' }: { icon: string; color: string; label: string; value: string; onClick?: () => void; className?: string }) {
+  return <button type="button" className={`ah-pill ${className}`} style={`--tile:${color}`} onClick={onClick}><span className="ah-glyph is-small"><Icon name={icon} size={16} /></span><span><small>{label}</small><strong>{value}</strong></span></button>;
+}
 export const metricLabel = (m: EntityRef, t: T) => { const key = `metric.${m.deviceClass ?? ''}`; const v = t(key as never); return v === key ? m.name : v; };
