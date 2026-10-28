@@ -1,0 +1,187 @@
+/* ===================================================================================================
+   Criuleni «Мой дом» — дизайн-система V18 (светлая тема по мотивам Dashboard V18 paulcodes).
+   Подключается как [data-theme="light"] поверх базовых (тёмных) правил home.css / dashboard.css.
+   Разделы: 1 токены · 2 оболочка и навигация · 3 поверхности и элементы управления · 4 карточки
+            5 окна и подробности · 6 отопление/погода/пылесос/графики · 7 фото-карточки (всегда тёмный текст-на-фото)
+   Правило: только цвета, тени, границы и радиусы. Размеры, сетки и отступы не трогать — экраны планшета
+   должны помещаться без прокрутки как раньше.
+   =================================================================================================== */
+
+/* ---------- 1. Токены ---------- */
+.hm-shell.daily-shell[data-theme="light"]{
+  --hm-bg:#f2f5f9;--hm-bg-2:#e9eef5;--hm-card:#ffffff;--hm-card2:#ffffff;--hm-inset:#f3f6fa;--hm-inset-2:#eaeff6;
+  --hm-ink:#141c2b;--hm-ink-2:#3c4a5e;--hm-muted:#6f7c90;--hm-line:#e3e8f0;--hm-line-2:#d3dbe6;
+  --hm-blue:#3d6ef2;--hm-blue-soft:#e8eefe;--hm-violet:#7b5cf5;--hm-violet-soft:#efeafe;
+  --hm-amber:#e9a224;--hm-amber-soft:#fff2d9;--hm-green:#1fa866;--hm-green-soft:#e2f6ec;
+  --hm-warn:#e08a16;--hm-warn-soft:#fff1dc;--hm-danger:#e24d4d;--hm-danger-soft:#fde7e7;
+  --hm-radius:22px;--hm-radius-s:14px;
+  --hm-shadow:0 1px 2px #1b2a4a0a,0 10px 28px #1b2a4a10;--hm-shadow-hover:0 18px 40px #1b2a4a1f;--hm-edge:#e3e8f0;
+  --hm-glass:none;--hm-surface:#ffffff;
+  --hm-nav-bg:#131b2e;--hm-nav-ink:#aab4c9;--hm-nav-active-bg:#ffffff;--hm-nav-active-ink:#131b2e;
+  --daily-line:var(--hm-line);--daily-muted:var(--hm-muted);--daily-ink:var(--hm-ink);--daily-amber:var(--hm-amber);
+  --daily-text:var(--hm-ink);--daily-surface:#ffffff;--daily-sage:var(--hm-blue);--daily-bg:#ffffff;--daily-card:#ffffff;
+  color-scheme:light;color:var(--hm-ink);
+  background:radial-gradient(ellipse at 80% -10%,#dfe7ff 0,transparent 50%),radial-gradient(ellipse at 0% 100%,#eee8ff 0,transparent 45%),linear-gradient(180deg,#f5f7fb,var(--hm-bg))}
+
+/* ---------- 2. Оболочка и навигация: тёмное «плавающее» меню ---------- */
+.hm-shell[data-theme="light"] .hm-head h1{color:var(--hm-ink)}.hm-shell[data-theme="light"] .hm-head p{color:var(--hm-muted)}
+.hm-shell[data-theme="light"] .hm-sidebar{margin:12px 0 12px 12px;padding:16px 8px;border:0;border-radius:28px;background:linear-gradient(180deg,#1a2338,var(--hm-nav-bg));box-shadow:0 16px 36px #131b2e33,inset 0 1px 0 #ffffff14;color:#e6ebf5}
+.hm-shell[data-theme="light"].is-short .hm-sidebar{margin:8px 0 8px 8px;padding:8px 5px;border-radius:22px}
+.hm-shell[data-theme="light"] .hm-clock strong{color:#ffffff}.hm-shell[data-theme="light"] .hm-clock small{color:var(--hm-nav-ink)}
+.hm-shell[data-theme="light"] .hm-sidebar nav button{color:var(--hm-nav-ink)}
+.hm-shell[data-theme="light"] .hm-sidebar nav button:not(.is-active):hover{background:#ffffff12}
+.hm-shell[data-theme="light"] .hm-sidebar nav button.is-active{color:var(--hm-nav-active-ink)}
+.hm-shell[data-theme="light"] .hm-sidebar .hm-nav-ind{background:var(--hm-nav-active-bg);box-shadow:0 8px 20px #0000004d,inset 0 1px 0 #ffffff}
+.hm-shell[data-theme="light"] .hm-conn{background:#ffffff10;color:var(--hm-nav-ink);box-shadow:inset 0 0 0 1px #ffffff12}
+.hm-shell[data-theme="light"] .hm-tabbar{background:#ffffffee;border-top:1px solid var(--hm-line);box-shadow:0 -10px 30px #1b2a4a14;backdrop-filter:blur(12px)}
+.hm-shell[data-theme="light"] .hm-tabbar button{color:var(--hm-muted)}.hm-shell[data-theme="light"] .hm-tabbar button.is-active{color:var(--hm-blue)}
+.hm-shell[data-theme="light"] .hm-tabbar .hm-nav-ind{background:var(--hm-blue-soft);box-shadow:none}
+.hm-shell[data-theme="light"] .hm-head-time{color:var(--hm-muted)}
+.hm-shell[data-theme="light"] .hm-main{scrollbar-color:#c5cedb transparent}
+.hm-shell[data-theme="light"] .hm-back{background:#ffffff;border:1px solid var(--hm-line);box-shadow:var(--hm-shadow);color:var(--hm-blue)}
+.hm-shell[data-theme="light"] button:active:not(:disabled){box-shadow:inset 0 0 0 2px #3d6ef240}
+.hm-shell[data-theme="light"] :is(button,input,select,summary):focus-visible{outline-color:var(--hm-blue)}
+
+/* ---------- 3. Поверхности и элементы управления ---------- */
+.hm-shell[data-theme="light"] .hm-card,.hm-shell[data-theme="light"] .daily-card,.hm-shell[data-theme="light"] button.daily-card{background:#ffffff;border:1px solid var(--hm-line);box-shadow:var(--hm-shadow);color:var(--hm-ink)}
+.hm-shell[data-theme="light"] .hm-row{background:#ffffff;border:1px solid var(--hm-line);box-shadow:0 1px 2px #1b2a4a08,0 6px 16px #1b2a4a0c}
+@media (hover:hover){.hm-shell[data-theme="light"] :is(.hm-room,.hm-light,.hm-status,.hm-scene,.hm-line,.hm-vac,.hm-camera-tile,.hm-row):hover{box-shadow:var(--hm-shadow-hover);border-color:var(--hm-line-2)}}
+.hm-shell[data-theme="light"] .hm-section-head h2{color:var(--hm-ink)}
+.hm-shell[data-theme="light"] .hm-text-btn{color:var(--hm-blue)}
+.hm-shell[data-theme="light"] .hm-pill{background:var(--hm-inset);border-color:var(--hm-line);box-shadow:none;color:var(--hm-ink)}
+.hm-shell[data-theme="light"] .hm-pill.is-primary{background:linear-gradient(145deg,#f7bf4e,#e9a224);color:#2a1d06;border-color:transparent;box-shadow:0 8px 18px #e9a22440}
+.hm-shell[data-theme="light"] .hm-round{background:var(--hm-inset);border-color:var(--hm-line);box-shadow:none;color:var(--hm-ink)}
+.hm-shell[data-theme="light"] .hm-badge{background:var(--hm-inset-2);color:var(--hm-ink-2);box-shadow:none}
+.hm-shell[data-theme="light"] .hm-icon-btn{background:var(--hm-inset);box-shadow:none;color:var(--hm-ink)}
+.hm-shell[data-theme="light"] .hm-switch{background:#d7dee9;border-color:#0000000a}.hm-shell[data-theme="light"] .hm-switch .hm-switch-knob{background:#ffffff;box-shadow:0 2px 6px #1b2a4a33}
+.hm-shell[data-theme="light"] .hm-switch.is-on{background:var(--hm-amber)}
+.hm-shell[data-theme="light"] .hm-stepper-value strong span,.hm-shell[data-theme="light"] .hm-stepper-value small{color:var(--hm-muted)}
+.hm-shell[data-theme="light"] .hm-toolbar{color:var(--hm-muted)}
+.hm-shell[data-theme="light"] .hm-muted{color:var(--hm-muted)}
+.hm-shell[data-theme="light"] .tone-calm{color:var(--hm-green)}.hm-shell[data-theme="light"] .tone-warning{color:var(--hm-warn)}.hm-shell[data-theme="light"] .tone-danger{color:var(--hm-danger)}.hm-shell[data-theme="light"] .tone-active{color:var(--hm-amber)}.hm-shell[data-theme="light"] :is(.tone-muted,.tone-off){color:var(--hm-muted)}
+
+/* ---------- 4. Карточки ---------- */
+/* 4.1 карточка состояния */
+.hm-shell[data-theme="light"] .hm-status{--hm-tone:var(--hm-blue)}.hm-shell[data-theme="light"] .hm-status.tone-calm{--hm-tone:var(--hm-green)}.hm-shell[data-theme="light"] .hm-status.tone-warning{--hm-tone:var(--hm-warn)}.hm-shell[data-theme="light"] .hm-status.tone-danger{--hm-tone:var(--hm-danger)}.hm-shell[data-theme="light"] .hm-status.tone-active{--hm-tone:var(--hm-amber)}.hm-shell[data-theme="light"] .hm-status.tone-muted{--hm-tone:#8b98ab}
+.hm-shell[data-theme="light"] .hm-status::before{opacity:.10}
+.hm-shell[data-theme="light"] .hm-status-icon{background:color-mix(in srgb,var(--hm-tone) 12%,#ffffff);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--hm-tone) 22%,transparent);color:var(--hm-tone)}
+.hm-shell[data-theme="light"] .hm-status-text small,.hm-shell[data-theme="light"] .hm-status-text em{color:var(--hm-muted)}.hm-shell[data-theme="light"] .hm-status-text strong{color:var(--hm-ink)}
+.hm-shell[data-theme="light"] .hm-status.tone-warning{background:#fff8ec;border-color:#f3d6a3}.hm-shell[data-theme="light"] .hm-status.tone-danger{background:#fff1f1;border-color:#f3b4b4}
+/* 4.2 термостат */
+.hm-shell[data-theme="light"] .hm-thermo-head strong{color:var(--hm-ink)}.hm-shell[data-theme="light"] .hm-thermo-head small{color:var(--hm-muted)}
+.hm-shell[data-theme="light"] .hm-thermo-head>svg{background:var(--hm-amber-soft);box-shadow:none;color:var(--hm-amber)}
+.hm-shell[data-theme="light"] .hm-thermo.is-on{background:#fff8ec;border-color:#f3d6a3;box-shadow:0 12px 30px #e9a22426}
+.hm-shell[data-theme="light"] .hm-thermo.is-on .hm-thermo-head>svg{background:linear-gradient(145deg,#f7bf4e,#e9a224);color:#2a1d06;box-shadow:0 0 18px #e9a22455}
+/* 4.3 быстрые сценарии */
+.hm-shell[data-theme="light"] .hm-scene-icon{background:var(--hm-amber-soft);box-shadow:none;color:var(--hm-amber)}
+.hm-shell[data-theme="light"] .hm-scene-hit strong{color:var(--hm-ink)}.hm-shell[data-theme="light"] .hm-scene-hit small{color:var(--hm-muted)}
+.hm-shell[data-theme="light"] .hm-scene.is-run{border-color:#f3d6a3}.hm-shell[data-theme="light"] .hm-scene.is-done{border-color:#bfe9d3}.hm-shell[data-theme="light"] .hm-scene.is-done .hm-scene-icon{background:var(--hm-green-soft);color:var(--hm-green)}
+.hm-shell[data-theme="light"] .hm-scene-more{color:var(--hm-muted)}
+/* 4.4 строки устройств */
+.hm-shell[data-theme="light"] .hm-thumb{background:var(--hm-inset);box-shadow:none;color:var(--hm-muted)}
+.hm-shell[data-theme="light"] .hm-row.is-on{border-color:#f3d6a3}.hm-shell[data-theme="light"] .hm-row.is-on .hm-thumb{box-shadow:0 0 0 2px #e9a224aa,0 0 14px #e9a22444}
+.hm-shell[data-theme="light"] .hm-row-text strong{color:var(--hm-ink)}.hm-shell[data-theme="light"] .hm-row-text small{color:var(--hm-muted)}
+.hm-shell[data-theme="light"] .hm-row.is-on .hm-row-text small{color:#b8781a}.hm-shell[data-theme="light"] .hm-row.is-off .hm-row-text small{color:var(--hm-warn)}.hm-shell[data-theme="light"] .hm-row.is-danger{border-color:#f3b4b4}.hm-shell[data-theme="light"] .hm-row.is-danger .hm-row-text small{color:var(--hm-danger)}
+.hm-shell[data-theme="light"] .hm-row-open{color:var(--hm-ink)}
+/* 4.5 энергия */
+.hm-shell[data-theme="light"] .hm-energy-total small,.hm-shell[data-theme="light"] .hm-line-facts{color:var(--hm-muted)}
+.hm-shell[data-theme="light"] .hm-energy-total strong,.hm-shell[data-theme="light"] .hm-line b{background:linear-gradient(90deg,#141c2b 0%,#3d6ef2 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hm-shell[data-theme="light"] .hm-line .hm-photo{opacity:.10;filter:saturate(.6)}
+.hm-shell[data-theme="light"] .hm-line-head strong{color:var(--hm-ink)}
+.hm-shell[data-theme="light"] .hm-meter{background:var(--hm-inset-2);box-shadow:none}.hm-shell[data-theme="light"] .hm-meter i{background:linear-gradient(90deg,var(--hm-blue),var(--hm-violet));box-shadow:0 0 10px #3d6ef240}
+.hm-shell[data-theme="light"] .hm-line-more span{background:var(--hm-inset);color:var(--hm-muted)}.hm-shell[data-theme="light"] .hm-line-more b{color:var(--hm-ink)}
+.hm-shell[data-theme="light"] .hm-badge.tone-calm{background:var(--hm-green-soft);color:#1a7a4c}.hm-shell[data-theme="light"] .hm-badge.tone-warning{background:var(--hm-warn-soft);color:#a8600e}
+/* 4.6 камера (плитка) */
+.hm-shell[data-theme="light"] .hm-camera-caption{background:none}.hm-shell[data-theme="light"] .hm-camera-caption strong{color:var(--hm-ink)}.hm-shell[data-theme="light"] .hm-camera-caption small{color:var(--hm-muted)}
+.hm-shell[data-theme="light"] .hm-camera-tile .hm-camera-frame{border-radius:var(--hm-radius) var(--hm-radius) 0 0}
+/* 4.7 пылесос (карточка в «Системах») */
+.hm-shell[data-theme="light"] .hm-vac .hm-photo{opacity:.12}.hm-shell[data-theme="light"] .hm-vac-text strong{color:var(--hm-ink)}.hm-shell[data-theme="light"] .hm-vac-text small{color:var(--hm-muted)}
+
+/* ---------- 5. Окна, подробности, уведомления ---------- */
+.hm-shell[data-theme="light"] .hm-scrim{background:#1b2a4a66;backdrop-filter:blur(4px)}
+.hm-shell[data-theme="light"] .hm-sheet{background:#ffffff;border-color:var(--hm-line);box-shadow:0 34px 90px #1b2a4a40;color:var(--hm-ink)}
+.hm-shell[data-theme="light"] .hm-sheet-head small{color:var(--hm-muted)}.hm-shell[data-theme="light"] .hm-sheet-head h2{color:var(--hm-ink)}
+.hm-shell[data-theme="light"] .hm-sheet-photo{background:var(--hm-inset);color:var(--hm-amber)}
+.hm-shell[data-theme="light"] :is(.hm-hero-control,.hm-fact,.hm-big-state,.hm-link-row,.hm-fold,.hm-history,.hm-vac-block,.hm-more button){background:var(--hm-inset);border-color:var(--hm-line)}
+.hm-shell[data-theme="light"] .hm-fold .hm-fold{background:#ffffff}
+.hm-shell[data-theme="light"] .hm-fold>summary svg:last-child,.hm-shell[data-theme="light"] .hm-fact small,.hm-shell[data-theme="light"] .hm-note{color:var(--hm-muted)}
+.hm-shell[data-theme="light"] .hm-fact strong,.hm-shell[data-theme="light"] .hm-big-state strong{color:var(--hm-ink)}
+.hm-shell[data-theme="light"] .hm-action{background:var(--hm-inset);border-color:var(--hm-line);color:var(--hm-ink)}
+.hm-shell[data-theme="light"] .hm-link-row{color:var(--hm-blue)}
+.hm-shell[data-theme="light"] .hm-setting{border-bottom-color:var(--hm-line)}.hm-shell[data-theme="light"] .hm-setting select{background:#ffffff;border-color:var(--hm-line-2);color:var(--hm-ink)}
+.hm-shell[data-theme="light"] .hm-chips button{background:var(--hm-inset);border-color:var(--hm-line);color:var(--hm-ink)}.hm-shell[data-theme="light"] .hm-chips button.is-active{background:var(--hm-blue-soft);border-color:#b9caf9;color:var(--hm-blue)}
+.hm-shell[data-theme="light"] .hm-more button{color:var(--hm-ink)}
+.hm-shell[data-theme="light"] .hm-confirm{background:#ffffff;border-color:var(--hm-line);box-shadow:0 30px 80px #1b2a4a40;color:var(--hm-ink)}.hm-shell[data-theme="light"] .hm-confirm p{color:var(--hm-muted)}
+.hm-shell[data-theme="light"] .hm-toast{background:#fff1f1;border-color:#f3b4b4;color:#8a2b2b;box-shadow:0 12px 30px #1b2a4a2e}
+.hm-shell[data-theme="light"] .hm-range-tabs{background:var(--hm-inset-2)}.hm-shell[data-theme="light"] .hm-range-tabs button{color:var(--hm-muted)}.hm-shell[data-theme="light"] .hm-range-tabs button.is-active{background:#ffffff;color:var(--hm-blue);box-shadow:0 2px 8px #1b2a4a1a}
+.hm-shell[data-theme="light"] :is(.hm-chart.is-loading,.hm-chart.is-empty){background:var(--hm-inset);color:var(--hm-muted)}
+.hm-shell[data-theme="light"] .hm-chart-grid{stroke:#1b2a4a14}.hm-shell[data-theme="light"] .hm-chart-axis{fill:#7a8699}
+/* камера (окно): сцена остаётся тёмной, панели светлые */
+.hm-shell[data-theme="light"] .hm-camera-sheet{background:var(--hm-bg)}
+.hm-shell[data-theme="light"] .hm-camera-tools{background:#ffffff;border-top-color:var(--hm-line);color:var(--hm-ink)}.hm-shell[data-theme="light"] .hm-tool-icon{background:var(--hm-inset)}
+.hm-shell[data-theme="light"] .hm-camera-info{background:#ffffff;border-left-color:var(--hm-line);color:var(--hm-ink)}.hm-shell[data-theme="light"] .hm-camera-info h3 small{background:var(--hm-inset-2);color:var(--hm-ink-2)}
+.hm-shell[data-theme="light"] .hm-camera-info .hm-fold>summary{color:var(--hm-ink)}
+/* пылесос (полная панель) */
+.hm-shell[data-theme="light"] .hm-vac-robot{background:radial-gradient(circle at 50% 45%,#f3f6fa 0 46%,#dfe6ef 47% 100%);border-color:#1b2a4a14}.hm-shell[data-theme="light"] .hm-vac-robot i{background:#8b98ab;box-shadow:0 0 0 3px #ffffff}
+.hm-shell[data-theme="light"] .hm-vac-battery>span,.hm-shell[data-theme="light"] .hm-life-bar{background:var(--hm-inset-2)}
+.hm-shell[data-theme="light"] .hm-vac-btn{background:#ffffff;border-color:var(--hm-line);box-shadow:var(--hm-shadow);color:var(--hm-ink)}
+.hm-shell[data-theme="light"] .hm-vac-history li{background:var(--hm-inset)}
+.hm-shell[data-theme="light"] .hm-vac-block h3,.hm-shell[data-theme="light"] .hm-history h3{color:var(--hm-ink)}
+
+/* ---------- 6. Отопление, погода, базовые .daily-* ---------- */
+.hm-shell[data-theme="light"] .daily-device-icon{background:var(--hm-blue-soft);color:var(--hm-blue)}
+.hm-shell[data-theme="light"] .heat-master:after{background:linear-gradient(100deg,#fffffff7 35%,#ffffffd9 70%,#ffffff99)}
+.hm-shell[data-theme="light"] .heat-master.is-on:after{background:linear-gradient(100deg,#fff8ecf7 35%,#fff8ecd9 70%,#fff8ec99)}
+.hm-shell[data-theme="light"] .heat-master.is-on>.heat-master-head .daily-device-icon{background:var(--hm-amber-soft);color:var(--hm-amber)}
+.hm-shell[data-theme="light"] :is(.heat-master-facts>div,.heat-boiler-tile,.heat-detail-chart,.vac-facts>div){background:var(--hm-inset);border-color:var(--hm-line)}
+.hm-shell[data-theme="light"] .heat-master-facts dd,.hm-shell[data-theme="light"] .heat-boiler-tile strong,.hm-shell[data-theme="light"] .heat-boiler-title strong,.hm-shell[data-theme="light"] .heat-master-title h2{color:var(--hm-ink)}
+.hm-shell[data-theme="light"] .heat-boiler-tile>span,.hm-shell[data-theme="light"] .heat-detail-chart footer{color:var(--hm-muted)}
+.hm-shell[data-theme="light"] .heat-boiler-tile.is-warning{background:#fff8ec;border-color:#f3d6a3}.hm-shell[data-theme="light"] .heat-boiler-tile.is-warning strong,.hm-shell[data-theme="light"] .heat-boiler-tile.is-warning>span{color:#b8781a}
+.hm-shell[data-theme="light"] .heat-pult{background:var(--hm-inset)!important;border-color:var(--hm-line)!important}
+.hm-shell[data-theme="light"] .heat-pult-text strong{color:var(--hm-ink)}
+.hm-shell[data-theme="light"] .heat-boiler{background:#ffffff!important}
+.hm-shell[data-theme="light"] .heat-chip{background:var(--hm-inset-2);border-color:var(--hm-line-2);color:var(--hm-ink-2)}
+.hm-shell[data-theme="light"] .heat-chip.tone-active{background:var(--hm-amber-soft);border-color:#f3d6a3;color:#b8781a}.hm-shell[data-theme="light"] .heat-chip.tone-calm{background:var(--hm-green-soft);border-color:#bfe9d3;color:#1a7a4c}.hm-shell[data-theme="light"] .heat-chip.tone-warning{background:var(--hm-warn-soft);border-color:#f3d6a3;color:#a8600e}.hm-shell[data-theme="light"] .heat-chip.tone-off{background:var(--hm-inset-2);color:var(--hm-muted)}
+.hm-shell[data-theme="light"] .heat-trv .heat-chip{background:#0e1a28c7;border-color:#c6dcf024;color:#dbe8f4}
+.hm-shell[data-theme="light"] .heat-trv .heat-chip.tone-active{background:#5a3b17d9;border-color:#edc18566;color:#ffdcab}.hm-shell[data-theme="light"] .heat-trv .heat-chip.tone-calm{background:#183a2fd0;border-color:#7fd1ae4d;color:#bdeed6}.hm-shell[data-theme="light"] .heat-trv .heat-chip.tone-warning{background:#4b3416d9;border-color:#edc18559;color:#f6cf98}.hm-shell[data-theme="light"] .heat-trv .heat-chip.tone-off{background:#1b2735d9;color:#aab9ca}
+.hm-shell[data-theme="light"] .heat-flame{background:var(--hm-inset-2);color:var(--hm-ink-2)}.hm-shell[data-theme="light"] .heat-flame.is-on{background:var(--hm-amber-soft);color:#b8781a}
+.hm-shell[data-theme="light"] .heat-spark .heat-spark-line{stroke:var(--hm-blue)}.hm-shell[data-theme="light"] .heat-spark .heat-spark-area{fill:#3d6ef21f}
+.hm-shell[data-theme="light"] .heat-spark.tone-amber .heat-spark-line{stroke:var(--hm-amber)}.hm-shell[data-theme="light"] .heat-spark.tone-amber .heat-spark-area{fill:#e9a2241f}
+.hm-shell[data-theme="light"] .heat-spark.tone-warning .heat-spark-line{stroke:var(--hm-warn)}.hm-shell[data-theme="light"] .heat-spark.tone-warning .heat-spark-area{fill:#e08a161f}
+.hm-shell[data-theme="light"] .heat-spark-band{fill:#1fa86614}.hm-shell[data-theme="light"] .heat-spark.is-empty path{stroke:#1b2a4a26}
+.hm-shell[data-theme="light"] .heat-trv .heat-spark .heat-spark-line{stroke:#8abbe5}.hm-shell[data-theme="light"] .heat-trv .heat-spark .heat-spark-area{fill:#8abbe51f}
+.hm-shell[data-theme="light"] .heat-detail-chart header{color:var(--hm-muted)}.hm-shell[data-theme="light"] .heat-detail-chart header strong{color:var(--hm-ink)}
+.hm-shell[data-theme="light"] .heat-detail-state{color:var(--hm-ink)}
+.hm-shell[data-theme="light"] .daily-card.daily-weather-card.weather-overview{background:radial-gradient(ellipse at 95% 15%,#dfe7ff 0,transparent 60%),#ffffff;color:var(--hm-ink)}
+.hm-shell[data-theme="light"] .weather-glyph{color:#9ab4d6}.hm-shell[data-theme="light"] .weather-sun{color:var(--hm-amber)}.hm-shell[data-theme="light"] .weather-moon{color:#7c8db0}.hm-shell[data-theme="light"] .weather-cloud{color:#b4c5db}
+.hm-shell[data-theme="light"] .weather-location-divider{color:#a3aebf}
+.hm-shell[data-theme="light"] .vac-hero{background:#ffffff;border-color:var(--hm-line)}.hm-shell[data-theme="light"] .vac-battery-bar{background:var(--hm-inset-2)}
+.hm-shell[data-theme="light"] .daily-shell input,.hm-shell[data-theme="light"] input,.hm-shell[data-theme="light"] select{background:#ffffff;border-color:var(--hm-line-2);color:var(--hm-ink)}
+
+/* ---------- 7. Фото-карточки: комната, свет, радиатор — текст всегда белый на тёмном градиенте ---------- */
+.hm-shell[data-theme="light"] :is(.hm-room,.hm-light,.hm-room-hero,.heat-trv){color:#f4f7fc;border-color:#1b2a4a1f}
+.hm-shell[data-theme="light"] .hm-light{box-shadow:var(--hm-shadow)}
+.hm-shell[data-theme="light"] .hm-light.is-on{border-color:#e9a22499;box-shadow:0 0 0 1px #e9a22433,0 14px 34px #e9a22438}
+.hm-shell[data-theme="light"] .hm-light .hm-photo{opacity:.5;filter:grayscale(.35) brightness(.9)}.hm-shell[data-theme="light"] .hm-light.is-on .hm-photo{opacity:.9;filter:none}
+.hm-shell[data-theme="light"] .hm-light-text strong{color:#ffffff}.hm-shell[data-theme="light"] .hm-light-text small{color:#dfe6ef}
+.hm-shell[data-theme="light"] .hm-light.is-on .hm-light-text small{color:#ffd58a}.hm-shell[data-theme="light"] .hm-light.is-off .hm-light-text small{color:#ffc78a}
+.hm-shell[data-theme="light"] .hm-room-bottom b i,.hm-shell[data-theme="light"] .hm-room-hero-body b i,.hm-shell[data-theme="light"] .hm-room-hero-body small,.hm-shell[data-theme="light"] .hm-room-hero-body dt{color:#dfe6ef}
+.hm-shell[data-theme="light"] .hm-room-hero-body dd{color:#ffffff}
+/* фото-карточки гаснут в темноту, а не в белизну: тёмная подложка под фото */
+.hm-shell[data-theme="light"] :is(.hm-room,.hm-light,.hm-room-hero,.heat-trv){background:#1b2436}
+.hm-shell[data-theme="light"] .hm-light .hm-photo{opacity:.55;filter:grayscale(.3) brightness(.85)}
+/* ---------- 8. Композиции карточек (home17) ---------- */
+.hm-shell[data-theme="light"] .hm-status-chips b{background:var(--hm-inset-2);color:var(--hm-muted)}.hm-shell[data-theme="light"] .hm-status-chips b.tone-calm{background:var(--hm-green-soft);color:#1a7a4c}.hm-shell[data-theme="light"] .hm-status-chips b.tone-danger{background:var(--hm-danger-soft);color:var(--hm-danger)}
+.hm-shell[data-theme="light"] .hm-status-cmp b{background:#3d6ef266}.hm-shell[data-theme="light"] .hm-status-cmp b:first-child{background:var(--hm-amber)}
+.hm-shell[data-theme="light"] .hm-thermo-head>svg.hm-thermo-ring{background:none;box-shadow:none}
+.hm-shell[data-theme="light"] .hm-thermo-ring .hm-ring-track{stroke:#1b2a4a14}.hm-shell[data-theme="light"] .hm-thermo-ring .hm-ring-value{stroke:var(--hm-blue)}.hm-shell[data-theme="light"] .hm-thermo-ring.is-on .hm-ring-value{stroke:var(--hm-amber)}.hm-shell[data-theme="light"] .hm-thermo-ring text{fill:var(--hm-ink)}
+.hm-shell[data-theme="light"] .hm-minibars rect{fill:#3d6ef259}.hm-shell[data-theme="light"] .hm-minibars rect.is-last{fill:var(--hm-blue)}.hm-shell[data-theme="light"] .hm-minibars.is-empty path{stroke:#1b2a4a26}
+.hm-shell[data-theme="light"] .hm-row-text small{background:var(--hm-inset-2);color:var(--hm-ink-2)}.hm-shell[data-theme="light"] .hm-row.is-on .hm-row-text small{background:var(--hm-amber-soft);color:#b8781a}.hm-shell[data-theme="light"] .hm-row.is-off .hm-row-text small{background:var(--hm-warn-soft);color:#a8600e}.hm-shell[data-theme="light"] .hm-row.is-danger .hm-row-text small{background:var(--hm-danger-soft);color:var(--hm-danger)}
+.hm-shell[data-theme="light"] .hm-quick .hm-scene-icon{box-shadow:inset 0 1px 0 #ffffff55,0 6px 14px #1b2a4a26}
+/* погода — градиентный hero-баннер как в V18 */
+.hm-shell[data-theme="light"] .daily-card.daily-weather-card.weather-overview{background:radial-gradient(ellipse at 90% 8%,#ffffff40,transparent 42%),linear-gradient(135deg,#6a63ff 0%,#4f7df5 55%,#5fb0ff 100%);border-color:transparent;color:#ffffff;box-shadow:0 14px 34px #4f6ff544}
+.hm-shell[data-theme="light"] .weather-overview :is(.weather-heading,.weather-source,.weather-readings small,.weather-forecast-items small,.weather-forecast-label,.weather-data-note,.weather-location-divider){color:#ffffffcc}
+.hm-shell[data-theme="light"] .weather-overview .weather-source{border-top-color:#ffffff33}
+.hm-shell[data-theme="light"] .weather-overview .weather-glyph{color:#ffffffe6}.hm-shell[data-theme="light"] .weather-overview .weather-sun{color:#ffd66b}.hm-shell[data-theme="light"] .weather-overview .weather-moon{color:#ffffff}.hm-shell[data-theme="light"] .weather-overview .weather-cloud{color:#ffffffe6}
+.hm-shell[data-theme="light"] .weather-overview .weather-readings strong,.hm-shell[data-theme="light"] .weather-overview .weather-forecast-items strong{color:#ffffff}
+.hm-shell[data-theme="light"] .weather-overview:focus-visible{outline-color:#ffffff}

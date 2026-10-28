@@ -1,0 +1,8 @@
+private/
+node_modules/
+dist/
+frontend/dist/
+frontend/dist-preview/
+frontend/evidence/
+.DS_Store
+node_modules
