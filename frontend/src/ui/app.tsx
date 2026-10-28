@@ -9,7 +9,7 @@ import { actionsFor, serviceCall, customAction, type Action } from '../runtime/a
 import { translator, type Key } from '../i18n/index.ts';
 import { StatusCard, Switch, RoomTile, LightTile, DeviceRow, Section as Block, metricLabel } from './cards.tsx';
 import { DeviceSheet, type Runner } from './sheet.tsx';
-import { stateText, isOn, num, co2Level, iconOfKind } from './format.ts';
+import { stateText, isOn, num, co2Level, iconOfKind, withRoom } from './format.ts';
 import { Setup } from './setup.tsx';
 import { activeModules, type ActiveModule } from '../modules/index.ts';
 import { stockRoomArt } from './art.ts';
@@ -181,7 +181,7 @@ function ClimatePage({ devices, runner, go, t, lang }: Common & { devices: HomeD
 }
 function KindList({ devices, runner, toggle, go, t, lang, roomName }: Common & { devices: HomeDevice[]; toggle: (d: HomeDevice) => void; roomName: (id: string) => string }) {
   if (!devices.length) return <p className="hm-muted">{t('ui.nodevices')}</p>;
-  return <div className="hm-rows at-list">{devices.map(d => <div className="hm-card at-device" data-device-key={d.key}><DeviceRow device={d} name={`${d.name} · ${roomName(d.roomId)}`} pending={runner.busy.has(d.key)} onToggle={actionsFor(d).some(a => a.id === 'toggle') ? () => toggle(d) : undefined} onOpen={() => go({ section: 'cleaning', device: d.key })} t={t} lang={lang} />
+  return <div className="hm-rows at-list">{devices.map(d => <div className="hm-card at-device" data-device-key={d.key}><DeviceRow device={d} name={withRoom(d.name, roomName(d.roomId))} pending={runner.busy.has(d.key)} onToggle={actionsFor(d).some(a => a.id === 'toggle') ? () => toggle(d) : undefined} onOpen={() => go({ section: 'cleaning', device: d.key })} t={t} lang={lang} />
     <div className="hm-chips">{actionsFor(d).filter(a => a.kind === 'button').map(a => <button type="button" disabled={runner.busy.has(d.key) || !d.primary.available} onClick={() => void runner.run(d, a)}>{t(a.label as Key)}</button>)}</div></div>)}</div>;
 }
 function EnergyPage({ devices, go, t, lang, roomName }: { devices: HomeDevice[]; go: Nav; t: ReturnType<typeof translator>; lang: 'ru' | 'ro' | 'en'; roomName: (id: string) => string }) {
@@ -198,5 +198,5 @@ function SystemsPage({ devices, runner, toggle, go, t, lang, roomName }: Common 
   const groups: Array<[Kind[], string]> = [[['leak', 'alarm', 'valve', 'lock', 'alarm_panel', 'opening', 'motion'], t('overview.leaks') + ' · ' + t('kind.alarm_panel')], [['environment', 'measurement'], t('overview.air')], [['socket', 'switch', 'fan', 'cover'], t('section.systems')], [['media', 'camera'], t('kind.media')], [['weather', 'person'], t('section.weather')]];
   const rendered = groups.filter(([kinds]) => devices.some(d => kinds.includes(d.kind)));
   if (!rendered.length) return <p className="hm-muted">{t('ui.nodevices')}</p>;
-  return <div className="hm-systems">{rendered.map(([kinds, title]) => <Block title={title}><div className="hm-rows">{devices.filter(d => kinds.includes(d.kind)).map(d => <DeviceRow device={d} name={`${d.name} · ${roomName(d.roomId)}`} pending={runner.busy.has(d.key)} onToggle={actionsFor(d).some(a => a.id === 'toggle') ? () => toggle(d) : undefined} onOpen={() => go({ section: 'systems', device: d.key })} t={t} lang={lang} />)}</div></Block>)}</div>;
+  return <div className="hm-systems">{rendered.map(([kinds, title]) => <Block title={title}><div className="hm-rows">{devices.filter(d => kinds.includes(d.kind)).map(d => <DeviceRow device={d} name={withRoom(d.name, roomName(d.roomId))} pending={runner.busy.has(d.key)} onToggle={actionsFor(d).some(a => a.id === 'toggle') ? () => toggle(d) : undefined} onOpen={() => go({ section: 'systems', device: d.key })} t={t} lang={lang} />)}</div></Block>)}</div>;
 }

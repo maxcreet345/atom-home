@@ -31,3 +31,10 @@ test('modules: detection, disable and entity override', { skip: !fixture }, () =
   const over = defaultConfig(); over.modules.boiler_ebus = { entities: { pressure: 'sensor.does_not_exist' } }; assert.equal(activeModules(fixture!, over).length, 0, 'a required role pointing at a missing entity disables the module');
   const empty: Registry = { areas: [], devices: [], entities: [], states: {} }; assert.equal(activeModules(empty, defaultConfig()).length, 0);
 });
+
+test('withRoom does not double a room already in the card name', async () => {
+  const { withRoom } = await import('../src/ui/format.ts');
+  assert.equal(withRoom('Термометр · Кухня', 'Кухня'), 'Термометр · Кухня');
+  assert.equal(withRoom('Термометр', 'Кухня'), 'Термометр · Кухня');
+  assert.equal(withRoom('Кран ванной', ''), 'Кран ванной');
+});

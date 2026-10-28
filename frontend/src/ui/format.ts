@@ -25,3 +25,6 @@ export function co2Level(ppm: number | null, t: T): { label: string; tone: 'calm
   return { label: t('co2.bad'), tone: 'danger' };
 }
 export const iconOfKind: Record<string, string> = { light: 'light', switch: 'power', socket: 'socket', climate: 'heating', fan: 'fan', cover: 'blinds', lock: 'lock', vacuum: 'vacuum', media: 'media', camera: 'camera', weather: 'air', environment: 'thermo', energy: 'energy', leak: 'water', opening: 'door', motion: 'motion', alarm: 'warning', valve: 'water', alarm_panel: 'shield', person: 'person', measurement: 'systems' };
+
+/** `Name · Room`, unless the owner already named the card after its room (e.g. «Термометр · Кухня»). */
+export function withRoom(name: string, room: string): string { const n = name.trim(), r = room.trim(); return !r || n.toLowerCase().endsWith(r.toLowerCase()) ? n : `${n} · ${r}`; }
