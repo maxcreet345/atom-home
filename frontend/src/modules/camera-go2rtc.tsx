@@ -9,7 +9,9 @@ export const cameraGo2rtc: ModuleDef = {
   Card: () => null,
   Player({ options, host, t, mode }) {
     const mount = useRef<HTMLDivElement>(null), hostRef = useRef(host); hostRef.current = host;
-    const [status, setStatus] = useState<PlayerStatus>('connecting'), [hd, setHd] = useState(false);
+    const [status, setStatus] = useState<PlayerStatus>('connecting'), [hd, setHd] = useState(false), [hdBroken, setHdBroken] = useState(false);
+    // The HD stream is often H.265, which not every browser can decode through MSE: on the first failure fall back to SD and grey the switch out.
+    useEffect(() => { if (hd && status === 'error') { setHd(false); setHdBroken(true); } }, [hd, status]);
     const addon = options.addon ?? '', stream = hd && options.streamHd ? options.streamHd : options.stream;
     useEffect(() => {
       const node = mount.current; if (!node) return;
@@ -23,7 +25,7 @@ export const cameraGo2rtc: ModuleDef = {
       <div className={`hm-camera-mount at-go2rtc is-${status}`} ref={mount} data-player-status={status} data-stream={stream ?? 'auto'} />
       {status !== 'live' && <div className="hm-camera-wait"><Icon name="camera" size={32} /><span>{t(status === 'error' ? 'module.camera.fail' : status === 'stalled' ? 'module.camera.stalled' : 'module.camera.wait')}</span></div>}
       <span className={`hm-live ${status === 'live' ? 'is-live' : ''}`}><i />{status === 'live' ? 'LIVE' : status === 'error' ? t('state.unavailable') : t('state.idle')}</span>
-      {mode === 'stage' && options.streamHd && <button type="button" className="hm-camera-q at-camera-q" aria-pressed={hd} onClick={e => { e.stopPropagation(); setHd(!hd); }}>{hd ? 'HD' : 'SD'}</button>}
+      {mode === 'stage' && options.streamHd && <button type="button" className="hm-camera-q at-camera-q" aria-pressed={hd} disabled={hdBroken} title={hdBroken ? t('module.camera.hdUnsupported') : undefined} onClick={e => { e.stopPropagation(); setHd(!hd); }}>{hd ? 'HD' : 'SD'}</button>}
     </>;
   },
 };

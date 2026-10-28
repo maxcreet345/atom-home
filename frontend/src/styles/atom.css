@@ -58,3 +58,4 @@
 .hm-shell .at-camera-stage{border-radius:var(--hm-radius);margin:0 0 14px}.hm-shell .at-camera-stage video{object-fit:contain}
 .hm-shell button.at-camera-q{position:absolute;right:10px;top:10px;background:#000a;color:#fff;cursor:pointer;min-height:28px}
 .hm-shell .at-go2rtc video{width:100%;height:100%;display:block}
+.hm-shell button.at-camera-q:disabled{opacity:.45;cursor:default}
