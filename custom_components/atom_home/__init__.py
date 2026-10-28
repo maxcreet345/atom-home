@@ -40,10 +40,11 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     store: Store[dict] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
     data = await store.async_load() or {}
+    version = await hass.async_add_executor_job(_version)
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"store": store, "config": data.get("config")}
+    hass.data[DOMAIN]["_version"] = version
 
     await hass.http.async_register_static_paths([StaticPathConfig(STATIC_URL, str(FRONTEND_DIR), cache_headers=False)])
-    version = _version()
     await panel_custom.async_register_panel(
         hass,
         webcomponent_name="atom-home-panel",
@@ -81,7 +82,7 @@ def _register_ws(hass: HomeAssistant) -> None:
     @callback
     def ws_get(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
         data = _entry_data(hass)
-        connection.send_result(msg["id"], {"config": (data or {}).get("config"), "version": _version(), "admin": connection.user.is_admin})
+        connection.send_result(msg["id"], {"config": (data or {}).get("config"), "version": hass.data[DOMAIN].get("_version", "0"), "admin": connection.user.is_admin})
 
     @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/config/set", vol.Required("config"): dict})
     @websocket_api.require_admin
