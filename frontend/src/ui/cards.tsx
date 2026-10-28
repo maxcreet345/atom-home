@@ -1,4 +1,5 @@
 import type { ComponentChildren } from 'preact';
+import { useRef } from 'preact/hooks';
 import { Icon } from './primitives.tsx';
 import type { HomeDevice, EntityRef, Room } from '../model/discover.ts';
 import type { T } from '../i18n/index.ts';
@@ -69,12 +70,18 @@ export function tileStatus(device: HomeDevice, t: T, lang: Lang): string {
   return stateText(e, t, lang);
 }
 const READ_KINDS = ['environment', 'measurement', 'leak', 'opening', 'motion', 'person', 'weather', 'camera', 'energy', 'alarm'];
-export function AccessoryTile({ device, name, sub, pending, onToggle, onOpen, t, lang, wide }: { device: HomeDevice; name?: string; sub?: string; pending: boolean; onToggle?: () => void; onOpen: () => void; t: T; lang: Lang; wide?: boolean }) {
+export function AccessoryTile({ device, name, sub, room, pending, onToggle, onOpen, t, lang, wide }: { device: HomeDevice; name?: string; sub?: string; room?: string; pending: boolean; onToggle?: () => void; onOpen: () => void; t: T; lang: Lang; wide?: boolean }) {
   const e = device.primary, on = isOn(e) || (device.kind === 'climate' && e.state !== 'off' && e.available), active = e.available && on && !READ_KINDS.includes(device.kind);
   const alert = e.available && (device.kind === 'leak' || device.kind === 'alarm') && e.state === 'on';
-  const color = tileColor(device), label = name ?? device.name, line2 = sub ?? (READ_KINDS.includes(device.kind) || device.kind === 'climate' ? tileStatus(device, t, lang) : '');
+  const reads = READ_KINDS.includes(device.kind) || device.kind === 'climate';
+  const color = tileColor(device), label = name ?? device.name, line2 = sub ?? [reads ? tileStatus(device, t, lang) : '', room ?? ''].filter(Boolean).join(' · ');
+  // long press (500 ms) opens details, like a press-and-hold on a HomeView module
+  const hold = useRef<ReturnType<typeof setTimeout> | null>(null), held = useRef(false);
+  const down = () => { held.current = false; hold.current = setTimeout(() => { held.current = true; onOpen(); }, 500); };
+  const up = () => { if (hold.current) clearTimeout(hold.current); hold.current = null; };
+  const click = () => { if (held.current) { held.current = false; return; } (onToggle ?? onOpen)(); };
   return <div className={`ah-tile hm-card ${active ? 'is-on' : ''} ${alert ? 'is-alert' : ''} ${e.available ? '' : 'is-off'} ${pending ? 'is-pending' : ''} ${wide ? 'is-wide' : ''} kind-${device.kind}`} data-device-key={device.key} style={`--tile:${color}`}>
-    <button type="button" className="ah-tile-hit hm-light-hit" disabled={pending || !e.available && !!onToggle} onClick={onToggle ?? onOpen} aria-label={onToggle ? `${label}: ${on ? t('action.off') : t('action.on')}` : `${t('ui.details')}: ${label}`}>
+    <button type="button" className="ah-tile-hit hm-light-hit" disabled={pending || !e.available && !!onToggle} onClick={click} onPointerDown={down} onPointerUp={up} onPointerLeave={up} onPointerCancel={up} onContextMenu={ev => { ev.preventDefault(); if (!held.current) onOpen(); }} aria-label={onToggle ? `${label}: ${on ? t('action.off') : t('action.on')}` : `${t('ui.details')}: ${label}`}>
       <span className="ah-glyph">{device.photo ? <img src={device.photo} alt="" loading="lazy" /> : <Icon name={device.icon ?? iconOfKind[device.kind] ?? 'generic'} size={34} />}</span>
       <span className="ah-tile-text"><strong>{label}</strong>{line2 && <small>{line2}</small>}</span>
     </button>

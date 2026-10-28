@@ -12,7 +12,7 @@ export function mountGo2rtcPlayer(container: HTMLElement, opts: PlayerOptions): 
   if (!ADDON_SLUG.test(opts.addon)) throw new Error('bad add-on slug');
   const { host } = opts;
   let stream = opts.stream, disposed = false, epoch = 0, retries = 0, status: PlayerStatus = 'connecting';
-  let socket: WebSocket | null = null, source: MediaSource | null = null, buffer: SourceBuffer | null = null, objectUrl: string | null = null;
+  let socket: WebSocket | null = null, buffer: SourceBuffer | null = null, objectUrl: string | null = null;
   let pending: Uint8Array<ArrayBuffer>[] = [], pendingBytes = 0, timer: ReturnType<typeof setInterval> | undefined, retry: ReturnType<typeof setTimeout> | undefined;
   let lastFrames = 0, lastTime = 0, lastProgress = 0, detach: Array<() => void> = [];
   const video = document.createElement('video'); video.muted = true; video.autoplay = true; video.playsInline = true; video.controls = false; container.append(video);
@@ -22,7 +22,7 @@ export function mountGo2rtcPlayer(container: HTMLElement, opts: PlayerOptions): 
     for (const d of detach) d(); detach = [];
     const ws = socket; socket = null; try { ws?.close(); } catch { /* closed */ }
     const sb = buffer; buffer = null; try { if (sb?.updating) sb.abort(); } catch { /* detached */ }
-    source = null; pending = []; pendingBytes = 0; lastFrames = 0; lastTime = 0;
+    pending = []; pendingBytes = 0; lastFrames = 0; lastTime = 0;
     video.pause(); video.removeAttribute('src'); video.srcObject = null; video.load();
     if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
   };
@@ -62,7 +62,7 @@ export function mountGo2rtcPlayer(container: HTMLElement, opts: PlayerOptions): 
         if (!stream) throw new Error('no streams');
       }
       if (!STREAM_NAME.test(stream)) throw new Error('bad stream name');
-      const ms = new Source(); source = ms;
+      const ms = new Source();
       if (managed()) { video.disableRemotePlayback = true; (video as HTMLVideoElement & { srcObject: unknown }).srcObject = ms; } else { objectUrl = URL.createObjectURL(ms); video.src = objectUrl; }
       let opened = false, negotiated = false, requested = false;
       const wsUrl = new URL('api/ws', ingress); wsUrl.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'; wsUrl.searchParams.set('src', stream);
@@ -110,7 +110,7 @@ export function mountGo2rtcPlayer(container: HTMLElement, opts: PlayerOptions): 
       play();
     } catch { if (active()) failed(); }
   };
-  const visibility = () => { if (document.hidden) stop(); else void start(); };
+  const visibility = () => { if (document.hidden) { stop(); report('connecting'); } else void start(); };
   const mediaError = () => { if (allowed() && socket) failed(); };
   document.addEventListener('visibilitychange', visibility); video.addEventListener('error', mediaError); void start();
   return {

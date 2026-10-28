@@ -3,7 +3,7 @@ import type { ComponentChildren } from 'preact';
 import { Icon } from './primitives.tsx';
 import type { HomeDevice } from '../model/discover.ts';
 import type { T, Key } from '../i18n/index.ts';
-import { actionsFor, serviceCall, type Action } from '../runtime/actions.ts';
+import { actionsFor, type Action } from '../runtime/actions.ts';
 import { stateText, isOn, num, iconOfKind, type Lang } from './format.ts';
 import { metricLabel, Switch, artOf } from './cards.tsx';
 import { DeviceArt } from './device-art.tsx';

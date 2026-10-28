@@ -2,14 +2,14 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/ho
 import { Icon } from './primitives.tsx';
 import type { Registry } from '../model/registry.ts';
 import type { HouseConfig } from '../model/config.ts';
-import { discover, roomClimate, NO_ROOM, type Home, type HomeDevice } from '../model/discover.ts';
+import { discover, roomClimate, type Home, type HomeDevice } from '../model/discover.ts';
 import { SECTIONS, type Section, type Kind } from '../model/kinds.ts';
 import type { Host } from '../runtime/host.ts';
 import { actionsFor, serviceCall, customAction, type Action } from '../runtime/actions.ts';
 import { translator, type Key } from '../i18n/index.ts';
-import { RoomTile, AccessoryTile, ThermostatTile, ClockTile, SceneTile, ValueTile, Pill, Section as Block, metricLabel, tileColor } from './cards.tsx';
+import { RoomTile, AccessoryTile, ThermostatTile, ClockTile, SceneTile, ValueTile, Pill, Section as Block } from './cards.tsx';
 import { DeviceSheet, type Runner } from './sheet.tsx';
-import { stateText, isOn, num, co2Level, iconOfKind, withRoom } from './format.ts';
+import { stateText, isOn, num, co2Level, withRoom } from './format.ts';
 import { Setup } from './setup.tsx';
 import { activeModules, type ActiveModule } from '../modules/index.ts';
 import type { JSX } from 'preact';
@@ -51,6 +51,7 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
     },
   };
   const toggle = (d: HomeDevice) => { const a = actionsFor(d).find(x => x.id === 'toggle'); if (a) void runner.run(d, a, !a.current); };
+  useEffect(() => { const key = (ev: KeyboardEvent) => { if (ev.key !== 'Escape') return; if (confirm) setConfirm(null); else if (view.device) go({ section: view.section, room: view.room }); }; navigationWindow.addEventListener('keydown', key); return () => navigationWindow.removeEventListener('keydown', key); });
   const wide = viewport.width >= 600, landscape = viewport.width > viewport.height, short = viewport.height <= 700;
   const now = useClock();
   const time = new Intl.DateTimeFormat(lang === 'ru' ? 'ru-RU' : lang === 'ro' ? 'ro-RO' : 'en-GB', { hour: '2-digit', minute: '2-digit' }).format(now);
@@ -117,8 +118,8 @@ const canToggle = (d: HomeDevice) => actionsFor(d).some(a => a.id === 'toggle');
 /** Inside a room the owner's «Свет · Кухня» reads as «Свет». */
 const inRoomName = (d: HomeDevice, room: string) => { const n = d.name.trim(), r = room.trim(); return r && n.toLowerCase().endsWith(' · ' + r.toLowerCase()) ? n.slice(0, -(r.length + 3)) : n; };
 /** Tile grid for a list of devices; the toggle goes straight to the host, «…» opens the sheet in the given section. */
-function Tiles({ devices, section, room, runner, toggle, go, t, lang, nameOf, subOf }: Common & { devices: HomeDevice[]; section: Section; room?: string | null; toggle: (d: HomeDevice) => void; nameOf?: (d: HomeDevice) => string; subOf?: (d: HomeDevice) => string }) {
-  return <div className="ah-grid hm-light-grid">{devices.map(d => <AccessoryTile device={d} name={nameOf?.(d)} sub={subOf?.(d)} pending={runner.busy.has(d.key)} onToggle={canToggle(d) ? () => toggle(d) : undefined} onOpen={() => go({ section, room: room ?? null, device: d.key })} t={t} lang={lang} />)}</div>;
+function Tiles({ devices, section, room, runner, toggle, go, t, lang, nameOf, roomOf }: Common & { devices: HomeDevice[]; section: Section; room?: string | null; toggle: (d: HomeDevice) => void; nameOf?: (d: HomeDevice) => string; roomOf?: (d: HomeDevice) => string }) {
+  return <div className="ah-grid hm-light-grid">{devices.map(d => <AccessoryTile device={d} name={nameOf?.(d)} room={roomOf?.(d)} pending={runner.busy.has(d.key)} onToggle={canToggle(d) ? () => toggle(d) : undefined} onOpen={() => go({ section, room: room ?? null, device: d.key })} t={t} lang={lang} />)}</div>;
 }
 function Overview({ home, registry, config, modules, player, host, runner, toggle, go, t, lang, now }: Common & { home: Home; registry: Registry; config: HouseConfig; modules: ActiveModule[]; player: (dev: HomeDevice, mode: 'tile' | 'stage') => JSX.Element | null; host: Host; toggle: (d: HomeDevice) => void; now: Date }) {
   const d = home.devices.filter(x => x.enabled);
@@ -137,7 +138,7 @@ function Overview({ home, registry, config, modules, player, host, runner, toggl
   const temp = climate ? (typeof climate.primary.attributes.temperature === 'number' ? climate.primary.attributes.temperature : null) : null, cur = climate ? (typeof climate.primary.attributes.current_temperature === 'number' ? climate.primary.attributes.current_temperature : null) : null;
   const tempAction = climate ? actionsFor(climate).find(a => a.id === 'temperature') : undefined;
   const step = (dir: 1 | -1) => { if (climate && tempAction && temp !== null) void runner.run(climate, tempAction, Math.round((temp + dir * (tempAction.step ?? 0.5)) * 10) / 10); };
-  const tile = (x: HomeDevice, section: Section = 'home') => <AccessoryTile device={x} name={inRoomName(x, roomOf(x))} sub={actionsFor(x).some(a => a.id === 'toggle') ? roomOf(x) : undefined} pending={runner.busy.has(x.key)} onToggle={canToggle(x) ? () => toggle(x) : undefined} onOpen={() => go({ section, device: x.key })} t={t} lang={lang} />;
+  const tile = (x: HomeDevice, section: Section = 'home') => <AccessoryTile device={x} name={inRoomName(x, roomOf(x))} room={roomOf(x)} pending={runner.busy.has(x.key)} onToggle={canToggle(x) ? () => toggle(x) : undefined} onOpen={() => go({ section, device: x.key })} t={t} lang={lang} />;
   return <div className="hm-home ah-home ah-grid ah-face" data-face="home-modular">
     <ClockTile now={now} lang={lang} />
     {climate && <ThermostatTile device={climate} sub={roomOf(climate)} target={temp} current={cur} onStep={tempAction ? step : undefined} onOpen={() => go({ section: 'climate', device: climate.key })} t={t} lang={lang} disabled={runner.busy.has(climate.key)} />}
@@ -178,7 +179,7 @@ function LightsPage({ devices, runner, toggle, go, t, lang, roomName }: Common &
   const on = devices.filter(d => isOn(d.primary));
   if (!devices.length) return <p className="hm-muted">{t('ui.nodevices')}</p>;
   return <div className="hm-light-page"><div className="hm-toolbar"><span>{on.length ? t('overview.lights.on', { n: on.length }) : t('overview.lights.off')}</span>{on.length > 0 && <button type="button" className="hm-pill" onClick={() => on.forEach(toggle)}>{t('ui.lightsOff')}</button>}</div>
-    <Tiles devices={devices} section="lights" runner={runner} toggle={toggle} go={go} t={t} lang={lang} nameOf={d => inRoomName(d, roomName(d.roomId))} subOf={d => roomName(d.roomId)} /></div>;
+    <Tiles devices={devices} section="lights" runner={runner} toggle={toggle} go={go} t={t} lang={lang} nameOf={d => inRoomName(d, roomName(d.roomId))} roomOf={d => roomName(d.roomId)} /></div>;
 }
 function ClimatePage({ devices, runner, go, t, lang, roomName }: Common & { devices: HomeDevice[]; roomName: (id: string) => string }) {
   if (!devices.length) return <p className="hm-muted">{t('ui.nodevices')}</p>;
@@ -204,5 +205,5 @@ function SystemsPage({ devices, runner, toggle, go, t, lang, roomName }: Common 
   const groups: Array<[Kind[], string]> = [[['leak', 'alarm', 'valve', 'lock', 'alarm_panel', 'opening', 'motion'], t('overview.leaks') + ' · ' + t('kind.alarm_panel')], [['environment', 'measurement'], t('overview.air')], [['socket', 'switch', 'fan', 'cover'], t('section.systems')], [['media', 'camera'], t('kind.media')], [['weather', 'person'], t('section.weather')]];
   const rendered = groups.filter(([kinds]) => devices.some(d => kinds.includes(d.kind)));
   if (!rendered.length) return <p className="hm-muted">{t('ui.nodevices')}</p>;
-  return <div className="hm-systems">{rendered.map(([kinds, title]) => <Block title={title}><Tiles devices={devices.filter(d => kinds.includes(d.kind))} section="systems" runner={runner} toggle={toggle} go={go} t={t} lang={lang} nameOf={d => inRoomName(d, roomName(d.roomId))} subOf={d => canToggle(d) ? roomName(d.roomId) : undefined as unknown as string} /></Block>)}</div>;
+  return <div className="hm-systems">{rendered.map(([kinds, title]) => <Block title={title}><Tiles devices={devices.filter(d => kinds.includes(d.kind))} section="systems" runner={runner} toggle={toggle} go={go} t={t} lang={lang} nameOf={d => inRoomName(d, roomName(d.roomId))} roomOf={d => roomName(d.roomId)} /></Block>)}</div>;
 }

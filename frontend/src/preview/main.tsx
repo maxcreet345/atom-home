@@ -1,7 +1,6 @@
 import { render } from 'preact';
 import { AtomApp } from '../ui/app.tsx';
 import { previewHost } from '../runtime/host.ts';
-import { normaliseConfig } from '../model/config.ts';
 import { localStore, memoryStore } from '../runtime/store.ts';
 import type { Registry } from '../model/registry.ts';
 import base from '../styles/base.css?inline';

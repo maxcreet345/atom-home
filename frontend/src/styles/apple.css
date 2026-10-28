@@ -270,3 +270,7 @@
 /* v0.8.3 */
 .hm-shell .ah-grid>.ah-tile-stack{grid-column:span 3;aspect-ratio:auto}.is-narrow .ah-grid>.ah-tile-stack{grid-column:1/-1}
 .hm-shell .ah-tile-stack .ah-tile-text strong{font-size:16px}
+
+/* v0.8.4 */
+@media (hover:none){.hm-shell .ah-tile-more{opacity:.55}}
+.hm-shell .ah-tile-hit{-webkit-touch-callout:none;user-select:none}
