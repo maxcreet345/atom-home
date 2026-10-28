@@ -129,8 +129,8 @@
 .hm-shell .ah-clock svg{width:100%;height:100%}
 .hm-shell .ah-clock-face{fill:var(--ah-group);stroke:none}
 .hm-shell.ah-shell[data-theme="dark"] .ah-clock-face{fill:#ffffff1f}
-.hm-shell .ah-clock-nums text{fill:var(--ah-accent)}
-.hm-shell .ah-hand{stroke:var(--ah-ink);stroke-linecap:round;stroke-width:3.2}.hm-shell .ah-hand.is-min{stroke-width:2.4}.hm-shell .ah-hand-cap{fill:var(--ah-ink)}
+.hm-shell .ah-clock-nums text{fill:var(--ah-accent);font-family:var(--ah-font);letter-spacing:-.2px}
+.hm-shell .ah-hand{stroke:var(--ah-ink);stroke-linecap:round;stroke-width:2.6}.hm-shell .ah-hand.is-min{stroke-width:1.9}.hm-shell .ah-hand-cap{fill:var(--ah-ink)}
 .hm-shell .ah-clock-date{display:none}
 /* scene / value */
 .hm-shell .ah-scene .ah-glyph{color:var(--ah-accent)}

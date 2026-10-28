@@ -103,16 +103,17 @@ export function ThermostatTile({ device, sub, target, current, onStep, onOpen, t
 export function ClockTile({ now, lang }: { now: Date; lang: Lang }) {
   const h = now.getHours() % 12, m = now.getMinutes(), hourA = (h + m / 60) * 30, minA = m * 6;
   const date = new Intl.DateTimeFormat(lang === 'ru' ? 'ru-RU' : lang === 'ro' ? 'ro-RO' : 'en-GB', { weekday: 'short', day: 'numeric' }).format(now);
-  const nums = Array.from({ length: 12 }, (_, i) => { const a = (i + 1) * 30 * Math.PI / 180; return <text x={50 + 32 * Math.sin(a)} y={50 - 32 * Math.cos(a) + 2.1} textAnchor="middle" fontSize={i + 1 >= 10 ? 5 : 5.6} fontWeight="600" letterSpacing="-0.3">{i + 1}</text>; });
-  return <div className="ah-tile ah-clock hm-card" aria-label={date}>
+  const pt = (angle: number, r: number) => [50 + r * Math.sin(angle * Math.PI / 180), 50 - r * Math.cos(angle * Math.PI / 180)] as const;
+  const nums = Array.from({ length: 12 }, (_, i) => { const [x, y] = pt((i + 1) * 30, 37.5); return <text x={x} y={y} text-anchor="middle" dominant-baseline="central" font-size="7.2" font-weight="500">{i + 1}</text>; });
+  const [hx, hy] = pt(hourA, 23), [hx0, hy0] = pt(hourA + 180, 5), [mx, my] = pt(minA, 33), [mx0, my0] = pt(minA + 180, 6);
+  return <div className="ah-tile ah-clock hm-card" aria-label={`${date} ${String(now.getHours()).padStart(2, '0')}:${String(m).padStart(2, '0')}`}>
     <svg viewBox="0 0 100 100" aria-hidden="true">
       <circle cx="50" cy="50" r="46" className="ah-clock-face" />
       <g className="ah-clock-nums">{nums}</g>
-      <line x1="50" y1="50" x2={50 + 19 * Math.sin(hourA * Math.PI / 180)} y2={50 - 19 * Math.cos(hourA * Math.PI / 180)} className="ah-hand is-hour" />
-      <line x1="50" y1="50" x2={50 + 28 * Math.sin(minA * Math.PI / 180)} y2={50 - 28 * Math.cos(minA * Math.PI / 180)} className="ah-hand is-min" />
-      <circle cx="50" cy="50" r="2" className="ah-hand-cap" />
+      <line x1={hx0} y1={hy0} x2={hx} y2={hy} className="ah-hand is-hour" />
+      <line x1={mx0} y1={my0} x2={mx} y2={my} className="ah-hand is-min" />
+      <circle cx="50" cy="50" r="2.2" className="ah-hand-cap" />
     </svg>
-    <small className="ah-clock-date">{date}</small>
   </div>;
 }
 /** 1×1 scene module (owner's quick button). */
