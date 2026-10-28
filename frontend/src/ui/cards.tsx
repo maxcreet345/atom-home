@@ -3,6 +3,7 @@ import { Icon } from './primitives.tsx';
 import type { HomeDevice, EntityRef, Room } from '../model/discover.ts';
 import type { T } from '../i18n/index.ts';
 import { stateText, isOn, num, iconOfKind, type Lang } from './format.ts';
+import { stockRoomArt } from './art.ts';
 
 export function StatusCard({ icon, title, value, hint, tone, onClick, aside }: { icon: string; title: string; value: string; hint: string; tone: string; onClick?: () => void; aside?: ComponentChildren }) {
   return <div className={`hm-card hm-status tone-${tone} ${aside ? 'has-aside' : ''}`} role={onClick ? 'button' : undefined} tabIndex={onClick ? 0 : undefined} onClick={onClick} onKeyDown={e => { if (onClick && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onClick(); } }}>
@@ -15,16 +16,16 @@ export function Switch({ on, pending, disabled, label, onToggle, large }: { on: 
 /** Photo-less room tile: dark surface with the room's climate summary and lit lamps. */
 export function RoomTile({ room, temperature, humidity, co2, lightsOn, onClick, t, lang, label }: { room: Room; temperature: number | null; humidity: number | null; co2: number | null; lightsOn: number; onClick: () => void; t: T; lang: Lang; label: string }) {
   return <button type="button" className="hm-card hm-room at-room" data-room-id={room.id} onClick={onClick} aria-label={label}>
-    {room.photo ? <img className="hm-photo" src={room.photo} alt="" /> : <span className="at-room-art" aria-hidden="true"><Icon name="rooms" size={40} /></span>}
+    {(room.photo ?? stockRoomArt(room.name)) ? <img className="hm-photo" src={room.photo ?? stockRoomArt(room.name)!} alt="" loading="lazy" /> : <span className="at-room-art" aria-hidden="true"><Icon name="rooms" size={40} /></span>}
     <span className="hm-room-top"><strong>{room.name || t('room.none')}</strong>{lightsOn > 0 && <span className="hm-lit"><Icon name="light" size={14} />{lightsOn}</span>}</span>
     <span className="hm-room-bottom"><b>{temperature === null ? '—' : num(temperature, lang)}<i>°</i></b><small>{humidity === null ? '' : `${num(humidity, lang, 0)}%`}{co2 !== null ? ` · CO₂ ${num(co2, lang, 0)}` : ''}</small></span>
   </button>;
 }
-export function LightTile({ device, pending, onToggle, onOpen, t, lang }: { device: HomeDevice; pending: boolean; onToggle: () => void; onOpen: () => void; t: T; lang: Lang }) {
+export function LightTile({ device, photo, pending, onToggle, onOpen, t, lang }: { device: HomeDevice; photo?: string | null; pending: boolean; onToggle: () => void; onOpen: () => void; t: T; lang: Lang }) {
   const e = device.primary, on = isOn(e), off = !e.available;
   return <div className={`hm-card hm-light at-light ${on ? 'is-on' : ''} ${off ? 'is-off' : ''} ${pending ? 'is-pending' : ''}`} data-device-key={device.key}>
     <button type="button" className="hm-light-hit" disabled={pending || off} onClick={onToggle} aria-label={`${device.name}: ${on ? t('action.off') : t('action.on')}`}>
-      <span className="at-light-art" aria-hidden="true"><Icon name="light" size={56} /></span>
+      {(device.photo ?? photo) ? <img className="hm-photo" src={(device.photo ?? photo)!} alt="" loading="lazy" /> : <span className="at-light-art" aria-hidden="true"><Icon name="light" size={56} /></span>}
       <span className="hm-light-bulb"><Icon name="light" size={26} /></span>
       <span className="hm-light-text"><strong>{device.name}</strong><small>{stateText(e, t, lang)}</small></span>
     </button>
@@ -35,7 +36,7 @@ export function DeviceRow({ device, name, pending, onToggle, onOpen, t, lang }: 
   const e = device.primary, on = isOn(e), tone = !e.available ? 'is-off' : (device.kind === 'leak' && e.state === 'on') || (device.kind === 'alarm' && e.state === 'on') ? 'is-danger' : on ? 'is-on' : '';
   return <div className={`hm-row ${tone}`} data-device-key={device.key}>
     <button type="button" className="hm-row-open" onClick={onOpen} aria-label={`${t('ui.details')}: ${name ?? device.name}`}>
-      <span className="hm-thumb"><Icon name={iconOfKind[device.kind] ?? 'generic'} size={22} /></span>
+      <span className="hm-thumb">{device.photo ? <img src={device.photo} alt="" loading="lazy" /> : <Icon name={iconOfKind[device.kind] ?? 'generic'} size={22} />}</span>
       <span className="hm-row-text"><strong>{name ?? device.name}</strong><small>{stateText(e, t, lang)}</small></span>
     </button>
     {onToggle ? <Switch on={on} pending={pending} disabled={!e.available} label={`${name ?? device.name}: ${on ? t('action.off') : t('action.on')}`} onToggle={onToggle} /> : <Icon name="more" size={20} />}

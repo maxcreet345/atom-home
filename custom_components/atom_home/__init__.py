@@ -6,8 +6,12 @@ in Home Assistant's `.storage`. Reading is open to every signed-in user; writing
 """
 from __future__ import annotations
 
+import base64
+import binascii
 import json
 import logging
+import re
+import secrets
 from pathlib import Path
 
 import voluptuous as vol
@@ -18,7 +22,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.storage import Store
 
 from .const import (
-    DOMAIN, FRONTEND_FILE, MAX_CONFIG_BYTES, PANEL_ICON, PANEL_TITLE, PANEL_URL_PATH, STATIC_URL, STORAGE_KEY, STORAGE_VERSION,
+    DOMAIN, FRONTEND_FILE, MAX_CONFIG_BYTES, MAX_PHOTO_BYTES, PANEL_ICON, PANEL_TITLE, PANEL_URL_PATH, PHOTOS_DIR, PHOTOS_URL, STATIC_URL, STORAGE_KEY, STORAGE_VERSION,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -44,7 +48,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"store": store, "config": data.get("config")}
     hass.data[DOMAIN]["_version"] = version
 
-    await hass.http.async_register_static_paths([StaticPathConfig(STATIC_URL, str(FRONTEND_DIR), cache_headers=False)])
+    photos_dir = Path(hass.config.path(PHOTOS_DIR))
+    await hass.async_add_executor_job(lambda: photos_dir.mkdir(parents=True, exist_ok=True))
+    hass.data[DOMAIN]["_photos_dir"] = photos_dir
+    await hass.http.async_register_static_paths([
+        StaticPathConfig(STATIC_URL, str(FRONTEND_DIR), cache_headers=False),
+        StaticPathConfig(PHOTOS_URL, str(photos_dir), cache_headers=True),
+    ])
     await panel_custom.async_register_panel(
         hass,
         webcomponent_name="atom-home-panel",
@@ -103,5 +113,51 @@ def _register_ws(hass: HomeAssistant) -> None:
         await data["store"].async_save({"config": msg["config"]})
         connection.send_result(msg["id"], {"saved": True})
 
+    PHOTO_NAME = re.compile(r"^[a-z0-9]{12,32}\.(jpg|png|webp)$")
+    MIME_EXT = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
+
+    @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/photo/set", vol.Required("mime"): vol.In(list(MIME_EXT)), vol.Required("data"): str})
+    @websocket_api.require_admin
+    @websocket_api.async_response
+    async def ws_photo_set(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+        """Store an owner photo (base64) under the photos folder; returns its URL. The frontend downsizes before upload."""
+        try:
+            raw = base64.b64decode(msg["data"], validate=True)
+        except (binascii.Error, ValueError):
+            connection.send_error(msg["id"], "bad_data", "data must be base64")
+            return
+        if len(raw) > MAX_PHOTO_BYTES:
+            connection.send_error(msg["id"], "too_large", f"Photo exceeds {MAX_PHOTO_BYTES} bytes")
+            return
+        magic_ok = raw.startswith(b"\xff\xd8") or raw.startswith(b"\x89PNG") or raw[:4] == b"RIFF" and raw[8:12] == b"WEBP"
+        if not magic_ok:
+            connection.send_error(msg["id"], "bad_data", "not an image")
+            return
+        name = f"{secrets.token_hex(8)}.{MIME_EXT[msg['mime']]}"
+        target = hass.data[DOMAIN]["_photos_dir"] / name
+        await hass.async_add_executor_job(target.write_bytes, raw)
+        connection.send_result(msg["id"], {"url": f"{PHOTOS_URL}/{name}", "bytes": len(raw)})
+
+    @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/photo/delete", vol.Required("url"): str})
+    @websocket_api.require_admin
+    @websocket_api.async_response
+    async def ws_photo_delete(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+        name = msg["url"].rsplit("/", 1)[-1]
+        if not msg["url"].startswith(PHOTOS_URL + "/") or not PHOTO_NAME.match(name):
+            connection.send_error(msg["id"], "bad_url", "not an Atom Home photo")
+            return
+        target = hass.data[DOMAIN]["_photos_dir"] / name
+
+        def _remove() -> bool:
+            if target.exists():
+                target.unlink()
+                return True
+            return False
+
+        removed = await hass.async_add_executor_job(_remove)
+        connection.send_result(msg["id"], {"removed": removed})
+
     websocket_api.async_register_command(hass, ws_get)
     websocket_api.async_register_command(hass, ws_set)
+    websocket_api.async_register_command(hass, ws_photo_set)
+    websocket_api.async_register_command(hass, ws_photo_delete)

@@ -40,3 +40,16 @@
 .hm-shell.at-shell .hm-main{container-type:inline-size}
 @container (max-width:900px){.hm-shell.at-shell .at-climate-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @container (max-width:560px){.hm-shell.at-shell .at-climate-grid{grid-template-columns:minmax(0,1fr)}}
+/* photos and modules */
+.hm-shell .at-photo-field{grid-column:1/-1}.hm-shell .at-photo-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.hm-shell .at-photo-thumb{width:84px;height:56px;border-radius:12px;object-fit:cover;background:var(--hm-inset-2,#ffffff12);display:grid;place-items:center;color:var(--hm-muted)}
+.hm-shell .at-upload{position:relative;overflow:hidden;cursor:pointer}.hm-shell .at-upload input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.hm-shell .hm-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.hm-shell .at-boiler{display:flex;flex-direction:column;gap:12px;padding:14px 16px}.hm-shell .at-boiler-head{display:flex;align-items:center;gap:12px}.hm-shell .at-boiler-head>div{flex:1;min-width:0;display:grid}.hm-shell .at-boiler-head strong{font-size:16px}.hm-shell .at-boiler-head small{color:var(--hm-muted);font-size:13px}.hm-shell .at-boiler-head .hm-status-icon.is-on{color:var(--hm-amber);box-shadow:0 0 18px #e9a22455}
+.hm-shell .at-boiler-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.is-narrow .at-boiler-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.hm-shell .at-boiler-tile{display:grid;gap:2px;padding:10px 12px;border-radius:14px;background:var(--hm-inset,#ffffff0a);border:1px solid var(--hm-line)}.hm-shell .at-boiler-tile small{font-size:12px;color:var(--hm-muted)}.hm-shell .at-boiler-tile strong{font-size:19px;font-weight:650;white-space:nowrap}.hm-shell .at-boiler-tile>span{font-size:12px;color:var(--hm-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hm-shell .at-boiler-tile.is-warning{background:#fff8ec;border-color:#f3d6a3}.hm-shell .at-boiler-tile.is-warning strong,.hm-shell .at-boiler-tile.is-warning>span{color:#b8781a}
+.hm-shell .at-spark{display:block;width:100%;height:28px;margin-top:4px}.hm-shell .at-spark-line{fill:none;stroke:var(--hm-blue);stroke-width:1.8}.hm-shell .at-spark-area{fill:#3d6ef21f}.hm-shell .at-spark-band{fill:#1fa86614}.hm-shell .at-spark.is-empty path{stroke:#1b2a4a26;stroke-dasharray:3 3;fill:none}
+/* overview with a module status card: four columns on a landscape tablet so two rows still fit */
+/* with a module status card the light card steps aside: thermostat on its own row, then a 2×2 of statuses */
+.hm-shell.at-shell.is-wide .hm-home-status.has-module{grid-template-columns:repeat(2,minmax(0,1fr))}.hm-shell.at-shell.is-wide .hm-home-status.has-module .hm-thermo{grid-column:1/-1}
+.hm-shell.at-shell .at-boiler{flex:none}
+.hm-shell.at-shell.daily-fit-screen .at-climate{padding:12px;gap:8px}.hm-shell.at-shell.daily-fit-screen .at-climate-grid{gap:10px}.hm-shell.at-shell.daily-fit-screen .at-boiler{padding:12px 14px;gap:8px}.hm-shell.at-shell.daily-fit-screen .at-boiler-tile{padding:8px 10px}.hm-shell.at-shell.daily-fit-screen .at-climate-now b{font-size:30px}

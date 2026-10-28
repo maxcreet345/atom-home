@@ -52,11 +52,33 @@ try {
   await page.evaluate(() => [...document.querySelectorAll('.at-setup-home .hm-chips button')].find(b => b.innerText.includes('Экспорт'))?.click()); await page.waitForTimeout(200);
   const exported = await page.evaluate(() => document.querySelector('.at-json').value); let parsed = null; try { parsed = JSON.parse(exported); } catch {}
   check('export-valid-json', !!parsed && parsed.rooms?.kukhnia?.name === 'Кухня-столовая' && parsed.buttons?.length === 1);
-  await page.evaluate(() => { const ta = document.querySelector('.at-json'); const c = JSON.parse(ta.value); c.home.language = 'en'; delete c.rooms.kukhnia; ta.value = JSON.stringify(c); ta.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.evaluate(() => { const ta = document.querySelector('.at-json'); const c = JSON.parse(ta.value); c.home.name = 'Casa Atom'; delete c.rooms.kukhnia; ta.value = JSON.stringify(c); ta.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.evaluate(() => [...document.querySelectorAll('.at-setup-home .hm-chips button')].find(b => b.innerText.includes('Импорт'))?.click()); await page.waitForTimeout(500); await shot('setup-home-after-import');
-  check('import-applies-language', await page.evaluate(() => document.querySelector('.hm-sidebar nav button')?.innerText.trim() === 'Overview'));
-  check('import-persisted', await page.evaluate(() => JSON.parse(localStorage.getItem('atom-home:config')).home.language === 'en' && !JSON.parse(localStorage.getItem('atom-home:config')).rooms.kukhnia));
-  // 5. non-admin sees no setup
+  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Обзор')?.click()); await page.waitForTimeout(500);
+  check('import-applies-name', await page.evaluate(() => document.querySelector('.hm-head h1')?.innerText.trim() === 'Casa Atom'));
+  check('import-persisted', await page.evaluate(() => JSON.parse(localStorage.getItem('atom-home:config')).home.name === 'Casa Atom' && !JSON.parse(localStorage.getItem('atom-home:config')).rooms.kukhnia));
+  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Настройка')?.click()); await page.waitForTimeout(400);
+  // 5. upload a room photo (preview store keeps it as a data URL) and see it on the room tile
+  await page.evaluate(() => [...document.querySelectorAll('.at-setup-tabs button')].find(b => b.innerText.trim() === 'Комнаты')?.click()); await page.waitForTimeout(300);
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFklEQVQIW2P8z8DwnwEIGBlgDBgDAAz6A/3tPDhNAAAAAElFTkSuQmCC', 'base64');
+  const input = await page.$('.at-setup-row[data-room-id="vannaia"] input[type=file]');
+  await input.setInputFiles({ name: 'bath.png', mimeType: 'image/png', buffer: png }); await page.waitForTimeout(1200);
+  const photo = await page.evaluate(() => JSON.parse(localStorage.getItem('atom-home:config')).rooms?.vannaia?.photo ?? null);
+  check('photo-uploaded-into-config', typeof photo === 'string' && photo.startsWith('data:image/jpeg;base64,'), { len: photo?.length });
+  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Комнаты')?.click()); await page.waitForTimeout(500);
+  check('photo-shown-on-room-tile', await page.evaluate(() => document.querySelector('.at-room[data-room-id="vannaia"] img.hm-photo')?.getAttribute('src')?.startsWith('data:image/jpeg') === true));
+  check('stock-art-on-other-rooms', await page.evaluate(() => document.querySelector('.at-room[data-room-id="kukhnia"] img.hm-photo')?.getAttribute('src')?.includes('room-kitchen') === true));
+  await shot('rooms-with-photo');
+  // 6. modules tab lists the boiler as detected; disabling removes its card from Climate
+  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Климат')?.click()); await page.waitForTimeout(500);
+  check('boiler-module-card-on-climate', await $('.at-boiler')); await shot('climate-with-boiler');
+  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Настройка')?.click()); await page.waitForTimeout(400);
+  await page.evaluate(() => [...document.querySelectorAll('.at-setup-tabs button')].find(b => b.innerText.trim() === 'Модули')?.click()); await page.waitForTimeout(300); await shot('setup-modules');
+  check('module-detected-in-setup', await page.evaluate(() => /Обнаружен/.test(document.querySelector('[data-module-id="boiler_ebus"]')?.innerText ?? '')));
+  await page.evaluate(() => document.querySelector('[data-module-id="boiler_ebus"] .hm-switch')?.click()); await page.waitForTimeout(400);
+  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Климат')?.click()); await page.waitForTimeout(500);
+  check('module-disabled-removes-card', !(await $('.at-boiler')));
+  // 7. non-admin sees no setup
   await page.evaluate(() => { localStorage.clear(); });
   await page.close();
 } finally { await browser.close(); server.close(); }

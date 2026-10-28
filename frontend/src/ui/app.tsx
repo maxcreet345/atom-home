@@ -11,6 +11,8 @@ import { StatusCard, Switch, RoomTile, LightTile, DeviceRow, Section as Block, m
 import { DeviceSheet, type Runner } from './sheet.tsx';
 import { stateText, isOn, num, co2Level, iconOfKind } from './format.ts';
 import { Setup } from './setup.tsx';
+import { activeModules, type ActiveModule } from '../modules/index.ts';
+import { stockRoomArt } from './art.ts';
 import type { ConfigStore } from '../runtime/store.ts';
 
 type View = { section: Section | 'setup'; room: string | null; device: string | null };
@@ -30,6 +32,8 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
   const applyConfig = (next: HouseConfig) => { setConfig(next); onConfigChange?.(next); void store?.save(next).catch(() => undefined); };
   const lang = config.home.language, t = useMemo(() => translator(lang), [lang]);
   const home = useMemo(() => discover(registry, config), [registry, config]);
+  const modules = useMemo(() => activeModules(registry, config), [registry, config]);
+  const roomArt = (roomId: string) => { const r = home.rooms.find(x => x.id === roomId); return r ? r.photo ?? stockRoomArt(r.name) : null; };
   const [view, setView] = useState<View>(() => decode(navigationWindow.location.hash));
   useEffect(() => { const pop = () => setView(decode(navigationWindow.location.hash)); navigationWindow.addEventListener('popstate', pop); navigationWindow.addEventListener('hashchange', pop); return () => { navigationWindow.removeEventListener('popstate', pop); navigationWindow.removeEventListener('hashchange', pop); }; }, [navigationWindow]);
   const go = (next: Partial<View>) => { const v = { section: view.section, room: null, device: null, ...next } as View; navigationWindow.history.pushState(null, '', encode(v)); setView(v); };
@@ -76,14 +80,14 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
         {!host.online && <span className="hm-badge tone-danger">{t('ui.offline')}</span>}
       </header>
       <div className="hm-page" key={pageKey}>
-        {view.section === 'home' && <Overview home={home} registry={registry} config={config} runner={runner} toggle={toggle} go={go} t={t} lang={lang} landscape={landscape} />}
+        {view.section === 'home' && <Overview home={home} registry={registry} config={config} modules={modules} host={host} runner={runner} toggle={toggle} go={go} t={t} lang={lang} landscape={landscape} />}
         {view.section === 'rooms' && !view.room && <div className="hm-room-grid is-page">{home.rooms.filter(r => !r.hidden).map(r => { const c = roomClimate(home, registry, r.id); return <RoomTile room={r} temperature={c.temperature} humidity={c.humidity} co2={c.co2} lightsOn={c.lights.filter(l => isOn(l.primary)).length} onClick={() => go({ section: 'rooms', room: r.id })} t={t} lang={lang} label={r.name || t('room.none')} />; })}</div>}
         {view.section === 'rooms' && view.room && <RoomPage home={home} registry={registry} roomId={view.room} runner={runner} toggle={toggle} go={go} t={t} lang={lang} />}
-        {view.section === 'lights' && <LightsPage devices={enabled.filter(d => d.kind === 'light')} runner={runner} toggle={toggle} go={go} t={t} lang={lang} />}
-        {view.section === 'climate' && <ClimatePage devices={enabled.filter(d => d.section === 'climate')} runner={runner} go={go} t={t} lang={lang} />}
+        {view.section === 'lights' && <LightsPage devices={enabled.filter(d => d.kind === 'light')} roomArt={roomArt} runner={runner} toggle={toggle} go={go} t={t} lang={lang} />}
+        {view.section === 'climate' && <>{modules.filter(m => m.def.placement.includes('climate')).map(m => <m.def.Card registry={registry} entities={m.entities} host={host} t={t} lang={lang} />)}<ClimatePage devices={enabled.filter(d => d.section === 'climate')} runner={runner} go={go} t={t} lang={lang} /></>}
         {view.section === 'cleaning' && <KindList devices={enabled.filter(d => d.section === 'cleaning')} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} />}
         {view.section === 'energy' && <EnergyPage devices={energyDevices} go={go} t={t} lang={lang} roomName={roomName} />}
-        {view.section === 'setup' && <Setup registry={registry} config={config} onChange={applyConfig} admin={host.admin} t={t} lang={lang} storeLabel={store?.label ?? 'memory'} warnings={configWarnings} />}
+        {view.section === 'setup' && <Setup registry={registry} config={config} onChange={applyConfig} admin={host.admin} t={t} lang={lang} storeLabel={store?.label ?? 'memory'} warnings={configWarnings} photos={store?.photos} />}
         {view.section === 'systems' && <SystemsPage devices={enabled.filter(d => d.section === 'systems' || d.section === 'camera' || d.section === 'weather')} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} />}
       </div>
     </main>
@@ -99,7 +103,7 @@ const greeting = (now: Date, t: ReturnType<typeof translator>) => { const h = no
 type Nav = (next: Partial<View>) => void;
 type Common = { runner: Runner; go: Nav; t: ReturnType<typeof translator>; lang: 'ru' | 'ro' | 'en' };
 
-function Overview({ home, registry, config, runner, toggle, go, t, lang, landscape }: Common & { home: Home; registry: Registry; config: HouseConfig; toggle: (d: HomeDevice) => void; landscape: boolean }) {
+function Overview({ home, registry, config, modules, host, runner, toggle, go, t, lang, landscape }: Common & { home: Home; registry: Registry; config: HouseConfig; modules: ActiveModule[]; host: Host; toggle: (d: HomeDevice) => void; landscape: boolean }) {
   const d = home.devices.filter(x => x.enabled);
   const lights = d.filter(x => x.kind === 'light'), lightsOn = lights.filter(x => isOn(x.primary));
   const leaks = d.filter(x => x.kind === 'leak'), wet = leaks.filter(x => x.primary.state === 'on'), dryAll = leaks.length > 0 && leaks.every(x => x.primary.available && x.primary.state === 'off');
@@ -115,10 +119,11 @@ function Overview({ home, registry, config, runner, toggle, go, t, lang, landsca
       {camera && <CameraTile device={camera} onOpen={() => go({ section: 'home', device: camera.key })} t={t} lang={lang} />}
       {weather && <div className="hm-weather-slot"><WeatherCard device={weather} t={t} lang={lang} /></div>}
     </div>}
-    <div className="hm-home-status">
+    <div className={`hm-home-status ${modules.some(m => m.def.placement.includes('overview')) ? 'has-module' : ''}`}>
       {climate && <ClimateInline device={climate} runner={runner} go={go} t={t} lang={lang} />}
-      <StatusCard icon="light" title={t('overview.lights')} value={lightsOn.length ? t('overview.lights.on', { n: lightsOn.length }) : t('overview.lights.off')} hint={`${lights.length}`} tone={lightsOn.length ? 'active' : 'muted'} onClick={() => go({ section: 'lights' })} />
+      {!modules.some(m => m.def.placement.includes('overview')) && <StatusCard icon="light" title={t('overview.lights')} value={lightsOn.length ? t('overview.lights.on', { n: lightsOn.length }) : t('overview.lights.off')} hint={`${lights.length}`} tone={lightsOn.length ? 'active' : 'muted'} onClick={() => go({ section: 'lights' })} />}
       <StatusCard icon="water" title={t('overview.leaks')} value={wet.length ? t('state.wet') : dryAll ? t('overview.leaks.dry') : leaks.length ? t('state.unknown') : t('overview.leaks.none')} hint={wet.length ? wet.map(x => x.name).join(', ') : leaks.map(x => x.name).join(', ')} tone={wet.length ? 'danger' : dryAll ? 'calm' : 'muted'} onClick={() => go({ section: 'systems' })} />
+      {modules.filter(m => m.def.placement.includes('overview')).map(m => <m.def.Card registry={registry} entities={m.entities} host={host} t={t} lang={lang} compact />)}
       <StatusCard icon="air" title={t('overview.air')} value={co2v === null ? '—' : `${num(co2v, lang, 0)} ppm`} hint={air.label} tone={air.tone} onClick={() => co2 && go({ section: 'systems' })} />
       <StatusCard icon="energy" title={t('overview.energy')} value={watts === null ? '—' : watts >= 1000 ? `${num(watts / 1000, lang, 2)} kW` : `${num(watts, lang, 0)} W`} hint={t('overview.energy.now')} tone="muted" onClick={() => go({ section: 'energy' })} />
     </div>
@@ -158,11 +163,11 @@ function RoomPage({ home, registry, roomId, runner, toggle, go, t, lang }: Commo
     <div className="hm-room-columns">{groups.map(([kinds, title]) => { const list = inRoom.filter(d => kinds.includes(d.kind)); return list.length ? <Block title={title}><div className="hm-rows">{list.map(d => <DeviceRow device={d} pending={runner.busy.has(d.key)} onToggle={actionsFor(d).some(a => a.id === 'toggle') ? () => toggle(d) : undefined} onOpen={() => go({ section: 'rooms', room: roomId, device: d.key })} t={t} lang={lang} />)}</div></Block> : null; })}</div>
   </div>;
 }
-function LightsPage({ devices, runner, toggle, go, t, lang }: Common & { devices: HomeDevice[]; toggle: (d: HomeDevice) => void }) {
+function LightsPage({ devices, roomArt, runner, toggle, go, t, lang }: Common & { devices: HomeDevice[]; roomArt: (roomId: string) => string | null; toggle: (d: HomeDevice) => void }) {
   const on = devices.filter(d => isOn(d.primary));
   if (!devices.length) return <p className="hm-muted">{t('ui.nodevices')}</p>;
   return <div className="hm-light-page"><div className="hm-toolbar"><span>{on.length ? t('overview.lights.on', { n: on.length }) : t('overview.lights.off')}</span>{on.length > 0 && <button type="button" className="hm-pill" onClick={() => on.forEach(toggle)}>{t('ui.lightsOff')}</button>}</div>
-    <div className="hm-light-grid">{devices.map(d => <LightTile device={d} pending={runner.busy.has(d.key)} onToggle={() => toggle(d)} onOpen={() => go({ section: 'lights', device: d.key })} t={t} lang={lang} />)}</div></div>;
+    <div className="hm-light-grid">{devices.map(d => <LightTile device={d} photo={roomArt(d.roomId)} pending={runner.busy.has(d.key)} onToggle={() => toggle(d)} onOpen={() => go({ section: 'lights', device: d.key })} t={t} lang={lang} />)}</div></div>;
 }
 function ClimatePage({ devices, runner, go, t, lang }: Common & { devices: HomeDevice[] }) {
   if (!devices.length) return <p className="hm-muted">{t('ui.nodevices')}</p>;

@@ -3,7 +3,8 @@ import type { Kind } from './kinds.ts';
 
 export type Language = 'ru' | 'ro' | 'en';
 export interface RoomOverride { name?: string; photo?: string | null; hidden?: boolean; order?: number }
-export interface DeviceOverride { enabled?: boolean; name?: string; roomId?: string; icon?: string; kind?: Kind; mergeInto?: string; order?: number }
+export interface DeviceOverride { enabled?: boolean; name?: string; roomId?: string; icon?: string; kind?: Kind; mergeInto?: string; order?: number; photo?: string | null }
+export interface ModuleOverride { enabled?: boolean; entities?: Record<string, string> }
 export interface EntityOverride { hidden?: boolean; name?: string }
 export interface CustomButton { id: string; label: string; icon?: string; roomId?: string; service: string; target?: Record<string, unknown>; data?: Record<string, unknown>; confirm: boolean }
 export interface HouseConfig {
@@ -14,9 +15,10 @@ export interface HouseConfig {
   entities: Record<string, EntityOverride>;
   buttons: CustomButton[];
   sections: Partial<Record<Section, { hidden?: boolean }>>;
+  modules: Record<string, ModuleOverride>;
 }
 export function defaultConfig(name = 'Мой дом'): HouseConfig {
-  return { schemaVersion: 1, home: { name, logo: null, language: 'ru', theme: 'light' }, rooms: {}, devices: {}, entities: {}, buttons: [], sections: {} };
+  return { schemaVersion: 1, home: { name, logo: null, language: 'ru', theme: 'light' }, rooms: {}, devices: {}, entities: {}, buttons: [], sections: {}, modules: {} };
 }
 const plain = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const SAFE_KEY = /^[\w.:\-]{1,128}$/;
@@ -41,8 +43,10 @@ export function normaliseConfig(input: unknown): { config: HouseConfig; warnings
   const str = (v: unknown, max = 80) => typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : undefined;
   const num = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? v : undefined;
   const bool = (v: unknown) => typeof v === 'boolean' ? v : undefined;
-  out.rooms = map(input.rooms, v => ({ name: str(v.name), photo: typeof v.photo === 'string' ? v.photo.slice(0, 200000) : v.photo === null ? null : undefined, hidden: bool(v.hidden), order: num(v.order) })) as HouseConfig['rooms'];
-  out.devices = map(input.devices, v => ({ enabled: bool(v.enabled), name: str(v.name), roomId: str(v.roomId), icon: str(v.icon, 40), kind: str(v.kind, 20), mergeInto: str(v.mergeInto, 160), order: num(v.order) })) as HouseConfig['devices'];
+  const photo = (v: unknown) => typeof v === 'string' && /^(\/atom_home_photos\/[a-z0-9]{12,32}\.(jpg|png|webp)|\/local\/[\w./-]+|https?:\/\/[^\s"']+|data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+)$/.test(v) && v.length <= 1_200_000 ? v : v === null ? null : undefined;
+  out.rooms = map(input.rooms, v => ({ name: str(v.name), photo: photo(v.photo), hidden: bool(v.hidden), order: num(v.order) })) as HouseConfig['rooms'];
+  out.devices = map(input.devices, v => ({ enabled: bool(v.enabled), name: str(v.name), roomId: str(v.roomId), icon: str(v.icon, 40), kind: str(v.kind, 20), mergeInto: str(v.mergeInto, 160), order: num(v.order), photo: photo(v.photo) })) as HouseConfig['devices'];
+  out.modules = map(input.modules, v => ({ enabled: bool(v.enabled), entities: plain(v.entities) ? Object.fromEntries(Object.entries(v.entities).filter(([k, e]) => /^\w{1,32}$/.test(k) && typeof e === 'string' && /^[a-z_]+\.[a-z0-9_]+$/.test(e))) : undefined })) as HouseConfig['modules'];
   out.entities = map(input.entities, v => ({ hidden: bool(v.hidden), name: str(v.name) })) as HouseConfig['entities'];
   if (Array.isArray(input.buttons)) for (const b of input.buttons.slice(0, 64)) {
     if (!plain(b) || typeof b.id !== 'string' || !SAFE_KEY.test(b.id) || typeof b.label !== 'string' || typeof b.service !== 'string' || !/^[a-z_]+\.[a-z_]+$/.test(b.service)) { warnings.push('config: dropped malformed button'); continue; }
