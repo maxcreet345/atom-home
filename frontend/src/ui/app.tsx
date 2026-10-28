@@ -71,7 +71,7 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
   const subtitle = view.section === 'home' ? `${greeting(now, t)} · ${date}` : view.section === 'rooms' && !view.room ? t('rooms.count', { n: rooms.length }) : '';
   const pageKey = `${view.section}/${view.room ?? ''}`;
   const modal = !!device || !!confirm;
-  const navItems = [...NAV, ...(host.admin ? [{ id: 'setup' as const, icon: 'settings' }] : [])];
+  const navItems = [...NAV, ...(host.admin ? [{ id: 'setup' as const, icon: 'gear' }] : [])];
   const navLabel = (id: Section | 'setup') => id === 'setup' ? t('section.settings') : t(`section.${id}` as Key);
   return <div className={`hm-shell daily-shell at-shell ah-shell ${wide && !short ? 'daily-fit-screen' : ''} ${wide ? 'is-wide' : 'is-narrow'} ${wide && viewport.width < 760 ? 'is-compact' : ''} ${landscape ? 'is-landscape' : 'is-portrait'} ${short ? 'is-short' : ''} hm-route-${view.section}`} lang={lang} data-theme={config.home.theme} style={`--hm-height:${viewport.height}px`}>
     <div className="ah-wallpaper" aria-hidden="true" />
@@ -87,7 +87,7 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
         <div className="hm-head-title" key={pageKey}><h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</div>
         {!wide && <span className="hm-head-time">{time}</span>}
         {!host.online && <span className="hm-badge tone-danger">{t('ui.offline')}</span>}
-        {view.section === 'home' && host.admin && <button type="button" className="hm-icon-btn ah-head-btn" aria-label={t('section.settings')} onClick={() => go({ section: 'setup' })}><Icon name="settings" size={20} /></button>}
+        {view.section === 'home' && host.admin && <button type="button" className="hm-icon-btn ah-head-btn" aria-label={t('section.settings')} onClick={() => go({ section: 'setup' })}><Icon name="gear" size={20} /></button>}
       </header>
       {inSystems && systemTabs.length > 1 && <div className="ah-segments hm-range-tabs" role="tablist">{systemTabs.map(s => <button type="button" role="tab" aria-selected={view.section === s} className={view.section === s ? 'is-active' : ''} onClick={() => go({ section: s })}>{t(`section.${s}` as Key)}</button>)}</div>}
       <div className="hm-page" key={pageKey}>
@@ -147,7 +147,7 @@ function Overview({ home, registry, config, modules, player, host, runner, toggl
     {weather && <ValueTile icon="air" value={wtemp === null ? '—' : num(wtemp, lang, 0)} unit={wtemp === null ? undefined : '°'} label={weather.name} sub={stateText(weather.primary, t, lang)} color="#32ade6" onClick={() => go({ section: 'systems', device: weather.key })} className="at-weather" />}
     {co2 && <ValueTile icon="air" value={num(co2v!, lang, 0)} unit="ppm" label={t('overview.air')} sub={air.label} color={air.tone === 'danger' ? '#ff3b30' : air.tone === 'warning' ? '#ff9f0a' : '#30d158'} onClick={() => go({ section: 'systems' })} className={`hm-status tone-${air.tone}`} />}
     {watts !== null && <ValueTile icon="energy" value={watts >= 1000 ? num(watts / 1000, lang, 2) : num(watts, lang, 0)} unit={watts >= 1000 ? 'kW' : 'W'} label={t('overview.energy')} sub={t('overview.energy.now')} color="#30d158" onClick={() => go({ section: 'energy' })} className="hm-status tone-muted" />}
-    {leaks.length > 0 && <ValueTile icon="water" value={wet.length ? String(wet.length) : '✓'} label={t('overview.leaks')} sub={wet.length ? t('state.wet') : t('overview.leaks.dry')} color={wet.length ? '#ff3b30' : '#32ade6'} onClick={() => go({ section: 'systems' })} className={`hm-status ${wet.length ? 'tone-danger' : 'tone-calm'}`} />}
+    {leaks.length > 0 && <ValueTile icon="water" value={wet.length ? t('state.wet') : t('overview.leaks.dry')} label={t('overview.leaks')} sub={wet.length ? wet.map(x => x.name).join(', ') : t('rooms.count', { n: leaks.length }).replace(/^\d+ /, `${leaks.length} `)} color={wet.length ? '#ff3b30' : '#32ade6'} onClick={() => go({ section: 'systems' })} className={`hm-status ${wet.length ? 'tone-danger' : 'tone-calm'}`} />}
     {cameras.slice(1).map(c => <CameraTile device={c} player={player(c, 'tile')} onOpen={() => go({ section: 'home', device: c.key })} t={t} lang={lang} />)}
     {controls.map(x => tile(x))}
     {otherClimate.map(x => tile(x, 'climate'))}
@@ -194,10 +194,10 @@ function EnergyPage({ devices, go, t, lang, roomName }: { devices: HomeDevice[];
   if (!devices.length) return <p className="hm-muted">{t('ui.nodevices')}</p>;
   const pw = (d: HomeDevice) => { const m = d.metrics.find(x => x.deviceClass === 'power' && x.available); return m ? Number(m.state) * (m.unit === 'kW' ? 1000 : 1) : null; };
   const max = Math.max(1, ...devices.map(d => pw(d) ?? 0));
-  return <div className="hm-energy"><div className="hm-energy-lines">{devices.map(d => { const w = pw(d); const en = d.metrics.find(x => x.deviceClass === 'energy'); return <button type="button" className="hm-card hm-line" data-device-key={d.key} onClick={() => go({ section: 'energy', device: d.key })}>
+  return <div className="hm-energy"><div className="hm-energy-lines">{devices.map(d => { const w = pw(d); return <button type="button" className="hm-card hm-line" data-device-key={d.key} onClick={() => go({ section: 'energy', device: d.key })}>
     <span className="hm-line-head"><span className="ah-glyph is-small" style="--tile:#30d158"><Icon name="energy" size={16} /></span><strong>{d.name}</strong><span className="hm-badge">{roomName(d.roomId)}</span></span>
     <b>{w === null ? '—' : w >= 1000 ? `${num(w / 1000, lang, 2)} kW` : `${num(w, lang, 0)} W`}</b><span className="hm-meter"><i style={`width:${Math.round(100 * (w ?? 0) / max)}%`} /></span>
-    <span className="hm-line-facts">{d.metrics.filter(m => m.deviceClass !== 'power').slice(0, 3).map(m => <span>{metricLabel(m, t)} {stateText(m, t, lang)}</span>)}{en && <span>{metricLabel(en, t)}: {stateText(en, t, lang)}</span>}</span>
+    <span className="hm-line-facts">{d.metrics.filter(m => m.deviceClass !== 'power').slice(0, 4).map(m => <span><small>{m.name}</small> {stateText(m, t, lang)}</span>)}</span>
   </button>; })}</div></div>;
 }
 function SystemsPage({ devices, runner, toggle, go, t, lang, roomName }: Common & { devices: HomeDevice[]; toggle: (d: HomeDevice) => void; roomName: (id: string) => string }) {

@@ -21,7 +21,7 @@ export function RoomTile({ room, temperature, humidity, co2, lightsOn, onClick, 
   return <button type="button" className="hm-card hm-room at-room" data-room-id={room.id} onClick={onClick} aria-label={label}>
     {(room.photo ?? stockRoomArt(room.name)) ? <img className="hm-photo" src={room.photo ?? stockRoomArt(room.name)!} alt="" loading="lazy" /> : <span className="at-room-art" aria-hidden="true"><Icon name="rooms" size={40} /></span>}
     <span className="hm-room-top"><strong>{room.name || t('room.none')}</strong>{lightsOn > 0 && <span className="hm-lit"><Icon name="light" size={14} />{lightsOn}</span>}</span>
-    <span className="hm-room-bottom"><b>{temperature === null ? '—' : num(temperature, lang)}<i>°</i></b><small>{humidity === null ? '' : `${num(humidity, lang, 0)}%`}{co2 !== null ? ` · CO₂ ${num(co2, lang, 0)}` : ''}</small></span>
+    <span className="hm-room-bottom">{temperature !== null && <b>{num(temperature, lang)}<i>°</i></b>}<small>{humidity === null ? '' : `${num(humidity, lang, 0)}%`}{co2 !== null ? ` · CO₂ ${num(co2, lang, 0)}` : ''}</small></span>
   </button>;
 }
 export function LightTile({ device, photo, pending, onToggle, onOpen, t, lang }: { device: HomeDevice; photo?: string | null; pending: boolean; onToggle: () => void; onOpen: () => void; t: T; lang: Lang }) {
@@ -96,14 +96,14 @@ export function ThermostatTile({ device, sub, target, current, onStep, onOpen, t
 export function ClockTile({ now, lang }: { now: Date; lang: Lang }) {
   const h = now.getHours() % 12, m = now.getMinutes(), hourA = (h + m / 60) * 30, minA = m * 6;
   const date = new Intl.DateTimeFormat(lang === 'ru' ? 'ru-RU' : lang === 'ro' ? 'ro-RO' : 'en-GB', { weekday: 'short', day: 'numeric' }).format(now);
-  const nums = Array.from({ length: 12 }, (_, i) => { const a = (i + 1) * 30 * Math.PI / 180; return <text x={50 + 38 * Math.sin(a)} y={50 - 38 * Math.cos(a) + 3.5} textAnchor="middle" fontSize="9.5" fontWeight="600">{i + 1}</text>; });
+  const nums = Array.from({ length: 12 }, (_, i) => { const a = (i + 1) * 30 * Math.PI / 180; return <text x={50 + 35 * Math.sin(a)} y={50 - 35 * Math.cos(a) + 2.8} textAnchor="middle" fontSize="8" fontWeight="600">{i + 1}</text>; });
   return <div className="ah-tile ah-clock hm-card" aria-label={date}>
     <svg viewBox="0 0 100 100" aria-hidden="true">
-      <circle cx="50" cy="50" r="48" className="ah-clock-face" />
+      <circle cx="50" cy="50" r="46" className="ah-clock-face" />
       <g className="ah-clock-nums">{nums}</g>
-      <line x1="50" y1="50" x2={50 + 22 * Math.sin(hourA * Math.PI / 180)} y2={50 - 22 * Math.cos(hourA * Math.PI / 180)} className="ah-hand is-hour" />
-      <line x1="50" y1="50" x2={50 + 32 * Math.sin(minA * Math.PI / 180)} y2={50 - 32 * Math.cos(minA * Math.PI / 180)} className="ah-hand is-min" />
-      <circle cx="50" cy="50" r="2.4" className="ah-hand-cap" />
+      <line x1="50" y1="50" x2={50 + 19 * Math.sin(hourA * Math.PI / 180)} y2={50 - 19 * Math.cos(hourA * Math.PI / 180)} className="ah-hand is-hour" />
+      <line x1="50" y1="50" x2={50 + 28 * Math.sin(minA * Math.PI / 180)} y2={50 - 28 * Math.cos(minA * Math.PI / 180)} className="ah-hand is-min" />
+      <circle cx="50" cy="50" r="2" className="ah-hand-cap" />
     </svg>
     <small className="ah-clock-date">{date}</small>
   </div>;
@@ -114,7 +114,7 @@ export function SceneTile({ icon, label, onClick, t }: { icon: string; label: st
 }
 /** 1×1 reading module: big value, label underneath (energy, weather, air). */
 export function ValueTile({ icon, value, unit, label, sub, color, onClick, className = '' }: { icon: string; value: string; unit?: string; label: string; sub?: string; color: string; onClick?: () => void; className?: string }) {
-  return <div className={`ah-tile ah-value hm-card ${className}`} style={`--tile:${color}`}><button type="button" className="ah-tile-hit" onClick={onClick} disabled={!onClick}><span className="ah-value-head"><Icon name={icon} size={18} /></span><span className="ah-value-num"><b>{value}</b>{unit && <i>{unit}</i>}</span><span className="ah-tile-text"><strong>{label}</strong>{sub && <small>{sub}</small>}</span></button></div>;
+  return <div className={`ah-tile ah-value hm-card ${className}`} style={`--tile:${color}`}><button type="button" className="ah-tile-hit" onClick={onClick} disabled={!onClick}><span className="ah-value-head"><Icon name={icon} size={18} /></span><span className={`ah-value-num ${/^[\d.,\s−-]+$/.test(value) ? '' : 'is-text'}`}><b>{value}</b>{unit && <i>{unit}</i>}</span><span className="ah-tile-text"><strong>{label}</strong>{sub && <small>{sub}</small>}</span></button></div>;
 }
 export function Pill({ icon, color, label, value, onClick, className = '' }: { icon: string; color: string; label: string; value: string; onClick?: () => void; className?: string }) {
   return <button type="button" className={`ah-pill ${className}`} style={`--tile:${color}`} onClick={onClick}><span className="ah-glyph is-small"><Icon name={icon} size={16} /></span><span><small>{label}</small><strong>{value}</strong></span></button>;
