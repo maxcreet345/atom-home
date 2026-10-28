@@ -30,4 +30,13 @@
 .hm-shell .at-setup-new{display:grid;gap:10px;padding:16px}.hm-shell .at-setup-new h3{font-size:17px}
 .hm-shell .at-setup-home{display:grid;gap:12px;max-width:640px}.hm-shell .at-note{position:absolute;right:24px;bottom:20px;z-index:6}
 .hm-shell .at-setting-row{padding:8px 14px;border-radius:16px;background:var(--hm-card);border:1px solid var(--hm-line);border-bottom:1px solid var(--hm-line)}
-.hm-shell .hm-sidebar nav button.at-setup-nav{margin-top:auto}
+/* sidebar: many sections + setup must never spill over the connection button */
+.hm-shell.at-shell .hm-sidebar nav{overflow:hidden;gap:4px}.hm-shell.at-shell .hm-sidebar nav button{flex:0 1 auto;min-height:48px;padding:4px 2px;gap:3px;font-size:12px}
+.hm-shell.at-shell .hm-sidebar nav button.at-setup-nav{margin-top:auto;border-top:1px solid #ffffff14;border-radius:0 0 16px 16px}
+.hm-shell.at-shell.is-short .hm-sidebar nav button{min-height:40px;font-size:11px}
+/* thermostat and status cards wrap when the panel shares the screen with the HA sidebar */
+.hm-shell.at-shell .hm-home-status{container-type:inline-size}
+@container (max-width:720px){.hm-shell.at-shell .hm-thermo{flex-wrap:wrap}.hm-shell.at-shell .hm-thermo-head{flex-basis:100%}.hm-shell.at-shell .hm-thermo .hm-stepper{flex:1;justify-content:flex-start}.hm-shell.at-shell .hm-home-status{grid-template-columns:repeat(2,minmax(0,1fr))}.hm-shell.at-shell .hm-thermo{grid-column:1/-1}}
+.hm-shell.at-shell .hm-main{container-type:inline-size}
+@container (max-width:900px){.hm-shell.at-shell .at-climate-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@container (max-width:560px){.hm-shell.at-shell .at-climate-grid{grid-template-columns:minmax(0,1fr)}}

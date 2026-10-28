@@ -107,7 +107,7 @@ function Overview({ home, registry, config, runner, toggle, go, t, lang, landsca
   const co2v = co2 ? Number(co2.state) : null, air = co2Level(co2v, t);
   const power = d.flatMap(x => x.metrics).filter(m => m.deviceClass === 'power' && m.available && Number.isFinite(Number(m.state)));
   const watts = power.length ? power.reduce((a, m) => a + (m.unit === 'kW' ? Number(m.state) * 1000 : Number(m.state)), 0) : null;
-  const climate = d.find(x => x.kind === 'climate'), camera = d.find(x => x.kind === 'camera'), weather = d.find(x => x.kind === 'weather');
+  const climate = d.find(x => x.kind === 'climate'), cameras = d.filter(x => x.kind === 'camera'), camera = cameras.find(x => x.primary.available && typeof x.primary.attributes.entity_picture === 'string') ?? cameras.find(x => x.primary.available) ?? cameras[0], weather = d.find(x => x.kind === 'weather');
   const rooms = home.rooms.filter(r => !r.hidden).slice(0, 8);
   const buttons = config.buttons;
   return <div className={`hm-home ${landscape ? 'is-landscape' : ''} ${buttons.length ? '' : 'at-no-quick'} ${camera || weather ? '' : 'at-no-media'}`}>
