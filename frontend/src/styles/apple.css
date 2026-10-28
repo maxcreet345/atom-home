@@ -301,3 +301,29 @@
 .hm-shell.ah-shell[data-theme="dark"] .at-feeder-warn span{background:#ff9f0a2e;color:#ffc266}
 
 .hm-shell.ah-shell .at-boiler-tile span,.hm-shell.ah-shell .at-boiler-tile small{white-space:normal;overflow:visible;text-overflow:clip}
+
+/* ---------- 13. Device sheets (modelled on Xiaomi Home device cards): hero, power row, mode circles, setting rows ---------- */
+.hm-shell .ah-sheet{gap:12px}
+.hm-shell .ah-hero{display:flex;align-items:center;gap:16px;padding:18px 16px;border-radius:18px;background:var(--ah-group)}
+.hm-shell .ah-hero-glyph{display:grid;place-items:center;width:72px;height:72px;border-radius:50%;background:var(--ah-tile);color:var(--ah-muted);flex:none}.hm-shell .ah-hero-glyph.is-on{background:var(--tile,var(--ah-accent));color:#fff}
+.hm-shell .ah-hero-main{display:grid;gap:2px;min-width:0}.hm-shell .ah-hero-main b{font-size:30px;font-weight:600;letter-spacing:-.6px;line-height:1.1;overflow:hidden;text-overflow:ellipsis}.hm-shell .ah-hero-main b i{font-style:normal;font-size:18px;color:var(--ah-muted);margin-left:2px}.hm-shell .ah-hero-main small{font-size:13px;color:var(--ah-muted)}
+.hm-shell .ah-hero-climate{flex-direction:column;align-items:stretch;gap:14px;text-align:center}.hm-shell .ah-hero-climate .ah-hero-main b{font-size:64px;font-weight:300;letter-spacing:-2px}.hm-shell .ah-hero-climate.is-on .ah-hero-main b{color:#ff9f0a}
+.hm-shell .ah-target{display:flex;align-items:center;justify-content:center;gap:18px}.hm-shell .ah-target>span{display:grid;text-align:center;min-width:72px}.hm-shell .ah-target small{font-size:12px;color:var(--ah-muted)}.hm-shell .ah-target strong{font-size:22px;font-weight:600}
+.hm-shell .ah-power{display:flex;align-items:center;gap:14px;min-height:64px;padding:10px 16px;border-radius:18px;background:var(--ah-group);color:var(--ah-ink);text-align:left;width:100%}.hm-shell .ah-power strong{font-size:17px;font-weight:600}
+.hm-shell .ah-power-icon{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--ah-tile);color:var(--ah-muted)}.hm-shell .ah-power.is-on .ah-power-icon{background:#ff7a3d;color:#fff}.hm-shell .ah-power:disabled{opacity:.5}
+.hm-shell .ah-modes{display:grid;gap:10px;padding:14px 16px;border-radius:18px;background:var(--ah-group)}.hm-shell .ah-modes-title{font-size:13px;color:var(--ah-muted)}
+.hm-shell .ah-modes-row{display:flex;gap:6px;overflow:auto;scrollbar-width:none;margin:0 -4px;padding:0 4px}
+.hm-shell .ah-mode{flex:1 0 64px;display:flex;flex-direction:column;align-items:center;gap:8px;padding:2px 0;color:var(--ah-muted);border-radius:12px}
+.hm-shell .ah-mode-glyph{display:grid;place-items:center;width:52px;height:52px;border-radius:50%;background:var(--ah-tile);color:var(--ah-ink)}.hm-shell .ah-mode-glyph b{font-size:20px;font-weight:600}
+.hm-shell .ah-mode.is-active{color:var(--ah-accent)}.hm-shell .ah-mode.is-active .ah-mode-glyph{background:var(--ah-accent);color:#fff}
+.hm-shell .ah-mode-label{font-size:12px;line-height:1.2;text-align:center;max-width:76px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.hm-shell .ah-mode:disabled{opacity:.45}
+.hm-shell .ah-rows,.hm-shell .ah-group{display:grid;gap:1px;border-radius:18px;overflow:hidden;background:var(--ah-line)}.hm-shell .ah-group{gap:10px;padding:14px 16px;background:var(--ah-group)}.hm-shell .ah-group-title{font-size:13px;color:var(--ah-muted)}
+.hm-shell .ah-row{display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 16px;background:var(--ah-group);color:var(--ah-ink);width:100%;text-align:left}.hm-shell .ah-row.is-button{cursor:pointer}.hm-shell .ah-row.is-button svg:last-child{color:var(--ah-muted)}
+.hm-shell .ah-row-icon{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--tile,var(--ah-accent));color:#fff;flex:none}
+.hm-shell .ah-row-text{flex:1;display:grid;min-width:0}.hm-shell .ah-row-text strong{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hm-shell .ah-row-text small{font-size:13px;color:var(--ah-muted)}
+.hm-shell .ah-row>small{font-size:14px;color:var(--ah-muted);white-space:nowrap}
+.hm-shell .ah-slider{flex-wrap:wrap;gap:6px}.hm-shell .ah-slider .ah-row-text{width:100%;display:flex;justify-content:space-between;align-items:baseline}.hm-shell .ah-slider input[type=range]{width:100%;accent-color:var(--ah-accent);margin:2px 0 4px}
+.hm-shell .ah-sheet .hm-fold .ah-row{border-radius:0}
+.hm-shell .ah-history{display:grid;gap:6px;padding:14px 16px;border-radius:18px;background:var(--ah-group)}.hm-shell .ah-history-head{display:flex;justify-content:space-between;font-size:12px;color:var(--ah-muted)}.hm-shell .ah-history svg{width:100%;height:56px;display:block}
+.hm-shell .ah-history-line{fill:none;stroke:var(--ah-accent);stroke-width:1.2;vector-effect:non-scaling-stroke}.hm-shell .ah-history-area{fill:var(--ah-accent);opacity:.15}
+.hm-shell.ah-shell[data-theme="dark"] .ah-hero-glyph,.hm-shell.ah-shell[data-theme="dark"] .ah-mode-glyph,.hm-shell.ah-shell[data-theme="dark"] .ah-power-icon{background:#ffffff24}

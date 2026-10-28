@@ -22,6 +22,7 @@ export function actionsFor(device: HomeDevice): Action[] {
       push({ id: 'toggle', label: 'action.toggle', kind: 'toggle', domain: 'light', service: 'toggle', current: e.state === 'on' });
       const modes = list(a.supported_color_modes);
       if (modes.some(m => m !== 'onoff')) push({ id: 'brightness', label: 'action.brightness', kind: 'number', domain: 'light', service: 'turn_on', min: 1, max: 100, step: 1, unit: '%', current: typeof a.brightness === 'number' ? Math.round(a.brightness / 2.55) : null });
+      const effects = list(a.effect_list); if (effects.length && supports(e, 4)) push({ id: 'effect', label: 'action.effect', kind: 'select', domain: 'light', service: 'turn_on', options: effects, current: a.effect ?? null });
       if (modes.includes('color_temp')) push({ id: 'color_temp', label: 'action.color_temp', kind: 'number', domain: 'light', service: 'turn_on', min: num(a.min_color_temp_kelvin, 2000), max: num(a.max_color_temp_kelvin, 6500), step: 50, unit: 'K', current: a.color_temp_kelvin ?? null });
       break; }
     case 'switch': case 'socket': push({ id: 'toggle', label: 'action.toggle', kind: 'toggle', domain: 'switch', service: 'toggle', current: e.state === 'on' }); break;
@@ -50,6 +51,8 @@ export function actionsFor(device: HomeDevice): Action[] {
       const modes = list(a.hvac_modes); if (modes.length) push({ id: 'hvac_mode', label: 'action.hvac_mode', kind: 'select', domain: 'climate', service: 'set_hvac_mode', options: modes, current: e.state });
       if (supports(e, 1)) push({ id: 'temperature', label: 'action.temperature', kind: 'number', domain: 'climate', service: 'set_temperature', min: num(a.min_temp, 5), max: num(a.max_temp, 35), step: num(a.target_temp_step, 0.5), unit: '°C', current: a.temperature ?? null });
       const presets = list(a.preset_modes); if (presets.length && supports(e, 16)) push({ id: 'preset', label: 'action.preset', kind: 'select', domain: 'climate', service: 'set_preset_mode', options: presets, current: a.preset_mode ?? null });
+      const fans = list(a.fan_modes); if (fans.length && supports(e, 8)) push({ id: 'fan_mode', label: 'action.fan_mode', kind: 'select', domain: 'climate', service: 'set_fan_mode', options: fans, current: a.fan_mode ?? null });
+      const swings = list(a.swing_modes); if (swings.length && supports(e, 32)) push({ id: 'swing_mode', label: 'action.swing_mode', kind: 'select', domain: 'climate', service: 'set_swing_mode', options: swings, current: a.swing_mode ?? null });
       break; }
     case 'alarm_panel': if (supports(e, 2)) push({ id: 'arm_away', label: 'action.arm_away', kind: 'button', domain: 'alarm_control_panel', service: 'alarm_arm_away', confirm: true, risk: 'security' }); if (supports(e, 1)) push({ id: 'arm_home', label: 'action.arm_home', kind: 'button', domain: 'alarm_control_panel', service: 'alarm_arm_home', confirm: true, risk: 'security' }); push({ id: 'disarm', label: 'action.disarm', kind: 'button', domain: 'alarm_control_panel', service: 'alarm_disarm', confirm: true, risk: 'security' }); break;
     default: break;
@@ -71,6 +74,11 @@ export function serviceCall(action: Action, value?: unknown): { domain: string; 
     case 'hvac_mode': data.hvac_mode = value; break;
     case 'temperature': data.temperature = value; break;
     case 'preset': data.preset_mode = value; break;
+    case 'effect': data.effect = value; break;
+    case 'fan_mode': data.fan_mode = value; break;
+    case 'swing_mode': data.swing_mode = value; break;
+    case 'value': data.value = value; break;
+    case 'option': data.option = value; break;
     default: break;
   }
   return { domain: action.domain, service: action.service, data };
@@ -79,4 +87,16 @@ export function serviceCall(action: Action, value?: unknown): { domain: string; 
 export function customAction(b: CustomButton): Action {
   const [domain, service] = b.service.split('.');
   return { id: `custom:${b.id}`, label: b.label, kind: 'button', domain, service, entityId: typeof b.target?.entity_id === 'string' ? b.target.entity_id : '', data: { ...(b.target ?? {}), ...(b.data ?? {}) }, confirm: b.confirm, risk: 'custom' };
+}
+
+/** Actions for a secondary entity of the device (settings: switch / number / select / button and their input_* twins). Read-only domains yield nothing. */
+export function entityActions(e: EntityRef): Action[] {
+  const a = e.attributes, id = e.id;
+  switch (e.domain) {
+    case 'switch': case 'input_boolean': return [{ id: 'toggle', label: e.name, kind: 'toggle', domain: e.domain, service: 'toggle', entityId: id, confirm: false, risk: 'normal', current: e.state === 'on' }];
+    case 'number': case 'input_number': return [{ id: 'value', label: e.name, kind: 'number', domain: e.domain, service: 'set_value', entityId: id, confirm: false, risk: 'normal', min: num(a.min, 0), max: num(a.max, 100), step: num(a.step, 1), unit: typeof a.unit_of_measurement === 'string' ? a.unit_of_measurement : undefined, current: Number.isFinite(Number(e.state)) ? Number(e.state) : null }];
+    case 'select': case 'input_select': { const options = list(a.options); return options.length ? [{ id: 'option', label: e.name, kind: 'select', domain: e.domain, service: 'select_option', entityId: id, confirm: false, risk: 'normal', options, current: options.includes(e.state) ? e.state : null }] : []; }
+    case 'button': case 'input_button': return [{ id: 'press', label: e.name, kind: 'button', domain: e.domain, service: 'press', entityId: id, confirm: false, risk: 'normal' }];
+    default: return [];
+  }
 }
