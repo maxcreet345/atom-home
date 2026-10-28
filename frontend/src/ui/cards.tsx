@@ -20,7 +20,7 @@ export function Switch({ on, pending, disabled, label, onToggle, large }: { on: 
 /** Photo-less room tile: dark surface with the room's climate summary and lit lamps. */
 export function RoomTile({ room, temperature, humidity, co2, lightsOn, onClick, t, lang, label }: { room: Room; temperature: number | null; humidity: number | null; co2: number | null; lightsOn: number; onClick: () => void; t: T; lang: Lang; label: string }) {
   return <button type="button" className="hm-card hm-room at-room" data-room-id={room.id} onClick={onClick} aria-label={label}>
-    {(room.photo ?? stockRoomArt(room.name)) ? <img className="hm-photo" src={room.photo ?? stockRoomArt(room.name)!} alt="" loading="lazy" /> : <span className="at-room-art" aria-hidden="true"><Icon name="rooms" size={40} /></span>}
+    {(room.photo ?? stockRoomArt(room.name)) ? <img className="hm-photo" src={room.photo ?? stockRoomArt(room.name)!} alt="" decoding="async" /> : <span className="at-room-art" aria-hidden="true"><Icon name="rooms" size={40} /></span>}
     <span className="hm-room-top"><strong>{room.name || t('room.none')}</strong>{lightsOn > 0 && <span className="hm-lit"><Icon name="light" size={14} />{lightsOn}</span>}</span>
     <span className="hm-room-bottom">{temperature !== null && <b>{num(temperature, lang)}<i>°</i></b>}<small>{humidity === null ? '' : `${num(humidity, lang, 0)}%`}{co2 !== null ? ` · CO₂ ${num(co2, lang, 0)}` : ''}</small></span>
   </button>;
@@ -95,7 +95,7 @@ export function ThermostatTile({ device, sub, target, current, onStep, onOpen, t
   const e = device.primary, on = e.available && e.state !== 'off';
   return <div className={`ah-tile ah-thermo hm-card ${on ? 'is-on' : ''} ${e.available ? '' : 'is-off'}`} data-device-key={device.key} style={`--tile:${tileColor(device)}`}>
     <button type="button" className="ah-tile-hit" onClick={onOpen} aria-label={`${t('ui.details')}: ${device.name}`}>
-      <span className="ah-thermo-value"><b>{target === null ? (current === null ? '—' : num(current, lang, 0)) : num(target, lang, target % 1 ? 1 : 0)}</b>{current !== null && target !== null && <small>{t('ui.now')} {num(current, lang)}°</small>}</span>
+      <span className="ah-thermo-value">{on || current === null ? <><b>{target === null ? (current === null ? '—' : num(current, lang, 0)) : num(target, lang, target % 1 ? 1 : 0)}</b>{current !== null && target !== null && <small>{t('ui.now')} {num(current, lang)}°</small>}</> : <><b>{num(current, lang, current % 1 ? 1 : 0)}</b>{target !== null && <small>{t('ui.target')} {num(target, lang)}°</small>}</>}</span>
       <span className="ah-tile-text"><strong>{device.name}</strong><small>{sub && !device.name.trim().toLowerCase().endsWith(sub.trim().toLowerCase()) ? sub : (on ? stateText(e, t, lang) : t('state.off'))}</small></span>
     </button>
     {onStep && <><button type="button" className="ah-chev is-down" aria-label="−" disabled={disabled || !e.available} onClick={() => onStep(-1)}><Icon name="back" size={22} /></button><button type="button" className="ah-chev is-up" aria-label="+" disabled={disabled || !e.available} onClick={() => onStep(1)}><Icon name="back" size={22} /></button></>}

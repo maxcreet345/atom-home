@@ -299,3 +299,5 @@
 .hm-shell.ah-shell[data-theme="dark"] .at-boiler-tile.is-warning,.hm-shell.ah-shell[data-theme="dark"] .at-feeder .at-boiler-tile.is-warning{background:#ff9f0a2e;border:1px solid #ff9f0a66;color:var(--ah-ink)}
 .hm-shell.ah-shell[data-theme="dark"] .at-boiler-tile.is-warning small{color:#ffd9a3}.hm-shell.ah-shell[data-theme="dark"] .at-boiler-tile.is-warning strong,.hm-shell.ah-shell[data-theme="dark"] .at-boiler-tile.is-warning span{color:#ffc266}
 .hm-shell.ah-shell[data-theme="dark"] .at-feeder-warn span{background:#ff9f0a2e;color:#ffc266}
+
+.hm-shell.ah-shell .at-boiler-tile span,.hm-shell.ah-shell .at-boiler-tile small{white-space:normal;overflow:visible;text-overflow:clip}
