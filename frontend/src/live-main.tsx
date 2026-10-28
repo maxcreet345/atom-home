@@ -33,6 +33,9 @@ export class AtomHomePanel extends HTMLElement {
   get hass() { return this._hass!; }
 
   connectedCallback() {
+    // The loader defines this element after Home Assistant may already have created it and assigned `hass`; such a value sits as an own
+    // property that shadows the setter, so re-apply it through the setter (the standard custom-element upgrade dance).
+    for (const key of ['hass', 'narrow', 'panel'] as const) if (Object.prototype.hasOwnProperty.call(this, key)) { const value = (this as unknown as Record<string, unknown>)[key]; delete (this as unknown as Record<string, unknown>)[key]; (this as unknown as Record<string, unknown>)[key] = value; }
     const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
     root.replaceChildren();
     const style = document.createElement('style');
