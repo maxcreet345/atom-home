@@ -24,9 +24,9 @@ try {
     await go('home');
     await snap('clock', '.ah-clock'); await snap('thermostat', '.ah-thermo'); await snap('camera', '.hm-camera-tile'); await snap('module-pressure', '.ah-module'); await snap('scene', '.ah-scene');
     await snap('value-air', '.ah-value.hm-status'); await snap('value-energy', '.ah-value', 1); await snap('value-leaks', '.ah-value', 2);
-    await go('lights'); await snap('tile-light-off', '.ah-tile.kind-light:not(.is-off)'); await snap('tile-light-unavailable', '.ah-tile.kind-light.is-off'); await snap('tile-switch', '.ah-tile.kind-switch'); await snap('tile-valve', '.ah-tile.kind-valve'); await snap('tile-media', '.ah-tile.kind-media:not(.is-off)'); await snap('tile-vacuum', '.ah-tile.kind-vacuum'); await snap('tile-climate', '.ah-tile.kind-climate'); await snap('tile-environment', '.ah-tile.kind-environment'); await snap('tile-leak', '.ah-tile.kind-leak');
-    await snap('tile-light-on', '.ah-tile.kind-light.is-on'); await go('systems');
-    await page.evaluate(() => document.querySelector('.ah-tile.kind-light.is-on .ah-tile-more').click()); await page.waitForTimeout(500); await snap('sheet-light-on', '.hm-sheet'); await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+    await go('lights'); await snap('tile-light-off', '.ah-tile.kind-light:not(.is-off)'); await snap('tile-light-unavailable', '.ah-tile.kind-light.is-off');     await go('lights'); await snap('tile-light-on', '.ah-tile.kind-light.is-on');
+    await go('systems'); await snap('tile-switch', '.ah-tile.kind-switch'); await snap('tile-valve', '.ah-tile.kind-valve'); await snap('tile-media', '.ah-tile.kind-media:not(.is-off)'); await snap('tile-environment', '.ah-tile.kind-environment'); await snap('tile-leak', '.ah-tile.kind-leak'); await go('cleaning'); await snap('tile-vacuum', '.ah-tile.kind-vacuum'); await go('climate'); await snap('tile-climate', '.ah-tile.kind-climate');
+    await go('lights'); await page.evaluate(() => document.querySelector('.ah-tile.kind-light.is-on .ah-tile-more').click()); await page.waitForTimeout(500); await snap('sheet-light-on', '.hm-sheet'); await page.keyboard.press('Escape'); await page.waitForTimeout(200);
     await go('rooms'); await snap('room-tile', '.at-room'); await snap('room-tile-nophoto', '.at-room', 8);
     await page.evaluate(() => document.querySelector('.at-room').click()); await page.waitForTimeout(500); await snap('room-pills', '.ah-room-pills'); await snap('room-section', '.hm-section');
     await go('climate'); await page.waitForTimeout(800); await snap('boiler-card', '.at-boiler'); await snap('thermostat-page-tile', '.ah-climate-grid .ah-thermo', 2);
@@ -37,7 +37,7 @@ try {
     // sheets per kind
     await go('home'); await snap('group-lights', '.ah-group-tile.kind-lights'); await snap('rooms-strip', '.ah-rooms-strip');
     for (const [name, kind] of [['sheet-light', 'light'], ['sheet-switch', 'switch'], ['sheet-valve', 'valve'], ['sheet-media', 'media'], ['sheet-vacuum', 'vacuum'], ['sheet-environment', 'environment'], ['sheet-leak', 'leak'], ['sheet-climate', 'climate']]) {
-      await go(kind === 'light' ? 'lights' : kind === 'climate' ? 'climate' : kind === 'vacuum' ? 'cleaning' : 'systems'); const ok = await page.evaluate(k => { const b = document.querySelector(`.ah-tile.kind-${k}:not(.is-off) .ah-tile-more`); if (!b) return false; b.click(); return true; }, kind); await page.waitForTimeout(500);
+      await go(kind === 'light' ? 'lights' : kind === 'climate' ? 'climate' : kind === 'vacuum' ? 'cleaning' : 'systems'); const ok = await page.evaluate(k => { const b = document.querySelector(`.ah-tile.kind-${k}:not(.is-off) .ah-tile-more`) ?? (k === 'climate' ? document.querySelector('.ah-thermo .ah-tile-hit') : null); if (!b) return false; b.click(); return true; }, kind); await page.waitForTimeout(500);
       if (ok) await snap(name, '.hm-sheet'); else shots.push({ name, theme, missing: true });
       await page.keyboard.press('Escape'); await page.waitForTimeout(200);
     }

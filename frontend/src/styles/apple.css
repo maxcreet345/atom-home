@@ -338,3 +338,8 @@
 .hm-shell .ah-rooms-strip .hm-room{aspect-ratio:4/3}
 .is-wide .ah-rooms-strip .hm-room-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
 .hm-shell .ah-group-tile .ah-value-num.is-text b{font-size:clamp(16px,13cqw,22px);white-space:normal;line-height:1.1}
+
+.hm-shell .ah-facts-wrap{display:grid;gap:6px}.hm-shell .ah-facts-caption{font-size:13px;color:var(--ah-muted);padding:0 4px}
+
+.hm-shell .ah-tile-stack .ah-tile.is-pending{opacity:1}.hm-shell .ah-tile-stack .hm-chips>button:disabled{opacity:.5}
+@media (max-width:600px){.hm-shell .hm-range-tabs:not(.ah-segments) button,.hm-shell .ah-segments button{flex:0 0 auto;padding:0 14px}}

@@ -13,7 +13,7 @@ export interface Runner { run(device: HomeDevice, action: Action, value?: unknow
 type Common = { device: HomeDevice; runner: Runner; t: T; lang: Lang };
 const label = (a: Action, t: T) => t(a.label as Key) === a.label ? a.label : t(a.label as Key);
 /** Secondary entity names without the device's own name in front («Розетка туалет Delayed power on time» → «Delayed power on time»). */
-const short = (name: string, device: HomeDevice) => { const dev = (typeof device.primary.attributes.friendly_name === 'string' ? device.primary.attributes.friendly_name : device.name).trim(); for (const base of [dev, device.name]) { const a = name.split(/\s+/), b = base.split(/\s+/); let n = 0; while (n < a.length - 1 && n < b.length && a[n].toLowerCase() === b[n].toLowerCase()) n++; if (n >= 2 || (n === 1 && a[0].length > 3)) return a.slice(n).join(' ').replace(/^[—·:-]+\s*/, ''); } return name; };
+const short = (name: string, device: HomeDevice) => { const dev = (typeof device.primary.attributes.friendly_name === 'string' ? device.primary.attributes.friendly_name : device.name).trim(); for (const base of [dev, device.name, ...device.metrics.map(m => m.name)]) { const a = name.split(/\s+/), b = base.split(/\s+/); let n = 0; while (n < a.length - 1 && n < b.length && a[n].toLowerCase() === b[n].toLowerCase()) n++; if (n >= 2 || (n === 1 && a[0].length > 3)) return a.slice(n).join(' ').replace(/^[—·:-]+\s*/, ''); } return name; };
 /** Secondary buttons that only repeat the primary actions (vacuum start/stop/charge/locate, info) are not shown twice. */
 const DUP_BUTTON = /_(start_sweep|stop_sweeping|start_charge|identify|info|locate|return_to_base|pause|stop|start)$/;
 /** Option label: `mode.<option>` (hvac modes, fan speeds, effects…), else `state.<option>`, else the raw option. */
@@ -55,10 +55,16 @@ function History({ entity, host, t, lang }: { entity: EntityRef; host?: Host; t:
   const d = pts.map((p, i) => `${i ? 'L' : 'M'}${(100 * (p[0] - x0) / xs).toFixed(1)} ${(28 - 24 * (p[1] - min) / span - 2).toFixed(1)}`).join(' ');
   return <div className="ah-history"><div className="ah-history-head"><small>{t('ui.history')}</small><small>{num(min, lang, 1)} – {num(max, lang, 1)} {entity.unit ?? ''}</small></div><svg viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true"><path d={`${d} V28 H0 Z`} className="ah-history-area" /><path d={d} className="ah-history-line" /></svg></div>;
 }
+/** Readings grid. Names like «Детская — расчётная температура» ×5 share a suffix: it becomes the grid caption, the cells keep only what differs. */
 function Facts({ device, t, lang }: { device: HomeDevice; t: T; lang: Lang }) {
   const e = device.primary, list = device.metrics.filter(m => m.id !== e.id);
   if (!list.length) return null;
-  return <div className="hm-facts">{list.map(m => { const same = list.filter(x => x.deviceClass === m.deviceClass).length > 1; return <div className="hm-fact"><small>{same ? m.name.replace(device.name, '').replace(/^[\s—·:-]+/, '').trim() || m.name : metricLabel(m, t)}</small><strong>{stateText(m, t, lang)}</strong></div>; })}</div>;
+  const names = list.map(m => { const same = list.filter(x => x.deviceClass === m.deviceClass).length > 1; return same ? short(m.name, device) : metricLabel(m, t); });
+  let caption = '';
+  if (list.length > 1) { const words = names.map(n => n.split(/\s+/)); let k = 0; while (words.every(w => w.length > k + 1) && words.every(w => w[w.length - 1 - k].toLowerCase() === words[0][words[0].length - 1 - k].toLowerCase())) k++; if (k > 0) { caption = words[0].slice(-k).join(' ').replace(/^[—·:-]+\s*/, ''); names.forEach((_, i) => { names[i] = words[i].slice(0, -k).join(' ').replace(/[\s—·:-]+$/, ''); }); } }
+  const cell = (m: EntityRef, i: number) => <div className="hm-fact"><small>{names[i]}</small><strong>{stateText(m, t, lang)}</strong></div>;
+  const LIMIT = 6;
+  return <div className="ah-facts-wrap">{caption && <small className="ah-facts-caption">{caption.charAt(0).toUpperCase() + caption.slice(1)}</small>}<div className="hm-facts">{list.slice(0, LIMIT).map(cell)}</div>{list.length > LIMIT && <Fold title={`${t('ui.readings')} (${list.length - LIMIT})`}><div className="hm-facts">{list.slice(LIMIT).map((m, i) => cell(m, i + LIMIT))}</div></Fold>}</div>;
 }
 function Fold({ title, children, open }: { title: string; children: ComponentChildren; open?: boolean }) {
   return <details className="hm-fold" open={open}><summary><span>{title}</span><Icon name="next" size={18} /></summary><div className="hm-fold-body">{children}</div></details>;
@@ -110,7 +116,7 @@ function Hero({ device, runner, t, lang, host }: Common & { host?: Host }) {
     const title = typeof a.media_title === 'string' ? a.media_title : null, src = typeof a.source === 'string' ? a.source : null, vol = typeof a.volume_level === 'number' ? Math.round(a.volume_level * 100) : null;
     return <div className={`ah-hero ${on ? 'is-on' : ''}`}>{glyph}<div className="ah-hero-main"><b>{title ?? stateText(p, t, lang)}</b>{(src || vol !== null) && <small>{[src, vol !== null ? `${t('action.volume')} ${vol}%` : null].filter(Boolean).join(' · ')}</small>}</div></div>;
   }
-  if (['switch', 'socket'].includes(device.kind)) {
+  if (['switch', 'socket', 'energy'].includes(device.kind)) {
     const power = device.metrics.find(m => m.deviceClass === 'power' && m.available), energy = device.metrics.filter(m => m.deviceClass === 'energy' && m.available);
     return <div className={`ah-hero ${on ? 'is-on' : ''}`}>{glyph}<div className="ah-hero-main"><b>{power ? stateText(power, t, lang) : stateText(p, t, lang)}</b>{power && <small>{`${stateText(p, t, lang)}${energy[0] ? ` · ${stateText(energy[0], t, lang)}` : ''}`}</small>}</div></div>;
   }
