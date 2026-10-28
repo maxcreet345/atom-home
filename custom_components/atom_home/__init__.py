@@ -16,10 +16,11 @@ from pathlib import Path
 
 import voluptuous as vol
 from homeassistant.components import panel_custom, websocket_api
-from homeassistant.components.http import StaticPathConfig
+from homeassistant.components.http import HomeAssistantView, StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.storage import Store
+from aiohttp import web
 
 from .const import (
     DOMAIN, FRONTEND_FILE, MAX_CONFIG_BYTES, MAX_PHOTO_BYTES, PANEL_ICON, PANEL_TITLE, PANEL_URL_PATH, PHOTOS_DIR, PHOTOS_URL, STATIC_URL, STORAGE_KEY, STORAGE_VERSION,
@@ -34,6 +35,30 @@ def _version() -> str:
         return json.loads((Path(__file__).parent / "manifest.json").read_text(encoding="utf-8")).get("version", "0")
     except (OSError, ValueError):
         return "0"
+
+
+BUNDLE_URL = "/atom_home/bundle.js"
+
+
+class BundleView(HomeAssistantView):
+    """The panel bundle with revalidation: browsers keep it cached but ask every time, so a HACS update
+    (which replaces the file without a restart) reaches phones and tablets at the next page load."""
+
+    url = BUNDLE_URL
+    name = "atom_home:bundle"
+    requires_auth = False
+
+    async def get(self, request: web.Request) -> web.StreamResponse:
+        path = FRONTEND_DIR / FRONTEND_FILE
+        try:
+            stat = await request.app["hass"].async_add_executor_job(path.stat)
+        except OSError:
+            return web.Response(status=404)
+        etag = f'"{stat.st_mtime_ns:x}-{stat.st_size:x}"'
+        if request.headers.get("If-None-Match") == etag:
+            return web.Response(status=304, headers={"ETag": etag, "Cache-Control": "no-cache"})
+        body = await request.app["hass"].async_add_executor_job(path.read_bytes)
+        return web.Response(body=body, content_type="text/javascript", charset="utf-8", headers={"ETag": etag, "Cache-Control": "no-cache"})
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -55,13 +80,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         StaticPathConfig(STATIC_URL, str(FRONTEND_DIR), cache_headers=False),
         StaticPathConfig(PHOTOS_URL, str(photos_dir), cache_headers=True),
     ])
+    hass.http.register_view(BundleView())
     await panel_custom.async_register_panel(
         hass,
         webcomponent_name="atom-home-panel",
         frontend_url_path=PANEL_URL_PATH,
         sidebar_title=PANEL_TITLE,
         sidebar_icon=PANEL_ICON,
-        module_url=f"{STATIC_URL}/{FRONTEND_FILE}?v={version}",
+        module_url=f"{BUNDLE_URL}?v={version}",
         embed_iframe=False,
         trust_external=False,
         require_admin=False,
