@@ -1,0 +1,6 @@
+{
+  "config": {
+    "step": { "user": { "title": "Atom Home", "description": "Adds the Atom Home panel to the sidebar. Devices are discovered from Home Assistant; pick what to show in the panel's Setup screen." } },
+    "abort": { "single_instance_allowed": "Atom Home is already set up." }
+  }
+}

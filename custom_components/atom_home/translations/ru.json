@@ -1,0 +1,6 @@
+{
+  "config": {
+    "step": { "user": { "title": "Atom Home", "description": "Добавляет панель Atom Home в боковое меню. Устройства определяются из Home Assistant; что показывать — выбирается в разделе «Настройка» самой панели." } },
+    "abort": { "single_instance_allowed": "Atom Home уже настроен." }
+  }
+}

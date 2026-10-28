@@ -1,0 +1,6 @@
+{
+  "config": {
+    "step": { "user": { "title": "Atom Home", "description": "Adaugă panoul Atom Home în meniul lateral. Dispozitivele sunt descoperite din Home Assistant; ce se afișează se alege în ecranul „Configurare” al panoului." } },
+    "abort": { "single_instance_allowed": "Atom Home este deja configurat." }
+  }
+}

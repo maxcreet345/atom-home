@@ -1,0 +1,14 @@
+{
+  "domain": "atom_home",
+  "name": "Atom Home",
+  "version": "0.3.0",
+  "documentation": "https://github.com/maxcreet345/atom-home",
+  "issue_tracker": "https://github.com/maxcreet345/atom-home/issues",
+  "codeowners": ["@maxcreet345"],
+  "config_flow": true,
+  "dependencies": ["http", "frontend", "panel_custom", "websocket_api"],
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "requirements": [],
+  "single_config_entry": true
+}
