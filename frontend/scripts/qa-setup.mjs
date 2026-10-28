@@ -78,6 +78,17 @@ try {
   await page.evaluate(() => document.querySelector('[data-module-id="boiler_ebus"] .hm-switch')?.click()); await page.waitForTimeout(400);
   await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Климат')?.click()); await page.waitForTimeout(500);
   check('module-disabled-removes-card', !(await $('.at-boiler')));
+  // 6b. go2rtc camera module: detected in setup with the add-on slug suggested; overview tile carries the player mount (preview host has no WS, so it reports "unavailable" without errors)
+  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Настройка')?.click()); await page.waitForTimeout(300);
+  await page.evaluate(() => [...document.querySelectorAll('.at-setup-tabs button')].find(b => b.innerText.trim() === 'Модули')?.click()); await page.waitForTimeout(300);
+  check('go2rtc-module-detected-in-setup', await page.evaluate(() => /Обнаружен/.test(document.querySelector('[data-module-id="camera_go2rtc"]')?.innerText ?? '') && !!document.querySelector('[data-module-id="camera_go2rtc"] input[placeholder="a889bffc_go2rtc"]')));
+  await page.evaluate(() => { const i = document.querySelector('[data-module-id="camera_go2rtc"] input[placeholder="auto"]'); i.value = 'criuleni_c700_h264'; i.dispatchEvent(new Event('change', { bubbles: true })); }); await page.waitForTimeout(300);
+  check('go2rtc-stream-option-persisted', await page.evaluate(() => JSON.parse(localStorage.getItem('atom-home:config')).modules.camera_go2rtc.options.stream === 'criuleni_c700_h264'));
+  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Обзор')?.click()); await page.waitForTimeout(600); await shot('home-go2rtc-tile');
+  check('go2rtc-player-mounted-on-overview', await page.evaluate(() => { const m = document.querySelector('.hm-camera-tile .at-go2rtc'); return !!m && m.dataset.stream === 'criuleni_c700_h264' && m.dataset.playerStatus === 'error'; }));
+  await page.evaluate(() => document.querySelector('.hm-camera-tile')?.click()); await page.waitForTimeout(500); await shot('sheet-go2rtc-stage');
+  check('go2rtc-stage-in-sheet', await page.evaluate(() => !!document.querySelector('.hm-sheet .at-camera-stage .at-go2rtc')));
+  await page.keyboard.press('Escape'); await page.waitForTimeout(300);
   // 7. non-admin sees no setup
   await page.evaluate(() => { localStorage.clear(); });
   await page.close();

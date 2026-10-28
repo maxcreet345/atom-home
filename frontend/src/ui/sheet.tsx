@@ -1,4 +1,5 @@
 import { useState } from 'preact/hooks';
+import type { ComponentChildren } from 'preact';
 import { Icon } from './primitives.tsx';
 import type { HomeDevice } from '../model/discover.ts';
 import type { T, Key } from '../i18n/index.ts';
@@ -19,11 +20,12 @@ export function ActionControl({ device, action, runner, t, lang }: { device: Hom
     <input type="range" min={action.min} max={action.max} step={action.step ?? 1} value={value} disabled={busy} aria-label={label} onInput={e => setDraft(Number((e.target as HTMLInputElement).value))} onChange={e => { setDraft(null); void runner.run(device, action, Number((e.target as HTMLInputElement).value)); }} />
   </div>;
 }
-export function DeviceSheet({ device, runner, onClose, t, lang }: { device: HomeDevice; runner: Runner; onClose: () => void; t: T; lang: Lang }) {
+export function DeviceSheet({ device, runner, onClose, t, lang, stage }: { device: HomeDevice; runner: Runner; onClose: () => void; t: T; lang: Lang; stage?: ComponentChildren }) {
   const actions = actionsFor(device), e = device.primary;
   const buttons = actions.filter(a => a.kind === 'button'), others = actions.filter(a => a.kind !== 'button');
   return <div className="hm-sheet-body">
     <div className="hm-sheet-head"><span className="hm-sheet-photo"><Icon name={iconOfKind[device.kind] ?? 'generic'} size={30} /></span><div><small>{t(`kind.${device.kind}` as Key)}{device.model ? ` · ${device.model}` : ''}</small><h2>{device.name}</h2></div><button type="button" className="hm-icon-btn" aria-label={t('ui.close')} onClick={onClose}>×</button></div>
+    {stage && <div className="hm-camera-frame at-camera-stage">{stage}</div>}
     <div className={`hm-big-state ${isOn(e) ? 'is-on' : ''}`}><Icon name={iconOfKind[device.kind] ?? 'generic'} size={28} /><div><strong>{stateText(e, t, lang)}</strong></div></div>
     {buttons.length > 0 && <div className="hm-chips at-actions">{buttons.map(a => <ActionControl device={device} action={a} runner={runner} t={t} lang={lang} />)}</div>}
     {others.length > 0 && <div className="hm-fold-body">{others.map(a => <ActionControl device={device} action={a} runner={runner} t={t} lang={lang} />)}</div>}

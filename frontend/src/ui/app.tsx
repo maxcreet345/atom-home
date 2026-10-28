@@ -12,6 +12,7 @@ import { DeviceSheet, type Runner } from './sheet.tsx';
 import { stateText, isOn, num, co2Level, iconOfKind, withRoom } from './format.ts';
 import { Setup } from './setup.tsx';
 import { activeModules, type ActiveModule } from '../modules/index.ts';
+import type { JSX } from 'preact';
 import { stockRoomArt } from './art.ts';
 import type { ConfigStore } from '../runtime/store.ts';
 
@@ -33,6 +34,7 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
   const lang = config.home.language, t = useMemo(() => translator(lang), [lang]);
   const home = useMemo(() => discover(registry, config), [registry, config]);
   const modules = useMemo(() => activeModules(registry, config), [registry, config]);
+  const player = (dev: HomeDevice, mode: 'tile' | 'stage') => { const m = modules.find(x => x.def.Player && x.entities.camera === dev.primary.id); const P = m?.def.Player; return m && P ? <P key={`${m.def.id}:${dev.key}:${mode}`} entities={m.entities} options={m.options} host={host} t={t} lang={lang} mode={mode} /> : null; };
   const roomArt = (roomId: string) => { const r = home.rooms.find(x => x.id === roomId); return r ? r.photo ?? stockRoomArt(r.name) : null; };
   const [view, setView] = useState<View>(() => decode(navigationWindow.location.hash));
   useEffect(() => { const pop = () => setView(decode(navigationWindow.location.hash)); navigationWindow.addEventListener('popstate', pop); navigationWindow.addEventListener('hashchange', pop); return () => { navigationWindow.removeEventListener('popstate', pop); navigationWindow.removeEventListener('hashchange', pop); }; }, [navigationWindow]);
@@ -80,11 +82,11 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
         {!host.online && <span className="hm-badge tone-danger">{t('ui.offline')}</span>}
       </header>
       <div className="hm-page" key={pageKey}>
-        {view.section === 'home' && <Overview home={home} registry={registry} config={config} modules={modules} host={host} runner={runner} toggle={toggle} go={go} t={t} lang={lang} landscape={landscape} />}
+        {view.section === 'home' && <Overview home={home} registry={registry} config={config} modules={modules} player={player} host={host} runner={runner} toggle={toggle} go={go} t={t} lang={lang} landscape={landscape} />}
         {view.section === 'rooms' && !view.room && <div className="hm-room-grid is-page">{home.rooms.filter(r => !r.hidden).map(r => { const c = roomClimate(home, registry, r.id); return <RoomTile room={r} temperature={c.temperature} humidity={c.humidity} co2={c.co2} lightsOn={c.lights.filter(l => isOn(l.primary)).length} onClick={() => go({ section: 'rooms', room: r.id })} t={t} lang={lang} label={r.name || t('room.none')} />; })}</div>}
         {view.section === 'rooms' && view.room && <RoomPage home={home} registry={registry} roomId={view.room} runner={runner} toggle={toggle} go={go} t={t} lang={lang} />}
         {view.section === 'lights' && <LightsPage devices={enabled.filter(d => d.kind === 'light')} roomArt={roomArt} runner={runner} toggle={toggle} go={go} t={t} lang={lang} />}
-        {view.section === 'climate' && <>{modules.filter(m => m.def.placement.includes('climate')).map(m => <m.def.Card registry={registry} entities={m.entities} host={host} t={t} lang={lang} />)}<ClimatePage devices={enabled.filter(d => d.section === 'climate')} runner={runner} go={go} t={t} lang={lang} /></>}
+        {view.section === 'climate' && <>{modules.filter(m => m.def.placement.includes('climate')).map(m => <m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} />)}<ClimatePage devices={enabled.filter(d => d.section === 'climate')} runner={runner} go={go} t={t} lang={lang} /></>}
         {view.section === 'cleaning' && <KindList devices={enabled.filter(d => d.section === 'cleaning')} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} />}
         {view.section === 'energy' && <EnergyPage devices={energyDevices} go={go} t={t} lang={lang} roomName={roomName} />}
         {view.section === 'setup' && <Setup registry={registry} config={config} onChange={applyConfig} admin={host.admin} t={t} lang={lang} storeLabel={store?.label ?? 'memory'} warnings={configWarnings} photos={store?.photos} />}
@@ -93,7 +95,7 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
     </main>
     {!wide && <nav className="hm-tabbar" aria-label={t('section.more')} inert={modal || undefined} ref={tabNav}><i className="hm-nav-ind" aria-hidden="true" />{[...nav.slice(0, 4), ...(nav.length > 4 || host.admin ? [{ id: 'more' as const, icon: 'more' }] : [])].map(n => <button type="button" className={(n.id === 'more' ? view.section === 'setup' || nav.slice(4).some(x => x.id === view.section) : view.section === n.id) ? 'is-active' : ''} onClick={() => n.id === 'more' ? setMore(true) : go({ section: n.id })}><Icon name={n.icon} size={24} /><span>{t(`section.${n.id}` as Key)}</span></button>)}</nav>}
     {more && <div className="hm-scrim" onClick={e => { if (e.target === e.currentTarget) setMore(false); }}><section className="hm-sheet is-small" role="dialog" aria-modal="true" aria-label={t('section.more')}><div className="hm-sheet-body"><div className="hm-sheet-head"><div><h2>{t('section.more')}</h2></div><button type="button" className="hm-icon-btn" aria-label={t('ui.close')} onClick={() => setMore(false)}>×</button></div><div className="hm-more">{nav.slice(4).map(n => <button type="button" onClick={() => { setMore(false); go({ section: n.id }); }}><Icon name={n.icon} size={26} /><span>{t(`section.${n.id}` as Key)}</span></button>)}{host.admin && <button type="button" onClick={() => { setMore(false); go({ section: 'setup' }); }}><Icon name="settings" size={26} /><span>{t('section.settings')}</span></button>}</div></div></section></div>}
-    {device && <div className="hm-scrim" onClick={e => { if (e.target === e.currentTarget) go({ section: view.section, room: view.room }); }}><section className="hm-sheet" role="dialog" aria-modal="true" aria-label={device.name}><DeviceSheet device={device} runner={runner} onClose={() => go({ section: view.section, room: view.room })} t={t} lang={lang} /></section></div>}
+    {device && <div className="hm-scrim" onClick={e => { if (e.target === e.currentTarget) go({ section: view.section, room: view.room }); }}><section className="hm-sheet" role="dialog" aria-modal="true" aria-label={device.name}><DeviceSheet device={device} runner={runner} onClose={() => go({ section: view.section, room: view.room })} t={t} lang={lang} stage={device.kind === 'camera' ? player(device, 'stage') : undefined} /></section></div>}
     {confirm && <div className="hm-scrim is-top" onClick={e => { if (e.target === e.currentTarget) setConfirm(null); }}><div className="hm-confirm" role="alertdialog" aria-modal="true" aria-label={t('confirm.title')}><h2>{t('confirm.title')}</h2><p>{t('confirm.text', { action: t(confirm.action.label as Key) === confirm.action.label ? confirm.action.label : t(confirm.action.label as Key), device: confirm.device.name })}</p><div><button type="button" className="hm-pill" onClick={() => setConfirm(null)}>{t('confirm.no')}</button><button type="button" className="hm-pill is-primary" onClick={() => void runner.run(confirm.device, confirm.action, confirm.value)}>{t('confirm.yes')}</button></div></div></div>}
     {toast && <div className="hm-toast" role="alert" onClick={() => setToast('')}><Icon name="warning" size={18} /><span>{toast}</span></div>}
   </div>;
@@ -103,7 +105,7 @@ const greeting = (now: Date, t: ReturnType<typeof translator>) => { const h = no
 type Nav = (next: Partial<View>) => void;
 type Common = { runner: Runner; go: Nav; t: ReturnType<typeof translator>; lang: 'ru' | 'ro' | 'en' };
 
-function Overview({ home, registry, config, modules, host, runner, toggle, go, t, lang, landscape }: Common & { home: Home; registry: Registry; config: HouseConfig; modules: ActiveModule[]; host: Host; toggle: (d: HomeDevice) => void; landscape: boolean }) {
+function Overview({ home, registry, config, modules, player, host, runner, toggle, go, t, lang, landscape }: Common & { home: Home; registry: Registry; config: HouseConfig; modules: ActiveModule[]; player: (dev: HomeDevice, mode: 'tile' | 'stage') => JSX.Element | null; host: Host; toggle: (d: HomeDevice) => void; landscape: boolean }) {
   const d = home.devices.filter(x => x.enabled);
   const lights = d.filter(x => x.kind === 'light'), lightsOn = lights.filter(x => isOn(x.primary));
   const leaks = d.filter(x => x.kind === 'leak'), wet = leaks.filter(x => x.primary.state === 'on'), dryAll = leaks.length > 0 && leaks.every(x => x.primary.available && x.primary.state === 'off');
@@ -111,19 +113,19 @@ function Overview({ home, registry, config, modules, host, runner, toggle, go, t
   const co2v = co2 ? Number(co2.state) : null, air = co2Level(co2v, t);
   const power = d.flatMap(x => x.metrics).filter(m => m.deviceClass === 'power' && m.available && Number.isFinite(Number(m.state)));
   const watts = power.length ? power.reduce((a, m) => a + (m.unit === 'kW' ? Number(m.state) * 1000 : Number(m.state)), 0) : null;
-  const climate = d.find(x => x.kind === 'climate'), cameras = d.filter(x => x.kind === 'camera'), camera = cameras.find(x => x.primary.available && typeof x.primary.attributes.entity_picture === 'string') ?? cameras.find(x => x.primary.available) ?? cameras[0], weather = d.find(x => x.kind === 'weather');
+  const climate = d.find(x => x.kind === 'climate'), cameras = d.filter(x => x.kind === 'camera'), camera = cameras.find(x => modules.some(m => m.def.Player && m.entities.camera === x.primary.id)) ?? cameras.find(x => x.primary.available && typeof x.primary.attributes.entity_picture === 'string') ?? cameras.find(x => x.primary.available) ?? cameras[0], weather = d.find(x => x.kind === 'weather');
   const rooms = home.rooms.filter(r => !r.hidden).slice(0, 8);
   const buttons = config.buttons;
   return <div className={`hm-home ${landscape ? 'is-landscape' : ''} ${buttons.length ? '' : 'at-no-quick'} ${camera || weather ? '' : 'at-no-media'}`}>
     {(camera || weather) && <div className={`hm-home-media ${camera && weather ? '' : 'at-single'}`}>
-      {camera && <CameraTile device={camera} onOpen={() => go({ section: 'home', device: camera.key })} t={t} lang={lang} />}
+      {camera && <CameraTile device={camera} player={player(camera, 'tile')} onOpen={() => go({ section: 'home', device: camera.key })} t={t} lang={lang} />}
       {weather && <div className="hm-weather-slot"><WeatherCard device={weather} t={t} lang={lang} /></div>}
     </div>}
     <div className={`hm-home-status ${modules.some(m => m.def.placement.includes('overview')) ? 'has-module' : ''}`}>
       {climate && <ClimateInline device={climate} runner={runner} go={go} t={t} lang={lang} />}
       {!modules.some(m => m.def.placement.includes('overview')) && <StatusCard icon="light" title={t('overview.lights')} value={lightsOn.length ? t('overview.lights.on', { n: lightsOn.length }) : t('overview.lights.off')} hint={`${lights.length}`} tone={lightsOn.length ? 'active' : 'muted'} onClick={() => go({ section: 'lights' })} />}
       <StatusCard icon="water" title={t('overview.leaks')} value={wet.length ? t('state.wet') : dryAll ? t('overview.leaks.dry') : leaks.length ? t('state.unknown') : t('overview.leaks.none')} hint={wet.length ? wet.map(x => x.name).join(', ') : leaks.map(x => x.name).join(', ')} tone={wet.length ? 'danger' : dryAll ? 'calm' : 'muted'} onClick={() => go({ section: 'systems' })} />
-      {modules.filter(m => m.def.placement.includes('overview')).map(m => <m.def.Card registry={registry} entities={m.entities} host={host} t={t} lang={lang} compact />)}
+      {modules.filter(m => m.def.placement.includes('overview')).map(m => <m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} compact />)}
       <StatusCard icon="air" title={t('overview.air')} value={co2v === null ? '—' : `${num(co2v, lang, 0)} ppm`} hint={air.label} tone={air.tone} onClick={() => co2 && go({ section: 'systems' })} />
       <StatusCard icon="energy" title={t('overview.energy')} value={watts === null ? '—' : watts >= 1000 ? `${num(watts / 1000, lang, 2)} kW` : `${num(watts, lang, 0)} W`} hint={t('overview.energy.now')} tone="muted" onClick={() => go({ section: 'energy' })} />
     </div>
@@ -143,10 +145,10 @@ function ClimateInline({ device, runner, go, t, lang }: Common & { device: HomeD
     {mode && <Switch on={on} large label={device.name} disabled={!e.available} onToggle={() => void runner.run(device, mode, on ? 'off' : (mode.options ?? []).find(o => o !== 'off') ?? 'heat')} />}
   </section>;
 }
-function CameraTile({ device, onOpen, t, lang }: { device: HomeDevice; onOpen: () => void; t: ReturnType<typeof translator>; lang: 'ru' | 'ro' | 'en' }) {
+function CameraTile({ device, player, onOpen, t, lang }: { device: HomeDevice; player?: JSX.Element | null; onOpen: () => void; t: ReturnType<typeof translator>; lang: 'ru' | 'ro' | 'en' }) {
   const pic = typeof device.primary.attributes.entity_picture === 'string' ? device.primary.attributes.entity_picture : null;
   return <div className="hm-card hm-camera-tile" role="button" tabIndex={0} onClick={onOpen}>
-    <div className="hm-camera-frame">{pic ? <img className="at-camera-img" src={pic} alt="" /> : <div className="hm-camera-wait"><Icon name="camera" size={32} /><span>{stateText(device.primary, t, lang)}</span></div>}<span className={`hm-live ${device.primary.available ? 'is-live' : ''}`}><i />{device.primary.available ? t('state.idle') : t('state.unavailable')}</span></div>
+    <div className="hm-camera-frame">{player ? player : pic ? <img className="at-camera-img" src={pic} alt="" /> : <div className="hm-camera-wait"><Icon name="camera" size={32} /><span>{stateText(device.primary, t, lang)}</span></div>}{!player && <span className={`hm-live ${device.primary.available ? 'is-live' : ''}`}><i />{device.primary.available ? t('state.idle') : t('state.unavailable')}</span>}</div>
     <div className="hm-camera-caption"><strong>{device.name}</strong><small>{device.model ?? ''}</small><Icon name="next" size={18} /></div>
   </div>;
 }

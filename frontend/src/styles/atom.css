@@ -53,3 +53,8 @@
 .hm-shell.at-shell.is-wide .hm-home-status.has-module{grid-template-columns:repeat(2,minmax(0,1fr))}.hm-shell.at-shell.is-wide .hm-home-status.has-module .hm-thermo{grid-column:1/-1}
 .hm-shell.at-shell .at-boiler{flex:none}
 .hm-shell.at-shell.daily-fit-screen .at-climate{padding:12px;gap:8px}.hm-shell.at-shell.daily-fit-screen .at-climate-grid{gap:10px}.hm-shell.at-shell.daily-fit-screen .at-boiler{padding:12px 14px;gap:8px}.hm-shell.at-shell.daily-fit-screen .at-boiler-tile{padding:8px 10px}.hm-shell.at-shell.daily-fit-screen .at-climate-now b{font-size:30px}
+
+/* go2rtc module: live stage inside the device sheet and the HD/SD switch */
+.hm-shell .at-camera-stage{border-radius:var(--hm-radius);margin:0 0 14px}.hm-shell .at-camera-stage video{object-fit:contain}
+.hm-shell button.at-camera-q{position:absolute;right:10px;top:10px;background:#000a;color:#fff;cursor:pointer;min-height:28px}
+.hm-shell .at-go2rtc video{width:100%;height:100%;display:block}

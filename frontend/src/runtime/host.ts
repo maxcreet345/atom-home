@@ -13,6 +13,8 @@ export interface Host {
   states(): Record<string, StateRow>;
   call(domain: string, service: string, data: Record<string, unknown>): Promise<void>;
   history?(entityIds: string[], hours: number): Promise<Record<string, Array<[number, number]>>>;
+  /** Raw WebSocket command on the authenticated connection (modules such as the go2rtc player need Supervisor ingress info). */
+  ws?<T = unknown>(message: Record<string, unknown>): Promise<T>;
   readonly admin: boolean; readonly online: boolean;
 }
 const toRow = (e: Record<string, unknown>): EntityRow => ({
@@ -33,6 +35,7 @@ export function liveHost(hass: Hass): Host {
       return { areas, devices: devices.map(d => ({ id: String(d.id), name: ((d.name_by_user ?? d.name) as string | null) ?? null, model: (d.model as string | null) ?? null, manufacturer: (d.manufacturer as string | null) ?? null, area_id: (d.area_id as string | null) ?? null, entry_type: (d.entry_type as string | null) ?? null, disabled_by: (d.disabled_by as string | null) ?? null, via_device_id: (d.via_device_id as string | null) ?? null } satisfies DeviceRow)), entities: entities.map(toRow) };
     },
     async call(domain, service, data) { await hass.callService(domain, service, data); },
+    ws: <T,>(message: Record<string, unknown>) => hass.callWS<T>(message),
     async history(entityIds, hours) {
       const end = new Date(), start = new Date(end.getTime() - hours * 3600000);
       const raw = await hass.callWS<Record<string, Array<{ s?: unknown; lu?: number; lc?: number }>>>({ type: 'history/history_during_period', start_time: start.toISOString(), end_time: end.toISOString(), entity_ids: entityIds, minimal_response: true, no_attributes: true, significant_changes_only: false });

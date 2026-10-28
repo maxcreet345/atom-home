@@ -26,9 +26,10 @@ test('modules: detection, disable and entity override', { skip: !fixture }, () =
   const def = MODULES.find(m => m.id === 'boiler_ebus')!;
   const match = def.detect(fixture!); assert.ok(match, 'Criuleni ebusd boiler detected');
   assert.equal(match!.entities.flow, 'sensor.heating_ebusd_criuleni_bai_flowtemp_temp'); assert.equal(match!.entities.pressure, 'sensor.heating_ebusd_criuleni_bai_waterpressure_press');
-  assert.equal(activeModules(fixture!, defaultConfig()).length, 1);
-  const off = defaultConfig(); off.modules.boiler_ebus = { enabled: false }; assert.equal(activeModules(fixture!, off).length, 0);
-  const over = defaultConfig(); over.modules.boiler_ebus = { entities: { pressure: 'sensor.does_not_exist' } }; assert.equal(activeModules(fixture!, over).length, 0, 'a required role pointing at a missing entity disables the module');
+  const boilers = (c: ReturnType<typeof defaultConfig>) => activeModules(fixture!, c).filter(m => m.spec.id === 'boiler_ebus').length;
+  assert.equal(boilers(defaultConfig()), 1);
+  const off = defaultConfig(); off.modules.boiler_ebus = { enabled: false }; assert.equal(boilers(off), 0);
+  const over = defaultConfig(); over.modules.boiler_ebus = { entities: { pressure: 'sensor.does_not_exist' } }; assert.equal(boilers(over), 0, 'a required role pointing at a missing entity disables the module');
   const empty: Registry = { areas: [], devices: [], entities: [], states: {} }; assert.equal(activeModules(empty, defaultConfig()).length, 0);
 });
 
