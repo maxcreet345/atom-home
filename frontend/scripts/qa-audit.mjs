@@ -29,7 +29,7 @@ try {
     let c = await last(); check(`${tag}/light-tile-toggles-the-light`, !!c && c.domain === 'light' && /^(toggle|turn_on)$/.test(c.service) && c.data.entity_id === lightKey.slice(2), { c, lightKey });
     check(`${tag}/rejected-command-shows-toast`, await has('.hm-toast'));
     // 2. thermostat chevrons → climate.set_temperature ±0.5 around the target
-    const target = await page.evaluate(() => Number(document.querySelector('.ah-thermo .ah-thermo-value b').innerText.replace(',', '.')));
+    const target = await page.evaluate(() => { const v = document.querySelector('.ah-thermo .ah-thermo-value'); const m = /(\d+(?:[.,]\d+)?)°/.exec(v.querySelector('small')?.innerText ?? ''); return Number((m && /цель|target|țint/i.test(v.querySelector('small').innerText) ? m[1] : v.querySelector('b').innerText).replace(',', '.')); });
     await page.evaluate(() => document.querySelector('.ah-thermo .ah-chev.is-up').click()); await page.waitForTimeout(400); c = await last();
     check(`${tag}/thermostat-up-sets-target-plus-step`, c.domain === 'climate' && c.service === 'set_temperature' && (Math.abs(c.data.temperature - (target + 0.5)) < 1e-6 || Math.abs(c.data.temperature - (target + 1)) < 1e-6), { c, target });
     await page.evaluate(() => document.querySelector('.ah-thermo .ah-chev.is-down').click()); await page.waitForTimeout(400); c = await last();
