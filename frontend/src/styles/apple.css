@@ -266,3 +266,7 @@
 .hm-shell .ah-value .ah-tile-text small{font-size:11px;line-height:1.2}
 .hm-shell .ah-tile-stack{background:var(--ah-tile);border-radius:var(--ah-radius);padding:0 12px 12px;gap:10px}.hm-shell .ah-tile-stack .ah-tile{background:none;box-shadow:none}.hm-shell .ah-tile-stack .hm-chips>button{background:var(--ah-group)}
 .hm-shell.ah-shell[data-theme="dark"] .ah-tile-stack .hm-chips>button{background:#ffffff26}
+
+/* v0.8.3 */
+.hm-shell .ah-grid>.ah-tile-stack{grid-column:span 3;aspect-ratio:auto}.is-narrow .ah-grid>.ah-tile-stack{grid-column:1/-1}
+.hm-shell .ah-tile-stack .ah-tile-text strong{font-size:16px}

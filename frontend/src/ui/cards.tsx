@@ -96,7 +96,7 @@ export function ThermostatTile({ device, sub, target, current, onStep, onOpen, t
 export function ClockTile({ now, lang }: { now: Date; lang: Lang }) {
   const h = now.getHours() % 12, m = now.getMinutes(), hourA = (h + m / 60) * 30, minA = m * 6;
   const date = new Intl.DateTimeFormat(lang === 'ru' ? 'ru-RU' : lang === 'ro' ? 'ro-RO' : 'en-GB', { weekday: 'short', day: 'numeric' }).format(now);
-  const nums = Array.from({ length: 12 }, (_, i) => { const a = (i + 1) * 30 * Math.PI / 180; return <text x={50 + 34 * Math.sin(a)} y={50 - 34 * Math.cos(a) + 2.5} textAnchor="middle" fontSize="7" fontWeight="600">{i + 1}</text>; });
+  const nums = Array.from({ length: 12 }, (_, i) => { const a = (i + 1) * 30 * Math.PI / 180; return <text x={50 + 33 * Math.sin(a)} y={50 - 33 * Math.cos(a) + 2.3} textAnchor="middle" fontSize="6.4" fontWeight="600">{i + 1}</text>; });
   return <div className="ah-tile ah-clock hm-card" aria-label={date}>
     <svg viewBox="0 0 100 100" aria-hidden="true">
       <circle cx="50" cy="50" r="46" className="ah-clock-face" />
