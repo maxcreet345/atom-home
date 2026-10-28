@@ -38,6 +38,41 @@ def _version() -> str:
 
 
 BUNDLE_URL = "/atom_home/bundle.js"
+LOADER_URL = "/atom_home/loader.js"
+META_URL = "/atom_home/meta"
+# The loader is what the panel registers as module_url. It asks the integration which bundle is current (a cache-busting query
+# defeats proxies such as Cloudflare that rewrite Cache-Control) and imports the bundle under a URL unique to that build.
+LOADER_JS = """const r = await fetch('/atom_home/meta?t=' + Date.now(), { cache: 'no-store', credentials: 'same-origin' }).catch(() => null);
+const m = r && r.ok ? await r.json().catch(() => ({})) : {};
+await import('/atom_home/bundle.js?e=' + encodeURIComponent(m.etag || Date.now()));
+"""
+
+
+def _bundle_etag(path: Path) -> str:
+    stat = path.stat()
+    return f"{stat.st_mtime_ns:x}-{stat.st_size:x}"
+
+
+class LoaderView(HomeAssistantView):
+    url = LOADER_URL
+    name = "atom_home:loader"
+    requires_auth = False
+
+    async def get(self, request: web.Request) -> web.StreamResponse:
+        return web.Response(text=LOADER_JS, content_type="text/javascript", charset="utf-8", headers={"Cache-Control": "no-cache"})
+
+
+class MetaView(HomeAssistantView):
+    url = META_URL
+    name = "atom_home:meta"
+    requires_auth = False
+
+    async def get(self, request: web.Request) -> web.StreamResponse:
+        try:
+            etag = await request.app["hass"].async_add_executor_job(_bundle_etag, FRONTEND_DIR / FRONTEND_FILE)
+        except OSError:
+            return web.Response(status=404)
+        return web.json_response({"etag": etag, "version": request.app["hass"].data.get(DOMAIN, {}).get("_version", "0")}, headers={"Cache-Control": "no-store"})
 
 
 class BundleView(HomeAssistantView):
@@ -58,7 +93,7 @@ class BundleView(HomeAssistantView):
         if request.headers.get("If-None-Match") == etag:
             return web.Response(status=304, headers={"ETag": etag, "Cache-Control": "no-cache"})
         body = await request.app["hass"].async_add_executor_job(path.read_bytes)
-        return web.Response(body=body, content_type="text/javascript", charset="utf-8", headers={"ETag": etag, "Cache-Control": "no-cache"})
+        return web.Response(body=body, content_type="text/javascript", charset="utf-8", headers={"ETag": etag, "Cache-Control": "public, max-age=31536000, immutable" if request.query.get("e") == etag.strip('"') else "no-cache"})
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -81,13 +116,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         StaticPathConfig(PHOTOS_URL, str(photos_dir), cache_headers=True),
     ])
     hass.http.register_view(BundleView())
+    hass.http.register_view(LoaderView())
+    hass.http.register_view(MetaView())
     await panel_custom.async_register_panel(
         hass,
         webcomponent_name="atom-home-panel",
         frontend_url_path=PANEL_URL_PATH,
         sidebar_title=PANEL_TITLE,
         sidebar_icon=PANEL_ICON,
-        module_url=f"{BUNDLE_URL}?v={version}",
+        module_url=f"{LOADER_URL}?v={version}",
         embed_iframe=False,
         trust_external=False,
         require_admin=False,
