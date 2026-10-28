@@ -343,3 +343,5 @@
 
 .hm-shell .ah-tile-stack .ah-tile.is-pending{opacity:1}.hm-shell .ah-tile-stack .hm-chips>button:disabled{opacity:.5}
 @media (max-width:600px){.hm-shell .hm-range-tabs:not(.ah-segments) button,.hm-shell .ah-segments button{flex:0 0 auto;padding:0 14px}}
+
+.hm-shell .ah-tile-hit:disabled,.hm-shell .ah-row.is-button:disabled{color:inherit}
