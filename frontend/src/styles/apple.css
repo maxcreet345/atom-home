@@ -331,3 +331,9 @@
 .hm-shell .ah-module .hm-status-text strong,.hm-shell .ah-value-num{white-space:nowrap}
 @media (max-width:380px){.hm-shell .hm-head h1{font-size:24px}.hm-shell .hm-head p{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hm-shell .ah-module .hm-status-text strong{font-size:clamp(18px,19cqw,26px)}}
 @media (max-width:380px){.hm-shell .ah-value .ah-tile-text small{-webkit-line-clamp:1;white-space:nowrap;display:block;overflow:hidden;text-overflow:ellipsis}.hm-shell .ah-value-num b{font-size:clamp(22px,22cqw,34px)}}
+
+/* Home face: group tiles and the rooms strip */
+.hm-shell .ah-group-tile .ah-value-num b{font-size:clamp(26px,24cqw,40px)}
+.hm-shell .ah-grid>.ah-rooms-strip{grid-column:1/-1;aspect-ratio:auto;display:grid;gap:10px;margin-top:6px}
+.hm-shell .ah-rooms-strip .hm-room{aspect-ratio:4/3}
+.is-wide .ah-rooms-strip .hm-room-grid{grid-template-columns:repeat(4,minmax(0,1fr))}

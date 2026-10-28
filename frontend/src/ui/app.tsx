@@ -132,9 +132,16 @@ function Overview({ home, registry, config, modules, player, host, runner, toggl
   const hasPlayer = (x: HomeDevice) => modules.some(m => m.def.Player && m.entities.camera === x.primary.id);
   const climate = d.find(x => x.kind === 'climate'), cameras = d.filter(x => x.kind === 'camera' && (x.primary.available || hasPlayer(x))).sort((a, b) => Number(hasPlayer(b)) - Number(hasPlayer(a)) || Number(typeof b.primary.attributes.entity_picture === 'string') - Number(typeof a.primary.attributes.entity_picture === 'string')), weather = d.find(x => x.kind === 'weather');
   const wtemp = weather && typeof weather.primary.attributes.temperature === 'number' ? weather.primary.attributes.temperature : null;
-  const controls = d.filter(x => !['camera', 'weather', 'person', 'climate'].includes(x.kind) && actionsFor(x).some(a => a.id === 'toggle'));
-  const otherClimate = d.filter(x => x.kind === 'climate' && x !== climate);
-  const readings = d.filter(x => !['camera', 'weather', 'person', 'climate'].includes(x.kind) && !actionsFor(x).some(a => a.id === 'toggle'));
+  // Home face = favourites + one summary module per group (Xiaomi Home «Освещение · всё выключено»), rooms underneath; everything else lives in Rooms and Systems.
+  const favourites = d.filter(x => x.favorite && x !== climate && x.kind !== 'camera' && x.kind !== 'weather');
+  const rooms = home.rooms.filter(r => !r.hidden);
+  const groupDefs: Array<{ id: string; section: Section; icon: string; color: string; kinds: Kind[]; on?: (x: HomeDevice) => boolean }> = [
+    { id: 'lights', section: 'lights', icon: 'light', color: '#8e8e93', kinds: ['light'], on: x => isOn(x.primary) },
+    { id: 'climate', section: 'climate', icon: 'heating', color: '#ff9f0a', kinds: ['climate'], on: x => x.primary.available && x.primary.state !== 'off' },
+    { id: 'cleaning', section: 'cleaning', icon: 'vacuum', color: '#5e5ce6', kinds: ['vacuum'] },
+    { id: 'systems', section: 'systems', icon: 'systems', color: '#30d158', kinds: ['switch', 'socket', 'fan', 'cover', 'lock', 'valve', 'media', 'alarm_panel', 'environment', 'measurement', 'leak', 'opening', 'motion', 'alarm'] },
+  ];
+  const groups = groupDefs.map(g => { const list = d.filter(x => g.kinds.includes(x.kind) && !x.favorite && x !== climate); return { ...g, count: list.length, on: g.on ? list.filter(g.on).length : undefined, label: t(`section.${g.section}` as Key) }; }).filter(g => g.count > 0 && !config.sections[g.section]?.hidden);
   const temp = climate ? (typeof climate.primary.attributes.temperature === 'number' ? climate.primary.attributes.temperature : null) : null, cur = climate ? (typeof climate.primary.attributes.current_temperature === 'number' ? climate.primary.attributes.current_temperature : null) : null;
   const tempAction = climate ? actionsFor(climate).find(a => a.id === 'temperature') : undefined;
   const step = (dir: 1 | -1) => { if (climate && tempAction && temp !== null) void runner.run(climate, tempAction, Math.round((temp + dir * (tempAction.step ?? 0.5)) * 10) / 10); };
@@ -150,9 +157,10 @@ function Overview({ home, registry, config, modules, player, host, runner, toggl
     {watts !== null && <ValueTile icon="energy" value={watts >= 1000 ? num(watts / 1000, lang, 2) : num(watts, lang, 0)} unit={watts >= 1000 ? 'kW' : 'W'} label={t('overview.energy')} sub={t('overview.energy.now')} color="#30d158" onClick={() => go({ section: 'energy' })} className="hm-status tone-muted" />}
     {leaks.length > 0 && <ValueTile icon="water" value={wet.length ? t('state.wet') : t('overview.leaks.dry')} label={t('overview.leaks')} sub={wet.length ? wet.map(x => x.name).join(', ') : t('rooms.count', { n: leaks.length }).replace(/^\d+ /, `${leaks.length} `)} color={wet.length ? '#ff3b30' : '#32ade6'} onClick={() => go({ section: 'systems' })} className={`hm-status ${wet.length ? 'tone-danger' : 'tone-calm'}`} />}
     {cameras.slice(1).map(c => <CameraTile device={c} player={player(c, 'tile')} onOpen={() => go({ section: 'home', device: c.key })} t={t} lang={lang} />)}
-    {controls.map(x => tile(x))}
-    {otherClimate.map(x => tile(x, 'climate'))}
-    {readings.map(x => tile(x))}
+    {groups.map(g => <ValueTile icon={g.icon} value={g.on !== undefined ? String(g.on) : g.id === 'cleaning' && g.count === 1 ? stateText(d.find(x => x.kind === 'vacuum')!.primary, t, lang).split(' · ')[0] : String(g.count)} unit={g.on !== undefined ? `/ ${g.count}` : undefined} label={g.label} sub={g.on !== undefined ? t('overview.on', { n: g.on }) : t('overview.devices', { n: g.count })} color={g.on ? '#ffcc00' : g.color} onClick={() => go({ section: g.section })} className={`ah-group-tile kind-${g.id}`} />)}
+    {favourites.map(x => tile(x, x.kind === 'climate' ? 'climate' : 'home'))}
+    {rooms.length > 0 && <div className="ah-rooms-strip"><div className="hm-section-head"><h2>{t('section.rooms')}</h2><button type="button" className="hm-text-btn" onClick={() => go({ section: 'rooms' })}>{t('ui.all')}<Icon name="next" size={18} /></button></div>
+      <div className="hm-room-grid">{rooms.slice(0, 8).map(r => { const c = roomClimate(home, registry, r.id); return <RoomTile room={r} temperature={c.temperature} humidity={c.humidity} co2={c.co2} lightsOn={c.lights.filter(l => isOn(l.primary)).length} onClick={() => go({ section: 'rooms', room: r.id })} t={t} lang={lang} label={r.name || t('room.none')} />; })}</div></div>}
   </div>;
 }
 function CameraTile({ device, player, onOpen, t, lang, large }: { device: HomeDevice; player?: JSX.Element | null; onOpen: () => void; t: ReturnType<typeof translator>; lang: 'ru' | 'ro' | 'en'; large?: boolean }) {

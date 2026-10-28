@@ -24,10 +24,11 @@ try {
     const has = sel => page.evaluate(sel => !!document.querySelector(sel), sel);
     const rawKeys = () => page.evaluate(() => [...document.querySelectorAll('.at-shell *')].filter(e => e.children.length === 0 && /^[a-z]+\.[a-zA-Z0-9_.]+$/.test(e.textContent.trim())).map(e => e.textContent.trim()).slice(0, 10));
     // 1. light tile toggle → light.turn_on, toast with the rejection
-    await go('home'); const lightKey = await page.evaluate(() => document.querySelector('.ah-tile.kind-light:not(.is-off)')?.dataset.deviceKey);
+    await go('lights'); const lightKey = await page.evaluate(() => document.querySelector('.ah-tile.kind-light:not(.is-off)')?.dataset.deviceKey);
     await page.evaluate(k => document.querySelector(`.ah-tile[data-device-key="${k}"] .ah-tile-hit`).click(), lightKey); await page.waitForTimeout(500);
     let c = await last(); check(`${tag}/light-tile-toggles-the-light`, !!c && c.domain === 'light' && /^(toggle|turn_on)$/.test(c.service) && c.data.entity_id === lightKey.slice(2), { c, lightKey });
     check(`${tag}/rejected-command-shows-toast`, await has('.hm-toast'));
+    await go('home');
     // 2. thermostat chevrons → climate.set_temperature ±0.5 around the target
     const target = await page.evaluate(() => { const v = document.querySelector('.ah-thermo .ah-thermo-value'); const m = /(\d+(?:[.,]\d+)?)°/.exec(v.querySelector('small')?.innerText ?? ''); return Number((m && /цель|target|țint/i.test(v.querySelector('small').innerText) ? m[1] : v.querySelector('b').innerText).replace(',', '.')); });
     await page.evaluate(() => document.querySelector('.ah-thermo .ah-chev.is-up').click()); await page.waitForTimeout(400); c = await last();
@@ -44,14 +45,14 @@ try {
     await page.evaluate(() => document.querySelector('.ah-thermo .ah-tile-hit').click()); await page.waitForTimeout(400);
     await page.mouse.click(w - 4, 4); await page.waitForTimeout(300); const scrimClosed = !(await has('.hm-sheet'));
     check(`${tag}/sheet-closes-on-escape-and-scrim`, escClosed && scrimClosed, { escClosed, scrimClosed });
-    await go('home');
+    await go('lights');
     // 5. sheet controls: brightness slider → light.turn_on with brightness_pct; switch → turn_on
     await page.evaluate(k => document.querySelector(`.ah-tile[data-device-key="${k}"] .ah-tile-more`).click(), lightKey); await page.waitForTimeout(400);
     const hadRange = await has('.hm-sheet input[type=range]');
     if (hadRange) { await page.evaluate(() => { const r = document.querySelector('.hm-sheet input[type=range]'); r.value = '40'; r.dispatchEvent(new Event('input', { bubbles: true })); r.dispatchEvent(new Event('change', { bubbles: true })); }); await page.waitForTimeout(400); c = await last(); }
     check(`${tag}/sheet-brightness-slider-calls-light`, !hadRange || (c.domain === 'light' && c.data.brightness_pct === 40), { hadRange, c });
     await page.keyboard.press('Escape'); await page.waitForTimeout(200);
-    await go('home');
+    await go('lights');
     // 6. unavailable device: toggle disabled, tile faded
     const offKey = await page.evaluate(() => document.querySelector('.ah-tile.is-off')?.dataset.deviceKey);
     check(`${tag}/unavailable-tile-cannot-toggle`, !!offKey && await page.evaluate(k => document.querySelector(`.ah-tile[data-device-key="${k}"] .ah-tile-hit`).disabled, offKey), { offKey });
