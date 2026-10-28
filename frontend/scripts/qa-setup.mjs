@@ -89,6 +89,19 @@ try {
   await page.evaluate(() => document.querySelector('.hm-camera-tile')?.click()); await page.waitForTimeout(500); await shot('sheet-go2rtc-stage');
   check('go2rtc-stage-in-sheet', await page.evaluate(() => !!document.querySelector('.hm-sheet .at-camera-stage .at-go2rtc')));
   await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+  // 6c. stock device art: light tiles and rows carry an SVG illustration guessed from the kind; the configurator can switch it off per device
+  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Свет')?.click()); await page.waitForTimeout(500); await shot('lights-art');
+  check('device-art-on-light-tile-without-photo', await page.evaluate(() => { const tiles = [...document.querySelectorAll('.at-light')]; return tiles.length > 0 && tiles.every(x => x.querySelector('img.hm-photo') || x.querySelector('svg[data-art]')); }));
+  await page.evaluate(() => document.querySelector('.at-light[data-device-key="e:light.yeelink_ceila_fed1_light"] .hm-light-more')?.click()); await page.waitForTimeout(400);
+  check('light-art-in-sheet-head', await page.evaluate(() => /^(light|chandelier)$/.test(document.querySelector('.hm-sheet .hm-sheet-photo svg[data-art]')?.dataset.art ?? '')), await page.evaluate(() => ({ sheet: !!document.querySelector('.hm-sheet'), tile: !!document.querySelector('.at-light[data-device-key="e:light.yeelink_ceila_fed1_light"]'), keys: [...document.querySelectorAll('.at-light')].slice(0, 2).map(x => x.dataset.deviceKey), photo: document.querySelector('.hm-sheet .hm-sheet-photo')?.innerHTML.slice(0, 120) }))); await shot('sheet-art');
+  await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Системы')?.click()); await page.waitForTimeout(500); await shot('systems-art');
+  check('device-art-on-rows', (await page.evaluate(() => document.querySelectorAll('.hm-row .hm-thumb svg[data-art]').length)) >= 5);
+  await page.evaluate(() => [...document.querySelectorAll('.hm-sidebar nav button')].find(b => b.innerText.trim() === 'Настройка')?.click()); await page.waitForTimeout(400);
+  await page.evaluate(() => [...document.querySelectorAll('.at-setup-tabs button')].find(b => b.innerText.trim() === 'Устройства')?.click()); await page.waitForTimeout(300);
+  await page.evaluate(() => document.querySelector('[data-device-key="e:light.yeelink_ceila_fed1_light"] .hm-row-open')?.click()); await page.waitForTimeout(300);
+  await page.evaluate(() => { const s = document.querySelector('[data-device-key="e:light.yeelink_ceila_fed1_light"] .at-art-field select'); s.value = 'none'; s.dispatchEvent(new Event('change', { bubbles: true })); }); await page.waitForTimeout(400);
+  check('art-none-persisted-and-removed', await page.evaluate(() => JSON.parse(localStorage.getItem('atom-home:config')).devices['e:light.yeelink_ceila_fed1_light'].art === 'none' && !document.querySelector('[data-device-key="e:light.yeelink_ceila_fed1_light"] .hm-thumb svg[data-art]')));
   // 7. non-admin sees no setup
   await page.evaluate(() => { localStorage.clear(); });
   await page.close();

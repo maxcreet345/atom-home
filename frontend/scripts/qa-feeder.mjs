@@ -38,6 +38,16 @@ try {
     check(`${tag}/plan-toggle-asks-first`, /план кормления/.test(await text('.at-feeder-confirm')) && (await page.evaluate(() => window.atomPreview.host.log.length)) === 1);
     await page.evaluate(() => document.querySelector('.at-feeder-plan-yes').click()); await page.waitForTimeout(400);
     check(`${tag}/plan-toggle-calls-switch-off`, await page.evaluate(() => { const l = window.atomPreview.host.log; return l.length === 2 && l[1].domain === 'switch' && l[1].service === 'turn_off' && l[1].data.entity_id === 'switch.xiaomi_iv2001_318f_schedule_state'; }));
+    // schedule editor: change the second meal, save after confirmation → one MIOT action 5/2 with the rewritten string, rejected by the preview host
+    await page.evaluate(() => document.querySelector('.at-feeder-edit').click()); await page.waitForTimeout(200);
+    check(`${tag}/editor-opens-with-three-rows`, (await page.evaluate(() => document.querySelectorAll('.at-feeder-edit-row').length)) === 3);
+    await page.evaluate(() => { const row = document.querySelectorAll('.at-feeder-edit-row')[1]; const time = row.querySelector('input[type=time]'); time.value = '13:30'; time.dispatchEvent(new Event('input', { bubbles: true })); const dose = row.querySelector('input[type=number]'); dose.value = '2'; dose.dispatchEvent(new Event('input', { bubbles: true })); }); await page.waitForTimeout(200);
+    await page.evaluate(() => document.querySelector('.at-feeder-save').click()); await page.waitForTimeout(200);
+    check(`${tag}/save-confirm-lists-plan`, /13:30 — 2 порции/.test(await text('.at-feeder-confirm')), { confirm: await text('.at-feeder-confirm') });
+    await shot('plan-editor');
+    await page.evaluate(() => document.querySelector('.at-feeder-save-yes').click()); await page.waitForTimeout(500);
+    check(`${tag}/plan-sent-as-action-5-2-and-rejected`, await page.evaluate(() => { const l = window.atomPreview.host.log; const c = l[l.length - 1]; return l.length === 3 && c.domain === 'xiaomi_miot' && c.service === 'call_action' && c.data.entity_id === 'button.xiaomi_iv2001_318f_info' && c.data.siid === 5 && c.data.aiid === 2 && c.data.params[0] === '[1,08000201,13300201,18000201]'; }), { log: await page.evaluate(() => window.atomPreview.host.log.slice(-1)) });
+    check(`${tag}/feeder-head-uses-stock-art`, await page.evaluate(() => !!document.querySelector('.at-feeder .at-module-art svg[data-art="feeder"]')));
     await page.close();
   }
 } finally { await browser.close(); server.close(); }

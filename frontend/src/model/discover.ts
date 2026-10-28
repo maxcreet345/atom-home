@@ -9,7 +9,7 @@ export interface EntityRef {
 }
 export interface Room { id: string; name: string; hidden: boolean; photo: string | null; order: number; areaTemperature: string | null; areaHumidity: string | null }
 export interface HomeDevice {
-  key: string; kind: Kind; name: string; roomId: string; icon: string | null; photo: string | null; order: number; enabled: boolean; available: boolean;
+  key: string; kind: Kind; name: string; roomId: string; icon: string | null; photo: string | null; art: string | null; order: number; enabled: boolean; available: boolean;
   primary: EntityRef; controls: EntityRef[]; metrics: EntityRef[]; parameters: EntityRef[]; diagnostics: EntityRef[];
   manufacturer: string | null; model: string | null; haDeviceId: string | null; section: Section | null;
 }
@@ -58,7 +58,7 @@ export function discover(reg: Registry, config: HouseConfig): Home {
       controls.sort((a, b) => KIND_PRIORITY.indexOf(a.kind!) - KIND_PRIORITY.indexOf(b.kind!) || a.e.entity_id.localeCompare(b.e.entity_id));
       controls.forEach((c, i) => {
         const primary = ref(c.e, c.s, c.kind, entityName(c.e.entity_id));
-        cards.push({ key: `e:${c.e.entity_id}`, kind: c.kind!, name: primary.name, roomId: roomOf(c.e, d), icon: null, photo: null, order: 0, enabled: true, available: primary.available,
+        cards.push({ key: `e:${c.e.entity_id}`, kind: c.kind!, name: primary.name, roomId: roomOf(c.e, d), icon: null, photo: null, art: null, order: 0, enabled: true, available: primary.available,
           primary, controls: [primary], metrics: i === 0 ? sensorRefs : [], parameters: i === 0 ? parameters : [], diagnostics: i === 0 ? diagnostics : [],
           manufacturer: d.manufacturer ?? null, model: d.model ?? null, haDeviceId: deviceId, section: sectionOfKind(c.kind!) });
       });
@@ -77,7 +77,7 @@ export function discover(reg: Registry, config: HouseConfig): Home {
         list.sort((a, b) => rank(a) - rank(b));
         const refs = list.map(x => ref(x.e, x.s, x.kind, entityName(x.e.entity_id)));
         const suffix = groups.size > 1 && !first ? `:${kind}` : '';
-        cards.push({ key: `d:${deviceId}${suffix}`, kind, name: deviceName(d), roomId: roomOf(list[0].e, d), icon: null, photo: null, order: 0, enabled: true, available: refs.some(r => r.available),
+        cards.push({ key: `d:${deviceId}${suffix}`, kind, name: deviceName(d), roomId: roomOf(list[0].e, d), icon: null, photo: null, art: null, order: 0, enabled: true, available: refs.some(r => r.available),
           primary: refs[0], controls: [], metrics: refs, parameters: first ? parameters : [], diagnostics: first ? diagnostics : [], manufacturer: d.manufacturer ?? null, model: d.model ?? null, haDeviceId: deviceId, section: sectionOfKind(kind) });
         first = false;
       }
@@ -88,7 +88,7 @@ export function discover(reg: Registry, config: HouseConfig): Home {
     const s = reg.states[e.entity_id], kind = entityKind(e, s);
     if (!kind || entityCategory(e, kind) !== 'primary') continue;
     const primary = ref(e, s, kind, entityName(e.entity_id));
-    cards.push({ key: `e:${e.entity_id}`, kind, name: primary.name, roomId: roomOf(e), icon: null, photo: null, order: 0, enabled: true, available: primary.available, primary, controls: CONTROL_KINDS.includes(kind) ? [primary] : [], metrics: CONTROL_KINDS.includes(kind) ? [] : [primary], parameters: [], diagnostics: [], manufacturer: null, model: null, haDeviceId: null, section: sectionOfKind(kind) });
+    cards.push({ key: `e:${e.entity_id}`, kind, name: primary.name, roomId: roomOf(e), icon: null, photo: null, art: null, order: 0, enabled: true, available: primary.available, primary, controls: CONTROL_KINDS.includes(kind) ? [primary] : [], metrics: CONTROL_KINDS.includes(kind) ? [] : [primary], parameters: [], diagnostics: [], manufacturer: null, model: null, haDeviceId: null, section: sectionOfKind(kind) });
   }
   // Configuration overlay: merges first, then per-card overrides.
   const byKey = new Map(cards.map(c => [c.key, c]));
@@ -107,6 +107,7 @@ export function discover(reg: Registry, config: HouseConfig): Home {
     if (o.roomId) c.roomId = o.roomId;
     if (o.icon) c.icon = o.icon;
     if (o.photo) c.photo = o.photo;
+    if (o.art) c.art = o.art;
     if (o.kind) { c.kind = o.kind; c.section = sectionOfKind(o.kind); }
     if (typeof o.order === 'number') c.order = o.order;
   }

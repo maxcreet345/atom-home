@@ -33,3 +33,19 @@ export function feedCall(entityId: string, portions: number, maxPortions: number
   return { domain: 'xiaomi_miot', service: 'call_action', data: { entity_id: entityId, siid: FEED_SIID, aiid: FEED_AIID, params: [{ piid: FEED_DOSE_PIID, value: portions }] } };
 }
 export const optionInt = (v: string | undefined, fallback: number, min: number, max: number) => { const n = Number(v); return Number.isInteger(n) && n >= min && n <= max ? n : fallback; };
+/** Rewrite only the time and dose of the existing rows (the fields confirmed against the device's Xiaomi Home UI); header, row count and per-row suffix are preserved. Throws on any mismatch. */
+export function editFeederSchedule(original: string, meals: FeederMeal[]): string {
+  const source = parseFeederSchedule(original);
+  if (!source?.meals.length || source.meals.length !== meals.length) throw new Error('schedule: row set changed');
+  if (meals.some(m => !/^([01]\d|2[0-3]):[0-5]\d$/.test(m.time) || !Number.isInteger(m.portions) || m.portions < 1 || m.portions > 15)) throw new Error('schedule: bad time or dose');
+  if (new Set(meals.map(m => m.time)).size !== meals.length) throw new Error('schedule: duplicate time');
+  const tokens = source.raw.slice(1, -1).split(',');
+  return '[' + tokens[0] + ',' + meals.map((m, n) => m.time.replace(':', '') + String(m.portions).padStart(2, '0') + tokens[n + 1].slice(6)).join(',') + ']';
+}
+export const SCHEDULE_SIID = 5, SCHEDULE_AIID = 2;
+/** Service call that stores a daily plan on the feeder (MIOT action 5/2 with the schedule string as its only parameter). */
+export function scheduleCall(infoEntityId: string, value: string): { domain: string; service: string; data: Record<string, unknown> } {
+  if (!/^button\.[a-z0-9_]+$/.test(infoEntityId)) throw new Error('feeder: bad entity');
+  if (!parseFeederSchedule(value)) throw new Error('feeder: bad schedule');
+  return { domain: 'xiaomi_miot', service: 'call_action', data: { entity_id: infoEntityId, siid: SCHEDULE_SIID, aiid: SCHEDULE_AIID, params: [value] } };
+}

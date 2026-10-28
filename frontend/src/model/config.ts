@@ -3,7 +3,7 @@ import type { Kind } from './kinds.ts';
 
 export type Language = 'ru' | 'ro' | 'en';
 export interface RoomOverride { name?: string; photo?: string | null; hidden?: boolean; order?: number }
-export interface DeviceOverride { enabled?: boolean; name?: string; roomId?: string; icon?: string; kind?: Kind; mergeInto?: string; order?: number; photo?: string | null }
+export interface DeviceOverride { enabled?: boolean; name?: string; roomId?: string; icon?: string; kind?: Kind; mergeInto?: string; order?: number; photo?: string | null; /** stock illustration: a DeviceArtType, 'none', or unset = guessed */ art?: string }
 export interface ModuleOverride { enabled?: boolean; entities?: Record<string, string>; options?: Record<string, string> }
 export interface EntityOverride { hidden?: boolean; name?: string }
 export interface CustomButton { id: string; label: string; icon?: string; roomId?: string; service: string; target?: Record<string, unknown>; data?: Record<string, unknown>; confirm: boolean }
@@ -45,7 +45,7 @@ export function normaliseConfig(input: unknown): { config: HouseConfig; warnings
   const bool = (v: unknown) => typeof v === 'boolean' ? v : undefined;
   const photo = (v: unknown) => typeof v === 'string' && /^(\/atom_home_photos\/[a-z0-9]{12,32}\.(jpg|png|webp)|\/local\/[\w./-]+|https?:\/\/[^\s"']+|data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+)$/.test(v) && v.length <= 1_200_000 ? v : v === null ? null : undefined;
   out.rooms = map(input.rooms, v => ({ name: str(v.name), photo: photo(v.photo), hidden: bool(v.hidden), order: num(v.order) })) as HouseConfig['rooms'];
-  out.devices = map(input.devices, v => ({ enabled: bool(v.enabled), name: str(v.name), roomId: str(v.roomId), icon: str(v.icon, 40), kind: str(v.kind, 20), mergeInto: str(v.mergeInto, 160), order: num(v.order), photo: photo(v.photo) })) as HouseConfig['devices'];
+  out.devices = map(input.devices, v => ({ enabled: bool(v.enabled), name: str(v.name), roomId: str(v.roomId), icon: str(v.icon, 40), kind: str(v.kind, 20), art: str(v.art, 20), mergeInto: str(v.mergeInto, 160), order: num(v.order), photo: photo(v.photo) })) as HouseConfig['devices'];
   out.modules = map(input.modules, v => ({ enabled: bool(v.enabled), entities: plain(v.entities) ? Object.fromEntries(Object.entries(v.entities).filter(([k, e]) => /^\w{1,32}$/.test(k) && typeof e === 'string' && /^[a-z_]+\.[a-z0-9_]+$/.test(e))) : undefined, options: plain(v.options) ? Object.fromEntries(Object.entries(v.options).filter(([k, e]) => /^\w{1,32}$/.test(k) && typeof e === 'string' && /^[\w.\-]{1,64}$/.test(e))) : undefined })) as HouseConfig['modules'];
   out.entities = map(input.entities, v => ({ hidden: bool(v.hidden), name: str(v.name) })) as HouseConfig['entities'];
   if (Array.isArray(input.buttons)) for (const b of input.buttons.slice(0, 64)) {

@@ -4,6 +4,9 @@ import type { HomeDevice, EntityRef, Room } from '../model/discover.ts';
 import type { T } from '../i18n/index.ts';
 import { stateText, isOn, num, iconOfKind, type Lang } from './format.ts';
 import { stockRoomArt } from './art.ts';
+import { DeviceArt, deviceArtType, DEVICE_ART_TYPES, type DeviceArtType } from './device-art.tsx';
+/** Stock picture for a card: the owner's choice from the configurator, else guessed from kind and name; 'none' switches it off. */
+export function artOf(device: Pick<HomeDevice, 'kind' | 'name' | 'model' | 'art'>): DeviceArtType | null { if (device.art === 'none') return null; if (device.art && (DEVICE_ART_TYPES as string[]).includes(device.art)) return device.art as DeviceArtType; return deviceArtType(device.kind, device.name, device.model ?? ''); }
 
 export function StatusCard({ icon, title, value, hint, tone, onClick, aside }: { icon: string; title: string; value: string; hint: string; tone: string; onClick?: () => void; aside?: ComponentChildren }) {
   return <div className={`hm-card hm-status tone-${tone} ${aside ? 'has-aside' : ''}`} role={onClick ? 'button' : undefined} tabIndex={onClick ? 0 : undefined} onClick={onClick} onKeyDown={e => { if (onClick && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onClick(); } }}>
@@ -25,7 +28,7 @@ export function LightTile({ device, photo, pending, onToggle, onOpen, t, lang }:
   const e = device.primary, on = isOn(e), off = !e.available;
   return <div className={`hm-card hm-light at-light ${on ? 'is-on' : ''} ${off ? 'is-off' : ''} ${pending ? 'is-pending' : ''}`} data-device-key={device.key}>
     <button type="button" className="hm-light-hit" disabled={pending || off} onClick={onToggle} aria-label={`${device.name}: ${on ? t('action.off') : t('action.on')}`}>
-      {(device.photo ?? photo) ? <img className="hm-photo" src={(device.photo ?? photo)!} alt="" loading="lazy" /> : <span className="at-light-art" aria-hidden="true"><Icon name="light" size={56} /></span>}
+      {(device.photo ?? photo) ? <img className="hm-photo" src={(device.photo ?? photo)!} alt="" loading="lazy" /> : <span className="at-light-art" aria-hidden="true">{artOf(device) ? <DeviceArt type={artOf(device)!} fill /> : <Icon name="light" size={56} />}</span>}
       <span className="hm-light-bulb"><Icon name="light" size={26} /></span>
       <span className="hm-light-text"><strong>{device.name}</strong><small>{stateText(e, t, lang)}</small></span>
     </button>
@@ -36,7 +39,7 @@ export function DeviceRow({ device, name, pending, onToggle, onOpen, t, lang }: 
   const e = device.primary, on = isOn(e), tone = !e.available ? 'is-off' : (device.kind === 'leak' && e.state === 'on') || (device.kind === 'alarm' && e.state === 'on') ? 'is-danger' : on ? 'is-on' : '';
   return <div className={`hm-row ${tone}`} data-device-key={device.key}>
     <button type="button" className="hm-row-open" onClick={onOpen} aria-label={`${t('ui.details')}: ${name ?? device.name}`}>
-      <span className="hm-thumb">{device.photo ? <img src={device.photo} alt="" loading="lazy" /> : <Icon name={iconOfKind[device.kind] ?? 'generic'} size={22} />}</span>
+      <span className="hm-thumb">{device.photo ? <img src={device.photo} alt="" loading="lazy" /> : artOf(device) ? <DeviceArt type={artOf(device)!} fill /> : <Icon name={iconOfKind[device.kind] ?? 'generic'} size={22} />}</span>
       <span className="hm-row-text"><strong>{name ?? device.name}</strong><small>{stateText(e, t, lang)}</small></span>
     </button>
     {onToggle ? <Switch on={on} pending={pending} disabled={!e.available} label={`${name ?? device.name}: ${on ? t('action.off') : t('action.on')}`} onToggle={onToggle} /> : <Icon name="more" size={20} />}

@@ -8,6 +8,8 @@ import { languages, type T, type Key } from '../i18n/index.ts';
 import { exportConfig, importConfig, type PhotoStore } from '../runtime/store.ts';
 import { MODULES } from '../modules/index.ts';
 import { stockRoomArt } from './art.ts';
+import { artOf } from './cards.tsx';
+import { DeviceArt, DEVICE_ART_TYPES } from './device-art.tsx';
 import { iconOfKind, stateText, type Lang } from './format.ts';
 
 type Tab = 'devices' | 'rooms' | 'sections' | 'buttons' | 'modules' | 'home';
@@ -50,13 +52,14 @@ function DevicesTab({ home, config, patch, t, lang, photos }: { home: Home; conf
       {byRoom.get(rid)!.map(d => { const o = config.devices[d.key] ?? {}; const isOpen = open === d.key; return <div className={`hm-row at-setup-row ${d.enabled ? '' : 'is-off'}`} data-device-key={d.key}>
         <div className="at-setup-main">
           <Toggle on={d.enabled} label={`${t('setup.show')}: ${d.name}`} onToggle={() => patch(c => { c.devices[d.key] = { ...(c.devices[d.key] ?? {}), enabled: !d.enabled }; })} />
-          <button type="button" className="hm-row-open" onClick={() => setOpen(isOpen ? null : d.key)} aria-expanded={isOpen}><span className="hm-thumb"><Icon name={d.icon ?? iconOfKind[d.kind] ?? 'generic'} size={22} /></span><span className="hm-row-text"><strong>{d.name}</strong><small>{t(`kind.${d.kind}` as Key)} · {d.primary.id} · {stateText(d.primary, t, lang)}</small></span><Icon name={isOpen ? 'back' : 'next'} size={18} /></button>
+          <button type="button" className="hm-row-open" onClick={() => setOpen(isOpen ? null : d.key)} aria-expanded={isOpen}><span className="hm-thumb">{d.photo ? <img src={d.photo} alt="" /> : artOf(d) ? <DeviceArt type={artOf(d)!} fill /> : <Icon name={d.icon ?? iconOfKind[d.kind] ?? 'generic'} size={22} />}</span><span className="hm-row-text"><strong>{d.name}</strong><small>{t(`kind.${d.kind}` as Key)} · {d.primary.id} · {stateText(d.primary, t, lang)}</small></span><Icon name={isOpen ? 'back' : 'next'} size={18} /></button>
         </div>
         {isOpen && <div className="at-setup-form">
           <label className="at-field"><span>{t('setup.name')}</span><input type="text" value={o.name ?? ''} placeholder={d.name} maxLength={80} onChange={e => patch(c => { const v = (e.target as HTMLInputElement).value.trim(); c.devices[d.key] = { ...(c.devices[d.key] ?? {}), name: v || undefined }; })} /></label>
           <label className="at-field"><span>{t('setup.room')}</span><select value={o.roomId ?? d.roomId} onChange={e => patch(c => { c.devices[d.key] = { ...(c.devices[d.key] ?? {}), roomId: (e.target as HTMLSelectElement).value }; })}>{[...home.rooms, ...(home.rooms.some(r => r.id === NO_ROOM) ? [] : [{ id: NO_ROOM, name: t('room.none') }])].map(r => <option value={r.id}>{r.name || t('room.none')}</option>)}</select></label>
           <label className="at-field"><span>{t('setup.kind')}</span><select value={o.kind ?? d.kind} onChange={e => patch(c => { c.devices[d.key] = { ...(c.devices[d.key] ?? {}), kind: (e.target as HTMLSelectElement).value as Kind }; })}>{KINDS.map(k => <option value={k}>{t(`kind.${k}` as Key)}</option>)}</select></label>
           <label className="at-field"><span>{t('setup.icon')}</span><select value={o.icon ?? ''} onChange={e => patch(c => { c.devices[d.key] = { ...(c.devices[d.key] ?? {}), icon: (e.target as HTMLSelectElement).value || undefined }; })}><option value="">—</option>{ICONS.map(i => <option value={i}>{i}</option>)}</select></label>
+          <label className="at-field at-art-field"><span>{t('setup.art')}</span><select value={o.art ?? ''} onChange={e => patch(c => { c.devices[d.key] = { ...(c.devices[d.key] ?? {}), art: (e.target as HTMLSelectElement).value || undefined }; })}><option value="">{t('setup.art.auto')}</option><option value="none">{t('setup.art.none')}</option>{DEVICE_ART_TYPES.map(a => <option value={a}>{t(`art.${a}` as Key)}</option>)}</select></label>
           <label className="at-field"><span>{t('setup.mergeInto')}</span><select value={o.mergeInto ?? ''} onChange={e => patch(c => { c.devices[d.key] = { ...(c.devices[d.key] ?? {}), mergeInto: (e.target as HTMLSelectElement).value || undefined }; })}><option value="">{t('setup.noMerge')}</option>{home.devices.filter(x => x.key !== d.key && x.roomId === d.roomId && !config.devices[x.key]?.mergeInto).map(x => <option value={x.key}>{x.name} · {t(`kind.${x.kind}` as Key)}</option>)}</select></label>
           <label className="at-field"><span>{t('setup.order')}</span><input type="number" value={o.order ?? 0} onChange={e => patch(c => { c.devices[d.key] = { ...(c.devices[d.key] ?? {}), order: Number((e.target as HTMLInputElement).value) || 0 }; })} /></label>
           <PhotoField label={t('setup.photo')} value={o.photo ?? null} photos={photos} t={t} onChange={url => patch(c => { c.devices[d.key] = { ...(c.devices[d.key] ?? {}), photo: url }; })} />

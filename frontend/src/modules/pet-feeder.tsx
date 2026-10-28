@@ -2,8 +2,9 @@ import { useState } from 'preact/hooks';
 import type { ModuleDef } from './types.ts';
 import { petFeederSpec } from './catalog.ts';
 import { Icon } from '../ui/primitives.tsx';
+import { DeviceArt } from '../ui/device-art.tsx';
 import { num } from '../ui/format.ts';
-import { feedCall, nextMeal, optionInt, parseFeederSchedule, SCHEDULE_ATTR } from './feeder-protocol.ts';
+import { editFeederSchedule, feedCall, nextMeal, optionInt, parseFeederSchedule, scheduleCall, SCHEDULE_ATTR, type FeederMeal } from './feeder-protocol.ts';
 /** Xiaomi MIOT pet feeder: bowl weight, stock, daily plan with the next meal, warnings; one confirmed dosed feed per press; plan on/off with confirmation. Schedule editing stays out of scope. */
 export const petFeeder: ModuleDef = {
   ...petFeederSpec,
@@ -21,17 +22,20 @@ export const petFeeder: ModuleDef = {
     const grams = optionInt(options.portionGrams, 10, 1, 200), max = optionInt(options.maxPortions, 15, 1, 50);
     const warnings = [low && t('module.feeder.stockLow'), desiccantDue && t('module.feeder.desiccantDue'), outAbnormal && t('module.feeder.outAbnormal')].filter((x): x is string => !!x);
     const tone = !available ? 'muted' : warnings.length ? 'warning' : 'calm';
-    const [dose, setDose] = useState(1), [confirm, setConfirm] = useState<'feed' | 'plan' | null>(null), [busy, setBusy] = useState(false), [note, setNote] = useState('');
+    const [dose, setDose] = useState(1), [confirm, setConfirm] = useState<'feed' | 'plan' | 'save' | null>(null), [busy, setBusy] = useState(false), [note, setNote] = useState('');
+    const [draft, setDraft] = useState<{ original: string; meals: FeederMeal[] } | null>(null);
+    const stale = !!draft && !!schedule && draft.original !== schedule.raw;
+    const draftValue = () => { try { return draft ? editFeederSchedule(draft.original, draft.meals) : null; } catch { return null; } };
     const portions = (n: number) => t('module.feeder.portions', { n }), approx = (n: number) => t('module.feeder.approx', { g: n * grams });
-    const run = async (call: { domain: string; service: string; data: Record<string, unknown> }) => {
+    const run = async (call: { domain: string; service: string; data: Record<string, unknown> }, okText = t('module.feeder.sent')) => {
       if (busy) return; setBusy(true); setNote('');
-      try { await host.call(call.domain, call.service, call.data); setNote(t('module.feeder.sent')); }
+      try { await host.call(call.domain, call.service, call.data); setNote(okText); }
       catch (e) { setNote(`${t('module.feeder.fail')}: ${e instanceof Error ? e.message : String(e)}`); }
       finally { setBusy(false); setConfirm(null); }
     };
     if (compact) return <div className={`hm-card hm-status tone-${tone}`} role="status" data-module-card="pet_feeder"><span className="hm-status-icon"><Icon name="paw" size={20} /></span><span className="hm-status-text"><small>{t('module.pet_feeder')}</small><strong>{bowl === null ? '—' : `${num(bowl, lang, 0)} g`}</strong><span>{warnings[0] ?? (planOn ? (next ? `${t('module.feeder.next')} ${next.time}` : t('module.feeder.planOn')) : t('module.feeder.planOff'))}</span></span></div>;
     return <section className="hm-card at-feeder" data-module-card="pet_feeder">
-      <div className="at-feeder-head"><span className={`hm-status-icon ${available ? 'is-on' : ''}`}><Icon name="paw" size={22} /></span><div><strong>{t('module.pet_feeder')}</strong><small>{!available ? t('state.unavailable') : planOn ? t('module.feeder.planOn') : t('module.feeder.planOff')}</small></div>
+      <div className="at-feeder-head"><span className={`at-module-art ${available ? 'is-on' : ''}`}><DeviceArt type="feeder" fill /></span><div><strong>{t('module.pet_feeder')}</strong><small>{!available ? t('state.unavailable') : planOn ? t('module.feeder.planOn') : t('module.feeder.planOff')}</small></div>
         {planS && <button type="button" className={`hm-switch ${planOn ? 'is-on' : ''}`} role="switch" aria-checked={planOn} aria-label={t('module.feeder.plan')} disabled={busy || !available} onClick={() => setConfirm(confirm === 'plan' ? null : 'plan')}><span className="hm-switch-knob" /></button>}
       </div>
       {warnings.length > 0 && <div className="at-feeder-warn">{warnings.map(w => <span><Icon name="warning" size={14} />{w}</span>)}</div>}
@@ -41,6 +45,13 @@ export const petFeeder: ModuleDef = {
         <div className="at-boiler-tile at-feeder-plan"><small>{t('module.feeder.plan')}</small><strong>{schedule ? schedule.meals.map(m => `${m.time} · ${m.portions}`).join(', ') || '—' : '—'}</strong>{next && <span>{t('module.feeder.next')} {next.time} · {portions(next.portions)}</span>}</div>
         {entities.desiccant && <div className={`at-boiler-tile ${desiccantDue ? 'is-warning' : ''}`}><small>{t('module.feeder.desiccant')}</small><strong>{desiccant && Number.isFinite(Number(desiccant.state)) ? `${num(Number(desiccant.state), lang, 0)} %` : '—'}</strong></div>}
       </div>
+      {entities.info && schedule && schedule.meals.length > 0 && !draft && <button type="button" className="hm-pill at-feeder-edit" disabled={busy || !available} onClick={() => { setDraft({ original: schedule.raw, meals: schedule.meals.map(m => ({ ...m })) }); setNote(''); setConfirm(null); }}>{t('module.feeder.edit')}</button>}
+      {draft && <div className="at-feeder-editor" data-feeder-editor>
+        {draft.meals.map((m, n) => <div className="at-feeder-edit-row"><label className="at-field"><span>{t('module.feeder.time')}</span><input type="time" value={m.time} disabled={busy} onInput={e => setDraft(d => d && { ...d, meals: d.meals.map((x, k) => k === n ? { ...x, time: (e.target as HTMLInputElement).value } : x) })} /></label><label className="at-field"><span>{t('module.feeder.dose')}</span><input type="number" min={1} max={15} value={m.portions} disabled={busy} onInput={e => setDraft(d => d && { ...d, meals: d.meals.map((x, k) => k === n ? { ...x, portions: Number((e.target as HTMLInputElement).value) } : x) })} /></label></div>)}
+        {stale && <p className="at-feeder-note">{t('module.feeder.stale')}</p>}
+        <div className="hm-chips"><button type="button" className="hm-pill is-primary at-feeder-save" disabled={busy || stale || !draftValue()} onClick={() => setConfirm('save')}>{t('module.feeder.save')}</button><button type="button" className="hm-pill" disabled={busy} onClick={() => { setDraft(null); setConfirm(null); }}>{t('ui.close')}</button>{!stale && !draftValue() && <span className="at-feeder-note">{t('module.feeder.invalid')}</span>}</div>
+        {confirm === 'save' && draftValue() && <div className="at-feeder-confirm" role="alertdialog"><span>{t('module.feeder.saveConfirm', { plan: draft.meals.map(m => `${m.time} — ${portions(m.portions)}`).join('; ') })}</span><button type="button" className="hm-pill is-primary at-feeder-save-yes" disabled={busy} onClick={() => void run(scheduleCall(entities.info!, draftValue()!), t('module.feeder.planSent')).then(() => setDraft(null))}>{t('module.feeder.saveYes')}</button><button type="button" className="hm-pill" disabled={busy} onClick={() => setConfirm(null)}>{t('ui.close')}</button></div>}
+      </div>}
       <div className="at-feeder-feed">
         <div className="hm-stepper"><button type="button" className="hm-round" aria-label="−" disabled={busy || dose <= 1} onClick={() => setDose(d => Math.max(1, d - 1))}>−</button><div className="at-feeder-dose"><strong>{portions(dose)}</strong><small>{approx(dose)}</small></div><button type="button" className="hm-round" aria-label="+" disabled={busy || dose >= max} onClick={() => setDose(d => Math.min(max, d + 1))}>+</button></div>
         <button type="button" className="hm-pill is-primary at-feeder-go" disabled={busy || !available || confirm === 'feed'} onClick={() => setConfirm('feed')}>{t('module.feeder.feed')}</button>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import type { ModuleDef } from './types.ts';
 import { boilerEbusSpec } from './catalog.ts';
 import { Icon } from '../ui/primitives.tsx';
+import { DeviceArt } from '../ui/device-art.tsx';
 import { num } from '../ui/format.ts';
 /** Gas boiler on eBUS (ebusd): flow, return, hot water, pressure with the 1.0–1.5 bar norm, burner. Read-only. */
 export const boilerEbus: ModuleDef = {
@@ -15,7 +16,7 @@ export const boilerEbus: ModuleDef = {
     const tile = (role: string, label: string, unit: string, sub?: string, tone = '') => <div className={`at-boiler-tile ${tone}`}><small>{label}</small><strong>{val(role) === null ? '—' : num(val(role), lang, role === 'pressure' ? 2 : 1)} {unit}</strong>{sub && <span>{sub}</span>}<Spark points={hist[entities[role] ?? '']} band={role === 'pressure' ? [1, 1.5] : undefined} /></div>;
     if (compact) return <div className={`hm-card hm-status tone-${low || high ? 'warning' : 'calm'}`} role="status"><span className="hm-status-icon"><Icon name="flame" size={20} /></span><span className="hm-status-text"><small>{t('module.boiler.pressure')}</small><strong>{pressure === null ? '—' : `${num(pressure, lang, 2)} bar`}</strong><em>{low ? t('module.boiler.low') : high ? t('module.boiler.high') : t('module.boiler.norm')}</em></span></div>;
     return <section className="hm-card at-boiler">
-      <div className="at-boiler-head"><span className={`hm-status-icon ${burning ? 'is-on' : ''}`}><Icon name="flame" size={22} /></span><div><strong>{t('module.boiler_ebus')}</strong><small>{burning ? t('module.boiler.burning') : flame === 'off' ? t('module.boiler.idle') : t('state.unknown')}</small></div><span className={`hm-badge ${low || high ? 'tone-warning' : 'tone-calm'}`}>{pressure === null ? '—' : `${num(pressure, lang, 2)} bar`}</span></div>
+      <div className="at-boiler-head"><span className={`at-module-art ${burning ? 'is-on' : ''}`}><DeviceArt type="boiler" fill /></span><div><strong>{t('module.boiler_ebus')}</strong><small>{burning ? t('module.boiler.burning') : flame === 'off' ? t('module.boiler.idle') : t('state.unknown')}</small></div><span className={`hm-badge ${low || high ? 'tone-warning' : 'tone-calm'}`}>{pressure === null ? '—' : `${num(pressure, lang, 2)} bar`}</span></div>
       <div className="at-boiler-grid">
         {tile('flow', t('module.boiler.flow'), '°C', val('flowSet') !== null ? `${t('ui.target')} ${num(val('flowSet'), lang, 0)}°` : undefined)}
         {entities.return && tile('return', t('module.boiler.return'), '°C', val('flow') !== null && val('return') !== null ? `Δ ${num(Math.abs(val('flow')! - val('return')!), lang, 1)}°` : undefined)}
