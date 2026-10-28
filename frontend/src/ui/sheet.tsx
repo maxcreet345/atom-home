@@ -13,7 +13,9 @@ export interface Runner { run(device: HomeDevice, action: Action, value?: unknow
 type Common = { device: HomeDevice; runner: Runner; t: T; lang: Lang };
 const label = (a: Action, t: T) => t(a.label as Key) === a.label ? a.label : t(a.label as Key);
 /** Secondary entity names without the device's own name in front («Розетка туалет Delayed power on time» → «Delayed power on time»). */
-const short = (name: string, device: HomeDevice) => { const dev = (typeof device.primary.attributes.friendly_name === 'string' ? device.primary.attributes.friendly_name : device.name).trim(); const a = name.split(/\s+/); let best = 0; for (const base of [dev, device.name, ...device.metrics.map(m => m.name)]) { if (base === name) continue; const b = base.split(/\s+/); let n = 0; while (n < a.length - 1 && n < b.length && a[n].toLowerCase() === b[n].toLowerCase()) n++; if (n > best) best = n; } return best >= 2 || (best === 1 && a[0].length > 3) ? a.slice(best).join(' ').replace(/^[—·:-]+\s*/, '') : name; };
+const short = (name: string, device: HomeDevice) => { const dev = (typeof device.primary.attributes.friendly_name === 'string' ? device.primary.attributes.friendly_name : device.name).trim(); const a = name.split(/\s+/); let best = 0; for (const base of [dev, device.name]) { if (base === name) continue; const b = base.split(/\s+/); let n = 0; while (n < a.length - 1 && n < b.length && a[n].toLowerCase() === b[n].toLowerCase()) n++; if (n > best) best = n; } return best >= 2 || (best === 1 && a[0].length > 3) ? a.slice(best).join(' ').replace(/^[—·:-]+\s*/, '') : name; };
+/** Words every name in a group starts with (at least two, e.g. «Главный блок распределения Sonoff SPM») — dropped from all of them. */
+const commonPrefix = (names: string[]) => { if (names.length < 2) return 0; const w = names.map(n => n.split(/\s+/)); let k = 0; while (w.every(x => x.length > k + 1) && w.every(x => x[k].toLowerCase() === w[0][k].toLowerCase())) k++; return k >= 2 ? k : 0; };
 /** Secondary buttons that only repeat the primary actions (vacuum start/stop/charge/locate, info) are not shown twice. */
 const DUP_BUTTON = /_(start_sweep|stop_sweeping|start_charge|identify|info|locate|return_to_base|pause|stop|start)$/;
 /** Option label: `mode.<option>` (hvac modes, fan speeds, effects…), else `state.<option>`, else the raw option. */
@@ -59,7 +61,8 @@ function History({ entity, host, t, lang }: { entity: EntityRef; host?: Host; t:
 function Facts({ device, t, lang }: { device: HomeDevice; t: T; lang: Lang }) {
   const e = device.primary, list = device.metrics.filter(m => m.id !== e.id);
   if (!list.length) return null;
-  const names = list.map(m => { const same = list.filter(x => x.deviceClass === m.deviceClass).length > 1; return same ? short(m.name, device) : metricLabel(m, t); });
+  const pre = commonPrefix(list.map(m => m.name));
+  const names = list.map(m => { const same = list.filter(x => x.deviceClass === m.deviceClass).length > 1; return same ? short(m.name.split(/\s+/).slice(pre).join(' '), device) : metricLabel(m, t); });
   let caption = '';
   if (list.length > 1) { const words = names.map(n => n.split(/\s+/)); let k = 0; while (words.every(w => w.length > k + 1) && words.every(w => w[w.length - 1 - k].toLowerCase() === words[0][words[0].length - 1 - k].toLowerCase())) k++; if (k > 0) { caption = words[0].slice(-k).join(' ').replace(/^[—·:-]+\s*/, ''); names.forEach((_, i) => { names[i] = words[i].slice(0, -k).join(' ').replace(/[\s—·:-]+$/, ''); }); } }
   const cell = (m: EntityRef, i: number) => <div className="hm-fact"><small>{names[i]}</small><strong>{stateText(m, t, lang)}</strong></div>;
