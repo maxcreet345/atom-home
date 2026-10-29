@@ -179,7 +179,7 @@ function Overview({ home, registry, config, modules, player, host, runner, toggl
 function CameraTile({ device, player, onOpen, t, lang, large }: { device: HomeDevice; player?: JSX.Element | null; onOpen: () => void; t: ReturnType<typeof translator>; lang: 'ru' | 'ro' | 'en'; large?: boolean }) {
   const pic = typeof device.primary.attributes.entity_picture === 'string' ? device.primary.attributes.entity_picture : null;
   return <div className={`hm-card hm-camera-tile ah-camera ah-tile ${large ? 'is-large' : ''}`} role="button" tabIndex={0} onClick={onOpen}>
-    <div className="hm-camera-frame">{player ? player : pic ? <img className="at-camera-img" src={pic} alt="" /> : <div className="hm-camera-wait"><Icon name="camera" size={32} /><span>{stateText(device.primary, t, lang)}</span></div>}{!player && <span className={`hm-live ${device.primary.available ? 'is-live' : ''}`}><i />{device.primary.available ? t('state.idle') : t('state.unavailable')}</span>}
+    <div className="hm-camera-frame">{player ? player : pic ? <img className="at-camera-img" src={pic} alt="" /> : <div className="hm-camera-wait"><Icon name="camera" size={32} /><span>{stateText(device.primary, t, lang)}</span></div>}{!player && <span className="hm-live"><i />{device.primary.available ? t('state.idle') : t('state.unavailable')}</span>}
       <div className="hm-camera-caption"><strong>{device.name}</strong><small>{device.model ?? ''}</small><Icon name="next" size={18} /></div></div>
   </div>;
 }

@@ -1,7 +1,7 @@
 import { ADDON_SLUG, AUDIO_CODECS, VIDEO_CODECS, STREAM_NAME, acceptMime, ingressPath, pickStream, validSession } from './go2rtc-protocol.ts';
 /** Live MSE player over the go2rtc add-on's ingress WebSocket (`api/ws?src=<stream>`). Muted, autoplay, reconnects with back-off, stops when hidden. */
 export interface PlayerHost { ws<T = unknown>(message: Record<string, unknown>): Promise<T>; readonly online: boolean }
-export interface PlayerOptions { addon: string; stream?: string; host: PlayerHost; onStatus?(status: PlayerStatus): void }
+export interface PlayerOptions { addon: string; stream?: string; host: PlayerHost; onStatus?(status: PlayerStatus): void; /** called once when the stream reports live but renders only black for ~3 s (an H.265 stream the device cannot really decode) */ onBlack?(): void }
 export type PlayerStatus = 'connecting' | 'live' | 'stalled' | 'error';
 export interface Player { video: HTMLVideoElement; setStream(stream: string | undefined): void; dispose(): void }
 const MAX_PENDING = 4 * 1024 * 1024, MAX_PENDING_CHUNKS = 512;
@@ -15,6 +15,8 @@ export function mountGo2rtcPlayer(container: HTMLElement, opts: PlayerOptions): 
   let socket: WebSocket | null = null, buffer: SourceBuffer | null = null, objectUrl: string | null = null;
   let pending: Uint8Array<ArrayBuffer>[] = [], pendingBytes = 0, timer: ReturnType<typeof setInterval> | undefined, retry: ReturnType<typeof setTimeout> | undefined;
   let lastFrames = 0, lastTime = 0, lastProgress = 0, detach: Array<() => void> = [];
+  let liveSince = 0, blackChecked = false;
+  const looksBlack = () => { try { const c = document.createElement('canvas'); c.width = 32; c.height = 18; const ctx = c.getContext('2d', { willReadFrequently: true }); if (!ctx) return false; ctx.drawImage(video, 0, 0, 32, 18); const d = ctx.getImageData(0, 0, 32, 18).data; let max = 0; for (let i = 0; i < d.length; i += 4) { const v = Math.max(d[i], d[i + 1], d[i + 2]); if (v > max) max = v; } return max < 12; } catch { return false; } };
   const video = document.createElement('video'); video.muted = true; video.autoplay = true; video.playsInline = true; video.controls = false; container.append(video);
   const report = (s: PlayerStatus) => { if (status !== s) { status = s; opts.onStatus?.(s); } };
   const stop = () => {
@@ -22,7 +24,7 @@ export function mountGo2rtcPlayer(container: HTMLElement, opts: PlayerOptions): 
     for (const d of detach) d(); detach = [];
     const ws = socket; socket = null; try { ws?.close(); } catch { /* closed */ }
     const sb = buffer; buffer = null; try { if (sb?.updating) sb.abort(); } catch { /* detached */ }
-    pending = []; pendingBytes = 0; lastFrames = 0; lastTime = 0;
+    pending = []; pendingBytes = 0; lastFrames = 0; lastTime = 0; liveSince = 0; blackChecked = false;
     video.pause(); video.removeAttribute('src'); video.srcObject = null; video.load();
     if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
   };
@@ -40,7 +42,7 @@ export function mountGo2rtcPlayer(container: HTMLElement, opts: PlayerOptions): 
       if (!allowed()) return;
       const frames = video.getVideoPlaybackQuality?.().totalVideoFrames;
       const advanced = frames === undefined ? video.currentTime > lastTime : frames > lastFrames;
-      if (video.readyState >= 2 && video.videoWidth > 0 && !video.paused && video.currentTime > lastTime && advanced) { lastProgress = performance.now(); lastTime = video.currentTime; if (frames !== undefined) lastFrames = frames; retries = 0; report('live'); }
+      if (video.readyState >= 2 && video.videoWidth > 0 && !video.paused && video.currentTime > lastTime && advanced) { lastProgress = performance.now(); lastTime = video.currentTime; if (frames !== undefined) lastFrames = frames; retries = 0; report('live'); if (!liveSince) liveSince = performance.now(); if (opts.onBlack && !blackChecked && performance.now() - liveSince > 3000) { blackChecked = true; if (looksBlack()) opts.onBlack(); } }
       else if (performance.now() - lastProgress > 15000) failed('stalled');
     }, 1000);
     try {

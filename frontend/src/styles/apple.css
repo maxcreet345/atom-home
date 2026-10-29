@@ -138,7 +138,7 @@
 .hm-shell .ah-value-head{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--tile,var(--ah-accent));color:#fff}.hm-shell .ah-value-head svg{width:16px;height:16px}
 .hm-shell .ah-value-num{display:flex;align-items:baseline;gap:4px}.hm-shell .ah-value-num b{font-size:clamp(24px,24cqw,40px);font-weight:600;letter-spacing:-1px;line-height:1}.hm-shell .ah-value-num i{font-style:normal;font-size:14px;font-weight:600;color:var(--ah-muted)}
 .hm-shell .ah-value .ah-tile-text{text-align:left}.hm-shell .ah-value .ah-tile-text small{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.hm-shell .ah-value-num.is-text b{font-size:clamp(18px,15cqw,24px);letter-spacing:-.3px}
+.hm-shell .ah-value-num.is-text b{font-size:clamp(15px,12cqw,22px);letter-spacing:-.3px;white-space:normal;line-height:1.1;overflow-wrap:anywhere}
 /* compact module card (e.g. boiler pressure) rendered as a value module */
 .hm-shell .ah-module{padding:12px;display:flex}
 .hm-shell .ah-module .hm-status{display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:4px;width:100%;background:none;padding:0}

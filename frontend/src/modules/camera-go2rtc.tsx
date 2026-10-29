@@ -17,7 +17,7 @@ export const cameraGo2rtc: ModuleDef = {
       const node = mount.current; if (!node) return;
       if (!hostRef.current.ws || !addon || !mseAvailable()) { setStatus('error'); return; }
       let player: Player;
-      try { player = mountGo2rtcPlayer(node, { addon, stream, host: { ws: m => hostRef.current.ws!(m), get online() { return hostRef.current.online; } }, onStatus: setStatus }); }
+      try { player = mountGo2rtcPlayer(node, { addon, stream, host: { ws: m => hostRef.current.ws!(m), get online() { return hostRef.current.online; } }, onStatus: setStatus, onBlack: hd ? () => { setHd(false); setHdBroken(true); } : undefined }); }
       catch { setStatus('error'); return; }
       return () => player.dispose();
     }, [addon, stream]);
