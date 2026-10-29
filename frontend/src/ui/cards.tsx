@@ -77,7 +77,7 @@ export function AccessoryTile({ device, name, sub, room, pending, onToggle, onOp
   const color = tileColor(device), label = name ?? device.name;
   // second line: the room for things you switch; the state (plus the room unless the name already ends with it) for everything else
   const roomShown = room && !label.trim().toLowerCase().endsWith(room.trim().toLowerCase()) ? room : '';
-  const line2 = sub ?? (device.kind === 'climate' ? tileStatus(device, t, lang) : onToggle ? roomShown : [tileStatus(device, t, lang), roomShown].filter(Boolean).join(' · '));
+  const line2 = sub ?? (device.kind === 'climate' ? tileStatus(device, t, lang) : onToggle ? (roomShown || tileStatus(device, t, lang)) : [tileStatus(device, t, lang), roomShown].filter(Boolean).join(' · '));
   // long press (500 ms) opens details, like a press-and-hold on a HomeView module
   const hold = useRef<ReturnType<typeof setTimeout> | null>(null), held = useRef(false);
   const down = () => { held.current = false; hold.current = setTimeout(() => { held.current = true; onOpen(); }, 500); };

@@ -77,14 +77,15 @@ function Settings({ device, runner, t, lang, host }: Common & { host?: Host }) {
   const params = device.parameters.filter(p => !(p.domain === 'button' && DUP_BUTTON.test(p.id)));
   const rows = params.flatMap(p => entityActions(p).map(a => ({ p, a: { ...a, label: short(a.label, device) } }))), readOnly = params.filter(p => entityActions(p).length === 0);
   const buttons = rows.filter(r => r.a.kind === 'button'), others = rows.filter(r => r.a.kind !== 'button');
+  const bpre = commonPrefix(buttons.map(b => b.p.name)), chip = (name: string) => short(name.split(/\s+/).slice(bpre).join(' '), device);
   const ICON: Record<string, string> = { switch: 'power', input_boolean: 'power', number: 'settings', input_number: 'settings', select: 'more', input_select: 'more' };
   return <>
-    {buttons.length > 0 && <div className="ah-group"><small className="ah-group-title">{device.kind === 'vacuum' ? t('ui.rooms') : t('ui.actions')}</small><div className="hm-chips at-actions">{buttons.map(({ p, a }) => <button type="button" className="hm-pill" disabled={runner.busy.has(device.key) || !p.available} onClick={() => void runner.run(device, a)}>{short(p.name, device)}</button>)}</div></div>}
+    {buttons.length > 0 && <div className="ah-group"><small className="ah-group-title">{device.kind === 'vacuum' ? t('ui.rooms') : t('ui.actions')}</small><div className="hm-chips at-actions">{buttons.map(({ p, a }) => <button type="button" className="hm-pill" disabled={runner.busy.has(device.key) || !p.available} onClick={() => void runner.run(device, a)}>{chip(p.name)}</button>)}</div></div>}
     {(others.length > 0 || readOnly.length > 0) && <Fold title={`${t('ui.settings')} (${others.length + readOnly.length})`}>
       {others.map(({ p, a }) => <SettingRow device={device} action={a} runner={runner} t={t} lang={lang} icon={ICON[p.domain]} color={a.kind === 'toggle' ? '#30d158' : '#7b74d8'} />)}
       {readOnly.map(p => <div className="ah-row hm-setting"><span className="ah-row-text"><strong>{short(p.name, device)}</strong></span><small>{stateText(p, t, lang)}</small></div>)}
     </Fold>}
-    {device.diagnostics.length > 0 && <Fold title={`${t('ui.diagnostics')} (${device.diagnostics.length})`}>{device.diagnostics.map(p => <div className="ah-row hm-setting"><span className="ah-row-text"><strong>{short(p.name, device)}</strong></span><small>{stateText(p, t, lang)}</small></div>)}</Fold>}
+    {(device.diagnostics.length > 0 || device.model) && <Fold title={`${t('ui.diagnostics')} (${device.diagnostics.length + (device.model ? 1 : 0)})`}>{device.model && <div className="ah-row hm-setting"><span className="ah-row-text"><strong>{t('ui.model')}</strong></span><small>{device.manufacturer ? `${device.manufacturer} · ${device.model}` : device.model}</small></div>}{device.diagnostics.map(p => <div className="ah-row hm-setting"><span className="ah-row-text"><strong>{short(p.name, device)}</strong></span><small>{stateText(p, t, lang)}</small></div>)}</Fold>}
     {host && device.kind !== 'camera' && [e(device)].filter(x => x.domain === 'sensor' && Number.isFinite(Number(x.state))).map(x => <History entity={x} host={host} t={t} lang={lang} />)}
   </>;
 }
@@ -128,11 +129,12 @@ function Hero({ device, runner, t, lang, host }: Common & { host?: Host }) {
   }
   return <div className={`ah-hero ${on ? 'is-on' : ''}`}>{glyph}<div className="ah-hero-main"><b>{stateText(p, t, lang)}</b></div></div>;
 }
-export function DeviceSheet({ device, runner, onClose, t, lang, stage, host }: { device: HomeDevice; runner: Runner; onClose: () => void; t: T; lang: Lang; stage?: ComponentChildren; host?: Host }) {
+export function DeviceSheet({ device, runner, onClose, t, lang, stage, host, room }: { device: HomeDevice; runner: Runner; onClose: () => void; t: T; lang: Lang; stage?: ComponentChildren; host?: Host; room?: string }) {
+  const roomShown = room && !device.name.trim().toLowerCase().endsWith(room.trim().toLowerCase()) ? room : '';
   const acts = actionsFor(device), p = device.primary;
   const toggle = acts.find(a => a.kind === 'toggle' && (a.id === 'toggle')), selects = acts.filter(a => a.kind === 'select'), sliders = acts.filter(a => a.kind === 'number' && !(device.kind === 'climate' && a.id === 'temperature')), buttons = acts.filter(a => a.kind === 'button'), otherToggles = acts.filter(a => a.kind === 'toggle' && a !== toggle);
   return <div className="hm-sheet-body ah-sheet" data-kind={device.kind}>
-    <div className="hm-sheet-head"><span className="hm-sheet-photo">{device.photo ? <img src={device.photo} alt="" /> : artOf(device) ? <DeviceArt type={artOf(device)!} fill /> : <Icon name={iconOfKind[device.kind] ?? 'generic'} size={30} />}</span><div><small>{t(`kind.${device.kind}` as Key)}{device.model ? ` · ${device.model}` : ''}</small><h2>{device.name}</h2></div><button type="button" className="hm-icon-btn" aria-label={t('ui.close')} onClick={onClose}>×</button></div>
+    <div className="hm-sheet-head"><span className="hm-sheet-photo">{device.photo ? <img src={device.photo} alt="" /> : artOf(device) ? <DeviceArt type={artOf(device)!} fill /> : <Icon name={iconOfKind[device.kind] ?? 'generic'} size={30} />}</span><div><small>{t(`kind.${device.kind}` as Key)}{roomShown ? ` · ${roomShown}` : ''}</small><h2>{device.name}</h2></div><button type="button" className="hm-icon-btn" aria-label={t('ui.close')} onClick={onClose}>×</button></div>
     {stage ? <div className="hm-camera-frame at-camera-stage">{stage}</div> : <Hero device={device} runner={runner} t={t} lang={lang} host={host} />}
     {toggle && <PowerRow device={device} action={toggle} runner={runner} t={t} lang={lang} />}
     {buttons.length > 0 && <div className="hm-chips at-actions">{buttons.map(a => <button type="button" className={`hm-pill ${a.confirm ? 'is-primary' : ''}`} disabled={runner.busy.has(device.key) || !p.available} onClick={() => void runner.run(device, a)}>{label(a, t)}</button>)}</div>}

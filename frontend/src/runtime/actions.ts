@@ -31,9 +31,9 @@ export function actionsFor(device: HomeDevice): Action[] {
     case 'lock': push({ id: 'lock', label: 'action.lock', kind: 'button', domain: 'lock', service: 'lock', confirm: true, risk: 'security' }); push({ id: 'unlock', label: 'action.unlock', kind: 'button', domain: 'lock', service: 'unlock', confirm: true, risk: 'security' }); break;
     case 'valve': push({ id: 'open', label: 'action.open', kind: 'button', domain: 'valve', service: 'open_valve', confirm: true, risk: 'water' }); push({ id: 'close', label: 'action.close', kind: 'button', domain: 'valve', service: 'close_valve', confirm: true, risk: 'water' }); break;
     case 'vacuum': {
-      if (supports(e, 8192)) push({ id: 'start', label: 'action.start', kind: 'button', domain: 'vacuum', service: 'start' });
-      if (supports(e, 4)) push({ id: 'pause', label: 'action.pause', kind: 'button', domain: 'vacuum', service: 'pause' });
-      if (supports(e, 8)) push({ id: 'stop', label: 'action.stop', kind: 'button', domain: 'vacuum', service: 'stop' });
+      if (supports(e, 8192) && e.state !== 'cleaning') push({ id: 'start', label: 'action.start', kind: 'button', domain: 'vacuum', service: 'start' });
+      if (supports(e, 4) && e.state === 'cleaning') push({ id: 'pause', label: 'action.pause', kind: 'button', domain: 'vacuum', service: 'pause' });
+      if (supports(e, 8) && (e.state === 'cleaning' || e.state === 'returning')) push({ id: 'stop', label: 'action.stop', kind: 'button', domain: 'vacuum', service: 'stop' });
       if (supports(e, 16)) push({ id: 'return', label: 'action.return', kind: 'button', domain: 'vacuum', service: 'return_to_base' });
       if (supports(e, 512)) push({ id: 'locate', label: 'action.locate', kind: 'button', domain: 'vacuum', service: 'locate' });
       const speeds = list(a.fan_speed_list); if (speeds.length && supports(e, 32)) push({ id: 'fan_speed', label: 'action.fan_speed', kind: 'select', domain: 'vacuum', service: 'set_fan_speed', options: speeds, current: a.fan_speed ?? null });
