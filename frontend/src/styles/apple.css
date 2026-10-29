@@ -390,6 +390,8 @@
 .hm-shell .ah-tile-stack .ah-tile.is-pending{opacity:1}.hm-shell .ah-tile-stack .hm-chips>button:disabled{opacity:.5}
 @media (max-width:600px){.hm-shell .hm-range-tabs:not(.ah-segments) button{flex:0 0 auto;padding:0 14px}.hm-shell .ah-segments button{flex:1 1 0;min-width:0;padding:0 6px;font-size:12.5px;letter-spacing:-.1px}}
 @supports not (backdrop-filter:blur(1px)){.hm-shell .hm-tabbar,.hm-shell .hm-sidebar{background:var(--ah-bar-solid)}}
+/* phones: WebViews often accept backdrop-filter yet never blur, so tiles ghost through the bar — keep it solid there; hide the page scrollbar like a native app */
+.is-narrow .hm-tabbar{background:var(--ah-bar-solid);backdrop-filter:none;-webkit-backdrop-filter:none}.is-narrow .hm-main{scrollbar-width:none}.is-narrow .hm-main::-webkit-scrollbar{display:none}
 .is-narrow .hm-sheet{scrollbar-width:none}.is-narrow .hm-sheet::-webkit-scrollbar{display:none}
 .hm-shell .hm-facts>.hm-fact:last-child:nth-child(odd){grid-column:1/-1}
 
