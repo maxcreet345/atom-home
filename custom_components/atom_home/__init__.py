@@ -22,8 +22,9 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.storage import Store
 from aiohttp import web
 
+from .config_state import ConfigState, ConfigWriteError
 from .const import (
-    DOMAIN, FRONTEND_FILE, MAX_CONFIG_BYTES, MAX_PHOTO_BYTES, PANEL_ICON, PANEL_TITLE, PANEL_URL_PATH, PHOTOS_DIR, PHOTOS_URL, STATIC_URL, STORAGE_KEY, STORAGE_VERSION,
+    DOMAIN, FRONTEND_FILE, MAX_PHOTO_BYTES, PANEL_ICON, PANEL_TITLE, PANEL_URL_PATH, PHOTOS_DIR, PHOTOS_URL, STATIC_URL, STORAGE_KEY, STORAGE_VERSION,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -105,7 +106,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     store: Store[dict] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
     data = await store.async_load() or {}
     version = await hass.async_add_executor_job(_version)
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"store": store, "config": data.get("config")}
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"store": store, "state": ConfigState(data.get("config"), data.get("revision", 0), store.async_save)}
     hass.data[DOMAIN]["_version"] = version
 
     photos_dir = Path(hass.config.path(PHOTOS_DIR))
@@ -154,27 +155,36 @@ def _register_ws(hass: HomeAssistant) -> None:
     @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/config/get"})
     @callback
     def ws_get(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
-        data = _entry_data(hass)
-        connection.send_result(msg["id"], {"config": (data or {}).get("config"), "version": hass.data[DOMAIN].get("_version", "0"), "admin": connection.user.is_admin})
+        state: ConfigState | None = (_entry_data(hass) or {}).get("state")
+        connection.send_result(msg["id"], {"config": state.config if state else None, "revision": state.revision if state else 0, "version": hass.data[DOMAIN].get("_version", "0"), "admin": connection.user.is_admin})
 
-    @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/config/set", vol.Required("config"): dict})
+    @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/capabilities/get"})
+    @callback
+    def ws_capabilities(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+        """What this backend supports; a panel that gets `unknown_command` here is talking to an older integration."""
+        connection.send_result(msg["id"], {"configRevision": 1, "composition": 1, "assist": 0})
+
+    @websocket_api.websocket_command({
+        vol.Required("type"): f"{DOMAIN}/config/set",
+        vol.Required("config"): dict,
+        vol.Optional("expected_revision"): vol.All(int, vol.Range(min=0)),
+        vol.Optional("client_features"): [str],
+    })
     @websocket_api.require_admin
     @websocket_api.async_response
     async def ws_set(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
-        data = _entry_data(hass)
-        if data is None:
+        state: ConfigState | None = (_entry_data(hass) or {}).get("state")
+        if state is None:
             connection.send_error(msg["id"], "not_loaded", "Atom Home is not set up")
             return
-        raw = json.dumps(msg["config"], ensure_ascii=False)
-        if len(raw.encode("utf-8")) > MAX_CONFIG_BYTES:
-            connection.send_error(msg["id"], "too_large", f"Configuration exceeds {MAX_CONFIG_BYTES} bytes")
+        try:
+            revision = await state.write(msg["config"], msg.get("expected_revision"), msg.get("client_features"))
+        except ConfigWriteError as err:
+            if err.code == "save_failed":
+                _LOGGER.error("Atom Home: configuration could not be written", exc_info=err.__cause__)
+            connection.send_error(msg["id"], err.code, err.message)
             return
-        if msg["config"].get("schemaVersion") != 1:
-            connection.send_error(msg["id"], "bad_schema", "schemaVersion must be 1")
-            return
-        data["config"] = msg["config"]
-        await data["store"].async_save({"config": msg["config"]})
-        connection.send_result(msg["id"], {"saved": True})
+        connection.send_result(msg["id"], {"saved": True, "revision": revision})
 
     PHOTO_NAME = re.compile(r"^[a-z0-9]{12,32}\.(jpg|png|webp)$")
     MIME_EXT = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
@@ -221,6 +231,7 @@ def _register_ws(hass: HomeAssistant) -> None:
         connection.send_result(msg["id"], {"removed": removed})
 
     websocket_api.async_register_command(hass, ws_get)
+    websocket_api.async_register_command(hass, ws_capabilities)
     websocket_api.async_register_command(hass, ws_set)
     websocket_api.async_register_command(hass, ws_photo_set)
     websocket_api.async_register_command(hass, ws_photo_delete)
