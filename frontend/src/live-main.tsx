@@ -39,7 +39,7 @@ export class AtomHomePanel extends HTMLElement {
     const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
     root.replaceChildren();
     const style = document.createElement('style');
-    style.textContent = base + home + atom + ':host{display:block;position:relative;width:100%;height:calc(100vh - var(--header-height,0px));height:calc(100dvh - var(--header-height,0px));min-height:0;overflow:hidden}';
+    style.textContent = base + home + atom + ':host{display:block;position:relative;width:100%;height:100vh;height:100dvh;min-height:0;overflow:hidden}';
     this.mount = document.createElement('div'); this.mount.style.height = '100%';
     root.append(style, this.mount);
     this.observer = new ResizeObserver(() => this.measure()); this.observer.observe(this);
