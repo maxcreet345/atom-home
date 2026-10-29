@@ -4,7 +4,8 @@ export interface PhotoStore { upload(blob: Blob, mime: 'image/jpeg' | 'image/png
 export type SaveErrorCode = 'conflict' | 'client_outdated' | 'too_large' | 'bad_schema' | 'unauthorized' | 'failed';
 /** A save the store refused or could not confirm; `code` picks the message the panel shows. */
 export class SaveError extends Error {
-  constructor(readonly code: SaveErrorCode, message: string = code) { super(message); this.name = 'SaveError'; }
+  readonly code: SaveErrorCode;
+  constructor(code: SaveErrorCode, message: string = code) { super(message); this.code = code; this.name = 'SaveError'; }
 }
 /** `clientFeatures` is declared only by a panel that keeps every field it was given (see docs/PLAN-ADD-DEVICE.md, 7.1). */
 export interface SaveOptions { clientFeatures?: string[] }

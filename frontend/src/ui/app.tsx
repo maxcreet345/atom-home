@@ -13,7 +13,7 @@ import { stateText, isOn, num, co2Level, withRoom } from './format.ts';
 import { Setup } from './setup.tsx';
 import { activeModules, type ActiveModule } from '../modules/index.ts';
 import type { JSX } from 'preact';
-import type { ConfigStore } from '../runtime/store.ts';
+import { SaveError, type ConfigStore } from '../runtime/store.ts';
 import { Cascade } from './motion.tsx';
 
 type View = { section: Section | 'setup'; room: string | null; device: string | null };
@@ -31,8 +31,21 @@ export interface AppProps { registry: Registry; config: HouseConfig; host: Host;
 /** The whole panel: pure function of (registry + states, config). Commands go through the host and are confirmed by state changes. */
 export function AtomApp({ registry, config: initialConfig, host, viewport, navigationWindow = window, store, configWarnings = [], onConfigChange }: AppProps) {
   const [config, setConfig] = useState(initialConfig);
-  useEffect(() => setConfig(initialConfig), [initialConfig]);
-  const applyConfig = (next: HouseConfig) => { setConfig(next); onConfigChange?.(next); void store?.save(next).catch(() => undefined); };
+  const confirmed = useRef(initialConfig);
+  useEffect(() => { setConfig(initialConfig); confirmed.current = initialConfig; }, [initialConfig]);
+  /** Shown at once, kept only once the store confirms. A refused save returns to the last confirmed config (after a conflict: the fresh one) and rejects, so the caller does not report success. */
+  const applyConfig = async (next: HouseConfig) => {
+    setConfig(next); onConfigChange?.(next);
+    if (!store) return;
+    try { await store.save(next); confirmed.current = next; }
+    catch (e) {
+      const code = e instanceof SaveError ? e.code : 'failed';
+      if (code === 'conflict') { try { confirmed.current = (await store.load()).config; } catch { /* keep the last confirmed copy */ } }
+      setConfig(confirmed.current); onConfigChange?.(confirmed.current);
+      notify(translator(confirmed.current.home.language)(`save.error.${code}` as Key), 6000);
+      throw e;
+    }
+  };
   const lang = config.home.language, t = useMemo(() => translator(lang), [lang]);
   const home = useMemo(() => discover(registry, config), [registry, config]);
   const modules = useMemo(() => activeModules(registry, config), [registry, config]);
@@ -41,13 +54,14 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
   useEffect(() => { const pop = () => setView(decode(navigationWindow.location.hash)); navigationWindow.addEventListener('popstate', pop); navigationWindow.addEventListener('hashchange', pop); return () => { navigationWindow.removeEventListener('popstate', pop); navigationWindow.removeEventListener('hashchange', pop); }; }, [navigationWindow]);
   const go = (next: Partial<View>) => { const v = { section: view.section, room: null, device: null, ...next } as View; navigationWindow.history.pushState(null, '', encode(v)); setView(v); };
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set()), [toast, setToast] = useState(''), [confirm, setConfirm] = useState<{ device: HomeDevice; action: Action; value?: unknown } | null>(null);
+  const notify = (text: string, ms = 4000) => { setToast(text); setTimeout(() => setToast(cur => cur === text ? '' : cur), ms); };
   const runner: Runner = {
     busy,
     async run(device, action, value) {
       if (action.confirm && !(confirm && confirm.device === device && confirm.action === action)) { setConfirm({ device, action, value }); return; }
       setConfirm(null); setBusy(s => new Set(s).add(device.key));
       try { const c = serviceCall(action, value); await host.call(c.domain, c.service, c.data); }
-      catch (e) { setToast(e instanceof Error ? e.message : String(e)); setTimeout(() => setToast(''), 4000); }
+      catch (e) { notify(e instanceof Error ? e.message : String(e)); }
       finally { setBusy(s => { const n = new Set(s); n.delete(device.key); return n; }); }
     },
   };

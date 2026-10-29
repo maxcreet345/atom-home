@@ -661,21 +661,21 @@ UX-матрица для выпусков с UI:
 
 **Результат:** конфигурация не теряется при гонке двух клиентов и при старом бандле. Ошибка записи видна владельцу. Контракт — раздел 7.1.
 
-- [ ] Python: `capabilities/get`, `revision` в `config/get`, `expected_revision`/`client_features`, lock и commit-after-save в `config/set`.
-- [ ] pytest `tests/components/atom_home/test_config_ws.py`:
+- [x] Python: `capabilities/get`, `revision` в `config/get`, `expected_revision`/`client_features`, lock и commit-after-save в `config/set`.
+- [x] pytest `tests/components/atom_home/test_config_ws.py`:
   - non-admin отказ;
   - два одновременных save с одной revision — успешен ровно один;
   - ошибка диска не меняет revision;
   - revision переживает перезапуск storage;
   - legacy-guard срабатывает только при наличии wizard-полей в сохранённом конфиге;
   - `too_large` при размере больше 512 KiB.
-- [ ] Frontend: `ConfigStore.save(config, {expectedRevision, clientFeatures})`, readback revision. `applyConfig` не глотает ошибку. `memoryStore`/`localStore` умеют имитировать `conflict` и отказ.
-- [ ] `qa-live.mjs`:
+- [x] Frontend: `ConfigStore.save(config, {expectedRevision, clientFeatures})`, readback revision. `applyConfig` не глотает ошибку. `memoryStore`/`localStore` умеют имитировать `conflict` и отказ.
+- [x] `qa-live.mjs`:
   - fake WS со старым backend без `capabilities/get` — панель работает как раньше;
   - отказ записи показывает сообщение и не меняет экран на «сохранено»;
   - `conflict` → readback → повтор;
   - non-admin не сохраняет.
-- [ ] `qa-setup.mjs`: существующие правки настройки (имя, комната, видимость) проходят через новый путь сохранения.
+- [x] `qa-setup.mjs`: существующие правки настройки (имя, комната, видимость) проходят через новый путь сохранения.
 
 **Приёмка:** все прежние сценарии настройки работают. Гонка и отказ записи не сообщают «сохранено» и не теряют чужие поля.
 

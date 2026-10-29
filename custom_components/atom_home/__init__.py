@@ -143,8 +143,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 def _entry_data(hass: HomeAssistant) -> dict | None:
+    # The bucket also holds `_version`, `_photos_dir`…; after an entry reload the entry is no longer the first value.
     bucket = hass.data.get(DOMAIN) or {}
-    return next(iter(bucket.values()), None)
+    return next((v for k, v in bucket.items() if not k.startswith("_") and isinstance(v, dict)), None)
 
 
 def _register_ws(hass: HomeAssistant) -> None:

@@ -2,6 +2,7 @@ import { render } from 'preact';
 import { AtomApp } from './ui/app.tsx';
 import { liveHost, type Hass } from './runtime/host.ts';
 import { haStore } from './runtime/ha-store.ts';
+import type { ConfigStore } from './runtime/store.ts';
 import { normaliseConfig, type HouseConfig } from './model/config.ts';
 import type { Registry } from './model/registry.ts';
 import base from './styles/base.css?inline';
@@ -21,6 +22,9 @@ export class AtomHomePanel extends HTMLElement {
   private observer: ResizeObserver | null = null;
   private viewport = { width: 320, height: 480 };
   private epoch = 0;
+  /** One store for the panel's life: it carries the config revision between saves. */
+  private store: ConfigStore | null = null;
+  private configStore() { return this.store ??= haStore(() => this._hass!); }
   narrow = false;
   panel: { config?: Record<string, unknown> } | null = null;
 
@@ -54,7 +58,7 @@ export class AtomHomePanel extends HTMLElement {
     if (this.loading || !this._hass) return;
     this.loading = true; const epoch = ++this.epoch;
     try {
-      const host = liveHost(this._hass), store = haStore(() => this._hass!);
+      const host = liveHost(this._hass), store = this.configStore();
       const [reg, cfg] = await Promise.all([host.registry(), store.load().catch(e => ({ config: normaliseConfig(null).config, warnings: [`store: ${e instanceof Error ? e.message : String(e)}`] }))]);
       if (epoch !== this.epoch) return;
       this.registry = { ...reg, states: this._hass.states }; this.config = cfg.config; this.warnings = cfg.warnings; this.loadedAt = Date.now();
@@ -65,7 +69,7 @@ export class AtomHomePanel extends HTMLElement {
     if (!this.mount || !this._hass) return;
     if (!this.registry || !this.config) { render(<div className="hm-shell daily-shell at-shell is-wide" data-theme="light"><div className="hm-main"><p className="hm-muted" style="padding:24px">{this.warnings.length ? this.warnings.join('; ') : 'Atom Home…'}</p></div></div>, this.mount); return; }
     const registry: Registry = { ...this.registry, states: this._hass.states };
-    render(<AtomApp registry={registry} config={this.config} host={liveHost(this._hass)} viewport={this.viewport} store={haStore(() => this._hass!)} configWarnings={this.warnings} onConfigChange={next => { this.config = next; }} />, this.mount);
+    render(<AtomApp registry={registry} config={this.config} host={liveHost(this._hass)} viewport={this.viewport} store={this.configStore()} configWarnings={this.warnings} onConfigChange={next => { this.config = next; }} />, this.mount);
   }
 }
 if (!customElements.get('atom-home-panel')) customElements.define('atom-home-panel', AtomHomePanel);

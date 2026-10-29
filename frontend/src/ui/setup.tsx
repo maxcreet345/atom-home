@@ -15,13 +15,15 @@ import { iconOfKind, stateText, type Lang } from './format.ts';
 type Tab = 'devices' | 'rooms' | 'sections' | 'buttons' | 'modules' | 'home';
 const KINDS: Kind[] = ['light', 'switch', 'socket', 'climate', 'fan', 'cover', 'lock', 'vacuum', 'media', 'camera', 'weather', 'environment', 'energy', 'leak', 'opening', 'motion', 'alarm', 'valve', 'alarm_panel', 'person', 'measurement'];
 const ICONS = ['light', 'power', 'socket', 'heating', 'fan', 'blinds', 'lock', 'vacuum', 'media', 'camera', 'air', 'thermo', 'energy', 'water', 'door', 'motion', 'warning', 'shield', 'person', 'systems', 'home', 'rooms', 'flame', 'more'];
-export interface SetupProps { registry: Registry; config: HouseConfig; onChange: (next: HouseConfig) => void; admin: boolean; t: T; lang: Lang; storeLabel: string; warnings: string[]; photos?: PhotoStore }
+export interface SetupProps { registry: Registry; config: HouseConfig; onChange: (next: HouseConfig) => Promise<void> | void; admin: boolean; t: T; lang: Lang; storeLabel: string; warnings: string[]; photos?: PhotoStore }
 /** In-panel configurator: every control edits a copy of HouseConfig and hands it back; the caller saves and re-discovers. */
 export function Setup({ registry, config, onChange, admin, t, lang, storeLabel, warnings, photos }: SetupProps) {
   const [tab, setTab] = useState<Tab>('devices');
   const [note, setNote] = useState('');
   const home = useMemo(() => discover(registry, config), [registry, config]);
-  const patch = (fn: (c: HouseConfig) => void) => { const next = structuredClone(config); fn(next); onChange(normaliseConfig(next).config); setNote(t('setup.saved')); };
+  /** «Saved» appears only after the store confirms; a refused save is reported by the panel and clears the note. */
+  const commit = (next: HouseConfig, done: string) => { setNote(t('setup.saving')); Promise.resolve(onChange(next)).then(() => setNote(done), () => setNote('')); };
+  const patch = (fn: (c: HouseConfig) => void) => { const next = structuredClone(config); fn(next); commit(normaliseConfig(next).config, t('setup.saved')); };
   if (!admin) return <div className="hm-card at-placeholder"><Icon name="lock" size={40} /><p className="hm-muted">{t('setup.adminOnly')}</p></div>;
   const tabs: Array<[Tab, Key]> = [['devices', 'setup.devices'], ['rooms', 'setup.rooms'], ['sections', 'setup.sections'], ['buttons', 'setup.buttons'], ['modules', 'setup.modules'], ['home', 'setup.home']];
   return <div className="at-setup">
@@ -32,7 +34,7 @@ export function Setup({ registry, config, onChange, admin, t, lang, storeLabel, 
     {tab === 'modules' && <ModulesTab registry={registry} config={config} patch={patch} t={t} />}
     {tab === 'sections' && <div className="hm-rows">{SECTIONS.filter(s => s !== 'home' && s !== 'rooms').map(s => <div className="hm-setting at-setting-row"><span>{t(`section.${s}` as Key)}</span><Toggle on={!config.sections[s]?.hidden} label={t('setup.show')} onToggle={() => patch(c => { c.sections[s] = { hidden: !c.sections[s]?.hidden }; })} /></div>)}</div>}
     {tab === 'buttons' && <ButtonsTab config={config} patch={patch} t={t} registry={registry} />}
-    {tab === 'home' && <HomeTab config={config} patch={patch} onImport={(cfg, w) => { onChange(cfg); setNote(w.length ? w.join('; ') : t('setup.imported')); }} t={t} storeLabel={storeLabel} />}
+    {tab === 'home' && <HomeTab config={config} patch={patch} onImport={(cfg, w) => commit(cfg, w.length ? w.join('; ') : t('setup.imported'))} t={t} storeLabel={storeLabel} />}
     {note && <div className="hm-badge tone-calm at-note" role="status">{note}</div>}
   </div>;
 }

@@ -44,6 +44,54 @@ try {
     check(`${tag}/command-via-callService`, await page.evaluate(() => window.calls.length === 1 && window.calls[0][0] === 'light' && !!document.querySelector('atom-home-panel').shadowRoot.querySelector('.hm-toast')), { calls: await page.evaluate(() => window.calls) });
     await page.close();
   }
+  // release 0: an integration with config revisions — saves carry the revision, a conflict or a failed write is shown and never reported as saved
+  {
+    const page = await browser.newPage({ viewport: { width: 1070, height: 764 } }); page.on('pageerror', e => errors.push(`revision: ${e.message}`));
+    await page.goto(origin); await page.waitForFunction(() => !!customElements.get('atom-home-panel'));
+    await page.evaluate(async () => {
+      const fx = await (await fetch('/fixture.json')).json(); window.sets = []; window.backend = { revision: 3, stored: null, fail: null };
+      const b = window.backend;
+      const hass = { states: fx.states, user: { id: 'u1', is_admin: true }, connected: true, language: 'ru',
+        async callWS(m) { switch (m.type) {
+          case 'config/area_registry/list': return fx.areas; case 'config/device_registry/list': return fx.devices.map(d => ({ ...d, name_by_user: null })); case 'config/entity_registry/list': return fx.entities.map(e => ({ ...e, original_device_class: e.device_class, unit_of_measurement: e.unit }));
+          case 'atom_home/config/get': return { config: b.stored, version: 'test', admin: true, revision: b.revision };
+          case 'atom_home/config/set': window.sets.push({ expected: m.expected_revision, features: m.client_features });
+            if (b.fail) { const code = b.fail; b.fail = null; throw { code, message: code }; }
+            if (m.expected_revision !== b.revision) throw { code: 'conflict', message: 'Configuration was changed elsewhere' };
+            b.stored = m.config; b.revision++; return { saved: true, revision: b.revision };
+          default: return {}; } },
+        async callService() { throw new Error('qa: rejected'); } };
+      const el = document.createElement('atom-home-panel'); el.hass = hass; document.body.append(el); window.el = el;
+    });
+    await page.waitForFunction(() => !!document.querySelector('atom-home-panel')?.shadowRoot?.querySelector('.at-shell .hm-page'), null, { timeout: 15000 });
+    await page.evaluate(() => { location.hash = '#setup'; }); await page.waitForTimeout(600);
+    const flip = () => page.evaluate(() => document.querySelector('atom-home-panel').shadowRoot.querySelector('.at-setup-row .hm-switch')?.click());
+    const ui = () => page.evaluate(() => { const r = document.querySelector('atom-home-panel').shadowRoot; return { note: r.querySelector('.at-note')?.innerText ?? '', toast: r.querySelector('.hm-toast')?.innerText ?? '', on: r.querySelector('.at-setup-row .hm-switch')?.getAttribute('aria-checked') ?? r.querySelector('.at-setup-row .hm-switch')?.className }; });
+    const before = await ui();
+    await flip(); await page.waitForTimeout(400);
+    const ok = await ui(), sent = await page.evaluate(() => window.sets.slice());
+    check('revision/save-sends-revision', sent.length === 1 && sent[0].expected === 3 && sent[0].features === undefined && ok.note === 'Сохранено' && !ok.toast, { sent, ok });
+    await flip(); await flip(); await page.waitForTimeout(500);
+    check('revision/quick-edits-queued', await page.evaluate(() => window.sets.slice(1).map(s => s.expected).join() === '4,5' && window.backend.revision === 6), { sets: await page.evaluate(() => window.sets) });
+    // another tablet saved meanwhile: the next edit is refused, the panel shows the fresh config and says so
+    await page.evaluate(() => { const b = window.backend; b.stored = { ...b.stored, home: { ...b.stored.home, name: 'Сохранено на планшете' } }; b.revision++; });
+    await flip(); await page.waitForTimeout(600);
+    const conflict = await ui();
+    check('revision/conflict-not-reported-as-saved', /другом устройстве/.test(conflict.toast) && conflict.note !== 'Сохранено' && conflict.on === ok.on, { conflict, ok });
+    check('revision/conflict-reloads-fresh-config', await page.evaluate(() => /Сохранено на планшете/.test(document.querySelector('atom-home-panel').shadowRoot.textContent) || window.backend.stored.home.name === 'Сохранено на планшете'));
+    // a disk failure: the change is undone, the stored config is unchanged
+    await page.evaluate(() => { window.backend.fail = 'save_failed'; window.storedBefore = JSON.stringify(window.backend.stored); });
+    const pre = await ui(); await flip(); await page.waitForTimeout(500);
+    const failed = await ui();
+    check('revision/failed-write-undone', /Не удалось сохранить/.test(failed.toast) && failed.on === pre.on && failed.note !== 'Сохранено' && await page.evaluate(() => JSON.stringify(window.backend.stored) === window.storedBefore), { pre, failed });
+    // after the errors the panel saves normally again
+    await page.evaluate(() => document.querySelector('atom-home-panel').shadowRoot.querySelector('.hm-toast')?.click());
+    await flip(); await page.waitForTimeout(500);
+    check('revision/recovers-after-errors', (await ui()).note === 'Сохранено', await ui());
+    check('revision/before-state-recorded', !!before.on, before);
+    await page.screenshot({ path: resolve(out, 'revision-setup.png') });
+    await page.close();
+  }
   // non-admin: no setup entry, save refused
   const page = await browser.newPage({ viewport: { width: 1070, height: 764 } }); await page.goto(origin); await page.waitForFunction(() => !!customElements.get('atom-home-panel'));
   await page.evaluate(async () => { const fx = await (await fetch('/fixture.json')).json(); const hass = { states: fx.states, user: { id: 'u2', is_admin: false }, connected: true, async callWS(m) { switch (m.type) { case 'config/area_registry/list': return fx.areas; case 'config/device_registry/list': return fx.devices; case 'config/entity_registry/list': return fx.entities; case 'atom_home/config/get': return { config: null, version: 'test', admin: false }; default: return {}; } }, async callService() { throw new Error('x'); } }; const el = document.createElement('atom-home-panel'); el.hass = hass; document.body.append(el); });
