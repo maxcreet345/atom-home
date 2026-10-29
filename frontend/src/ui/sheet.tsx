@@ -55,7 +55,7 @@ function History({ entity, host, t, lang }: { entity: EntityRef; host?: Host; t:
   if (!pts || pts.length < 2) return null;
   const ys = pts.map(p => p[1]), min = Math.min(...ys), max = Math.max(...ys), span = max - min || 1, x0 = pts[0][0], xs = (pts[pts.length - 1][0] - x0) || 1;
   const d = pts.map((p, i) => `${i ? 'L' : 'M'}${(100 * (p[0] - x0) / xs).toFixed(1)} ${(28 - 24 * (p[1] - min) / span - 2).toFixed(1)}`).join(' ');
-  return <div className="ah-history"><div className="ah-history-head"><small>{t('ui.history')}</small><small>{num(min, lang, 1)} – {num(max, lang, 1)} {entity.unit ?? ''}</small></div><svg viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true"><path d={`${d} V28 H0 Z`} className="ah-history-area" /><path d={d} className="ah-history-line" /></svg></div>;
+  return <div className="ah-history"><div className="ah-history-head"><small>{t('ui.history')}</small><small>{num(min, lang, 1)} – {num(max, lang, 1)} {entity.unit ?? ''}</small></div><svg viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true" className="ah-draw"><path d={`${d} V28 H0 Z`} className="ah-history-area" /><path d={d} className="ah-history-line" pathLength={1} /></svg></div>;
 }
 /** Readings grid. Names like «Детская — расчётная температура» ×5 share a suffix: it becomes the grid caption, the cells keep only what differs. */
 function Facts({ device, t, lang }: { device: HomeDevice; t: T; lang: Lang }) {

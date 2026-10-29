@@ -6,6 +6,7 @@ import type { T } from '../i18n/index.ts';
 import { stateText, isOn, num, iconOfKind, type Lang } from './format.ts';
 import { stockRoomArt } from './art.ts';
 import { DeviceArt, deviceArtType, DEVICE_ART_TYPES, type DeviceArtType } from './device-art.tsx';
+import { Tick } from './motion.tsx';
 /** Stock picture for a card: the owner's choice from the configurator, else guessed from kind and name; 'none' switches it off. */
 export function artOf(device: Pick<HomeDevice, 'kind' | 'name' | 'model' | 'art'>): DeviceArtType | null { if (device.art === 'none') return null; if (device.art && (DEVICE_ART_TYPES as string[]).includes(device.art)) return device.art as DeviceArtType; return deviceArtType(device.kind, device.name, device.model ?? ''); }
 
@@ -85,7 +86,7 @@ export function AccessoryTile({ device, name, sub, room, pending, onToggle, onOp
   return <div className={`ah-tile hm-card ${active ? 'is-on' : ''} ${alert ? 'is-alert' : ''} ${e.available ? '' : 'is-off'} ${pending ? 'is-pending' : ''} ${wide ? 'is-wide' : ''} kind-${device.kind}`} data-device-key={device.key} style={`--tile:${color}`}>
     <button type="button" className="ah-tile-hit hm-light-hit" disabled={pending || !e.available && !!onToggle} onClick={click} onPointerDown={down} onPointerUp={up} onPointerLeave={up} onPointerCancel={up} onContextMenu={ev => { ev.preventDefault(); if (!held.current) onOpen(); }} aria-label={onToggle ? `${label}: ${on ? t('action.off') : t('action.on')}` : `${t('ui.details')}: ${label}`}>
       <span className="ah-glyph">{device.photo ? <img src={device.photo} alt="" loading="lazy" /> : <Icon name={device.icon ?? iconOfKind[device.kind] ?? 'generic'} size={34} />}</span>
-      <span className="ah-tile-text"><strong>{label}</strong>{line2 && <small>{line2}</small>}</span>
+      <span className="ah-tile-text"><strong>{label}</strong>{line2 && <small><Tick value={line2} /></small>}</span>
     </button>
     <button type="button" className="ah-tile-more hm-light-more" aria-label={`${t('ui.details')}: ${label}`} onClick={onOpen}><Icon name="more" size={16} /></button>
   </div>;
@@ -95,10 +96,10 @@ export function ThermostatTile({ device, sub, target, current, onStep, onOpen, t
   const e = device.primary, on = e.available && e.state !== 'off';
   return <div className={`ah-tile ah-thermo kind-climate hm-card ${on ? 'is-on' : ''} ${e.available ? '' : 'is-off'}`} data-device-key={device.key} style={`--tile:${tileColor(device)}`}>
     <button type="button" className="ah-tile-hit" onClick={onOpen} aria-label={`${t('ui.details')}: ${device.name}`}>
-      <span className="ah-thermo-value">{on ? <><b>{target === null ? (current === null ? '—' : num(current, lang, 0)) : num(target, lang, target % 1 ? 1 : 0)}</b>{current !== null && target !== null && <small>{t('ui.now')} {num(current, lang)}°</small>}</> : <><b>{current === null ? '—' : num(current, lang, current % 1 ? 1 : 0)}</b>{target !== null && <small>{t('ui.target')} {num(target, lang)}°</small>}</>}</span>
+      <span className="ah-thermo-value">{on ? <><b><Tick value={target === null ? (current === null ? '—' : num(current, lang, 0)) : num(target, lang, target % 1 ? 1 : 0)} /></b>{current !== null && target !== null && <small>{t('ui.now')} {num(current, lang)}°</small>}</> : <><b><Tick value={current === null ? '—' : num(current, lang, current % 1 ? 1 : 0)} /></b>{target !== null && <small>{t('ui.target')} <Tick value={`${num(target, lang)}°`} /></small>}</>}</span>
       <span className="ah-tile-text"><strong>{device.name}</strong><small>{sub && !device.name.trim().toLowerCase().endsWith(sub.trim().toLowerCase()) ? sub : (on ? stateText(e, t, lang) : t('state.off'))}</small></span>
     </button>
-    {onStep && <><button type="button" className="ah-chev is-down" aria-label="−" disabled={disabled || !e.available} onClick={() => onStep(-1)}><Icon name="back" size={22} /></button><button type="button" className="ah-chev is-up" aria-label="+" disabled={disabled || !e.available} onClick={() => onStep(1)}><Icon name="back" size={22} /></button></>}
+    {onStep && <><button type="button" className="ah-chev is-down" aria-label="−" disabled={disabled || !e.available} onClick={ev => { (ev.currentTarget as HTMLElement).classList.remove('is-bump'); void (ev.currentTarget as HTMLElement).offsetWidth; (ev.currentTarget as HTMLElement).classList.add('is-bump'); onStep(-1); }}><Icon name="back" size={22} /></button><button type="button" className="ah-chev is-up" aria-label="+" disabled={disabled || !e.available} onClick={ev => { (ev.currentTarget as HTMLElement).classList.remove('is-bump'); void (ev.currentTarget as HTMLElement).offsetWidth; (ev.currentTarget as HTMLElement).classList.add('is-bump'); onStep(1); }}><Icon name="back" size={22} /></button></>}
   </div>;
 }
 /** 1×1 analog clock module with numerals (homeOS clock face). */
@@ -124,7 +125,7 @@ export function SceneTile({ icon, label, onClick, t }: { icon: string; label: st
 }
 /** 1×1 reading module: big value, label underneath (energy, weather, air). */
 export function ValueTile({ icon, value, unit, label, sub, color, onClick, className = '' }: { icon: string; value: string; unit?: string; label: string; sub?: string; color: string; onClick?: () => void; className?: string }) {
-  return <div className={`ah-tile ah-value hm-card ${className}`} style={`--tile:${color}`}><button type="button" className="ah-tile-hit" onClick={onClick} disabled={!onClick}><span className="ah-value-head"><Icon name={icon} size={18} /></span><span className={`ah-value-num ${/^[\d.,\s−-]+$/.test(value) ? '' : 'is-text'}`}><b>{value}</b>{unit && <i>{unit}</i>}</span><span className="ah-tile-text"><strong>{label}</strong>{sub && <small>{sub}</small>}</span></button></div>;
+  return <div className={`ah-tile ah-value hm-card ${className}`} style={`--tile:${color}`}><button type="button" className="ah-tile-hit" onClick={onClick} disabled={!onClick}><span className="ah-value-head"><Icon name={icon} size={18} /></span><span className={`ah-value-num ${/^[\d.,\s−-]+$/.test(value) ? '' : 'is-text'}`}><b><Tick value={value} /></b>{unit && <i>{unit}</i>}</span><span className="ah-tile-text"><strong>{label}</strong>{sub && <small>{sub}</small>}</span></button></div>;
 }
 export function Pill({ icon, color, label, value, onClick, className = '' }: { icon: string; color: string; label: string; value: string; onClick?: () => void; className?: string }) {
   return <button type="button" className={`ah-pill ${className}`} style={`--tile:${color}`} onClick={onClick}><span className="ah-glyph is-small"><Icon name={icon} size={16} /></span><span><small>{label}</small><strong>{value}</strong></span></button>;

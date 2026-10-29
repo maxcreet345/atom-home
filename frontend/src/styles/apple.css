@@ -245,12 +245,58 @@
 .hm-shell .at-boiler-tile{background:var(--hm-inset);border:0}
 .hm-shell .at-feeder-confirm,.hm-shell .at-feeder-editor{background:var(--hm-inset);border:0}
 
-/* ---------- 12. Motion ---------- */
-.hm-shell .hm-page{animation:ah-in .28s cubic-bezier(.2,.8,.2,1) backwards}
-@keyframes ah-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.hm-shell .hm-sheet{animation:ah-sheet .3s cubic-bezier(.2,.8,.2,1) backwards}
-@keyframes ah-sheet{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.hm-shell *{animation:none!important;transition:none!important}}
+/* ---------- 12. Motion (see docs/UX-GUIDE.md §5): transform/opacity only, ≤400 ms, spring-ish easing, everything off under reduced-motion ---------- */
+.hm-shell.ah-shell{--ah-ease:cubic-bezier(.2,.8,.2,1);--ah-spring:cubic-bezier(.34,1.4,.64,1)}
+/* page & cascade */
+.hm-shell .hm-page{animation:ah-in .32s var(--ah-ease) backwards}
+@keyframes ah-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.hm-shell .ah-cascade>*{animation:ah-pop .42s var(--ah-ease) backwards;animation-delay:calc(var(--i,0) * 28ms)}
+@keyframes ah-pop{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:none}}
+/* press = squeeze with a spring back; colour change = cross-fade */
+.hm-shell .ah-tile,.hm-shell .hm-room,.hm-shell .ah-pill,.hm-shell .hm-pill,.hm-shell .ah-mode-glyph,.hm-shell .hm-round,.hm-shell .ah-power{transition:transform .32s var(--ah-spring),background-color .22s ease,color .22s ease,box-shadow .22s ease,opacity .22s ease}
+.hm-shell .ah-tile:has(.ah-tile-hit:active),.hm-shell .hm-room:active,.hm-shell .ah-pill:active,.hm-shell .hm-pill:active:not(:disabled),.hm-shell .ah-mode:active .ah-mode-glyph,.hm-shell .hm-round:active:not(:disabled),.hm-shell .ah-power:active:not(:disabled){transform:scale(.95);transition-duration:.08s}
+.hm-shell .ah-glyph,.hm-shell .ah-row-icon,.hm-shell .ah-value-head,.hm-shell .hm-status-icon{transition:background-color .22s ease,color .22s ease,transform .32s var(--ah-spring)}
+.hm-shell .ah-tile.is-on .ah-glyph{animation:ah-glyph .4s var(--ah-spring)}
+@keyframes ah-glyph{0%{transform:scale(.85)}60%{transform:scale(1.08)}100%{transform:none}}
+/* waiting for Home Assistant = breathing */
+.hm-shell .ah-tile.is-pending,.hm-shell .hm-row.is-pending{animation:ah-breathe 1.2s ease-in-out infinite}
+@keyframes ah-breathe{0%,100%{opacity:1}50%{opacity:.6}}
+.hm-shell .ah-tile-stack .ah-tile.is-pending{opacity:1;animation:ah-breathe 1.2s ease-in-out infinite}
+/* switches */
+.hm-shell .hm-switch{transition:background-color .22s ease}.hm-shell .hm-switch .hm-switch-knob{transition:transform .28s var(--ah-spring),width .15s ease}.hm-shell .hm-switch:active:not(:disabled) .hm-switch-knob{width:32px}.hm-shell .hm-switch.is-on:active:not(:disabled) .hm-switch-knob{transform:translateX(15px)}
+/* sheets & dialogs: from their origin, scrim separately */
+.hm-shell .hm-scrim{animation:ah-fade .2s ease backwards}
+@keyframes ah-fade{from{opacity:0}to{opacity:1}}
+.hm-shell .hm-sheet{animation:ah-sheet .38s var(--ah-spring) backwards}
+@keyframes ah-sheet{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:none}}
+.is-wide .hm-sheet{animation-name:ah-dialog}
+.hm-shell .hm-confirm{animation:ah-dialog .3s var(--ah-spring) backwards}
+@keyframes ah-dialog{from{opacity:0;transform:scale(.94) translateY(8px)}to{opacity:1;transform:none}}
+.hm-shell .hm-toast{animation:ah-toast .3s var(--ah-spring) backwards}
+@keyframes ah-toast{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}
+.hm-shell .ah-sheet>*{animation:ah-pop .36s var(--ah-ease) backwards}.hm-shell .ah-sheet>*:nth-child(2){animation-delay:40ms}.hm-shell .ah-sheet>*:nth-child(3){animation-delay:80ms}.hm-shell .ah-sheet>*:nth-child(4){animation-delay:120ms}.hm-shell .ah-sheet>*:nth-child(n+5){animation-delay:160ms}
+/* numbers tick instead of jumping */
+.hm-shell .ah-tick{position:relative;display:inline-grid;overflow:hidden;vertical-align:bottom}.hm-shell .ah-tick>span{grid-area:1/1;display:block}
+.hm-shell .ah-tick-out{animation:ah-tick-out .26s var(--ah-ease) forwards}.hm-shell .ah-tick-in{animation:ah-tick-in .26s var(--ah-ease)}
+@keyframes ah-tick-out{to{opacity:0;transform:translateY(-60%)}}@keyframes ah-tick-in{from{opacity:0;transform:translateY(60%)}}
+.hm-shell .ah-chev.is-bump{animation:ah-bump .3s var(--ah-spring)}
+@keyframes ah-bump{30%{transform:var(--chev-rot,rotate(90deg)) translateX(-6px) scale(1.15)}}
+.hm-shell .ah-chev.is-down{--chev-rot:rotate(-90deg)}.hm-shell .ah-chev.is-up{--chev-rot:rotate(90deg)}
+/* navigation indicators slide */
+.hm-shell .hm-sidebar nav button,.hm-shell .hm-tabbar button,.hm-shell .ah-segments button,.hm-shell .hm-range-tabs button{transition:background-color .2s ease,color .2s ease,box-shadow .2s ease}
+.hm-shell .hm-sidebar nav{position:relative}.hm-shell .hm-sidebar nav .hm-nav-ind{display:block;position:absolute;left:var(--hm-ind-x,0);top:var(--hm-ind-y,0);width:var(--hm-ind-w,0);height:var(--hm-ind-h,0);border-radius:14px;background:var(--ah-tile);opacity:var(--hm-ind-on,0);transition:top .26s var(--ah-ease),left .26s var(--ah-ease),height .2s ease,width .2s ease;pointer-events:none}
+.hm-shell .hm-sidebar nav button.is-active{background:none;position:relative}
+.hm-shell .hm-tabbar{position:absolute}.hm-shell .hm-tabbar .hm-nav-ind{display:block;position:absolute;left:var(--hm-ind-x,0);top:calc(var(--hm-ind-y,0) + 2px);width:var(--hm-ind-w,0);height:4px;border-radius:2px;background:var(--ah-accent);opacity:var(--hm-ind-on,0);transition:left .26s var(--ah-ease),width .2s ease;pointer-events:none}
+/* live things stay alive */
+.hm-shell .hm-live.is-live i{animation:ah-pulse 1.4s ease-in-out infinite}
+@keyframes ah-pulse{0%,100%{box-shadow:0 0 0 3px #ff3b3040}50%{box-shadow:0 0 0 6px #ff3b3000}}
+.hm-shell .ah-hand{transition:transform .6s var(--ah-spring)}
+.hm-shell .ah-draw .ah-history-line{stroke-dasharray:1;stroke-dashoffset:1;animation:ah-draw 1.1s var(--ah-ease) .15s forwards}.hm-shell .ah-draw .ah-history-area{animation:ah-fade .9s ease .5s backwards}
+@keyframes ah-draw{to{stroke-dashoffset:0}}
+.hm-shell .at-spark path{transition:d .4s ease}
+/* hero glyph pop when a sheet opens */
+.hm-shell .ah-hero-glyph{animation:ah-glyph .5s var(--ah-spring) .1s backwards}
+@media (prefers-reduced-motion:reduce){.hm-shell *{animation:none!important;transition:background-color .2s ease,color .2s ease!important}}
 
 /* fixes after the live review (v0.8.1) */
 .hm-shell .hm-sheet .at-camera-stage{aspect-ratio:16/9;flex:none;border-radius:16px;overflow:hidden;background:#05090f}
