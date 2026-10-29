@@ -64,7 +64,7 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
   const systemTabs = SYSTEM_TABS.filter(s => present(s) && !config.sections[s]?.hidden);
   const inSystems = (SYSTEM_TABS as string[]).includes(view.section);
   const navActive = (id: Section | 'setup') => id === 'systems' ? inSystems : view.section === id;
-  const lastSystems = useRef<Section>('climate'); if (inSystems) lastSystems.current = view.section;
+  const lastSystems = useRef<Section>('climate'); if (inSystems) lastSystems.current = view.section as Section;
   const navTarget = (id: Section | 'setup') => id === 'systems' ? lastSystems.current : id;
   const sideNav = useNavIndicator<HTMLElement>([view.section, wide, viewport.width, viewport.height]);
   const tabNav = useNavIndicator<HTMLElement>([view.section, wide, viewport.width]);
