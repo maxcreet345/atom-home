@@ -1,7 +1,7 @@
 {
   "domain": "atom_home",
   "name": "Atom Home",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "documentation": "https://github.com/maxcreet345/atom-home",
   "issue_tracker": "https://github.com/maxcreet345/atom-home/issues",
   "codeowners": ["@maxcreet345"],
