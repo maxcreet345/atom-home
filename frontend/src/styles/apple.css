@@ -86,7 +86,7 @@
 .hm-shell .ah-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:auto;grid-auto-flow:dense;gap:var(--ah-gap)}
 .is-wide .ah-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
 .is-wide.is-landscape .ah-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
-@media (min-width:1180px){.is-wide .ah-grid{grid-template-columns:repeat(7,minmax(0,1fr))}}
+
 .hm-shell .ah-grid>*{aspect-ratio:1;min-height:0}
 .hm-shell .ah-grid>.ah-thermo,.hm-shell .ah-grid>.hm-camera-tile.is-large,.hm-shell .ah-grid>.at-boiler,.hm-shell .ah-grid>.at-feeder{grid-column:span 2;grid-row:span 2}
 .hm-shell .ah-grid>.is-wide,.hm-shell .ah-grid>.ah-tile-stack{grid-column:span 2;aspect-ratio:auto}
@@ -118,7 +118,7 @@
 /* thermostat 2×2 */
 .hm-shell .ah-thermo .ah-tile-hit{justify-content:space-between;padding:14px 12px 12px;gap:4px}
 .hm-shell .ah-thermo-value{flex:1;display:grid;place-content:center;gap:2px;text-align:center}
-.hm-shell .ah-thermo-value b{font-size:clamp(40px,30cqw,96px);font-weight:400;letter-spacing:-2px;line-height:1;font-variant-numeric:tabular-nums}
+.hm-shell .ah-thermo-value b{font-size:clamp(40px,30cqw,96px);font-weight:400;letter-spacing:-2px;line-height:1;font-variant-numeric:tabular-nums}.hm-shell .ah-thermo-value b.is-text{font-size:clamp(22px,12cqw,40px);font-weight:600;letter-spacing:-.5px;color:var(--ah-muted)}
 .hm-shell .ah-thermo-value small{font-size:12px;color:var(--ah-muted)}
 .hm-shell .ah-thermo .ah-tile-text{padding:0 40px}.hm-shell .ah-thermo .ah-tile-text strong{font-size:15px}
 .hm-shell .ah-chev{position:absolute;bottom:10px;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;color:var(--ah-ink)}
@@ -227,7 +227,7 @@
 .hm-shell .hm-rows{display:grid;gap:1px;border-radius:16px;overflow:hidden;background:var(--ah-line)}
 .hm-shell .hm-row{display:flex;align-items:center;gap:10px;padding:8px 12px 8px 10px;background:var(--ah-group);color:var(--ah-ink)}
 .hm-shell .hm-row.is-off{opacity:.6}
-.hm-shell .at-setup-row{flex-direction:column;align-items:stretch;gap:8px}.hm-shell .at-setup-main{display:flex;align-items:center;gap:10px;min-width:0}
+.hm-shell .at-setup-row{flex-direction:column;align-items:stretch;gap:8px}.hm-shell .at-setup-row .hm-row-text small{white-space:normal;overflow-wrap:anywhere}.hm-shell .at-setup-main{display:flex;align-items:center;gap:10px;min-width:0}
 .hm-shell .hm-row-open{flex:1;display:flex;align-items:center;gap:12px;min-width:0;min-height:48px;text-align:left}
 .hm-shell .hm-thumb{position:relative;display:grid;place-items:center;width:44px;height:44px;flex:none;border-radius:12px;overflow:hidden;background:var(--ah-tile);color:var(--ah-muted)}.hm-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .hm-shell .hm-row-text{flex:1;display:grid;gap:1px;min-width:0}.hm-row-text strong{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hm-row-text small{font-size:12px;color:var(--ah-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -396,3 +396,5 @@
 .hm-shell .hm-facts>.hm-fact:last-child:nth-child(odd){grid-column:1/-1}
 
 .hm-shell .ah-tile-hit:disabled,.hm-shell .ah-row.is-button:disabled{color:inherit}
+/* laptops and desktops (≥1180 px): modules stay module-sized (~145–165 px) however wide the window is, like HomeView, so the Home face fits a 900 px-tall screen; beats the tablet landscape column counts above */
+@media (min-width:1180px){.hm-shell.is-wide.is-landscape .ah-grid,.hm-shell.is-wide .ah-grid{grid-template-columns:repeat(auto-fill,minmax(142px,1fr))}.hm-shell.is-wide.is-landscape .ah-rooms-strip .hm-room-grid,.hm-shell.is-wide .ah-rooms-strip .hm-room-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}.hm-shell.is-wide .ah-rooms-strip .hm-room{aspect-ratio:16/10}}
