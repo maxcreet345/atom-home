@@ -59,7 +59,9 @@ export function ClockTile({ now, lang, t, registry, entities, onOpen }: { now: D
   const timer = near ? { remainingMs: near.timer.state === 'active' && near.timer.finishesAt ? Math.max(0, near.timer.finishesAt - live.getTime()) : near.timer.remainingMs, durationMs: near.timer.durationMs, label: labelText(labels[near.timer.id]), more: near.running - 1 } : null;
   const date = new Intl.DateTimeFormat(locale(lang), { weekday: 'short', day: 'numeric', month: 'long' }).format(now);
   const time = clockTime(now.getTime(), lang);
-  return <button type="button" className={`ah-tile ah-clock hm-card ${timer ? 'is-timer' : ''} is-${settings.style}`} aria-label={`${time} · ${date}`} onClick={onOpen}>
+  // the name comes from the content (Lighthouse: an aria-label must contain the visible text, and the numerals of the face are visible); the time is read but not drawn twice
+  return <button type="button" className={`ah-tile ah-clock hm-card ${timer ? 'is-timer' : ''} is-${settings.style}`} onClick={onOpen}>
+    <span className="at-vh">{time} · </span>
     {settings.style === 'digital' && !timer
       ? <div className="ah-clock-digital"><b>{clockTime(live.getTime(), lang)}</b><span>{String(live.getSeconds()).padStart(2, '0')}</span></div>
       : <ClockFace now={now} sun={entities.sun ? registry.states[entities.sun] : undefined} settings={settings} timer={timer} />}
