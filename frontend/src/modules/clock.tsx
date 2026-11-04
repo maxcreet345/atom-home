@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
-import type { ComponentChildren } from 'preact';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { createPortal, type ComponentChildren } from 'preact';
 import type { ModuleDef, ModuleEntities } from './types.ts';
 import { clockSpec } from './catalog.ts';
 import { sunInfo, timerInfo, nearestTimer, fmtRemaining, toDuration, parseLabels, withLabel, withLabelStation, labelStation, aliceTimerCommand, ALICE_CANCEL_TIMER, labelText, weekNumber, PRESETS, NAMED_PRESETS, iconForLabel, dialMinutes, WEEKDAYS, WORKDAYS, WEEKEND, daysText, parseRinging, newAlarmId, readClockSettings, writeClockSettings, personState, initials, type ClockSettings, type TimerInfo } from './clock-state.ts';
@@ -75,7 +75,13 @@ const CONDITIONS = ['clear-night', 'cloudy', 'fog', 'hail', 'lightning', 'lightn
 /** The «Time» sheet: big clock, sun, three shared timers, who is home, the speakers' next alarm, settings. */
 /** A window over the sheet (centred card on a tablet, the whole sheet on a phone); closes by the cross or a tap outside. Module-level on purpose: a component created inside the sheet would be a new type on every one-second tick and remount (and re-animate) the window each time. */
 function Win({ title, onBack, children, wide, t, bodyKey }: { title: string; onBack: () => void; children: ComponentChildren; wide?: boolean; t: T; bodyKey: string }) {
-  return <div className="at-win-scrim" onClick={e => { if (e.target === e.currentTarget) onBack(); }}><div className={`at-win ${wide ? 'is-wide' : ''}`} role="dialog" aria-modal="true" aria-label={title}><div className="at-win-head"><button type="button" className="hm-icon-btn" aria-label={t('ui.back')} onClick={onBack}><Icon name="back" size={22} /></button><h3>{title}</h3><button type="button" className="hm-icon-btn" aria-label={t('ui.close')} onClick={onBack}>×</button></div><div className="at-win-body" key={bodyKey}>{children}</div></div></div>;
+  // The window and its dim layer live in the sheet's full-screen scrim, not inside the rounded sheet: a composited
+  // dim layer clipped by the sheet's corners is anti-aliased separately from the sheet and draws a bright hairline
+  // around it while the window opens (seen on the tablet and phones).
+  const anchor = useRef<HTMLSpanElement>(null); const [host, setHost] = useState<Element | null | undefined>(undefined);
+  useLayoutEffect(() => { setHost(anchor.current?.closest('.hm-scrim') ?? null); }, []);
+  const node = <div className="at-win-scrim" onClick={e => { if (e.target === e.currentTarget) onBack(); }}><div className={`at-win ${wide ? 'is-wide' : ''}`} role="dialog" aria-modal="true" aria-label={title}><div className="at-win-head"><button type="button" className="hm-icon-btn" aria-label={t('ui.back')} onClick={onBack}><Icon name="back" size={22} /></button><h3>{title}</h3><button type="button" className="hm-icon-btn" aria-label={t('ui.close')} onClick={onBack}>×</button></div><div className="at-win-body" key={bodyKey}>{children}</div></div></div>;
+  return <><span ref={anchor} hidden />{host === undefined ? null : host ? createPortal(node, host) : node}</>;
 }
 /** The big digits with seconds: the only part of the sheet that re-renders every second. */
 function LiveTime({ lang }: { lang: Lang }) {
