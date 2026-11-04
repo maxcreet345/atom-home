@@ -82,3 +82,30 @@
 .hm-shell .hm-sheet.is-split .at-cam-left>*,.hm-shell .hm-sheet.is-split .at-cam-right>*{flex:none}
 .hm-shell .hm-sheet.is-split{max-height:calc(var(--hm-height,100dvh) - 48px)}
 .hm-shell .hm-sheet.is-split .at-cam-left{max-height:calc(var(--hm-height,100dvh) - 48px);overflow:auto}
+/* last frame as a poster behind the live video; small spinner while connecting */
+.hm-shell .at-cam-poster{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;filter:brightness(.6) saturate(.8)}
+.hm-shell .at-go2rtc.is-live~.at-cam-poster{display:none}
+.hm-shell .hm-camera-wait.is-poster{background:none;color:#fff;text-shadow:0 1px 4px #000;font-size:14px}
+.hm-shell .at-cam-spin{width:22px;height:22px;border:2.5px solid #ffffff55;border-top-color:#fff;border-radius:50%;animation:at-spin 1s linear infinite}
+@keyframes at-spin{to{transform:rotate(360deg)}}
+.hm-shell button.at-cam-sound{right:auto;left:auto;top:auto;bottom:10px;right:10px;width:34px;padding:0;display:grid;place-items:center}.hm-shell button.at-cam-sound.is-on{background:var(--ah-accent)}
+.hm-shell .at-cam-stage .at-camera-q~.at-cam-sound{top:auto}
+/* doorbell: red tile line while it rings, the ring badge, the auto-close banner in the sheet, events, the cross-sheet banner */
+.hm-shell .hm-camera-tile.is-danger{outline:3px solid var(--ah-red,#ff3b30);outline-offset:-1px}.hm-shell .hm-camera-tile.is-danger .hm-camera-caption small{color:#ff6b61;font-weight:700;opacity:1}
+.hm-shell .hm-camera-tile.is-warning .hm-camera-caption small{color:#ffb02e;opacity:1}
+.hm-shell .at-cam-badge.is-ring{width:auto;padding:0 10px 0 8px;gap:6px;border-radius:999px;background:var(--ah-red,#ff3b30);font-size:12px;font-weight:700;animation:at-ring 1.4s ease-out infinite}
+@keyframes at-ring{0%{box-shadow:0 0 0 0 #ff3b3080}100%{box-shadow:0 0 0 12px #ff3b3000}}
+.hm-shell .at-door-banner{position:relative;display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:12px;padding:12px 14px 14px;border-radius:18px;background:var(--ah-red,#ff3b30);color:#fff;overflow:hidden}
+.hm-shell .at-door-banner b{display:block;font-size:16px}.hm-shell .at-door-banner small{opacity:.9;font-size:13px}
+.hm-shell .at-door-banner .at-door-cnt{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.hm-shell button.at-door-stay{padding:8px 12px;border-radius:999px;border:0;background:#ffffff2e;color:#fff;font:inherit;font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer}
+.hm-shell .at-door-bar{position:absolute;left:0;bottom:0;height:4px;width:calc(100% * var(--p,1));background:#fff;transition:width 1s linear}
+.hm-shell .at-door-seg{display:flex;gap:4px;padding:8px 16px 6px;background:var(--ah-group)}
+.hm-shell .at-door-seg button{flex:1;padding:7px 4px;border-radius:10px;border:0;background:var(--ah-inset,#0000000a);font:inherit;font-size:13px;font-weight:560;color:var(--ah-muted);cursor:pointer}.hm-shell .at-door-seg button.is-on{background:var(--ah-accent);color:#fff}
+.hm-shell .at-door-ev.is-ring strong{color:var(--ah-red,#ff3b30)}
+.hm-shell .at-door-when{color:var(--ah-muted);font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hm-shell button.at-door-row-btn{width:100%;text-align:left;font:inherit;color:inherit;border:0;cursor:pointer}.hm-shell button.at-door-row-btn:disabled{opacity:.5;cursor:default}
+.hm-shell .at-door-pills{display:flex;gap:6px;padding:4px 16px 12px;background:var(--ah-group)}.hm-shell .at-door-pills .hm-pill:disabled{opacity:.5}
+.hm-shell .at-door-ring{position:fixed;top:max(12px,env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:10px;padding:10px 10px 10px 14px;border-radius:999px;background:var(--ah-red,#ff3b30);color:#fff;font-weight:700;box-shadow:0 10px 30px #0006;max-width:calc(100% - 24px)}
+.hm-shell .at-door-ring .hm-pill{background:#fff;color:var(--ah-red,#ff3b30)}.hm-shell .at-door-ring .hm-icon-btn{color:#fff}
+.hm-shell .hm-sheet.is-alarm{box-shadow:0 0 0 3px var(--ah-red,#ff3b30),0 30px 80px #0008}

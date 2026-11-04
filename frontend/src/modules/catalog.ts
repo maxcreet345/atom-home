@@ -74,7 +74,35 @@ export const petFeederSpec: ModuleSpec = {
     } };
   },
 };
-export const MODULE_SPECS: ModuleSpec[] = [boilerEbusSpec, cameraGo2rtcSpec, petFeederSpec];
+/** Functions of a HomeKit video doorbell (Aqara G4 through HA's HomeKit Device integration), matched by entity suffix inside the doorbell's HA device. */
+export const DOORBELL_ROLES: ReadonlyArray<{ role: string; domain: string; suffix: RegExp }> = [
+  { role: 'ring', domain: 'event', suffix: /_ring$/ }, { role: 'motion', domain: 'binary_sensor', suffix: /_motion$/ }, { role: 'battery', domain: 'sensor', suffix: /_battery$/ },
+  { role: 'chime', domain: 'switch', suffix: /_chime_mute$/ }, { role: 'mic', domain: 'switch', suffix: /_mic_mute$/ }, { role: 'speaker', domain: 'switch', suffix: /_speaker_mute$/ }, { role: 'identify', domain: 'button', suffix: /_identify$/ },
+];
+/** Video doorbell: the `event.*` doorbell entity names the device, its camera is the card; live video comes from the go2rtc add-on (`hass:` source over HA's own HomeKit pairing), stream named after the camera unless configured. */
+export const doorbellSpec: ModuleSpec = {
+  id: 'doorbell', titleKey: 'module.doorbell', placement: [],
+  roles: [{ role: 'camera', labelKey: 'module.camera.entity', required: true }, ...DOORBELL_ROLES.map(r => ({ role: r.role, labelKey: `module.doorbell.role.${r.role}`, required: false }))],
+  options: [
+    { key: 'addon', labelKey: 'module.camera.addon', required: true, placeholder: 'a1b2c3d4_go2rtc' }, { key: 'stream', labelKey: 'module.camera.stream', required: false, placeholder: 'auto' },
+    { key: 'autoOpen', labelKey: 'module.doorbell.autoOpen', required: false, placeholder: 'on' }, { key: 'autoOpenSec', labelKey: 'module.doorbell.autoOpenSec', required: false, placeholder: '60' }, { key: 'poster', labelKey: 'module.doorbell.poster', required: false, placeholder: 'on' },
+  ],
+  detect(reg) {
+    const ring = reg.entities.find(e => e.entity_id.startsWith('event.') && !e.disabled_by && reg.states[e.entity_id]?.attributes.device_class === 'doorbell' && e.device_id);
+    if (!ring) return null;
+    const own = reg.entities.filter(e => e.device_id === ring.device_id && !e.disabled_by && reg.states[e.entity_id]);
+    const cam = own.find(e => e.entity_id.startsWith('camera.'));
+    if (!cam) return null;
+    const entities: ModuleEntities = { camera: cam.entity_id };
+    for (const r of DOORBELL_ROLES) { const hit = own.find(e => e.entity_id.startsWith(r.domain + '.') && r.suffix.test(e.entity_id)); if (hit) entities[r.role] = hit.entity_id; }
+    const dev = reg.devices.find(d => d.id === ring.device_id);
+    const addonCam = reg.entities.find(e => addonFromEntity(e.entity_id) && !e.disabled_by && reg.states[e.entity_id]);
+    const options: ModuleOptions = { stream: cam.entity_id.slice('camera.'.length) };
+    if (addonCam) options.addon = addonFromEntity(addonCam.entity_id)!;
+    return { label: dev?.name ?? 'Doorbell', entities, options };
+  },
+};
+export const MODULE_SPECS: ModuleSpec[] = [boilerEbusSpec, cameraGo2rtcSpec, doorbellSpec, petFeederSpec];
 export interface ActiveSpec { spec: ModuleSpec; entities: ModuleEntities; label: string; options: ModuleOptions }
 /** Modules whose hardware is present (or that the owner configured by hand) and that are not disabled. */
 export function activeSpecs(registry: Registry, config: HouseConfig, specs: ModuleSpec[] = MODULE_SPECS): ActiveSpec[] {

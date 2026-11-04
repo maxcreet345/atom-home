@@ -11,7 +11,7 @@ import { RoomTile, AccessoryTile, ThermostatTile, ClockTile, SceneTile, ValueTil
 import { DeviceSheet, type Runner } from './sheet.tsx';
 import { stateText, isOn, num, co2Level, withRoom } from './format.ts';
 import { Setup } from './setup.tsx';
-import { activeModules, claimedEntities, type ActiveModule, type TileState } from '../modules/index.ts';
+import { activeModules, claimedEntities, type ActiveModule, type TileState, type AutoClose } from '../modules/index.ts';
 import type { JSX } from 'preact';
 import { SaveError, type ConfigStore } from '../runtime/store.ts';
 import { Cascade } from './motion.tsx';
@@ -51,9 +51,9 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
   const claimed = useMemo(() => claimedEntities(registry, config, modules), [registry, config, modules]);
   const home = useMemo(() => discover(registry, config, claimed), [registry, config, claimed]);
   const [view, setView] = useState<View>(() => decode(navigationWindow.location.hash));
-  const player = (dev: HomeDevice, mode: 'tile' | 'stage') => { if (mode === 'tile' && view.device) return null; /* one stream at a time: the sheet's stage replaces the tile player */ const m = modules.find(x => x.def.Player && x.entities.camera === dev.primary.id); const P = m?.def.Player; return m && P ? <P key={`${m.def.id}:${dev.key}:${mode}`} entities={m.entities} options={m.options} host={host} t={t} lang={lang} mode={mode} /> : null; };
+  const player = (dev: HomeDevice, mode: 'tile' | 'stage') => { if (mode === 'tile' && view.device) return null; /* one stream at a time: the sheet's stage replaces the tile player */ const m = modules.find(x => x.def.Player && x.entities.camera === dev.primary.id); const P = m?.def.Player; const poster = typeof dev.primary.attributes.entity_picture === 'string' ? dev.primary.attributes.entity_picture : null; return m && P ? <P key={`${m.def.id}:${dev.key}:${mode}`} entities={m.entities} options={m.options} host={host} t={t} lang={lang} mode={mode} poster={poster} /> : null; };
   /** What the camera's module says about it for the tile (closed lens, second line). */
-  const tileState = (dev: HomeDevice): TileState | null => { const m = modules.find(x => x.def.tileState && x.entities.camera === dev.primary.id); return m?.def.tileState ? m.def.tileState(registry, m.entities, t) : null; };
+  const tileState = (dev: HomeDevice): TileState | null => { const m = modules.find(x => x.def.tileState && x.entities.camera === dev.primary.id); return m?.def.tileState ? m.def.tileState(registry, m.entities, t, lang) : null; };
   useEffect(() => { const pop = () => setView(decode(navigationWindow.location.hash)); navigationWindow.addEventListener('popstate', pop); navigationWindow.addEventListener('hashchange', pop); return () => { navigationWindow.removeEventListener('popstate', pop); navigationWindow.removeEventListener('hashchange', pop); }; }, [navigationWindow]);
   const go = (next: Partial<View>) => { const v = { section: view.section, room: null, device: null, ...next } as View; navigationWindow.history.pushState(null, '', encode(v)); setView(v); };
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set()), [toast, setToast] = useState(''), [confirm, setConfirm] = useState<{ device: HomeDevice; action: Action; value?: unknown } | null>(null);
@@ -75,6 +75,31 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
   const time = new Intl.DateTimeFormat(lang === 'ru' ? 'ru-RU' : lang === 'ro' ? 'ro-RO' : 'en-GB', { hour: '2-digit', minute: '2-digit' }).format(now);
   const date = new Intl.DateTimeFormat(lang === 'ru' ? 'ru-RU' : lang === 'ro' ? 'ro-RO' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).format(now);
   const enabled = home.devices.filter(d => d.enabled);
+  // A ring opens the doorbell sheet on every device and closes it again after the module's seconds; any touch of the sheet keeps it. With another sheet open, a banner offers to switch instead.
+  const alarms = modules.map(m => ({ m, a: m.def.alarm?.(m.entities, m.options) ?? null })).filter(x => x.a && x.a.seconds > 0) as Array<{ m: ActiveModule; a: { entityId: string; seconds: number } }>;
+  const alarmStates = alarms.map(x => registry.states[x.a.entityId]?.state ?? '').join('|');
+  const seenAlarms = useRef<string | null>(null);
+  const [autoClose, setAutoClose] = useState<{ key: string; until: number } | null>(null), [ringBanner, setRingBanner] = useState<{ key: string; seconds: number } | null>(null);
+  const openAlarm = (key: string, seconds: number) => { setRingBanner(null); if (view.device !== key) go({ section: view.section, room: view.room, device: key }); setAutoClose({ key, until: Date.now() + seconds * 1000 }); };
+  useEffect(() => {
+    const prev = seenAlarms.current; seenAlarms.current = alarmStates;
+    if (prev === null || prev === alarmStates) return;
+    const before = prev.split('|'), after = alarmStates.split('|');
+    alarms.forEach((x, i) => {
+      if (before[i] === after[i] || !after[i] || after[i] === 'unavailable' || after[i] === 'unknown') return;
+      const dev = enabled.find(d => d.primary.id === x.m.entities.camera); if (!dev) return;
+      if (view.device && view.device !== dev.key) { setRingBanner({ key: dev.key, seconds: x.a.seconds }); setTimeout(() => setRingBanner(b => b?.key === dev.key ? null : b), x.a.seconds * 1000); return; }
+      openAlarm(dev.key, x.a.seconds);
+    });
+  }, [alarmStates]);
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!autoClose) return;
+    const i = setInterval(() => { if (Date.now() >= autoClose.until) { setAutoClose(null); if (view.device === autoClose.key) go({ section: view.section, room: view.room }); } else setTick(x => x + 1); }, 1000);
+    return () => clearInterval(i);
+  }, [autoClose, view.device]);
+  const autoCloseFor = (key: string): AutoClose | null => autoClose && autoClose.key === key ? { left: Math.ceil((autoClose.until - Date.now()) / 1000), keep: () => setAutoClose(null) } : null;
+  const setModuleOption = (id: string) => host.admin ? (key: string, value: string | undefined) => { const cur = config.modules[id] ?? {}; const options = { ...(cur.options ?? {}) }; if (value === undefined) delete options[key]; else options[key] = value; void applyConfig({ ...config, modules: { ...config.modules, [id]: { ...cur, options } } }).catch(() => undefined); } : undefined;
   const hasPower = (d: HomeDevice) => d.metrics.some(m => m.deviceClass === 'power' || m.deviceClass === 'energy');
   const energyDevices = enabled.filter(d => d.kind === 'energy' || hasPower(d));
   const present = (s: Section) => s === 'home' || s === 'rooms' || s === 'systems' || (s === 'energy' ? energyDevices.length > 0 : enabled.some(d => d.section === s));
@@ -130,11 +155,12 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
       const mod = device.kind === 'camera' ? modules.find(m => m.def.Sheet && m.entities.camera === device.primary.id) : undefined, st = device.kind === 'camera' ? tileState(device) : null;
       const stage = device.kind === 'camera' ? (st?.closed ? <div className="at-cam-stage-closed"><Icon name="camera" size={32} /><span>{t('module.camera.closed')}</span></div> : player(device, 'stage')) : undefined;
       const sheetWide = !!mod && wide && landscape && viewport.width >= 800; // a phone on its side (874×402) splits too: video left, controls right, instead of a video that fills the whole height
-      return <div className="hm-scrim" onClick={e => { if (e.target === e.currentTarget) close(); }}><section className={`hm-sheet ${sheetWide ? 'is-split' : ''}`} role="dialog" aria-modal="true" aria-label={device.name} {...swipeToClose(close)}>
-        {mod?.def.Sheet ? <mod.def.Sheet device={device} registry={registry} entities={mod.entities} options={mod.options} host={host} t={t} lang={lang} runner={runner} onClose={close} room={roomName_} stage={stage} wide={sheetWide} /> : <DeviceSheet device={device} runner={runner} onClose={close} t={t} lang={lang} stage={stage} host={host} room={roomName_} />}
+      return <div className="hm-scrim" onClick={e => { if (e.target === e.currentTarget) close(); }}><section className={`hm-sheet ${sheetWide ? 'is-split' : ''} ${autoClose?.key === device.key ? 'is-alarm' : ''}`} role="dialog" aria-modal="true" aria-label={device.name} {...swipeToClose(close)} onPointerDownCapture={() => { if (autoClose?.key === device.key) setAutoClose(null); }} onKeyDownCapture={() => { if (autoClose?.key === device.key) setAutoClose(null); }}>
+        {mod?.def.Sheet ? <mod.def.Sheet device={device} registry={registry} entities={mod.entities} options={mod.options} host={host} t={t} lang={lang} runner={runner} onClose={close} room={roomName_} stage={stage} wide={sheetWide} setOption={setModuleOption(mod.def.id)} autoClose={autoCloseFor(device.key)} /> : <DeviceSheet device={device} runner={runner} onClose={close} t={t} lang={lang} stage={stage} host={host} room={roomName_} />}
       </section></div>;
     })()}
     {confirm && <div className="hm-scrim is-top" onClick={e => { if (e.target === e.currentTarget) setConfirm(null); }}><div className="hm-confirm" role="alertdialog" aria-modal="true" aria-label={t('confirm.title')}><h2>{t('confirm.title')}</h2><p>{(() => { const a = t(confirm.action.label as Key) === confirm.action.label ? confirm.action.label : t(confirm.action.label as Key); return a === confirm.device.name ? t('confirm.text.one', { action: a }) : t('confirm.text', { action: a, device: confirm.device.name }); })()}</p><div><button type="button" className="hm-pill" onClick={() => setConfirm(null)}>{t('confirm.no')}</button><button type="button" className="hm-pill is-primary" onClick={() => void runner.run(confirm.device, confirm.action, confirm.value)}>{t('confirm.yes')}</button></div></div></div>}
+    {ringBanner && <div className="at-door-ring" role="alert"><Icon name="bell" size={20} /><span>{t('module.doorbell.ringing')}</span><button type="button" className="hm-pill is-primary" onClick={() => openAlarm(ringBanner.key, ringBanner.seconds)}>{t('ui.open')}</button><button type="button" className="hm-icon-btn" aria-label={t('ui.close')} onClick={() => setRingBanner(null)}>×</button></div>}
     {toast && <div className="hm-toast" role="alert" onClick={() => setToast('')}><Icon name="warning" size={18} /><span>{toast}</span></div>}
   </div>;
 }
@@ -168,7 +194,8 @@ function Overview({ home, registry, config, modules, player, tileState, host, ru
   const power = d.flatMap(x => x.metrics).filter(m => m.deviceClass === 'power' && m.available && Number.isFinite(Number(m.state)));
   const watts = power.length ? power.reduce((a, m) => a + (m.unit === 'kW' ? Number(m.state) * 1000 : Number(m.state)), 0) : null;
   const hasPlayer = (x: HomeDevice) => modules.some(m => m.def.Player && m.entities.camera === x.primary.id);
-  const climate = d.find(x => x.kind === 'climate'), cameras = d.filter(x => x.kind === 'camera' && (x.primary.available || hasPlayer(x))).sort((a, b) => Number(hasPlayer(b)) - Number(hasPlayer(a)) || Number(typeof b.primary.attributes.entity_picture === 'string') - Number(typeof a.primary.attributes.entity_picture === 'string')), weather = d.find(x => x.kind === 'weather');
+  const tileLive = (x: HomeDevice) => modules.some(m => m.def.Player && m.def.tileStreams !== false && m.entities.camera === x.primary.id);
+  const climate = d.find(x => x.kind === 'climate'), cameras = d.filter(x => x.kind === 'camera' && (x.primary.available || hasPlayer(x))).sort((a, b) => Number(tileLive(b)) - Number(tileLive(a)) || Number(hasPlayer(b)) - Number(hasPlayer(a)) || Number(typeof b.primary.attributes.entity_picture === 'string') - Number(typeof a.primary.attributes.entity_picture === 'string')), weather = d.find(x => x.kind === 'weather');
   const wtemp = weather && typeof weather.primary.attributes.temperature === 'number' ? weather.primary.attributes.temperature : null;
   // Home face = favourites + one summary module per group (Xiaomi Home «Освещение · всё выключено»), rooms underneath; everything else lives in Rooms and Systems.
   const favourites = d.filter(x => x.favorite && x !== climate && x.kind !== 'camera' && x.kind !== 'weather');
@@ -204,9 +231,9 @@ function Overview({ home, registry, config, modules, player, tileState, host, ru
 function CameraTile({ device, player, state, onOpen, t, lang, large }: { device: HomeDevice; player?: JSX.Element | null; state?: TileState | null; onOpen: () => void; t: ReturnType<typeof translator>; lang: 'ru' | 'ro' | 'en'; large?: boolean }) {
   const pic = typeof device.primary.attributes.entity_picture === 'string' ? device.primary.attributes.entity_picture : null;
   const closed = state?.closed === true;
-  return <div className={`hm-card hm-camera-tile ah-camera ah-tile ${large ? 'is-large' : ''} ${closed ? 'is-closed' : ''}`} role="button" tabIndex={0} onClick={onOpen}>
+  return <div className={`hm-card hm-camera-tile ah-camera ah-tile ${large ? 'is-large' : ''} ${closed ? 'is-closed' : ''} ${state?.tone ? `is-${state.tone}` : ''}`} role="button" tabIndex={0} onClick={onOpen}>
     <div className="hm-camera-frame">{closed ? <div className="hm-camera-wait"><Icon name="camera" size={32} /><span>{t('module.camera.closed')}</span></div> : player ? player : pic ? <img className="at-camera-img" src={pic} alt="" /> : <div className="hm-camera-wait"><Icon name="camera" size={32} /><span>{stateText(device.primary, t, lang)}</span></div>}{(!player || closed) && <span className="hm-live"><i />{closed ? t('state.off') : device.primary.available ? t('state.idle') : t('state.unavailable')}</span>}
-      {state?.icon && !closed && <span className="at-cam-badge" title={state.line ?? ''}><Icon name={state.icon} size={16} /></span>}
+      {state?.icon && !closed && <span className={`at-cam-badge ${state.tone === 'danger' ? 'is-ring' : ''}`} title={state.line ?? ''}><Icon name={state.icon} size={16} />{state.tone === 'danger' && <span>{state.line}</span>}</span>}
       <div className="hm-camera-caption"><strong>{device.name}</strong><small>{state?.line ?? device.model ?? ''}</small><Icon name="next" size={18} /></div></div>
   </div>;
 }

@@ -11,7 +11,7 @@ import type { EntityRef, HomeDevice } from '../model/discover.ts';
 import { domainOf, type Registry } from '../model/registry.ts';
 import type { T, Key } from '../i18n/index.ts';
 import { num, type Lang } from '../ui/format.ts';
-import { mountGo2rtcPlayer, mseAvailable, type Player, type PlayerStatus } from './go2rtc-player.ts';
+import { Go2rtcView } from './go2rtc-view.tsx';
 
 /** A module entity as the sheet rows expect it (name from HA, no kind). */
 function refOf(registry: Registry, id: string | undefined): EntityRef | null {
@@ -123,25 +123,5 @@ export const cameraGo2rtc: ModuleDef = {
   claims: cameraClaims,
   tileState: (registry, entities, t) => cameraTileState(registry.states, entities, k => t(k as Key)),
   Sheet: CameraSheet,
-  Player({ options, host, t, mode }) {
-    const mount = useRef<HTMLDivElement>(null), hostRef = useRef(host); hostRef.current = host;
-    const [status, setStatus] = useState<PlayerStatus>('connecting'), [hd, setHd] = useState(false), [hdBroken, setHdBroken] = useState(false);
-    // The HD stream is often H.265, which not every browser can decode through MSE: on the first failure fall back to SD and grey the switch out.
-    useEffect(() => { if (hd && status === 'error') { setHd(false); setHdBroken(true); } }, [hd, status]);
-    const addon = options.addon ?? '', stream = hd && options.streamHd ? options.streamHd : options.stream;
-    useEffect(() => {
-      const node = mount.current; if (!node) return;
-      if (!hostRef.current.ws || !addon || !mseAvailable()) { setStatus('error'); return; }
-      let player: Player;
-      try { player = mountGo2rtcPlayer(node, { addon, stream, host: { ws: m => hostRef.current.ws!(m), get online() { return hostRef.current.online; } }, onStatus: setStatus, onBlack: hd ? () => { setHd(false); setHdBroken(true); } : undefined }); }
-      catch { setStatus('error'); return; }
-      return () => player.dispose();
-    }, [addon, stream]);
-    return <>
-      <div className={`hm-camera-mount at-go2rtc is-${status}`} ref={mount} data-player-status={status} data-stream={stream ?? 'auto'} />
-      {status !== 'live' && <div className="hm-camera-wait"><Icon name="camera" size={32} /><span>{t(status === 'error' ? 'module.camera.fail' : status === 'stalled' ? 'module.camera.stalled' : 'module.camera.wait')}</span></div>}
-      <span className={`hm-live ${status === 'live' ? 'is-live' : ''}`}><i />{status === 'live' ? 'LIVE' : status === 'error' ? t('state.unavailable') : t('state.idle')}</span>
-      {mode === 'stage' && options.streamHd && <button type="button" className="hm-camera-q at-camera-q" aria-pressed={hd} disabled={hdBroken} title={hdBroken ? t('module.camera.hdUnsupported') : undefined} onClick={e => { e.stopPropagation(); setHd(!hd); }}>{hd ? 'HD' : 'SD'}</button>}
-    </>;
-  },
+  Player: ({ options, host, t, mode, poster }) => <Go2rtcView options={options} host={host} t={t} mode={mode} poster={poster} />,
 };
