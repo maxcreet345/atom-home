@@ -52,4 +52,5 @@ export const en: Dictionary = {
   'clock.noTimers': 'No timers', 'alarm.all': 'All · {n}',
   'alarm.noStationRooms': 'Alarms live in rooms with a speaker — none yet',
   'module.camera.role.ring': 'Events: ring (doorbell)', 'module.camera.role.motionEvent': 'Events: motion (doorbell)',
+  'light.level.night': 'Night light', 'light.temp': 'Temperature', 'light.preset.warm': 'Warm', 'light.preset.cozy': 'Cozy', 'light.preset.neutral': 'Neutral', 'light.preset.day': 'Daylight', 'light.ambient': 'Ambient light', 'light.white.warm': 'Warm white', 'light.white.cold': 'Cool white', 'light.since': 'since {time}', 'light.relay': 'relay', 'light.color': 'Colour', 'light.color.amber': 'Amber', 'light.color.peach': 'Peach', 'light.color.rose': 'Rose', 'light.color.lavender': 'Lavender', 'light.color.mint': 'Mint', 'light.color.sky': 'Sky',
 };

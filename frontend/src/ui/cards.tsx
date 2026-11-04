@@ -7,6 +7,7 @@ import { stateText, isOn, num, iconOfKind, type Lang } from './format.ts';
 import { stockRoomArt } from './art.ts';
 import { DeviceArt, deviceArtType, DEVICE_ART_TYPES, type DeviceArtType } from './device-art.tsx';
 import { Tick } from './motion.tsx';
+import { glowOf, ambientHex } from '../model/lights.ts';
 /** Stock picture for a card: the owner's choice from the configurator, else guessed from kind and name; 'none' switches it off. */
 export function artOf(device: Pick<HomeDevice, 'kind' | 'name' | 'model' | 'art'>): DeviceArtType | null { if (device.art === 'none') return null; if (device.art && (DEVICE_ART_TYPES as string[]).includes(device.art)) return device.art as DeviceArtType; return deviceArtType(device.kind, device.name, device.model ?? ''); }
 
@@ -83,7 +84,9 @@ export function AccessoryTile({ device, name, sub, room, pending, onToggle, onOp
   const down = () => { held.current = false; hold.current = setTimeout(() => { held.current = true; onOpen(); }, 500); };
   const up = () => { if (hold.current) clearTimeout(hold.current); hold.current = null; };
   const click = () => { if (held.current) { held.current = false; return; } (onToggle ?? onOpen)(); };
-  return <div className={`ah-tile hm-card ${active ? 'is-on' : ''} ${alert ? 'is-alert' : ''} ${e.available ? '' : 'is-off'} ${pending ? 'is-pending' : ''} ${wide ? 'is-wide' : ''} kind-${device.kind}`} data-device-key={device.key} style={`--tile:${color}`}>
+  const ambient = device.kind === 'light' ? device.controls.find((c, i) => i > 0 && c.domain === 'light' && c.available && isOn(c)) : undefined; // the lamp's lit ambient light: a coloured dot on the tile
+  return <div className={`ah-tile hm-card ${active ? 'is-on' : ''} ${alert ? 'is-alert' : ''} ${e.available ? '' : 'is-off'} ${pending ? 'is-pending' : ''} ${wide ? 'is-wide' : ''} kind-${device.kind}`} data-device-key={device.key} style={`--tile:${color}${device.kind === 'light' ? `;--glow:${glowOf(e.attributes).toFixed(2)}` : ''}`}>
+    {ambient && <i className="at-tile-amb" style={`--amb:${ambientHex(ambient.attributes)}`} aria-hidden="true" />}
     <button type="button" className="ah-tile-hit hm-light-hit" disabled={pending || !e.available && !!onToggle} onClick={click} onPointerDown={down} onPointerUp={up} onPointerLeave={up} onPointerCancel={up} onContextMenu={ev => { ev.preventDefault(); if (!held.current) onOpen(); }} aria-label={onToggle ? `${label}: ${on ? t('action.off') : t('action.on')}` : `${t('ui.details')}: ${label}`}>
       <span className="ah-glyph">{device.photo ? <img src={device.photo} alt="" loading="lazy" /> : <Icon name={device.icon ?? iconOfKind[device.kind] ?? 'generic'} size={34} />}</span>
       <span className="ah-tile-text"><strong>{label}</strong>{line2 && <small><Tick value={line2} /></small>}</span>

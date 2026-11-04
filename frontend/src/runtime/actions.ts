@@ -1,6 +1,7 @@
 import type { HomeDevice, EntityRef } from '../model/discover.ts';
 import type { CustomButton } from '../model/config.ts';
 import type { Key } from '../i18n/index.ts';
+import { AMBIENT_COLORS, nearestColor } from '../model/lights.ts';
 
 export type Risk = 'normal' | 'water' | 'security' | 'custom';
 export interface Action {
@@ -23,6 +24,7 @@ export function actionsFor(device: HomeDevice): Action[] {
       const modes = list(a.supported_color_modes);
       if (modes.some(m => m !== 'onoff')) push({ id: 'brightness', label: 'action.brightness', kind: 'number', domain: 'light', service: 'turn_on', min: 1, max: 100, step: 1, unit: '%', current: typeof a.brightness === 'number' ? Math.round(a.brightness / 2.55) : null });
       const effects = list(a.effect_list); if (effects.length && supports(e, 4)) push({ id: 'effect', label: 'action.effect', kind: 'select', domain: 'light', service: 'turn_on', options: effects, current: a.effect ?? null });
+      if (modes.some(m => ['rgb', 'rgbw', 'rgbww', 'hs', 'xy'].includes(m))) push({ id: 'color', label: 'light.color', kind: 'select', domain: 'light', service: 'turn_on', options: AMBIENT_COLORS.map(c => c.key), current: nearestColor(a.rgb_color) });
       if (modes.includes('color_temp')) push({ id: 'color_temp', label: 'action.color_temp', kind: 'number', domain: 'light', service: 'turn_on', min: num(a.min_color_temp_kelvin, 2000), max: num(a.max_color_temp_kelvin, 6500), step: 50, unit: 'K', current: a.color_temp_kelvin ?? null });
       break; }
     case 'switch': case 'socket': push({ id: 'toggle', label: 'action.toggle', kind: 'toggle', domain: 'switch', service: 'toggle', current: e.state === 'on' }); break;
@@ -65,6 +67,7 @@ export function serviceCall(action: Action, value?: unknown): { domain: string; 
   switch (action.id) {
     case 'brightness': data.brightness_pct = value; break;
     case 'color_temp': data.color_temp_kelvin = value; break;
+    case 'color': data.rgb_color = Array.isArray(value) ? value : AMBIENT_COLORS.find(c => c.key === value)?.rgb ?? value; break;
     case 'percentage': data.percentage = value; break;
     case 'position': data.position = value; break;
     case 'volume': data.volume_level = typeof value === 'number' ? value / 100 : value; break;

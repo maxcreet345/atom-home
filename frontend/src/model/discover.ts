@@ -2,6 +2,7 @@ import type { Registry, EntityRow, DeviceRow, StateRow } from './registry.ts';
 import { domainOf } from './registry.ts';
 import { type Kind, CONTROL_KINDS, KIND_PRIORITY, entityKind, entityCategory, sectionOfKind, type Section } from './kinds.ts';
 import type { HouseConfig } from './config.ts';
+import { APPLIANCE_KINDS, isAmbientLight, isIndicatorLight } from './lights.ts';
 
 export interface EntityRef {
   id: string; domain: string; deviceClass: string | null; name: string; kind: Kind | null;
@@ -48,19 +49,29 @@ export function discover(reg: Registry, config: HouseConfig, claimed: ReadonlySe
     const classified = list.filter(e => !entityHidden(e.entity_id)).map(e => { const s = reg.states[e.entity_id]; const kind = entityKind(e, s); return { e, s, kind, cat: entityCategory(e, kind) }; }).filter(x => x.cat !== 'hidden');
     let controls = classified.filter(x => x.cat === 'primary' && x.kind && CONTROL_KINDS.includes(x.kind));
     const sensors = classified.filter(x => x.cat === 'primary' && x.kind && !CONTROL_KINDS.includes(x.kind));
+    // Room-light rule: a light that is an appliance's indicator (camera LED, hub status light) is a setting of that device, never a lamp of the room.
+    const nameOf = (x: typeof classified[number]) => typeof x.s?.attributes.friendly_name === 'string' ? x.s.attributes.friendly_name : x.e.name ?? x.e.original_name ?? '';
+    const appliance = controls.some(x => APPLIANCE_KINDS.includes(x.kind!));
+    const indicators = controls.filter(x => x.kind === 'light' && (appliance || isIndicatorLight(x.e.entity_id, nameOf(x))));
+    controls = controls.filter(x => !indicators.includes(x));
     // A plain switch next to a richer control (thermostat child lock, camera motion toggle…) is a setting of that device, not a card.
     const richer = controls.some(x => x.kind !== 'switch' && x.kind !== 'socket');
-    const demoted = richer ? controls.filter(x => x.kind === 'switch' || x.kind === 'socket') : [];
+    const demoted = [...indicators, ...(richer ? controls.filter(x => x.kind === 'switch' || x.kind === 'socket') : [])];
     if (richer) controls = controls.filter(x => x.kind !== 'switch' && x.kind !== 'socket');
+    // A lamp's second light (ambient ring, backlight) belongs to the lamp's card, not to a tile of its own.
+    const lights = controls.filter(x => x.kind === 'light'), ambient = lights.length > 1 ? lights.filter(x => isAmbientLight(x.e.entity_id, nameOf(x))) : [];
+    if (ambient.length && ambient.length < lights.length) controls = controls.filter(x => !ambient.includes(x));
+    const ambientRefs = ambient.length && ambient.length < lights.length ? ambient.map(x => ref(x.e, x.s, x.kind, entityName(x.e.entity_id))) : [];
     const parameters = [...classified.filter(x => x.cat === 'parameter'), ...demoted].map(x => ref(x.e, x.s, x.kind, entityName(x.e.entity_id)));
     const diagnostics = classified.filter(x => x.cat === 'diagnostic').map(x => ref(x.e, x.s, x.kind, entityName(x.e.entity_id)));
     const sensorRefs = sensors.map(x => ref(x.e, x.s, x.kind, entityName(x.e.entity_id)));
     if (controls.length) {
       controls.sort((a, b) => KIND_PRIORITY.indexOf(a.kind!) - KIND_PRIORITY.indexOf(b.kind!) || a.e.entity_id.localeCompare(b.e.entity_id));
+      const mainLight = controls.find(x => x.kind === 'light');
       controls.forEach((c, i) => {
         const primary = ref(c.e, c.s, c.kind, entityName(c.e.entity_id));
         cards.push({ key: `e:${c.e.entity_id}`, kind: c.kind!, name: primary.name, roomId: roomOf(c.e, d), icon: null, photo: null, art: null, favorite: false, order: 0, enabled: true, available: primary.available,
-          primary, controls: [primary], metrics: i === 0 ? sensorRefs : [], parameters: i === 0 ? parameters : [], diagnostics: i === 0 ? diagnostics : [],
+          primary, controls: c === mainLight ? [primary, ...ambientRefs] : [primary], metrics: i === 0 ? sensorRefs : [], parameters: i === 0 ? parameters : [], diagnostics: i === 0 ? diagnostics : [],
           manufacturer: d.manufacturer ?? null, model: d.model ?? null, haDeviceId: deviceId, section: sectionOfKind(c.kind!) });
       });
     } else if (sensors.length) {
