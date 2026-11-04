@@ -427,3 +427,7 @@
 @media (min-width:1800px) and (any-hover:none){.hm-shell .ah-tile-text strong{font-size:22px}.hm-shell .ah-tile-text small{font-size:18px}.hm-shell .ah-value-num,.hm-shell .ah-module .hm-status-text strong{font-size:40px}.hm-shell .hm-sidebar nav button{font-size:16px}.hm-shell .hm-head h1{font-size:40px}.hm-shell .hm-head p{font-size:20px}.hm-shell :is(button,input,select,summary):focus-visible{outline-width:5px}}
 /* A11Y-1 (random sample #climate): the boiler module's captions on the inset tile and its amber warning text reach 4.5:1 */
 .hm-shell.ah-shell:not([data-theme="dark"]) .at-boiler-tile{--hm-muted:#525257}.hm-shell.ah-shell:not([data-theme="dark"]) .at-boiler-tile.is-warning strong,.hm-shell.ah-shell:not([data-theme="dark"]) .at-boiler-tile.is-warning>span{color:#8a4006}
+/* IA-2 of the audit (approved 04.11.2026): on a phone the rooms are one horizontal strip with snap, so the home face is one row shorter */
+.is-narrow .ah-rooms-strip .hm-room-grid{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -14px;padding:0 14px 6px!important;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-padding-left:14px}
+.is-narrow .ah-rooms-strip .hm-room-grid::-webkit-scrollbar{display:none}
+.is-narrow .ah-rooms-strip .hm-room{flex:0 0 46%;scroll-snap-align:start;aspect-ratio:4/3}
