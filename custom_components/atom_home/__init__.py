@@ -22,9 +22,10 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.storage import Store
 from aiohttp import web
 
+from .alarms import AlarmScheduler, normalise_alarms
 from .config_state import ConfigState, ConfigWriteError
 from .const import (
-    DOMAIN, FRONTEND_FILE, MAX_PHOTO_BYTES, PANEL_ICON, PANEL_TITLE, PANEL_URL_PATH, PHOTOS_DIR, PHOTOS_URL, STATIC_URL, STORAGE_KEY, STORAGE_VERSION,
+    CLIENT_FEATURE_COMPOSITION, DOMAIN, FRONTEND_FILE, MAX_PHOTO_BYTES, PANEL_ICON, PANEL_TITLE, PANEL_URL_PATH, PHOTOS_DIR, PHOTOS_URL, STATIC_URL, STORAGE_KEY, STORAGE_VERSION,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -106,7 +107,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     store: Store[dict] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
     data = await store.async_load() or {}
     version = await hass.async_add_executor_job(_version)
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"store": store, "state": ConfigState(data.get("config"), data.get("revision", 0), store.async_save)}
+    scheduler = AlarmScheduler(hass)
+    scheduler.set_alarms(normalise_alarms((data.get("config") or {}).get("alarms")))
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"store": store, "state": ConfigState(data.get("config"), data.get("revision", 0), store.async_save), "alarms": scheduler}
     hass.data[DOMAIN]["_version"] = version
 
     photos_dir = Path(hass.config.path(PHOTOS_DIR))
@@ -138,7 +141,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     panel_custom.async_remove_panel(hass, PANEL_URL_PATH)
-    hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
+    bucket = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None) or {}
+    if (sched := bucket.get("alarms")):
+        sched.shutdown()
     return True
 
 
@@ -163,7 +168,7 @@ def _register_ws(hass: HomeAssistant) -> None:
     @callback
     def ws_capabilities(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
         """What this backend supports; a panel that gets `unknown_command` here is talking to an older integration."""
-        connection.send_result(msg["id"], {"configRevision": 1, "composition": 1, "assist": 0})
+        connection.send_result(msg["id"], {"configRevision": 1, "composition": 1, "assist": 0, "alarms": 1})
 
     @websocket_api.websocket_command({
         vol.Required("type"): f"{DOMAIN}/config/set",
@@ -185,7 +190,50 @@ def _register_ws(hass: HomeAssistant) -> None:
                 _LOGGER.error("Atom Home: configuration could not be written", exc_info=err.__cause__)
             connection.send_error(msg["id"], err.code, err.message)
             return
+        if (sched := (_entry_data(hass) or {}).get("alarms")):
+            sched.set_alarms(normalise_alarms((state.config or {}).get("alarms")))
         connection.send_result(msg["id"], {"saved": True, "revision": revision})
+
+    @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/alarms/set", vol.Required("alarms"): list, vol.Optional("expected_revision"): vol.All(int, vol.Range(min=0))})
+    @websocket_api.async_response
+    async def ws_alarms_set(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+        """Any signed-in user may set the house alarms: only the `alarms` key changes, the rest of the config is kept as stored."""
+        bucket = _entry_data(hass) or {}
+        state: ConfigState | None = bucket.get("state")
+        if state is None:
+            connection.send_error(msg["id"], "not_loaded", "Atom Home is not set up")
+            return
+        alarms = normalise_alarms(msg["alarms"])
+        config = dict(state.config or {"schemaVersion": 1, "home": {"name": "Мой дом", "language": "ru", "theme": "light"}, "rooms": {}, "devices": {}, "entities": {}, "buttons": [], "sections": {}, "modules": {}})
+        config["alarms"] = alarms
+        try:
+            revision = await state.write(config, msg.get("expected_revision"), [CLIENT_FEATURE_COMPOSITION])
+        except ConfigWriteError as err:
+            connection.send_error(msg["id"], err.code, err.message)
+            return
+        if (sched := bucket.get("alarms")):
+            sched.set_alarms(alarms)
+        connection.send_result(msg["id"], {"saved": True, "revision": revision, "alarms": alarms})
+
+    @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/alarm/stop"})
+    @websocket_api.async_response
+    async def ws_alarm_stop(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+        if (sched := (_entry_data(hass) or {}).get("alarms")):
+            await sched.stop()
+        connection.send_result(msg["id"], {"stopped": True})
+
+    @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/alarm/snooze", vol.Optional("minutes"): vol.All(int, vol.Range(min=1, max=60))})
+    @websocket_api.async_response
+    async def ws_alarm_snooze(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+        if (sched := (_entry_data(hass) or {}).get("alarms")):
+            await sched.snooze(msg.get("minutes", 9))
+        connection.send_result(msg["id"], {"snoozed": True})
+
+    @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/alarms/state"})
+    @callback
+    def ws_alarms_state(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+        sched = (_entry_data(hass) or {}).get("alarms")
+        connection.send_result(msg["id"], sched.summary() if sched else {"count": 0, "next": [], "ringing": None, "repeatLeft": 0})
 
     PHOTO_NAME = re.compile(r"^[a-z0-9]{12,32}\.(jpg|png|webp)$")
     MIME_EXT = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
@@ -236,3 +284,7 @@ def _register_ws(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_set)
     websocket_api.async_register_command(hass, ws_photo_set)
     websocket_api.async_register_command(hass, ws_photo_delete)
+    websocket_api.async_register_command(hass, ws_alarms_set)
+    websocket_api.async_register_command(hass, ws_alarm_stop)
+    websocket_api.async_register_command(hass, ws_alarm_snooze)
+    websocket_api.async_register_command(hass, ws_alarms_state)

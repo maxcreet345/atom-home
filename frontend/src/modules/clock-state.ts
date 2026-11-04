@@ -67,3 +67,35 @@ export function personState(row: StateRow | undefined): { home: boolean; zone: s
   return { home: false, zone: s };
 }
 export const initials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('');
+
+/** «поставь таймер на 4 минуты 30 секунд» — the phrase Alice understands, with Russian plurals. */
+export function aliceTimerCommand(totalSec: number): string {
+  const ru = (n: number, one: string, few: string, many: string) => { const a = n % 100, b = n % 10; return a > 10 && a < 20 ? many : b === 1 ? one : b >= 2 && b <= 4 ? few : many; };
+  const m = Math.floor(totalSec / 60), sec = totalSec % 60; const parts: string[] = [];
+  if (m) parts.push(`${m} ${ru(m, 'минуту', 'минуты', 'минут')}`); if (sec) parts.push(`${sec} ${ru(sec, 'секунду', 'секунды', 'секунд')}`);
+  return `поставь таймер на ${parts.join(' ') || '1 минуту'}`;
+}
+export const ALICE_CANCEL_TIMER = 'отмени таймер';
+/** The station a running timer was mirrored to (third field of the label), if any. */
+export const labelStation = (v: string | undefined) => { const s = (v ?? '').split('|')[2]; return s && /^[a-z0-9_]+$/.test(s) ? `media_player.${s}` : null; };
+export function withLabelStation(labels: Record<string, string>, id: string, label: string, seconds: number, station: string | null): string {
+  const base = JSON.parse(withLabel(labels, id, label, seconds)) as Record<string, string>;
+  if (station && base[id] !== undefined) base[id] = `${base[id]}|${station.replace(/^media_player\./, '')}`;
+  let out = JSON.stringify(base); const keys = Object.keys(base); while (out.length > 255 && keys.length > 1) { delete base[keys.shift()!]; out = JSON.stringify(base); } return out;
+}
+/** Weekdays as the editor shows them: ISO numbers → short names; «будни» and «выходные» shortcuts. */
+export const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7] as const;
+export const WORKDAYS = [1, 2, 3, 4, 5], WEEKEND = [6, 7];
+export function daysText(days: number[], names: string[], t: (k: string) => string): string {
+  if (!days.length) return t('alarm.once');
+  if (days.length === 7) return t('alarm.daily');
+  if (days.length === 5 && WORKDAYS.every(d => days.includes(d))) return t('alarm.workdays');
+  if (days.length === 2 && WEEKEND.every(d => days.includes(d))) return t('alarm.weekend');
+  return days.map(d => names[d - 1]).join(', ');
+}
+/** What the ringing flag's text carries: `id|room|time|label|repeatsLeft`. */
+export function parseRinging(raw: string | undefined): { id: string; room: string; time: string; label: string; left: number } | null {
+  if (!raw || raw === 'unknown' || raw === 'unavailable') return null; const p = raw.split('|'); if (p.length < 3) return null;
+  return { id: p[0], room: p[1], time: p[2], label: p[3] ?? '', left: Number(p[4]) || 0 };
+}
+export const newAlarmId = () => `a${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`;

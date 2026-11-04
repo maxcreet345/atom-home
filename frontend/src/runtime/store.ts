@@ -1,4 +1,4 @@
-import { normaliseConfig, type HouseConfig } from '../model/config.ts';
+import { normaliseConfig, normaliseAlarms, type HouseConfig, type Alarm } from '../model/config.ts';
 /** Where the house configuration lives. Stage 2: browser storage for previews; stage 3: the HA integration. */
 export interface PhotoStore { upload(blob: Blob, mime: 'image/jpeg' | 'image/png' | 'image/webp'): Promise<string>; remove(url: string): Promise<void> }
 export type SaveErrorCode = 'conflict' | 'client_outdated' | 'too_large' | 'bad_schema' | 'unauthorized' | 'failed';
@@ -14,6 +14,8 @@ export interface ConfigStore {
   load(): Promise<{ config: HouseConfig; warnings: string[]; revision?: number }>;
   /** Resolves only after the write is confirmed; rejects with SaveError. Saves from one store run one after another. */
   save(config: HouseConfig, options?: SaveOptions): Promise<{ revision?: number }>;
+  /** Alarms may be set by any signed-in user (not only admins): the backend changes just that key and keeps the rest. */
+  saveAlarms?(alarms: Alarm[]): Promise<{ alarms: Alarm[]; revision?: number }>;
   readonly label: string;
   photos?: PhotoStore;
 }
@@ -36,6 +38,7 @@ export function memoryStore(initial?: unknown): ConfigStore & { client(): Config
         shared.current = { config: normaliseConfig(config).config, warnings: [] }; known = ++shared.revision;
         return { revision: known };
       },
+      async saveAlarms(alarms) { const list = normaliseAlarms(alarms); shared.current = { config: { ...shared.current.config, alarms: list }, warnings: [] }; known = ++shared.revision; return { alarms: list, revision: known }; },
     };
   };
   return Object.assign(open(), { client: open, failNext(code: SaveErrorCode) { shared.fail = code; } });

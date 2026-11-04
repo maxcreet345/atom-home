@@ -17,8 +17,11 @@ Object.assign(fixture.states, {
   'timer.atom_1': row('idle', { duration: '0:10:00', friendly_name: 'Atom таймер 1' }), 'timer.atom_2': row('idle', { duration: '0:10:00' }), 'timer.atom_3': row('idle', { duration: '0:10:00' }),
   'input_text.atom_timer_labels': row('{}', { max: 255 }), 'input_boolean.timer_done': row('off'), 'input_boolean.timer_announce': row('on'), 'input_boolean.timer_push': row('on'),
   'person.gayane': row('home', { friendly_name: 'Gayane Grigorean', entity_picture: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' }), 'person.ararat': row('Atom Service', { friendly_name: 'Ararat Melconean' }), 'person.daniela': row('not_home', { friendly_name: 'Daniela Melconean' }),
+  'media_player.living_yandex_max': row('idle', { friendly_name: 'Гостиная · Яндекс Станция Макс' }), 'light.kids_chandelier': row('off', { friendly_name: 'Люстра', supported_color_modes: ['color_temp'] }), 'input_boolean.alarm_ringing': row('off'), 'input_text.alarm_ringing': row(''),
   'calendar.living_yandex_max_alarms': row('off', { friendly_name: 'Гостиная · Станция Макс · будильники и таймеры', message: 'Будильник', start_time: iso(7, 0, 1) }),
 });
+for (const [area_id, name] of [['gostinaia', 'Гостиная'], ['detskaia', 'Детская']]) if (!fixture.areas.some(a => a.area_id === area_id)) fixture.areas.push({ area_id, name, icon: null, picture: null });
+fixture.entities.push({ ...ent('media_player.living_yandex_max', 'yandex_station'), area_id: 'gostinaia' }, { ...ent('light.kids_chandelier'), area_id: 'detskaia' }, ent('input_boolean.alarm_ringing'), ent('input_text.alarm_ringing'));
 fixture.entities.push(...['sun.sun', 'weather.forecast_home', 'timer.atom_1', 'timer.atom_2', 'timer.atom_3', 'input_text.atom_timer_labels', 'input_boolean.timer_done', 'input_boolean.timer_announce', 'input_boolean.timer_push', 'person.gayane', 'person.ararat', 'person.daniela', 'calendar.living_yandex_max_alarms'].map(id => ent(id)));
 const config = { schemaVersion: 1, home: { name: 'Мой дом', language: 'ru', theme: 'light' }, modules: { camera_go2rtc: { entities: { camera: 'camera.entrance_camera' }, options: { addon: 'a889bffc_go2rtc', stream: 'entrance_camera_h264' } }, doorbell: { options: { addon: 'a889bffc_go2rtc' } } } };
 const served = JSON.stringify(fixture);
@@ -40,10 +43,17 @@ try {
     const sheet = await page.evaluate(() => { const s = document.querySelector('.at-clock'); return { wide: s.classList.contains('is-split'), big: s.querySelector('.at-clock-big b')?.textContent, date: s.querySelector('.at-clock-date')?.textContent, sun: [...s.querySelectorAll('.at-clock-sun-row b')].map(x => x.textContent), presets: [...s.querySelectorAll('.at-clock-grid:not(.is-named) .at-clock-tile')].map(b => b.querySelector('b').textContent), named: [...s.querySelectorAll('.at-clock-grid.is-named .at-clock-tile strong')].map(b => b.textContent), people: [...s.querySelectorAll('.at-clock-person')].map(p => p.textContent), avatar: s.querySelector('.at-clock-person.is-home b img')?.getAttribute('src'), alarms: s.querySelectorAll('.ah-row .at-door-when').length, face: !!s.querySelector('.at-clock-face-wrap') }; });
     const expectSplit = w >= 800 && w > h;
     check(`${label}: sheet — time, date with week and weather, sun, presets, people, alarm`, /^\d\d:\d\d$/.test(sheet.big ?? '') && /неделя/.test(sheet.date ?? '') && /8,5°/.test(sheet.date ?? '') && sheet.sun.includes('06:52') && sheet.sun.includes('16:42') && sheet.presets.join(',') === '1,3,5,10,15,30,1' && sheet.named.join(',') === 'Яйца,Чай,Паста,Стирка,Духовка,своё…' && sheet.people.length === 3 && sheet.people[0].includes('дома') && (sheet.avatar ?? '').startsWith('data:image/png') && sheet.alarms === 1 && sheet.wide === expectSplit && sheet.face === expectSplit, JSON.stringify(sheet));
-    // start a 10-minute timer with a label: the preview host records the commands
+    // the station is a mandatory choice: presets wait until it is made
+    const waiting = await page.evaluate(() => ({ required: !!document.querySelector('.at-clock-stations.is-required'), disabled: document.querySelector('.at-clock-grid .at-clock-tile')?.disabled, chips: [...document.querySelectorAll('.at-clock-stations .hm-pill')].map(b => b.textContent) }));
+    check(`${label}: timer waits for the station choice`, waiting.required && waiting.disabled === true && waiting.chips.join(',') === 'Без Алисы,Гостиная', JSON.stringify(waiting));
+    await page.click('.at-clock-stations .hm-pill:nth-child(2)'); await page.waitForTimeout(200);
+    // start a 4-minute «Чай» with Alice in the living room: label carries the station, Alice gets the phrase
     await page.click('.at-clock-grid.is-named .at-clock-tile:nth-child(2)'); await page.waitForTimeout(400);
-    const log = await page.evaluate(() => window.atomPreview.host.log.slice(-2));
-    check(`${label}: named preset «Чай» → label and 4 min saved, timer.start 00:04:00`, log.length === 2 && log[0].domain === 'input_text' && log[0].data.value === '{"timer.atom_1":"Чай|240"}' && log[1].domain === 'timer' && log[1].service === 'start' && log[1].data.duration === '00:04:00' && log[1].data.entity_id === 'timer.atom_1', JSON.stringify(log));
+    const log = await page.evaluate(() => window.atomPreview.host.log.slice(-3));
+    check(`${label}: named preset «Чай» with Alice → label|240|station, timer.start 00:04:00, Alice command`, log.length === 3 && log[0].domain === 'input_text' && log[0].data.value === '{"timer.atom_1":"Чай|240|living_yandex_max"}' && log[1].domain === 'timer' && log[1].service === 'start' && log[1].data.duration === '00:04:00' && log[2].domain === 'yandex_station' && log[2].data.command === 'поставь таймер на 4 минуты', JSON.stringify(log));
+    const reset = await page.evaluate(() => !!document.querySelector('.at-clock-stations.is-required'));
+    check(`${label}: the choice resets after the start`, reset, 'still chosen');
+    await page.click('.at-clock-stations .hm-pill:nth-child(1)'); await page.waitForTimeout(150);
     // custom time wheel
     await page.click('.at-clock-tile.is-dial'); await page.waitForTimeout(300);
     await page.locator('.at-clock-dial').scrollIntoViewIfNeeded(); await page.waitForTimeout(200); const dialBox = await page.locator('.at-clock-dial').boundingBox(); await page.mouse.click(dialBox.x + dialBox.width * 0.9, dialBox.y + dialBox.height / 2); await page.waitForTimeout(200);
@@ -64,6 +74,24 @@ try {
     check(`${label}: timer-done banner with Stop, tile back to hands`, !!banner.text && banner.text.includes('Таймер готов') && banner.text.includes('Чай · 10 мин') && banner.text.includes('Стоп') && banner.tileTimer === false, JSON.stringify(banner));
     await page.click('.at-house-banner .hm-pill'); await page.waitForTimeout(300); const stop = await page.evaluate(() => window.atomPreview.host.log.slice(-1)[0]);
     check(`${label}: Stop turns the flag off`, stop?.domain === 'input_boolean' && stop.service === 'turn_off' && stop.data.entity_id === 'input_boolean.timer_done', JSON.stringify(stop));
+    // alarms: add one for the kids' room with sunrise and 5 repeats, save through the store, toggle it
+    await page.evaluate(() => { location.hash = '#home?device=clock'; }); await page.waitForSelector('.at-clock'); await page.waitForTimeout(300);
+    await page.click('.at-alarm-add'); await page.waitForTimeout(300);
+    const kids = await page.evaluate(() => { const b = [...document.querySelectorAll('.at-alarm-editor .at-clock-presets:first-of-type .hm-pill')].find(x => x.textContent === 'Детская'); b?.click(); return !!b; });
+    check(`${label}: editor opens, room «Детская» available`, kids, 'no room chip');
+    await page.waitForTimeout(200);
+    await page.fill('.at-alarm-time input[type=time]', '07:30');
+    const ed = await page.evaluate(() => { const e = document.querySelector('.at-alarm-editor'); const rep = [...e.querySelectorAll('.hm-pill')].find(x => x.textContent === '×5'); rep?.click(); return { light: [...e.querySelectorAll('.ah-row strong')].map(x => x.textContent), lightOn: e.querySelector('.ah-row .hm-switch')?.getAttribute('aria-checked'), noStation: e.textContent.includes('нет Станции'), rep: !!rep }; });
+    check(`${label}: kids' room → sunrise with the chandelier on by default, no station, repeats chosen`, ed.light.includes('Свет: плавный рассвет') && ed.lightOn === 'true' && ed.noStation && ed.rep, JSON.stringify(ed));
+    await page.click('.at-alarm-save'); await page.waitForTimeout(500); await shot('alarm');
+    const saved = await page.evaluate(() => { const r = document.querySelector('.at-alarm-row'); return { rows: document.querySelectorAll('.at-alarm-row').length, text: r?.textContent, cfg: window.atomPreview.config.alarms?.map(a => `${a.room} ${a.time} light=${a.light} fade=${a.fadeMin} rep=${a.repeats}`) }; });
+    check(`${label}: alarm saved to the config and listed`, saved.rows === 1 && /Детская · 07:30/.test(saved.text ?? '') && /рассвет 15 мин/.test(saved.text ?? '') && saved.cfg?.[0] === 'detskaia 07:30 light=true fade=15 rep=5', JSON.stringify(saved));
+    // the integration rings: flag + text → banner with Stop
+    await page.evaluate(() => { window.fx.states['input_boolean.alarm_ringing'] = { ...window.fx.states['input_boolean.alarm_ringing'], state: 'on' }; window.fx.states['input_text.alarm_ringing'] = { ...window.fx.states['input_text.alarm_ringing'], state: 'a1|Детская|07:30|Дети|4' }; window.atomPreview.redraw(); });
+    await page.waitForTimeout(500); await shot('alarm-banner');
+    const ab = await page.evaluate(() => document.querySelector('.at-house-banner')?.textContent ?? null);
+    check(`${label}: alarm banner with room, time and repeats left`, !!ab && ab.includes('Будильник · Детская · 07:30') && ab.includes('ещё 4 повт.') && ab.includes('Стоп'), String(ab));
+    await page.evaluate(() => { window.fx.states['input_boolean.alarm_ringing'] = { ...window.fx.states['input_boolean.alarm_ringing'], state: 'off' }; window.atomPreview.redraw(); });
     // settings: digital style persists per device
     await page.evaluate(() => { window.fx.states['input_boolean.timer_done'] = { ...window.fx.states['input_boolean.timer_done'], state: 'off' }; window.atomPreview.redraw(); location.hash = '#home?device=clock'; }); await page.waitForSelector('.at-clock'); await page.click('.at-clock .at-cam-gear'); await page.waitForTimeout(300); await shot('settings');
     const settings = await page.evaluate(() => { const s = document.querySelector('.at-clock'); return { page: s.dataset.page, rows: [...s.querySelectorAll('.ah-row strong')].map(x => x.textContent), switches: s.querySelectorAll('.hm-switch').length }; });

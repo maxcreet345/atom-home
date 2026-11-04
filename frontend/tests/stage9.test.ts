@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { sunInfo, timerInfo, nearestTimer, fmtRemaining, toDuration, parseLabels, withLabel, labelText, labelSeconds, weekNumber, personState, initials } from '../src/modules/clock-state.ts';
+import { sunInfo, timerInfo, nearestTimer, fmtRemaining, toDuration, parseLabels, withLabel, labelText, labelSeconds, weekNumber, personState, initials, aliceTimerCommand, withLabelStation, labelStation, daysText, parseRinging } from '../src/modules/clock-state.ts';
+import { normaliseAlarms, normaliseConfig } from '../src/model/config.ts';
 import { clockSpec, activeSpecs } from '../src/modules/catalog.ts';
 import { defaultConfig } from '../src/model/config.ts';
 const camPath = resolve(import.meta.dirname, '../../private/fixtures/criuleni-camera-20261104.json');
@@ -44,4 +45,24 @@ test('clock: module detected on the Criuleni snapshot, claims its helpers', { sk
   const withSun = { ...cam!, states: { ...cam!.states, 'sun.sun': row('above_horizon', { next_rising: '2026-11-05T04:52:00+00:00', next_setting: '2026-11-04T14:42:00+00:00' }), 'timer.atom_1': row('idle', { duration: '0:10:00' }), 'input_boolean.timer_done': row('off') } };
   const m2 = clockSpec.detect(withSun)!; assert.ok(m2); assert.equal(m2.entities.sun, 'sun.sun'); assert.equal(m2.entities.timer1, 'timer.atom_1'); assert.equal(m2.entities.done, 'input_boolean.timer_done'); assert.equal(m2.entities.timer2, undefined);
   assert.ok(activeSpecs(withSun, defaultConfig()).some(a => a.spec.id === 'clock'));
+});
+
+test('alarms: normalised like the integration does; Alice timer phrases; label with station', () => {
+  const list = normaliseAlarms([
+    { id: 'a1', room: 'detskaia', time: '07:30', days: [1, 2, 3, 4, 5, 5, 9], enabled: true, label: 'Дети', alice: 'off', light: true, lightEntity: 'light.kids_chandelier', fadeMin: 15, push: true, repeats: 5, repeatEveryMin: 5 },
+    { id: 'a2', room: 'gostinaia', time: '6:30', days: [] },
+    { id: 'a3', room: 'spalnia', time: '08:00', days: [6, 7], alice: 'tts', station: 'media_player.living_yandex_max', light: true, lightEntity: '', fadeMin: 7, repeats: 99, repeatEveryMin: 4 },
+    { id: 'a1', room: 'dup', time: '09:00' }, 'junk', { id: 'bad id!', time: '09:00' },
+  ]);
+  assert.equal(list.length, 2, 'bad time, duplicate id and junk are dropped');
+  assert.deepEqual(list[0].days, [1, 2, 3, 4, 5]); assert.equal(list[0].repeats, 5); assert.equal(list[0].light, true);
+  assert.equal(list[1].light, false, 'light without an entity is off'); assert.equal(list[1].fadeMin, 15); assert.equal(list[1].repeats, 0); assert.equal(list[1].repeatEveryMin, 5); assert.equal(list[1].station, 'media_player.living_yandex_max');
+  const cfg = normaliseConfig({ schemaVersion: 1, alarms: [{ id: 'z', room: 'r', time: '05:05', days: [1] }] }).config; assert.equal(cfg.alarms.length, 1, 'alarms survive the config round trip');
+  assert.equal(aliceTimerCommand(240), 'поставь таймер на 4 минуты'); assert.equal(aliceTimerCommand(60), 'поставь таймер на 1 минуту'); assert.equal(aliceTimerCommand(630), 'поставь таймер на 10 минут 30 секунд'); assert.equal(aliceTimerCommand(21 * 60), 'поставь таймер на 21 минуту'); assert.equal(aliceTimerCommand(45), 'поставь таймер на 45 секунд');
+  const v = withLabelStation({}, 'timer.atom_1', 'Чай', 240, 'media_player.living_yandex_max'); assert.equal(v, '{"timer.atom_1":"Чай|240|living_yandex_max"}');
+  assert.equal(labelStation('Чай|240|living_yandex_max'), 'media_player.living_yandex_max'); assert.equal(labelStation('Чай|240'), null); assert.equal(labelText('Чай|240|living_yandex_max'), 'Чай');
+  const tx = (k: string) => ({ 'alarm.once': 'один раз', 'alarm.daily': 'ежедневно', 'alarm.workdays': 'будни', 'alarm.weekend': 'выходные' } as Record<string, string>)[k] ?? k;
+  const names = 'пн,вт,ср,чт,пт,сб,вс'.split(',');
+  assert.equal(daysText([1, 2, 3, 4, 5], names, tx), 'будни'); assert.equal(daysText([6, 7], names, tx), 'выходные'); assert.equal(daysText([], names, tx), 'один раз'); assert.equal(daysText([1, 3], names, tx), 'пн, ср'); assert.equal(daysText([1, 2, 3, 4, 5, 6, 7], names, tx), 'ежедневно');
+  assert.deepEqual(parseRinging('a1|Детская|07:30|Дети|3'), { id: 'a1', room: 'Детская', time: '07:30', label: 'Дети', left: 3 }); assert.equal(parseRinging(''), null); assert.equal(parseRinging('unknown'), null);
 });

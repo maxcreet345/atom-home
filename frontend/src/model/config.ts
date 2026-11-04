@@ -6,6 +6,10 @@ export interface RoomOverride { name?: string; photo?: string | null; hidden?: b
 export interface DeviceOverride { enabled?: boolean; name?: string; roomId?: string; icon?: string; kind?: Kind; mergeInto?: string; order?: number; photo?: string | null; /** stock illustration: a DeviceArtType, 'none', or unset = guessed */ art?: string; /** pinned to the Home face */ favorite?: boolean }
 export interface ModuleOverride { enabled?: boolean; entities?: Record<string, string>; options?: Record<string, string> }
 export interface EntityOverride { hidden?: boolean; name?: string }
+/** A room alarm the integration rings: when, where, how (speaker phrase or music, a dimmable light fading in, push), and how often it repeats. */
+export interface Alarm { id: string; room: string; time: string; days: number[]; enabled: boolean; label: string; alice: 'off' | 'tts' | 'music'; phrase: string; station: string; light: boolean; lightEntity: string; fadeMin: number; push: boolean; repeats: number; repeatEveryMin: number }
+export const ALARM_FADE = [0, 5, 10, 15, 20, 30] as const;
+export const ALARM_REPEAT_EVERY = [3, 5, 10] as const;
 export interface CustomButton { id: string; label: string; icon?: string; roomId?: string; service: string; target?: Record<string, unknown>; data?: Record<string, unknown>; confirm: boolean }
 export interface HouseConfig {
   schemaVersion: 1;
@@ -16,9 +20,10 @@ export interface HouseConfig {
   buttons: CustomButton[];
   sections: Partial<Record<Section, { hidden?: boolean }>>;
   modules: Record<string, ModuleOverride>;
+  alarms: Alarm[];
 }
 export function defaultConfig(name = 'Мой дом'): HouseConfig {
-  return { schemaVersion: 1, home: { name, logo: null, language: 'ru', theme: 'light' }, rooms: {}, devices: {}, entities: {}, buttons: [], sections: {}, modules: {} };
+  return { schemaVersion: 1, home: { name, logo: null, language: 'ru', theme: 'light' }, rooms: {}, devices: {}, entities: {}, buttons: [], sections: {}, modules: {}, alarms: [] };
 }
 const plain = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const SAFE_KEY = /^[\w.:\-]{1,128}$/;
@@ -52,6 +57,23 @@ export function normaliseConfig(input: unknown): { config: HouseConfig; warnings
     if (!plain(b) || typeof b.id !== 'string' || !SAFE_KEY.test(b.id) || typeof b.label !== 'string' || typeof b.service !== 'string' || !/^[a-z_]+\.[a-z_]+$/.test(b.service)) { warnings.push('config: dropped malformed button'); continue; }
     out.buttons.push(compact({ id: b.id, label: b.label.slice(0, 60), icon: str(b.icon, 40), roomId: str(b.roomId), service: b.service, target: plain(b.target) ? b.target : undefined, data: plain(b.data) ? b.data : undefined, confirm: b.confirm !== false }) as unknown as CustomButton);
   }
+  out.alarms = normaliseAlarms(input.alarms);
   if (plain(input.sections)) for (const [k, v] of Object.entries(input.sections)) if (plain(v) && typeof v.hidden === 'boolean') (out.sections as Record<string, { hidden?: boolean }>)[k] = { hidden: v.hidden };
   return { config: out, warnings };
+}
+
+const ENTITY_ID = /^[a-z_]+\.[a-z0-9_]+$/;
+/** Same rules as the integration's `normalise_alarms`: malformed alarms are dropped, odd values fall back to defaults. */
+export function normaliseAlarms(raw: unknown): Alarm[] {
+  if (!Array.isArray(raw)) return [];
+  const out: Alarm[] = [], seen = new Set<string>();
+  for (const a of raw.slice(0, 40)) {
+    if (!plain(a) || typeof a.id !== 'string' || !/^[A-Za-z0-9_-]{1,32}$/.test(a.id) || seen.has(a.id)) continue;
+    if (typeof a.time !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(a.time)) continue;
+    seen.add(a.id);
+    const days = Array.isArray(a.days) ? [...new Set(a.days.filter((d): d is number => typeof d === 'number' && d >= 1 && d <= 7))].sort() : [];
+    const station = typeof a.station === 'string' && ENTITY_ID.test(a.station) ? a.station : '', lightEntity = typeof a.lightEntity === 'string' && ENTITY_ID.test(a.lightEntity) ? a.lightEntity : '';
+    out.push({ id: a.id, room: typeof a.room === 'string' ? a.room.slice(0, 64) : '', time: a.time, days, enabled: a.enabled !== false, label: typeof a.label === 'string' ? a.label.slice(0, 40) : '', alice: a.alice === 'tts' || a.alice === 'music' ? a.alice : 'off', phrase: typeof a.phrase === 'string' ? a.phrase.slice(0, 120) : '', station, light: a.light === true && !!lightEntity, lightEntity, fadeMin: (ALARM_FADE as readonly number[]).includes(a.fadeMin as number) ? a.fadeMin as number : 15, push: a.push !== false, repeats: typeof a.repeats === 'number' && a.repeats >= 0 && a.repeats <= 10 ? Math.round(a.repeats) : 0, repeatEveryMin: (ALARM_REPEAT_EVERY as readonly number[]).includes(a.repeatEveryMin as number) ? a.repeatEveryMin as number : 5 });
+  }
+  return out;
 }

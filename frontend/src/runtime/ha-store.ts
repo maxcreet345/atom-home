@@ -1,5 +1,5 @@
 import { SaveError, type ConfigStore, type SaveErrorCode } from './store.ts';
-import { normaliseConfig, type HouseConfig } from '../model/config.ts';
+import { normaliseAlarms, normaliseConfig, type HouseConfig } from '../model/config.ts';
 import type { Hass } from './host.ts';
 const CODES: SaveErrorCode[] = ['conflict', 'client_outdated', 'too_large', 'bad_schema', 'unauthorized'];
 const saveError = (e: unknown) => {
@@ -32,6 +32,17 @@ export function haStore(hass: () => Hass): ConfigStore {
       const next = queue.then(run, run);
       queue = next.catch(() => undefined);
       return next;
+    },
+    saveAlarms(alarms) {
+      const run = async () => {
+        const msg: Record<string, unknown> = { type: 'atom_home/alarms/set', alarms: normaliseAlarms(alarms) };
+        if (revision !== undefined) msg.expected_revision = revision;
+        let r: { alarms?: unknown; revision?: number };
+        try { r = await hass().callWS<{ saved: boolean; revision?: number; alarms?: unknown }>(msg); } catch (e) { throw saveError(e); }
+        if (typeof r?.revision === 'number') revision = r.revision;
+        return { alarms: normaliseAlarms(r.alarms), revision };
+      };
+      const next = queue.then(run, run); queue = next.catch(() => undefined); return next;
     },
     photos: {
       async upload(blob, mime) { const buf = new Uint8Array(await blob.arrayBuffer()); let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000)); const r = await hass().callWS<{ url: string }>({ type: 'atom_home/photo/set', mime, data: btoa(bin) }); return r.url; },
