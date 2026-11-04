@@ -8,6 +8,7 @@ import type { Registry } from './model/registry.ts';
 import base from './styles/base.css?inline';
 import home from './styles/apple.css?inline';
 import atom from './styles/atom.css?inline';
+import { SKELETON_CSS, skeletonHtml } from './ui/skeleton.js';
 
 const REGISTRY_REFRESH_MS = 5 * 60 * 1000;
 /** Custom sidebar panel for Home Assistant: receives the authenticated `hass` object, never stores tokens. */
@@ -67,7 +68,8 @@ export class AtomHomePanel extends HTMLElement {
   }
   private draw() {
     if (!this.mount || !this._hass) return;
-    if (!this.registry || !this.config) { render(<div className="hm-shell daily-shell at-shell is-wide" data-theme="light"><div className="hm-main"><p className="hm-muted" style="padding:24px">{this.warnings.length ? this.warnings.join('; ') : 'Atom Home…'}</p></div></div>, this.mount); return; }
+    // ST-1 of the audit: a skeleton with the home grid's geometry instead of a black screen while the registry and the config load
+    if (!this.registry || !this.config) { render(this.warnings.length ? <div className="hm-shell daily-shell at-shell is-wide" data-theme="light"><div className="hm-main"><p className="hm-muted" style="padding:24px">{this.warnings.join('; ')}</p></div></div> : <><style>{SKELETON_CSS}</style><div dangerouslySetInnerHTML={{ __html: skeletonHtml() }} /></>, this.mount); return; }
     const registry: Registry = { ...this.registry, states: this._hass.states };
     render(<AtomApp registry={registry} config={this.config} host={liveHost(this._hass)} viewport={this.viewport} store={this.configStore()} configWarnings={this.warnings} onConfigChange={next => { this.config = next; }} />, this.mount);
   }

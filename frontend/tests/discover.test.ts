@@ -95,6 +95,11 @@ test('actions are white-listed per kind and respect declared features', () => {
   assert.deepEqual(actionsFor(vac).map(x => x.id), ['start', 'return', 'fan_speed']);
   const cam = { kind: 'camera', primary: { id: 'camera.c', state: 'idle', attributes: {} } } as never;
   assert.equal(actionsFor(cam).length, 0);
+  // F2 of the audit: a switch the owner shows as a light is toggled through its own domain, never light.toggle
+  const relay = { kind: 'light', primary: { id: 'switch.hall', domain: 'switch', state: 'off', attributes: { supported_color_modes: ['onoff'] } } } as never;
+  assert.deepEqual(actionsFor(relay).map(x => `${x.domain}.${x.service}`), ['switch.toggle']);
+  const odd = { kind: 'socket', primary: { id: 'script.plug', domain: 'script', state: 'off', attributes: {} } } as never;
+  assert.equal(actionsFor(odd)[0].domain, 'homeassistant');
   assert.ok(CONTROL_KINDS.includes('light'));
 });
 

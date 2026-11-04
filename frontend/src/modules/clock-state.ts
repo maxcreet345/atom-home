@@ -4,9 +4,10 @@ const ms = (iso: unknown) => { const v = typeof iso === 'string' ? Date.parse(is
 export interface SunInfo { rise: number | null; set: number | null; dayMs: number | null; /** 0…1 across today's daylight, null at night */ frac: number | null; elevation: number | null; night: boolean; /** ms until the next sunset (day) or sunrise (night) */ untilNext: number | null }
 /** Today's sunrise/sunset from HA's `sun.sun` (which only knows the *next* ones): by day the sunrise was ~24 h before the next one; at night before dawn both are today's. */
 export function sunInfo(sun: StateRow | undefined, now: number): SunInfo {
-  const a = sun?.attributes ?? {}; const nextRise = ms(a.next_rising), nextSet = ms(a.next_setting);
+  const a = sun?.attributes ?? {}; let nextRise = ms(a.next_rising), nextSet = ms(a.next_setting);
   const elevation = typeof a.elevation === 'number' ? a.elevation : null, night = sun?.state === 'below_horizon';
   if (nextRise === null || nextSet === null) return { rise: null, set: null, dayMs: null, frac: null, elevation, night, untilNext: null };
+  while (nextRise < now) nextRise += 86_400_000; while (nextSet < now) nextSet += 86_400_000; // F4 of the audit: stale attributes (sun not updated) are rolled forward, never «−1 ч 20 мин»
   let rise: number, set: number;
   const sameDay = new Date(nextRise).toDateString() === new Date(now).toDateString();
   if (!night) { set = nextSet; rise = nextRise - 86_400_000; }

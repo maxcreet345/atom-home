@@ -13,6 +13,10 @@ export interface Action {
 const num = (v: unknown, d: number) => typeof v === 'number' && Number.isFinite(v) ? v : d;
 const list = (v: unknown) => Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
 const supports = (e: EntityRef, bit: number) => (num(e.attributes.supported_features, 0) & bit) === bit;
+/** F2 of the audit: a card's kind is the owner's choice (a switch may be shown as a light), the service domain is the entity's. */
+const TOGGLE_DOMAINS = ['light', 'switch', 'fan', 'input_boolean', 'media_player', 'humidifier', 'siren', 'remote', 'cover'];
+const domOf = (e: EntityRef) => e.domain || e.id.split('.')[0];
+const tdom = (e: EntityRef) => TOGGLE_DOMAINS.includes(domOf(e)) ? domOf(e) : 'homeassistant';
 
 /** White-listed actions for the device's primary entity: only standard HA services that match the entity's declared features. */
 export function actionsFor(device: HomeDevice): Action[] {
@@ -20,15 +24,15 @@ export function actionsFor(device: HomeDevice): Action[] {
   const push = (x: Omit<Action, 'entityId' | 'confirm' | 'risk'> & { confirm?: boolean; risk?: Risk }) => out.push({ entityId: id, confirm: false, risk: 'normal', ...x });
   switch (device.kind) {
     case 'light': {
-      push({ id: 'toggle', label: 'action.toggle', kind: 'toggle', domain: 'light', service: 'toggle', current: e.state === 'on' });
-      const modes = list(a.supported_color_modes);
+      push({ id: 'toggle', label: 'action.toggle', kind: 'toggle', domain: tdom(e), service: 'toggle', current: e.state === 'on' });
+      const modes = domOf(e) === 'light' ? list(a.supported_color_modes) : [];
       if (modes.some(m => m !== 'onoff')) push({ id: 'brightness', label: 'action.brightness', kind: 'number', domain: 'light', service: 'turn_on', min: 1, max: 100, step: 1, unit: '%', current: typeof a.brightness === 'number' ? Math.round(a.brightness / 2.55) : null });
-      const effects = list(a.effect_list); if (effects.length && supports(e, 4)) push({ id: 'effect', label: 'action.effect', kind: 'select', domain: 'light', service: 'turn_on', options: effects, current: a.effect ?? null });
+      const effects = domOf(e) === 'light' ? list(a.effect_list) : []; if (effects.length && supports(e, 4)) push({ id: 'effect', label: 'action.effect', kind: 'select', domain: 'light', service: 'turn_on', options: effects, current: a.effect ?? null });
       if (modes.some(m => ['rgb', 'rgbw', 'rgbww', 'hs', 'xy'].includes(m))) push({ id: 'color', label: 'light.color', kind: 'select', domain: 'light', service: 'turn_on', options: AMBIENT_COLORS.map(c => c.key), current: nearestColor(a.rgb_color) });
       if (modes.includes('color_temp')) push({ id: 'color_temp', label: 'action.color_temp', kind: 'number', domain: 'light', service: 'turn_on', min: num(a.min_color_temp_kelvin, 2000), max: num(a.max_color_temp_kelvin, 6500), step: 50, unit: 'K', current: a.color_temp_kelvin ?? null });
       break; }
-    case 'switch': case 'socket': push({ id: 'toggle', label: 'action.toggle', kind: 'toggle', domain: 'switch', service: 'toggle', current: e.state === 'on' }); break;
-    case 'fan': push({ id: 'toggle', label: 'action.toggle', kind: 'toggle', domain: 'fan', service: 'toggle', current: e.state === 'on' }); if (supports(e, 1)) push({ id: 'percentage', label: 'action.percentage', kind: 'number', domain: 'fan', service: 'set_percentage', min: 0, max: 100, step: num(a.percentage_step, 1), unit: '%', current: a.percentage ?? null }); break;
+    case 'switch': case 'socket': push({ id: 'toggle', label: 'action.toggle', kind: 'toggle', domain: tdom(e), service: 'toggle', current: e.state === 'on' }); break;
+    case 'fan': push({ id: 'toggle', label: 'action.toggle', kind: 'toggle', domain: tdom(e), service: 'toggle', current: e.state === 'on' }); if (supports(e, 1)) push({ id: 'percentage', label: 'action.percentage', kind: 'number', domain: 'fan', service: 'set_percentage', min: 0, max: 100, step: num(a.percentage_step, 1), unit: '%', current: a.percentage ?? null }); break;
     case 'cover': if (supports(e, 1)) push({ id: 'open', label: 'action.open', kind: 'button', domain: 'cover', service: 'open_cover' }); if (supports(e, 2)) push({ id: 'close', label: 'action.close', kind: 'button', domain: 'cover', service: 'close_cover' }); if (supports(e, 8)) push({ id: 'stop', label: 'action.stop', kind: 'button', domain: 'cover', service: 'stop_cover' }); if (supports(e, 4)) push({ id: 'position', label: 'action.position', kind: 'number', domain: 'cover', service: 'set_cover_position', min: 0, max: 100, step: 1, unit: '%', current: a.current_position ?? null }); break;
     case 'lock': push({ id: 'lock', label: 'action.lock', kind: 'button', domain: 'lock', service: 'lock', confirm: true, risk: 'security' }); push({ id: 'unlock', label: 'action.unlock', kind: 'button', domain: 'lock', service: 'unlock', confirm: true, risk: 'security' }); break;
     case 'valve': push({ id: 'open', label: 'action.open', kind: 'button', domain: 'valve', service: 'open_valve', confirm: true, risk: 'water' }); push({ id: 'close', label: 'action.close', kind: 'button', domain: 'valve', service: 'close_valve', confirm: true, risk: 'water' }); break;

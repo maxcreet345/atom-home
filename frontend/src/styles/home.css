@@ -21,7 +21,7 @@
 
 /* main */
 .hm-shell .hm-main{min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain;padding:20px 24px 24px;display:flex;flex-direction:column;gap:16px;scrollbar-width:thin;scrollbar-color:#3a5068 transparent}
-.is-narrow .hm-main{padding:14px 14px 92px;gap:14px}
+.is-narrow .hm-main{padding:14px 14px 92px;gap:14px;scroll-padding-bottom:92px}
 .hm-shell .hm-head{display:flex;align-items:flex-end;gap:12px;min-height:44px}
 .hm-shell .hm-head-title{flex:1;min-width:0}.hm-head h1{font-size:30px;line-height:1.1;font-weight:650;letter-spacing:-.3px}.hm-head p{margin-top:4px;color:var(--hm-muted);font-size:15px}
 .is-narrow .hm-head h1{font-size:26px}.is-narrow .hm-head p{font-size:14px}

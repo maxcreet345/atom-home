@@ -49,6 +49,7 @@ export function liveHost(hass: Hass): Host {
   };
 }
 /** Isolated host for previews and QA: a frozen snapshot, every command recorded and rejected. */
-export function previewHost(snapshot: Registry, log: Array<{ domain: string; service: string; data: Record<string, unknown> }> = []): Host & { log: typeof log } {
-  return { admin: true, online: true, log, states: () => snapshot.states, registry: async () => ({ areas: snapshot.areas, devices: snapshot.devices, entities: snapshot.entities }), async call(domain, service, data) { log.push({ domain, service, data }); throw new Error('preview: commands are rejected'); }, async ws(message) { log.push({ domain: 'ws', service: String(message.type), data: message }); throw new Error('preview: commands are rejected'); }, async history() { return {}; } };
+export function previewHost(snapshot: Registry, log: Array<{ domain: string; service: string; data: Record<string, unknown> }> = []): Host & { log: typeof log; setOnline(v: boolean): void; setDelay(ms: number): void } {
+  let online = true, delay = 0; // ST-4 / ST-3 of the audit: QA flips the connection and slows the answer to see the banner, the veil, the pending state and the refused command
+  return { admin: true, get online() { return online; }, setOnline(v: boolean) { online = v; }, setDelay(ms: number) { delay = ms; }, log, states: () => snapshot.states, registry: async () => ({ areas: snapshot.areas, devices: snapshot.devices, entities: snapshot.entities }), async call(domain, service, data) { log.push({ domain, service, data }); if (delay) await new Promise(r => setTimeout(r, delay)); throw new Error('preview: commands are rejected'); }, async ws(message) { log.push({ domain: 'ws', service: String(message.type), data: message }); throw new Error('preview: commands are rejected'); }, async history() { return {}; } };
 }

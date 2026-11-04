@@ -4,7 +4,7 @@ import { Icon } from './primitives.tsx';
 import type { HomeDevice, EntityRef, Room } from '../model/discover.ts';
 import type { T } from '../i18n/index.ts';
 import { stateText, isOn, num, iconOfKind, type Lang } from './format.ts';
-import { stockRoomArt } from './art.ts';
+import { stockRoomArtSet } from './art.ts';
 import { DeviceArt, deviceArtType, DEVICE_ART_TYPES, type DeviceArtType } from './device-art.tsx';
 import { Tick } from './motion.tsx';
 import { glowOf, ambientHex } from '../model/lights.ts';
@@ -21,8 +21,9 @@ export function Switch({ on, pending, disabled, label, onToggle, large }: { on: 
 }
 /** Photo-less room tile: dark surface with the room's climate summary and lit lamps. */
 export function RoomTile({ room, temperature, humidity, co2, lightsOn, onClick, t, lang, label }: { room: Room; temperature: number | null; humidity: number | null; co2: number | null; lightsOn: number; onClick: () => void; t: T; lang: Lang; label: string }) {
-  return <button type="button" className="hm-card hm-room at-room" data-room-id={room.id} onClick={onClick} aria-label={label}>
-    {(room.photo ?? stockRoomArt(room.name)) ? <img className="hm-photo" src={room.photo ?? stockRoomArt(room.name)!} alt="" decoding="async" /> : <span className="at-room-art" aria-hidden="true"><Icon name="rooms" size={40} /></span>}
+  const art = room.photo ? null : stockRoomArtSet(room.name), src = room.photo ?? art?.src ?? null; // F13: two sizes of the stock photo, lazy below the fold
+  return <button type="button" className="hm-card hm-room at-room" data-room-id={room.id} onClick={onClick} title={label}>
+    {src ? <img className="hm-photo" src={src} srcSet={art?.srcset} sizes={art ? '(max-width: 599px) 50vw, 300px' : undefined} width={960} height={640} alt="" decoding="async" loading="lazy" /> : <span className="at-room-art" aria-hidden="true"><Icon name="rooms" size={40} /></span>}
     <span className="hm-room-top"><strong>{room.name || t('room.none')}</strong>{lightsOn > 0 && <span className="hm-lit"><Icon name="light" size={14} />{lightsOn}</span>}</span>
     <span className="hm-room-bottom">{temperature !== null && <b>{num(temperature, lang)}<i>°</i></b>}<small>{humidity === null ? '' : `${num(humidity, lang, 0)}%`}{co2 !== null ? ` · CO₂ ${num(co2, lang, 0)}` : ''}</small></span>
   </button>;
@@ -30,8 +31,8 @@ export function RoomTile({ room, temperature, humidity, co2, lightsOn, onClick, 
 export function LightTile({ device, photo, pending, onToggle, onOpen, t, lang }: { device: HomeDevice; photo?: string | null; pending: boolean; onToggle: () => void; onOpen: () => void; t: T; lang: Lang }) {
   const e = device.primary, on = isOn(e), off = !e.available;
   return <div className={`hm-card hm-light at-light ${on ? 'is-on' : ''} ${off ? 'is-off' : ''} ${pending ? 'is-pending' : ''}`} data-device-key={device.key}>
-    <button type="button" className="hm-light-hit" disabled={pending || off} onClick={onToggle} aria-label={`${device.name}: ${on ? t('action.off') : t('action.on')}`}>
-      {(device.photo ?? photo) ? <img className="hm-photo" src={(device.photo ?? photo)!} alt="" loading="lazy" /> : <span className="at-light-art" aria-hidden="true">{artOf(device) ? <DeviceArt type={artOf(device)!} fill /> : <Icon name="light" size={56} />}</span>}
+    <button type="button" className="hm-light-hit" disabled={pending || off} onClick={onToggle}>
+      {(device.photo ?? photo) ? <img className="hm-photo" src={(device.photo ?? photo)!} width={960} height={640} alt="" loading="lazy" /> : <span className="at-light-art" aria-hidden="true">{artOf(device) ? <DeviceArt type={artOf(device)!} fill /> : <Icon name="light" size={56} />}</span>}
       <span className="hm-light-bulb"><Icon name="light" size={26} /></span>
       <span className="hm-light-text"><strong>{device.name}</strong><small>{stateText(e, t, lang)}</small></span>
     </button>
@@ -41,8 +42,8 @@ export function LightTile({ device, photo, pending, onToggle, onOpen, t, lang }:
 export function DeviceRow({ device, name, pending, onToggle, onOpen, t, lang }: { device: HomeDevice; name?: string; pending: boolean; onToggle?: () => void; onOpen: () => void; t: T; lang: Lang }) {
   const e = device.primary, on = isOn(e), tone = !e.available ? 'is-off' : (device.kind === 'leak' && e.state === 'on') || (device.kind === 'alarm' && e.state === 'on') ? 'is-danger' : on ? 'is-on' : '';
   return <div className={`hm-row ${tone}`} data-device-key={device.key}>
-    <button type="button" className="hm-row-open" onClick={onOpen} aria-label={`${t('ui.details')}: ${name ?? device.name}`}>
-      <span className="hm-thumb">{device.photo ? <img src={device.photo} alt="" loading="lazy" /> : artOf(device) ? <DeviceArt type={artOf(device)!} fill /> : <Icon name={iconOfKind[device.kind] ?? 'generic'} size={22} />}</span>
+    <button type="button" className="hm-row-open" onClick={onOpen}>
+      <span className="hm-thumb">{device.photo ? <img src={device.photo} width={44} height={44} alt="" loading="lazy" /> : artOf(device) ? <DeviceArt type={artOf(device)!} fill /> : <Icon name={iconOfKind[device.kind] ?? 'generic'} size={22} />}</span>
       <span className="hm-row-text"><strong>{name ?? device.name}</strong><small>{stateText(e, t, lang)}</small></span>
     </button>
     {onToggle ? <Switch on={on} pending={pending} disabled={!e.available} label={`${name ?? device.name}: ${on ? t('action.off') : t('action.on')}`} onToggle={onToggle} /> : <Icon name="more" size={20} />}
@@ -87,8 +88,8 @@ export function AccessoryTile({ device, name, sub, room, pending, onToggle, onOp
   const ambient = device.kind === 'light' ? device.controls.find((c, i) => i > 0 && c.domain === 'light' && c.available && isOn(c)) : undefined; // the lamp's lit ambient light: a coloured dot on the tile
   return <div className={`ah-tile hm-card ${active ? 'is-on' : ''} ${alert ? 'is-alert' : ''} ${e.available ? '' : 'is-off'} ${pending ? 'is-pending' : ''} ${wide ? 'is-wide' : ''} kind-${device.kind}`} data-device-key={device.key} style={`--tile:${color}${device.kind === 'light' ? `;--glow:${glowOf(e.attributes).toFixed(2)}` : ''}`}>
     {ambient && <i className="at-tile-amb" style={`--amb:${ambientHex(ambient.attributes)}`} aria-hidden="true" />}
-    <button type="button" className="ah-tile-hit hm-light-hit" disabled={pending || !e.available && !!onToggle} onClick={click} onPointerDown={down} onPointerUp={up} onPointerLeave={up} onPointerCancel={up} onContextMenu={ev => { ev.preventDefault(); if (!held.current) onOpen(); }} aria-label={onToggle ? `${label}: ${on ? t('action.off') : t('action.on')}` : `${t('ui.details')}: ${label}`}>
-      <span className="ah-glyph">{device.photo ? <img src={device.photo} alt="" loading="lazy" /> : <Icon name={device.icon ?? (device.kind === 'light' && artOf(device) === 'chandelier' ? 'chandelier' : iconOfKind[device.kind]) ?? 'generic'} size={34} />}</span>
+    <button type="button" className="ah-tile-hit hm-light-hit" disabled={pending || !e.available && !!onToggle} onClick={click} onPointerDown={down} onPointerUp={up} onPointerLeave={up} onPointerCancel={up} onContextMenu={ev => { ev.preventDefault(); if (!held.current) onOpen(); }}>
+      <span className="ah-glyph">{device.photo ? <img src={device.photo} width={68} height={68} alt="" loading="lazy" /> : <Icon name={device.icon ?? (device.kind === 'light' && artOf(device) === 'chandelier' ? 'chandelier' : iconOfKind[device.kind]) ?? 'generic'} size={34} />}</span>
       <span className="ah-tile-text"><strong>{label}</strong>{line2 && <small><Tick value={line2} /></small>}</span>
     </button>
     <button type="button" className="ah-tile-more hm-light-more" aria-label={`${t('ui.details')}: ${label}`} onClick={onOpen}><Icon name="more" size={16} /></button>
@@ -101,7 +102,7 @@ export function ThermostatTile({ device, name, sub, target, current, onStep, onO
   const big = current ?? target, mode = !e.available ? t('state.unavailable') : on ? stateText(e, t, lang).split(' · ')[0] : t('mode.off');
   const line = target === null ? mode : `${mode} · ${t('ui.target')} ${num(target, lang)}°`;
   return <div className={`ah-tile ah-thermo kind-climate hm-card ${on ? 'is-on' : ''} ${e.available ? '' : 'is-off'}`} data-device-key={device.key} style={`--tile:${tileColor(device)}`}>
-    <button type="button" className="ah-tile-hit" onClick={onOpen} aria-label={`${t('ui.details')}: ${device.name}`}>
+    <button type="button" className="ah-tile-hit" onClick={onOpen}>
       <span className="ah-thermo-value">{big === null ? <b className="is-text">{e.available ? t('mode.off') : '—'}</b> : <b><Tick value={num(big, lang, big % 1 ? 1 : 0)} /></b>}<small><Tick value={line} /></small></span>
       <span className="ah-tile-text"><strong>{name ?? device.name}</strong><small>{sub && !(name ?? device.name).trim().toLowerCase().endsWith(sub.trim().toLowerCase()) ? sub : ''}</small></span>
     </button>
@@ -127,7 +128,7 @@ export function ClockTile({ now, lang }: { now: Date; lang: Lang }) {
 }
 /** 1×1 scene module (owner's quick button). */
 export function SceneTile({ icon, label, onClick, t }: { icon: string; label: string; onClick: () => void; t: T }) {
-  return <div className="ah-tile ah-scene hm-card hm-scene hm-scene-custom"><button type="button" className="ah-tile-hit hm-scene-hit" onClick={onClick}><span className="ah-glyph hm-scene-icon"><Icon name={icon} size={34} /></span><span className="ah-tile-text"><strong>{label}</strong><small>{t('action.custom')}</small></span></button></div>;
+  return <div className="ah-tile ah-scene hm-card hm-scene hm-scene-custom"><button type="button" className="ah-tile-hit hm-scene-hit" onClick={onClick}><span className="ah-glyph hm-scene-icon"><Icon name={icon} size={34} /></span><span className="ah-tile-text"><strong>{label}</strong><small>{t('ui.scene')}</small></span></button></div>;
 }
 /** 1×1 reading module: big value, label underneath (energy, weather, air). */
 export function ValueTile({ icon, value, unit, label, sub, color, onClick, className = '' }: { icon: string; value: string; unit?: string; label: string; sub?: string; color: string; onClick?: () => void; className?: string }) {

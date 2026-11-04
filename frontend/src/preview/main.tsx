@@ -15,7 +15,7 @@ export async function mountPreview(root: HTMLElement, snapshot: Registry, config
   const size = () => viewport ?? { width: root.clientWidth || innerWidth, height: root.clientHeight || innerHeight };
   const draw = () => render(<AtomApp registry={snapshot} config={cfg} host={host} viewport={size()} store={store} configWarnings={warnings} onConfigChange={next => { cfg = next; }} />, root);
   draw(); addEventListener('resize', draw);
-  (window as unknown as { atomPreview: unknown }).atomPreview = { host, warnings, redraw: draw, store, get config() { return cfg; } };
+  (window as unknown as { atomPreview: unknown }).atomPreview = { host, warnings, redraw: draw, store, setOnline(v: boolean) { host.setOnline(v); draw(); }, setDelay(ms: number) { host.setDelay(ms); }, get config() { return cfg; } };
   return { host, warnings };
 }
 (window as unknown as { mountPreview: typeof mountPreview }).mountPreview = mountPreview;

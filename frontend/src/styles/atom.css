@@ -42,7 +42,7 @@
 .hm-shell .at-cam-stage{margin:0}
 .hm-shell .at-cam-tools{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
 .is-narrow .at-cam-tools{grid-template-columns:repeat(3,minmax(0,1fr));row-gap:14px}
-.hm-shell .at-cam-tool small{font-size:11px;color:var(--ah-accent);line-height:1.1}
+.hm-shell .at-cam-tool small{font-size:12px;color:var(--ah-accent-ink);line-height:1.1}
 .hm-shell .at-cam-tool.is-on b{background:var(--ah-accent);color:#fff}.hm-shell .at-cam-tool.at-cam-lens.is-on b{background:#ff7a3d}
 .hm-shell .at-cam-tool b{font-size:14px;font-weight:700}
 /* the camera burns its clock into the top-left corner: LIVE goes to the bottom */
@@ -142,7 +142,7 @@
 .hm-shell .ah-hand-cap{fill:var(--ah-red,#ff3b30)}
 .hm-shell .ah-clock-ring-bg{fill:none;stroke:var(--ah-inset,#0000000f);stroke-width:4}.hm-shell .ah-clock-ring{fill:none;stroke:var(--ah-accent);stroke-width:4;stroke-linecap:round;transition:stroke-dashoffset 1s linear}
 .hm-shell .ah-clock-big{position:absolute;inset:0 0 18px;display:grid;place-content:center;text-align:center;animation:ah-pop .4s var(--ah-spring)}
-.hm-shell .ah-clock-big b{font-size:26px;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums;line-height:1}.hm-shell .ah-clock-big small{font-size:11px;color:var(--ah-muted)}
+.hm-shell .ah-clock-big b{font-size:26px;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums;line-height:1}.hm-shell .ah-clock-big small{font-size:12px;color:var(--ah-muted)}
 @keyframes ah-pop{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
 .hm-shell .ah-clock .ah-clock-date{display:block;position:absolute;left:0;right:0;bottom:7px;font-size:12px;font-weight:600;color:var(--ah-muted)}.hm-shell .ah-clock .ah-clock-date::first-letter{text-transform:uppercase}
 .hm-shell .ah-clock-digital{display:flex;align-items:baseline;justify-content:center;gap:4px;height:100%}.hm-shell .ah-clock-digital b{font-size:34px;font-weight:700;letter-spacing:-1px;font-variant-numeric:tabular-nums}.hm-shell .ah-clock-digital span{font-size:14px;color:var(--ah-muted);font-variant-numeric:tabular-nums}
@@ -163,7 +163,7 @@
 .hm-shell .at-clock-ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
 .hm-shell .at-clock-tt{flex:1;display:grid;min-width:0}.hm-shell .at-clock-tt strong{font-size:16px}.hm-shell .at-clock-tt small{color:var(--ah-muted);font-size:13px}
 .hm-shell button.at-clock-ctl{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;border:0;background:var(--ah-inset,#0000000f);color:var(--ah-ink);font:inherit;font-size:20px;cursor:pointer;transition:transform .32s var(--ah-spring)}.hm-shell button.at-clock-ctl:active{transform:scale(.9)}.hm-shell button.at-clock-ctl.is-stop{background:#ff3b3022;color:#ff3b30}
-.hm-shell .at-clock-wheel{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:4px 0;animation:ah-pop .35s var(--ah-spring)}.hm-shell .at-clock-wheel>div{display:grid;justify-items:center;gap:2px;width:84px;padding:6px 0;border-radius:14px;background:var(--ah-inset,#0000000f);font-variant-numeric:tabular-nums}.hm-shell .at-clock-wheel>div b{font-size:28px}.hm-shell .at-clock-wheel>div small{font-size:11px;color:var(--ah-muted)}.hm-shell .at-clock-wheel .hm-icon-btn{width:40px;height:32px;font-size:20px}
+.hm-shell .at-clock-wheel{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:4px 0;animation:ah-pop .35s var(--ah-spring)}.hm-shell .at-clock-wheel>div{display:grid;justify-items:center;gap:2px;width:84px;padding:6px 0;border-radius:14px;background:var(--ah-inset,#0000000f);font-variant-numeric:tabular-nums}.hm-shell .at-clock-wheel>div b{font-size:28px}.hm-shell .at-clock-wheel>div small{font-size:12px;color:var(--ah-muted)}.hm-shell .at-clock-wheel .hm-icon-btn{width:40px;height:32px;font-size:20px}
 .hm-shell .at-clock-go{min-width:150px}
 .hm-shell .at-clock-label-input{flex:1;min-width:120px;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--ah-line);background:var(--ah-inset,#0000000f);color:var(--ah-ink);font:inherit;font-size:14px}
 .hm-shell .at-clock-people{display:flex;gap:12px;padding:14px 16px;border-radius:18px;background:var(--ah-group);overflow-x:auto;scrollbar-width:none}
@@ -181,7 +181,7 @@
 .hm-shell .at-clock-grid.is-named{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
 .hm-shell button.at-clock-tile{display:grid;place-items:center;gap:0;min-height:64px;padding:8px 4px;border:0;border-radius:16px;background:var(--ah-inset,#0000000f);color:var(--ah-ink);font:inherit;cursor:pointer;transition:transform .32s var(--ah-spring),background-color .22s ease}
 .hm-shell button.at-clock-tile:active:not(:disabled){transform:scale(.94)}.hm-shell button.at-clock-tile:disabled{opacity:.5;cursor:default}
-.hm-shell .at-clock-tile b{font-size:24px;font-weight:700;letter-spacing:-.5px;line-height:1}.hm-shell .at-clock-tile small{font-size:11px;color:var(--ah-muted);text-transform:uppercase;letter-spacing:.04em}
+.hm-shell .at-clock-tile b{font-size:24px;font-weight:700;letter-spacing:-.5px;line-height:1}.hm-shell .at-clock-tile small{font-size:12px;color:var(--ah-muted);text-transform:uppercase;letter-spacing:.04em}
 .hm-shell button.at-clock-tile.is-named{min-height:92px;gap:4px;padding:10px 6px}.hm-shell .at-clock-tile strong{font-size:14px;font-weight:600}.hm-shell .at-clock-tile.is-named small{text-transform:none;letter-spacing:0}
 .hm-shell .at-clock-tile-icon{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:#ff9f0a22;color:#e08a16}
 .hm-shell .at-clock-tile.is-dial .at-clock-tile-icon{background:color-mix(in srgb,var(--ah-accent) 18%,transparent);color:var(--ah-accent)}.hm-shell button.at-clock-tile.is-dial.is-on{background:var(--ah-accent);color:#fff}.hm-shell .at-clock-tile.is-dial.is-on small,.hm-shell .at-clock-tile.is-dial.is-on .at-clock-tile-icon{color:#fff;background:#ffffff2e}
@@ -199,7 +199,7 @@
 .hm-shell button.at-alarm-main{display:flex;align-items:center;gap:12px;flex:1;min-width:0;border:0;background:none;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
 .hm-shell .at-alarm-add .ah-row-icon{font-size:22px;font-weight:600}
 .hm-shell .at-alarm-editor{display:grid;gap:10px;padding:14px 16px;border-radius:18px;background:var(--ah-group);animation:ah-pop .35s var(--ah-spring)}
-.hm-shell .at-alarm-editor h4{margin:0;font-size:13px;font-weight:600;color:var(--ah-muted)}
+.hm-shell .at-alarm-editor h4,.hm-shell .at-alarm-editor .at-h4{margin:0;font-size:13px;font-weight:600;color:var(--ah-muted)}
 .hm-shell .at-alarm-editor .ah-row{padding-left:0;padding-right:0;background:none}
 .hm-shell .at-alarm-time{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .hm-shell .at-alarm-time input[type=time]{font:inherit;font-size:34px;font-weight:700;letter-spacing:-1px;font-variant-numeric:tabular-nums;padding:6px 14px;border-radius:14px;border:1px solid var(--ah-line);background:var(--ah-inset,#0000000f);color:var(--ah-ink);min-width:150px}
@@ -207,7 +207,7 @@
 .hm-shell .at-alarm-actions{display:flex;gap:8px;flex-wrap:wrap;padding-top:4px}.hm-shell .at-alarm-save{flex:1;justify-content:center;min-width:140px}.hm-shell .at-alarm-delete{color:#ff3b30}
 .hm-shell .at-clock-stations{display:grid;gap:6px;padding:10px 12px;border-radius:14px;border:1px solid var(--ah-line);transition:border-color .3s ease,background-color .3s ease}
 .hm-shell .at-clock-stations.is-required{border-color:var(--ah-accent);background:color-mix(in srgb,var(--ah-accent) 8%,transparent)}
-.hm-shell .at-clock-stations-label{font-size:13px;color:var(--ah-muted)}.hm-shell .at-clock-stations-label b{color:var(--ah-accent)}.hm-shell .at-clock-stations small{font-size:12px;color:var(--ah-accent)}
+.hm-shell .at-clock-stations-label{font-size:13px;color:var(--ah-muted)}.hm-shell .at-clock-stations-label b{color:var(--ah-accent-ink)}.hm-shell .at-clock-stations small{font-size:12px;color:var(--ah-accent)}
 .hm-shell .at-clock-grid.is-waiting{opacity:.45}
 .hm-shell button.at-room-alarms{display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;margin:0 0 14px;border:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
 .hm-shell .at-room-alarms .ah-row-text{flex:1;display:grid;min-width:0}.hm-shell .at-room-alarms strong{font-size:15px;font-weight:600}.hm-shell .at-room-alarms small{color:var(--ah-muted);font-size:13px}
@@ -215,7 +215,7 @@
 /* the Time sheet, compact: summary cards on the main screen, everything else in windows over the sheet */
 .hm-shell .at-clock{position:relative}
 .hm-shell .at-clock-card{display:grid;gap:10px;padding:12px 14px;border-radius:18px;background:var(--ah-group);flex:none}
-.hm-shell .at-clock-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.hm-shell .at-clock-card-head h4{margin:0;font-size:13px;font-weight:600;color:var(--ah-muted)}
+.hm-shell .at-clock-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.hm-shell .at-clock-card-head .at-h4{margin:0;font-size:13px;font-weight:600;color:var(--ah-muted)}
 .hm-shell .hm-pill.is-small.at-clock-new,.hm-shell .hm-pill.is-small.at-alarm-add{min-height:32px;padding:0 12px;font-size:13px}
 .hm-shell .at-clock-empty{margin:0;font-size:14px;color:var(--ah-muted)}
 .hm-shell .at-clock-alarms{gap:6px}
@@ -223,7 +223,7 @@
 .hm-shell .at-alarm-chip b{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.5px}.hm-shell .at-alarm-chip span{font-size:14px;font-weight:600}.hm-shell .at-alarm-chip small{margin-left:auto;font-size:12px;color:var(--ah-muted)}
 .hm-shell .at-clock-all{justify-self:end;display:inline-flex;align-items:center;gap:2px;font-size:13px}
 .hm-shell .at-clock-card.is-rows{padding:0;gap:1px}.hm-shell .at-clock-card.is-rows .ah-row{min-height:50px}
-.hm-shell .at-clock-people{display:flex;gap:10px}.hm-shell .at-clock-person{width:64px}.hm-shell .at-clock-person b{width:44px;height:44px;font-size:15px}.hm-shell .at-clock-person small{font-size:11px}
+.hm-shell .at-clock-people{display:flex;gap:10px}.hm-shell .at-clock-person{width:64px}.hm-shell .at-clock-person b{width:44px;height:44px;font-size:15px}.hm-shell .at-clock-person small{font-size:12px}
 .hm-shell .at-clock-timers .at-clock-trow .at-clock-ring{width:52px;height:52px}.hm-shell .at-clock-timers .at-clock-trow .at-clock-ring svg{width:52px;height:52px}.hm-shell .at-clock-timers .at-clock-ring b{font-size:12px}
 .is-narrow .at-clock .at-clock-big b{font-size:44px}.is-narrow .at-clock .at-clock-sun{padding:10px 14px;gap:4px}.is-narrow .at-clock .at-clock-arc{height:48px}.is-narrow .at-clock .at-clock-sun-row{font-size:13px}
 .hm-shell .at-win-scrim{position:absolute;inset:0;z-index:6;display:grid;place-items:center;padding:12px;background:#0f172080;animation:at-fade .25s ease}
@@ -256,7 +256,7 @@
 .hm-shell .at-light-state b{display:block;font-size:22px;font-weight:600;letter-spacing:-.4px;line-height:1.15}.hm-shell .at-light-state small{display:block;color:var(--ah-muted);font-size:13px;font-variant-numeric:tabular-nums}
 .hm-shell .at-light-levels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
 .hm-shell button.at-light-level{display:grid;place-items:center;gap:0;min-height:44px;border:0;border-radius:14px;background:var(--ah-tile);color:var(--ah-ink);font:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:transform .32s var(--ah-spring),background-color .22s ease,color .22s ease;line-height:1.1;white-space:nowrap}
-.hm-shell button.at-light-level small{font-size:11px;font-weight:500;opacity:.75}
+.hm-shell button.at-light-level small{font-size:12px;font-weight:500;opacity:.75}
 .hm-shell button.at-light-level.is-on{background:var(--ah-accent);color:#fff}.hm-shell button.at-light-level:active{transform:scale(.95)}.hm-shell button.at-light-level:disabled{opacity:.5;cursor:default}
 .hm-shell button.at-light-level.is-off{grid-column:span 2;grid-auto-flow:column;gap:6px;background:#ff7a3d22;color:#c24a1a}
 .hm-shell .at-light-right{display:grid;gap:12px;align-content:start}
@@ -267,7 +267,7 @@
 .hm-shell .at-temp-strip i{position:absolute;top:-3px;left:var(--x,50%);width:36px;height:36px;margin-left:-18px;border-radius:50%;background:#fff;box-shadow:0 1px 6px #0005,inset 0 0 0 3px #fff;transition:left .25s var(--ah-ease)}
 .hm-shell .at-temp-presets{display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:6px}
 .hm-shell button.at-temp-preset{display:grid;place-items:center;min-height:40px;padding:0 6px;border:0;border-radius:12px;background:var(--ah-tile);color:var(--ah-ink);font:inherit;font-size:13px;font-weight:600;line-height:1.1;text-align:center;cursor:pointer;transition:transform .32s var(--ah-spring),background-color .22s ease,color .22s ease}
-.hm-shell button.at-temp-preset small{font-size:11px;font-weight:500;opacity:.75}.hm-shell button.at-temp-preset.is-on{background:var(--ah-accent);color:#fff}.hm-shell button.at-temp-preset:active{transform:scale(.95)}
+.hm-shell button.at-temp-preset small{font-size:12px;font-weight:500;opacity:.75}.hm-shell button.at-temp-preset.is-on{background:var(--ah-accent);color:#fff}.hm-shell button.at-temp-preset:active{transform:scale(.95)}
 .hm-shell .at-light-seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;padding:4px;border-radius:14px;background:var(--ah-tile)}
 .hm-shell .at-light-seg button{min-height:38px;border:0;border-radius:11px;background:none;color:var(--ah-muted);font:inherit;font-weight:600;font-size:14px;cursor:pointer;transition:background-color .22s ease,color .22s ease}
 .hm-shell .at-light-seg button.is-on{background:var(--ah-group);color:var(--ah-ink);box-shadow:0 1px 3px #0002}

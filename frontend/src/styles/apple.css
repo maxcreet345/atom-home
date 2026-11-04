@@ -11,8 +11,8 @@
 /* ---------- 1. Tokens ---------- */
 .hm-shell.ah-shell{
   --ah-font:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue",system-ui,"Segoe UI",Roboto,sans-serif;
-  --ah-accent:#7b74d8;--ah-tint:#cfc9f4;--ah-tint-ink:#ffffff;--ah-tint-sub:#ffffffcc;
-  --ah-ink:#1c1c1e;--ah-muted:#8a8a8e;--ah-glyph:#6e6e73;
+  --ah-accent:#7b74d8;--ah-accent-ink:#5a52bf;--ah-tint:#cfc9f4;--ah-tint-ink:#1c1c1e;--ah-tint-sub:#3d3a6e;
+  --ah-ink:#1c1c1e;--ah-muted:#606065;--ah-glyph:#6e6e73;
   --ah-tile:#e3e3e8;--ah-tile-blur:0px;--ah-tile-shadow:none;
   --ah-bar:#f6f6f8f2;--ah-bar-solid:#f6f6f8;--ah-line:#00000012;--ah-field:#ffffff;--ah-sheet:#f2f2f7;--ah-group:#ffffff;
   --ah-red:#ff3b30;--ah-green:#30d158;--ah-blue:#0a84ff;
@@ -21,8 +21,8 @@
   --hm-height:100dvh;position:relative;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);height:var(--hm-height);width:100%;overflow:hidden;
   font-family:var(--ah-font);color:var(--ah-ink);background:var(--wp);-webkit-font-smoothing:antialiased}
 .hm-shell.ah-shell[data-theme="dark"]{
-  --ah-accent:#b9b3ff;--ah-tint:#ffffff52;--ah-tint-ink:#ffffff;--ah-tint-sub:#ffffffcc;
-  --ah-ink:#ffffff;--ah-muted:#ffffffb3;--ah-glyph:#ffffff;
+  --ah-accent:#b9b3ff;--ah-accent-ink:#c4bfff;--ah-tint:#ffffff52;--ah-tint-ink:#ffffff;--ah-tint-sub:#ffffffcc;
+  --ah-ink:#ffffff;--ah-muted:#ffffffcc;--ah-glyph:#ffffff;
   --ah-tile:#ffffff24;--ah-tile-blur:18px;--ah-tile-shadow:inset 0 1px 0 #ffffff33;
   --ah-bar:#0f1a1ce0;--ah-bar-solid:#0f1a1c;--ah-line:#ffffff1f;--ah-field:#ffffff1a;--ah-sheet:#1c2a2c;--ah-group:#ffffff14;
   --wp:#1d4a4c}
@@ -50,18 +50,18 @@
 
 /* ---------- 3. Navigation: icon rail (tablet) & tab bar (phone) ---------- */
 .hm-shell .hm-sidebar{position:relative;z-index:2;display:flex;flex-direction:column;align-items:stretch;gap:12px;padding:16px 8px 12px;background:var(--ah-bar);backdrop-filter:blur(28px) saturate(1.4);-webkit-backdrop-filter:blur(28px) saturate(1.4);border-right:1px solid var(--ah-line);min-height:0;overflow:auto}
-.hm-shell .hm-clock{display:grid;gap:0;text-align:center}.hm-clock strong{font-size:17px;font-weight:700;letter-spacing:-.3px}.hm-clock small{font-size:11px;color:var(--ah-muted)}.hm-clock small::first-letter{text-transform:uppercase}
+.hm-shell .hm-clock{display:grid;gap:0;text-align:center}.hm-clock strong{font-size:17px;font-weight:700;letter-spacing:-.3px}.hm-clock small{font-size:12px;color:var(--ah-muted)}.hm-clock small::first-letter{text-transform:uppercase}
 .hm-shell .hm-sidebar nav{position:relative;display:flex;flex-direction:column;gap:4px}
-.hm-shell .hm-sidebar nav button{display:flex;flex-direction:column;align-items:center;gap:4px;min-height:60px;padding:8px 2px;border-radius:14px;font-size:11px;font-weight:600;color:var(--ah-muted)}
+.hm-shell .hm-sidebar nav button{display:flex;flex-direction:column;align-items:center;gap:4px;min-height:60px;padding:8px 2px;border-radius:14px;font-size:12px;font-weight:600;color:var(--ah-muted)}
 .hm-shell .hm-sidebar nav button.is-active{background:var(--ah-tile);color:var(--ah-ink)}
 .hm-shell .hm-sidebar nav button svg{width:24px;height:24px}
 .hm-shell .hm-nav-ind{display:none}
 .hm-shell .ah-side-rooms{display:none}
-.hm-shell .hm-conn{margin-top:auto;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:32px;border-radius:999px;font-size:11px;color:var(--ah-muted)}
+.hm-shell .hm-conn{margin-top:auto;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:32px;border-radius:999px;font-size:12px;color:var(--ah-muted)}
 .hm-shell .hm-conn i{width:8px;height:8px;border-radius:50%;background:var(--ah-green)}.hm-conn.is-off i{background:var(--ah-red)}
 .hm-shell .hm-tabbar{position:absolute;left:0;right:0;bottom:0;z-index:5;display:flex;justify-content:space-around;padding:6px 8px calc(6px + env(safe-area-inset-bottom));background:var(--ah-bar);backdrop-filter:blur(28px) saturate(1.4);-webkit-backdrop-filter:blur(28px) saturate(1.4);border-top:1px solid var(--ah-line)}
-.hm-shell .hm-tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:50px;padding:4px 0;font-size:11px;font-weight:600;color:var(--ah-muted);border-radius:12px}
-.hm-shell .hm-tabbar button.is-active{color:var(--ah-accent)}
+.hm-shell .hm-tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:50px;padding:4px 0;font-size:12px;font-weight:600;color:var(--ah-muted);border-radius:12px}
+.hm-shell .hm-tabbar button.is-active{color:var(--ah-accent-ink)}
 .hm-shell .hm-tabbar button svg{width:26px;height:26px}
 
 /* ---------- 4. Header & segmented control ---------- */
@@ -70,7 +70,7 @@
 .hm-shell .hm-head h1{font-size:26px;font-weight:700;letter-spacing:-.5px;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hm-shell .hm-head p{font-size:14px;color:var(--ah-muted)}.hm-shell .hm-head p::first-letter{text-transform:uppercase}
 .hm-shell .hm-head-time{font-size:15px;font-weight:600;color:var(--ah-muted);font-variant-numeric:tabular-nums;align-self:flex-start;padding-top:4px}
-.hm-shell .hm-back{display:inline-flex;align-items:center;gap:2px;min-height:32px;padding:0 10px 0 2px;border-radius:999px;color:var(--ah-accent);font-size:15px;font-weight:600;width:100%;justify-content:flex-start;margin-bottom:-6px}
+.hm-shell .hm-back{display:inline-flex;align-items:center;gap:2px;min-height:32px;padding:0 10px 0 2px;border-radius:999px;color:var(--ah-accent-ink);font-size:15px;font-weight:600;width:100%;justify-content:flex-start;margin-bottom:-6px}
 .hm-shell .hm-icon-btn{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--ah-tile);color:var(--ah-ink);font-size:20px;line-height:1;flex:none}
 .hm-shell .ah-head-btn{align-self:flex-start;margin-top:4px}
 .hm-shell .hm-badge{display:inline-flex;align-items:center;min-height:24px;padding:0 9px;border-radius:999px;font-size:12px;font-weight:600;background:var(--ah-tile);color:var(--ah-muted)}
@@ -108,7 +108,7 @@
 .hm-shell .ah-glyph.is-small{width:32px;height:32px;background:var(--tile,var(--ah-accent));color:#fff}.hm-shell .ah-glyph.is-small svg{width:16px;height:16px}
 .hm-shell .ah-tile-text{display:grid;gap:1px;min-width:0;width:100%}
 .hm-shell .ah-tile-text strong{font-size:14px;font-weight:600;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:normal;overflow-wrap:break-word;hyphens:auto;-webkit-hyphens:auto}
-@container (max-width:150px){.hm-shell .ah-tile-text strong{font-size:13px}.hm-shell .ah-tile-text small{font-size:11px}}
+@container (max-width:150px){.hm-shell .ah-tile-text strong{font-size:13px}.hm-shell .ah-tile-text small{font-size:12px}}
 .hm-shell .ah-tile-text small{font-size:12px;color:var(--ah-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.25}
 .hm-shell .ah-tile-more{position:absolute;top:6px;right:6px;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;color:var(--ah-muted);opacity:0;transition:opacity .2s}
 .hm-shell .ah-tile:hover .ah-tile-more,.hm-shell .ah-tile:focus-within .ah-tile-more,.is-narrow .ah-tile .ah-tile-more{opacity:.75}
@@ -149,13 +149,13 @@
 .hm-shell .ah-pills{display:flex;gap:8px;flex-wrap:wrap}
 .is-narrow .ah-pills{flex-wrap:nowrap;overflow:auto;scrollbar-width:none;margin-inline:-12px;padding-inline:12px}
 .hm-shell .ah-pill{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:5px 14px 5px 6px;border-radius:999px;background:var(--ah-tile);color:var(--ah-ink);text-align:left;white-space:nowrap;flex:none}
-.hm-shell .ah-pill>span:last-child{display:grid;line-height:1.15}.hm-shell .ah-pill small{font-size:11px;font-weight:500;color:var(--ah-muted)}.hm-shell .ah-pill strong{font-size:15px;font-weight:700}
+.hm-shell .ah-pill>span:last-child{display:grid;line-height:1.15}.hm-shell .ah-pill small{font-size:12px;font-weight:500;color:var(--ah-muted)}.hm-shell .ah-pill strong{font-size:15px;font-weight:700}
 
 /* ---------- 7. Rooms & cameras ---------- */
 .hm-shell .hm-section{display:flex;flex-direction:column;gap:10px}
 .hm-shell .hm-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .hm-shell .hm-section-head h2{font-size:18px;font-weight:700;letter-spacing:-.3px}
-.hm-shell .hm-text-btn{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 8px;border-radius:999px;color:var(--ah-accent);font-size:15px;font-weight:600}
+.hm-shell .hm-text-btn{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 8px;border-radius:999px;color:var(--ah-accent-ink);font-size:15px;font-weight:600}
 .hm-shell .hm-room-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--ah-gap)}
 .is-wide .hm-room-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 .is-wide.is-landscape .hm-room-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
@@ -176,7 +176,7 @@
 .hm-shell .hm-camera-mount{position:absolute;inset:0}.hm-camera-mount video{width:100%!important;height:100%!important;object-fit:cover;display:block}
 .hm-shell .at-camera-img{width:100%;height:100%;object-fit:cover;display:block}
 .hm-shell .hm-camera-wait{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:6px;color:#ffffffa6;font-size:13px;text-align:center;padding:12px}
-.hm-shell .hm-live{position:absolute;top:8px;left:8px;display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;background:#000000a6;backdrop-filter:blur(8px);font-size:11px;font-weight:700;color:#fff}
+.hm-shell .hm-live{position:absolute;top:8px;left:8px;display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;background:#000000a6;backdrop-filter:blur(8px);font-size:12px;font-weight:700;color:#fff}
 .hm-shell .hm-live i{width:7px;height:7px;border-radius:50%;background:#8e8e93}.hm-live.is-live i{background:var(--ah-red);box-shadow:0 0 0 3px #ff3b3040}
 .hm-shell .hm-camera-caption{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;gap:8px;padding:24px 12px 10px;background:linear-gradient(180deg,transparent,#000000a6);color:#fff}
 .hm-camera-caption strong{font-size:14px;font-weight:700}.hm-camera-caption small{flex:1;opacity:.8;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -201,7 +201,7 @@
 .hm-shell .hm-switch.is-large{width:62px;height:38px}.hm-shell .hm-switch.is-large .hm-switch-knob{width:34px;height:34px}.hm-shell .hm-switch.is-large.is-on .hm-switch-knob{transform:translateX(24px)}
 .hm-shell .hm-switch:disabled{opacity:.4}
 .hm-shell .hm-pill{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:0 16px;border-radius:999px;background:var(--ah-tile);font-size:15px;font-weight:600;color:var(--ah-ink)}
-.hm-shell .hm-pill.is-primary{background:var(--ah-accent);color:#fff}.hm-shell .hm-pill:disabled{opacity:.45}
+.hm-shell .hm-pill.is-primary{background:var(--ah-accent-ink);color:#fff}.hm-shell .hm-pill:disabled{opacity:.45}
 
 /* ---------- 9. Sheets, confirm, toast ---------- */
 .hm-shell .hm-scrim{position:absolute;inset:0;z-index:30;display:flex;align-items:flex-end;justify-content:center;padding:0;background:#00000059;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
@@ -309,7 +309,7 @@
 /* v0.8.2 */
 .hm-shell input.at-search,.hm-shell .at-search input,.hm-shell .hm-toolbar input[type=search],.hm-shell .hm-toolbar input[type=text]{min-height:38px;padding:0 14px;border:0;border-radius:999px;background:var(--ah-group);color:var(--ah-ink);box-shadow:inset 0 0 0 1px var(--ah-line);font-size:15px;-webkit-appearance:none}
 .hm-shell input.at-search::placeholder,.hm-shell .hm-toolbar input::placeholder{color:var(--ah-muted)}
-.hm-shell .ah-value .ah-tile-text small{font-size:11px;line-height:1.2}
+.hm-shell .ah-value .ah-tile-text small{font-size:12px;line-height:1.2}
 .hm-shell .ah-tile-stack{background:var(--ah-tile);border-radius:var(--ah-radius);padding:0 12px 12px;gap:10px}.hm-shell .ah-tile-stack .ah-tile{background:none;box-shadow:none}.hm-shell .ah-tile-stack .hm-chips>button{background:var(--ah-group)}
 .hm-shell.ah-shell[data-theme="dark"] .ah-tile-stack .hm-chips>button{background:#ffffff26}
 
@@ -322,7 +322,7 @@
 .hm-shell .ah-tile-hit{-webkit-touch-callout:none;user-select:none}
 
 /* v0.8.5 */
-.hm-shell .ah-module .hm-status-text span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:11px;line-height:1.2}
+.hm-shell .ah-module .hm-status-text span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:12px;line-height:1.2}
 .hm-shell textarea.at-json,.hm-shell .at-json textarea,.hm-shell .at-setup textarea{width:100%;min-height:120px;padding:10px;border:0;border-radius:12px;background:var(--ah-field);color:var(--ah-ink);box-shadow:inset 0 0 0 1px var(--ah-line);font-family:ui-monospace,Menlo,monospace;font-size:13px}
 .hm-shell .at-setup-buttons .hm-row-text small{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 
@@ -330,13 +330,13 @@
 .hm-shell .at-photo-field{display:grid;gap:6px;font-size:13px;color:var(--ah-muted)}
 
 /* v0.8.5 second pass */
-.hm-shell .ah-module .hm-status-text span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal;font-size:11px;line-height:1.15}
+.hm-shell .ah-module .hm-status-text span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal;font-size:12px;line-height:1.15}
 .hm-shell .ah-module .hm-status-text strong{font-size:clamp(22px,22cqw,34px)}.hm-shell .ah-module .hm-status-icon{width:24px;height:24px}.hm-shell .ah-module .hm-status-icon svg{width:14px;height:14px}
 .hm-shell .ah-module .hm-status-text{margin-top:auto}
 .hm-shell .at-boiler .hm-pill,.hm-shell .at-feeder .hm-pill,.hm-shell .at-feeder .hm-round,.hm-shell .at-boiler .hm-round{background:var(--ah-group)}
 .hm-shell .at-feeder .hm-pill.is-primary{background:var(--ah-accent)}
 .hm-shell .at-spark.is-empty{display:none}
-.hm-shell .hm-badge.tone-warning{background:#ff9f0a26;color:#b36b00}.hm-shell.ah-shell[data-theme="dark"] .hm-badge.tone-warning{color:#ffb84d}.hm-shell .at-boiler-head .hm-badge{margin-left:auto}
+.hm-shell .hm-badge.tone-warning{background:#ff9f0a26;color:#8a4006}.hm-shell.ah-shell[data-theme="dark"] .hm-badge.tone-warning{color:#ffb84d}.hm-shell .at-boiler-head .hm-badge{margin-left:auto}
 .hm-shell .hm-fold>summary svg{transition:transform .2s;color:var(--ah-muted)}.hm-shell .hm-fold[open]>summary svg{transform:rotate(90deg)}
 .hm-shell .hm-toolbar>span::first-letter{text-transform:uppercase}
 
@@ -361,7 +361,7 @@
 .hm-shell .ah-modes-row{display:flex;gap:6px;overflow:auto;scrollbar-width:none;margin:0 -4px;padding:0 4px}
 .hm-shell .ah-mode{flex:1 0 64px;display:flex;flex-direction:column;align-items:center;gap:8px;padding:2px 0;color:var(--ah-muted);border-radius:12px}
 .hm-shell .ah-mode-glyph{display:grid;place-items:center;width:52px;height:52px;border-radius:50%;background:var(--ah-tile);color:var(--ah-ink)}.hm-shell .ah-mode-glyph b{font-size:20px;font-weight:600}
-.hm-shell .ah-mode.is-active{color:var(--ah-accent)}.hm-shell .ah-mode.is-active .ah-mode-glyph{background:var(--ah-accent);color:#fff}
+.hm-shell .ah-mode.is-active{color:var(--ah-accent-ink)}.hm-shell .ah-mode.is-active .ah-mode-glyph{background:var(--ah-accent);color:#fff}
 .hm-shell .ah-mode-label{font-size:12px;line-height:1.2;text-align:center;max-width:76px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.hm-shell .ah-mode:disabled{opacity:.45}
 .hm-shell .ah-rows,.hm-shell .ah-group{display:grid;gap:1px;border-radius:18px;overflow:hidden;background:var(--ah-line)}.hm-shell .ah-group{gap:10px;padding:14px 16px;background:var(--ah-group)}.hm-shell .ah-group-title{font-size:13px;color:var(--ah-muted)}
 .hm-shell .ah-row{display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 16px;background:var(--ah-group);color:var(--ah-ink);width:100%;text-align:left}.hm-shell .ah-row.is-button{cursor:pointer}.hm-shell .ah-row.is-button svg:last-child{color:var(--ah-muted)}
@@ -398,3 +398,32 @@
 .hm-shell .ah-tile-hit:disabled,.hm-shell .ah-row.is-button:disabled{color:inherit}
 /* laptops and desktops (≥1180 px): modules stay module-sized (~145–165 px) however wide the window is, like HomeView, so the Home face fits a 900 px-tall screen; beats the tablet landscape column counts above */
 @media (min-width:1180px){.hm-shell.is-wide.is-landscape .ah-grid,.hm-shell.is-wide .ah-grid{grid-template-columns:repeat(auto-fill,minmax(142px,1fr))}.hm-shell.is-wide.is-landscape .ah-rooms-strip .hm-room-grid,.hm-shell.is-wide .ah-rooms-strip .hm-room-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}.hm-shell.is-wide .ah-rooms-strip .hm-room{aspect-ratio:16/10}}
+/* ---- Audit of 04.11.2026, part 2 ---- */
+/* F10: touch targets ≥ 44 px without changing the drawn size (the hit area grows through a pseudo-element) */
+.hm-shell .hm-icon-btn,.hm-shell .hm-round{position:relative}
+.hm-shell .ah-tile-more::before,.hm-shell .hm-icon-btn::before,.hm-shell .hm-round::before,.hm-shell .ah-chev::before{content:'';position:absolute;inset:-8px;border-radius:50%}
+.hm-shell .hm-icon-btn::before{inset:-4px}.hm-shell .ah-chev::before{inset:-2px}.hm-shell .hm-switch::before{content:'';position:absolute;inset:-7px 0}
+/* F11: nav labels at 12 px never wrap on a 320 px phone */
+.hm-shell .hm-tabbar button span,.hm-shell .hm-sidebar nav button span{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* F20 / F23: skip link and visually hidden labels */
+.hm-shell .at-vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.hm-shell .at-skip{position:absolute;top:8px;left:8px;z-index:40;padding:8px 14px;border-radius:999px;background:var(--ah-accent-ink);color:#fff;font-weight:600;transform:translateY(-200%);opacity:0;transition:transform .2s,opacity .2s}
+.hm-shell .at-skip:focus-visible{transform:none;opacity:1}
+/* module tile: a real button underneath, the card's own controls stay clickable */
+.hm-shell .ah-module{position:relative}.hm-shell .at-module-hit{position:absolute;inset:0;z-index:0;padding:0;border-radius:inherit}
+.hm-shell .at-module-body{position:relative;z-index:1;display:flex;flex:1;min-width:0;pointer-events:none}.hm-shell .at-module-body :is(button,a,input,select,label){pointer-events:auto}
+/* ST-4: the home is unreachable — tiles go quiet, switches dim, commands are refused with a toast */
+.hm-shell.is-offline .ah-tile:not(.ah-clock),.hm-shell.is-offline .hm-row,.hm-shell.is-offline .at-light-row{filter:saturate(.35);opacity:.72}.hm-shell.is-offline .hm-switch{opacity:.5}
+/* IA-1 / F12: Systems search and the «Внимание» filter */
+.hm-shell .at-sys-bar{gap:10px}.hm-shell .at-search-wrap{flex:1;min-width:0;display:block}.hm-shell .at-search-wrap input{width:100%}
+.hm-shell .at-sys-attn{flex:none;white-space:nowrap}.hm-shell .at-sys-attn.is-warn:not(.is-active){color:#8a4006}.hm-shell .at-sys-attn.is-active{background:var(--ah-accent-ink);color:#fff}
+/* AUTO-1: the confirming button carries the risk */
+.hm-shell .hm-confirm .is-primary.risk-security{background:#ff3b30;color:#fff}.hm-shell .hm-confirm .is-primary.risk-water{background:#32ade6;color:#fff}
+/* WDG: balanced headings */
+.hm-shell .hm-head h1,.hm-shell .hm-section-head h2,.hm-shell .hm-sheet-head h2,.hm-shell .hm-confirm h2{text-wrap:balance}
+/* F5: Windows high-contrast / forced colours keep the surfaces visible */
+@media (forced-colors:active){.hm-shell .ah-tile,.hm-shell .hm-card,.hm-shell .hm-sheet,.hm-shell .hm-confirm,.hm-shell .hm-row,.hm-shell .hm-pill{border:1px solid CanvasText;background:Canvas;color:CanvasText;box-shadow:none;backdrop-filter:none}.hm-shell .hm-switch{border:1px solid ButtonText}.hm-shell .hm-switch.is-on{background:Highlight}.hm-shell .hm-switch-knob{background:ButtonText}.hm-shell .hm-nav-ind{outline:2px solid Highlight}.hm-shell .ah-wallpaper{display:none}}
+/* UI-1: a television (≥ 1800 px, no mouse) read from the sofa */
+@media (min-width:1800px) and (any-hover:none){.hm-shell .ah-tile-text strong{font-size:22px}.hm-shell .ah-tile-text small{font-size:18px}.hm-shell .ah-value-num,.hm-shell .ah-module .hm-status-text strong{font-size:40px}.hm-shell .hm-sidebar nav button{font-size:16px}.hm-shell .hm-head h1{font-size:40px}.hm-shell .hm-head p{font-size:20px}.hm-shell :is(button,input,select,summary):focus-visible{outline-width:5px}}
+/* A11Y-1 (random sample #climate): the boiler module's captions on the inset tile and its amber warning text reach 4.5:1 */
+.hm-shell.ah-shell:not([data-theme="dark"]) .at-boiler-tile{--hm-muted:#525257}.hm-shell.ah-shell:not([data-theme="dark"]) .at-boiler-tile.is-warning strong,.hm-shell.ah-shell:not([data-theme="dark"]) .at-boiler-tile.is-warning>span{color:#8a4006}

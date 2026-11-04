@@ -11,7 +11,7 @@ import { isDimmable, hasColorTemp, hasColor, brightnessPct, kelvinOf, kelvinRang
 
 type Common = { device: HomeDevice; runner: Runner; t: T; lang: Lang };
 /** A light service call for any light entity of the card (the lamp or its ambient light); `serviceCall` maps the id to the HA field. */
-const act = (entityId: string, id: string, data?: Record<string, unknown>, service = 'turn_on', kind: Action['kind'] = 'number'): Action => ({ id, label: id, kind, domain: 'light', service, entityId, data, confirm: false, risk: 'normal' });
+const act = (entityId: string, id: string, data?: Record<string, unknown>, service = 'turn_on', kind: Action['kind'] = 'number'): Action => ({ id, label: id, kind, domain: entityId.split('.')[0] || 'light', service, entityId, data, confirm: false, risk: 'normal' });
 const effectLabel = (o: string, t: T) => { const k = `mode.${o.toLowerCase().replace(/[\s-]+/g, '_')}` as Key; return t(k) !== k ? t(k) : o; };
 const locales: Record<Lang, string> = { ru: 'ru-RU', ro: 'ro-RO', en: 'en-GB' };
 /** «18:40» today, «3 нояб., 18:40» earlier. */

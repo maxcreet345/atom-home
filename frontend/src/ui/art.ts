@@ -18,5 +18,7 @@ const KEYWORDS: Array<[RoomType, RegExp]> = [
 ];
 export function roomType(name: string): RoomType | null { for (const [type, re] of KEYWORDS) if (re.test(name)) return type; return null; }
 export function stockRoomArt(name: string): string | null { const type = roomType(name); return type ? art(type) ?? null : null; }
+/** The stock photo in two sizes for `srcset` (F13 of the audit: 960 px for a 300 px slot on a 1× screen was 385 KB too many). */
+export function stockRoomArtSet(name: string): { src: string; srcset: string } | null { const type = roomType(name); if (!type) return null; const big = art(type), small = files[`../art/room-${type}-480.webp`]; return big ? { src: big, srcset: small ? `${small} 480w, ${big} 960w` : `${big} 960w` } : null; }
 export const stockRoomTypes: RoomType[] = ['living', 'kitchen', 'bedroom', 'kids', 'bathroom', 'hall', 'office', 'storage'];
 export const stockArtOfType = (type: RoomType) => art(type) ?? null;

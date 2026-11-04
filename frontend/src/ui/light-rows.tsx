@@ -20,7 +20,7 @@ export function LightRows({ devices, room, runner, toggle, open, t, lang }: { de
       const ambient = d.controls.find((c, i) => i > 0 && c.domain === 'light' && c.available && isOn(c));
       const line = !e.available ? t('state.unavailable') : on ? [dim && pct !== null ? `${pct} %` : t('state.on'), k !== null ? `${num(k, lang, 0)} K` : null].filter(Boolean).join(' · ') : t('state.off');
       return <div className={`ah-row at-light-row ${on ? 'is-on' : ''}`} data-device-key={d.key}>
-        <button type="button" className="at-light-row-hit" onClick={() => open(d)} aria-label={`${t('ui.details')}: ${d.name}`}>
+        <button type="button" className="at-light-row-hit" onClick={() => open(d)}>
           <span className="ah-row-icon at-light-row-icon" style={`--tile:${on ? '#ffcc00' : '#8e8e93'}`}><Icon name={artOf(d) === 'chandelier' ? 'chandelier' : 'light'} size={18} />{ambient && <i className="at-tile-amb" style={`--amb:${ambientHex(ambient.attributes)}`} aria-hidden="true" />}</span>
           <span className="ah-row-text"><strong>{name(d)}</strong><small>{line}</small>
             {dim && on && <input type="range" className="at-light-mini" min={1} max={100} step={1} value={pct ?? 100} aria-label={`${name(d)} · ${t('action.brightness')}`} style={`--k:${kelvinColor(k ?? 4000)}`} onClick={ev => ev.stopPropagation()} onPointerDown={ev => ev.stopPropagation()} onChange={ev => { ev.stopPropagation(); void runner.run(d, act(e.id, 'brightness', { transition: 0.3 }), Number((ev.target as HTMLInputElement).value)); }} />}
@@ -30,7 +30,7 @@ export function LightRows({ devices, room, runner, toggle, open, t, lang }: { de
       </div>; }).flatMap((row, i) => { const d = devices[i], amb = d.controls.find((c, j) => j > 0 && c.domain === 'light'); if (!amb) return [row];
       const aon = amb.available && isOn(amb), cur = nearestColor(amb.attributes.rgb_color), apct = brightnessPct(amb.attributes);
       return [row, <div className={`ah-row at-light-row is-ambient ${aon ? 'is-on' : ''}`} data-device-key={`${d.key}:ambient`}>
-        <button type="button" className="at-light-row-hit" onClick={() => open(d)} aria-label={`${t('ui.details')}: ${t('light.ambient')}`}><span className="ah-row-icon at-light-row-icon" style={`--tile:${aon ? ambientHex(amb.attributes) : '#8e8e93'}`}><Icon name="sun" size={18} /></span>
+        <button type="button" className="at-light-row-hit" onClick={() => open(d)}><span className="ah-row-icon at-light-row-icon" style={`--tile:${aon ? ambientHex(amb.attributes) : '#8e8e93'}`}><Icon name="sun" size={18} /></span>
           <span className="ah-row-text"><strong>{t('light.ambient')}</strong><small>{!amb.available ? t('state.unavailable') : aon ? [cur ? t(`light.color.${cur}` as Key) : null, apct !== null ? `${apct} %` : null].filter(Boolean).join(' · ') || t('state.on') : t('state.off')}</small></span></button>
         <Switch on={aon} pending={runner.busy.has(d.key)} disabled={!amb.available} label={t('light.ambient')} onToggle={() => void runner.run(d, act(amb.id, 'toggle', undefined, 'toggle', 'toggle'), !aon)} />
       </div>]; })}</div>
