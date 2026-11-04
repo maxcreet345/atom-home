@@ -25,8 +25,10 @@ export function mountWebrtcPlayer(container: HTMLElement, opts: WebrtcOptions): 
     report('connecting'); lastProgress = performance.now();
     timer = setInterval(() => {
       if (!active()) return;
-      if (video.readyState >= 2 && video.videoWidth > 0 && !video.paused && video.currentTime > lastTime) { lastTime = video.currentTime; lastProgress = performance.now(); retries = 0; report('live'); if (!liveSince) liveSince = performance.now(); if (opts.onFrame && performance.now() - lastFrameAt > 5000 && performance.now() - liveSince > 1500) { lastFrameAt = performance.now(); capture(); } }
-      else if (performance.now() - lastProgress > 20000) failed();
+      // Frames arrive in bursts over TURN and the doorbell wakes slowly: live as soon as a picture is decoded, a stall only after a long silence, and never while ICE is still negotiating.
+      if (video.readyState >= 2 && video.videoWidth > 0 && !video.paused) { if (video.currentTime > lastTime) { lastTime = video.currentTime; lastProgress = performance.now(); } retries = 0; report('live'); if (!liveSince) liveSince = performance.now(); if (opts.onFrame && performance.now() - lastFrameAt > 5000 && performance.now() - liveSince > 1500) { lastFrameAt = performance.now(); capture(); } if (performance.now() - lastProgress > 45000) failed(); }
+      else if (video.paused && video.srcObject) void video.play().catch(() => undefined);
+      else if (performance.now() - lastProgress > (pc && (pc.connectionState === 'connecting' || pc.connectionState === 'new') ? 60000 : 40000)) failed();
     }, 1000);
     try {
       const cfg = await host.ws<{ configuration?: RTCConfiguration; getCandidatesUpfront?: boolean }>({ type: 'camera/webrtc/get_client_config', entity_id: entityId });
