@@ -4,7 +4,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { discover, roomClimate, NO_ROOM } from '../src/model/discover.ts';
 import { defaultConfig, normaliseConfig } from '../src/model/config.ts';
-import { entityKind, CONTROL_KINDS } from '../src/model/kinds.ts';
+import { entityKind, entityCategory, CONTROL_KINDS } from '../src/model/kinds.ts';
 import { actionsFor, serviceCall } from '../src/runtime/actions.ts';
 import { translator } from '../src/i18n/index.ts';
 import type { Registry } from '../src/model/registry.ts';
@@ -25,6 +25,12 @@ test('entity kinds follow HA domains and device classes', () => {
   assert.equal(entityKind({ entity_id: 'sensor.x', device_class: null }, { state: '12', attributes: {}, last_changed: '', last_updated: '' }), null, 'class-less counters are not cards');
   assert.equal(entityKind({ entity_id: 'sensor.x', device_class: null, unit: 'kWh' }), 'energy', 'unit fallback');
   assert.equal(entityKind({ entity_id: 'sensor.x', device_class: null }, { state: '21', attributes: { unit_of_measurement: '°C' }, last_changed: '', last_updated: '' }), 'environment');
+});
+
+test('a Yandex.Station lyrics screen is not a camera of the home', () => {
+  const row = { entity_id: 'camera.living_yandex_max_lyrics', device_id: 'd', area_id: null, name: null, original_name: null, platform: 'yandex_station', entity_category: null, disabled_by: null, hidden_by: null };
+  assert.equal(entityCategory(row, 'camera'), 'hidden');
+  assert.equal(entityCategory({ ...row, entity_id: 'camera.entrance_camera', platform: 'generic' }, 'camera'), 'primary');
 });
 
 test('config normalisation drops malformed parts and keeps safe values', () => {

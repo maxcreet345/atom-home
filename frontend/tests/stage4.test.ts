@@ -11,7 +11,7 @@ const fixturePath = resolve(import.meta.dirname, '../../private/fixtures/criulen
 const fixture: Registry | null = existsSync(fixturePath) ? JSON.parse(readFileSync(fixturePath, 'utf8')) : null;
 
 test('room type is guessed from Russian, Romanian and English area names', () => {
-  for (const [name, type] of [['Ванная', 'bathroom'], ['Главная спальня', 'bedroom'], ['Детская', 'kids'], ['Компьетерная', 'office'], ['Кладовка', 'storage'], ['Подьезд', 'hall'], ['Гостиная', 'living'], ['Kitchen', 'kitchen'], ['Bucătărie', 'kitchen'], ['Dormitor copii', 'kids'], ['Living room', 'living'], ['Garage', null]] as const)
+  for (const [name, type] of [['Ванная', 'bathroom'], ['Главная спальня', 'bedroom'], ['Детская', 'kids'], ['Компьетерная', 'office'], ['Кладовка', 'storage'], ['Склад', 'storage'], ['Подьезд', 'hall'], ['Коридор у ванной', 'hall'], ['Коридор у спальни', 'hall'], ['Гостиная', 'living'], ['Kitchen', 'kitchen'], ['Bucătărie', 'kitchen'], ['Dormitor copii', 'kids'], ['Living room', 'living'], ['Garage', null]] as const)
     assert.equal(roomType(name), type, name);
 });
 

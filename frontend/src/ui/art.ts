@@ -5,12 +5,14 @@ try { files = import.meta.glob('../art/room-*.webp', { eager: true, query: '?url
 const art = (name: string) => files[`../art/room-${name}.webp`];
 export type RoomType = 'living' | 'kitchen' | 'bedroom' | 'kids' | 'bathroom' | 'hall' | 'office' | 'storage';
 const KEYWORDS: Array<[RoomType, RegExp]> = [
+  // Corridors first: «Коридор у ванной» leads to the bathroom but is a hall.
+  ['hall', /коридор|прихож|холл|подъезд|подьезд|corridor|hallway|coridor|\bhol\b/i],
   ['kids', /детск|ребен|ребён|child|kid|nursery|copi|copil/i],
   ['bathroom', /ванн|туалет|санузел|душ|bath|toilet|wc|baie|duș|dus/i],
   ['kitchen', /кухн|столов|kitchen|dining|bucătăr|bucatar/i],
   ['bedroom', /спальн|bedroom|dormitor/i],
   ['office', /кабинет|компьютер|компьетер|office|study|birou|work/i],
-  ['storage', /кладов|гардероб|чулан|storage|closet|pantry|debara|cămar|camar/i],
+  ['storage', /склад|кладов|гардероб|чулан|storage|closet|pantry|debara|cămar|camar|depozit|magazie/i],
   ['hall', /прихож|коридор|холл|подъезд|подьезд|вход|hall|corridor|entry|entrance|hol|coridor|intrare/i],
   ['living', /гостин|зал|living|lounge|salon|sufragerie/i],
 ];

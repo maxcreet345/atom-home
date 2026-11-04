@@ -68,6 +68,8 @@ export function entityKind(entity: Pick<EntityRow, 'entity_id' | 'device_class'>
 export function entityCategory(entity: EntityRow, kind: Kind | null): 'primary' | 'parameter' | 'diagnostic' | 'hidden' {
   const domain = domainOf(entity.entity_id);
   if (entity.disabled_by || entity.hidden_by || EXCLUDED_PLATFORMS.has(entity.platform)) return 'hidden';
+  // Yandex.Station exposes the speaker's lyrics screen as a camera entity: it is not a camera of the home.
+  if (entity.platform === 'yandex_station' && domainOf(entity.entity_id) === 'camera') return 'hidden';
   if (entity.entity_category === 'diagnostic') return 'diagnostic';
   if (entity.entity_category === 'config') return domain === 'sensor' || domain === 'binary_sensor' ? 'diagnostic' : 'parameter';
   if (kind) return 'primary';
