@@ -69,6 +69,10 @@ const KV = ({ k, v }: { k: string; v: ComponentChildren }) => <div className="at
 const CONDITIONS = ['clear-night', 'cloudy', 'fog', 'hail', 'lightning', 'lightning-rainy', 'partlycloudy', 'pouring', 'rainy', 'snowy', 'snowy-rainy', 'sunny', 'windy', 'windy-variant', 'exceptional'];
 
 /** The «Time» sheet: big clock, sun, three shared timers, who is home, the speakers' next alarm, settings. */
+/** A window over the sheet (centred card on a tablet, the whole sheet on a phone); closes by the cross or a tap outside. Module-level on purpose: a component created inside the sheet would be a new type on every one-second tick and remount (and re-animate) the window each time. */
+function Win({ title, onBack, children, wide, t }: { title: string; onBack: () => void; children: ComponentChildren; wide?: boolean; t: T }) {
+  return <div className="at-win-scrim" onClick={e => { if (e.target === e.currentTarget) onBack(); }}><div className={`at-win ${wide ? 'is-wide' : ''}`} role="dialog" aria-modal="true" aria-label={title}><div className="at-win-head"><button type="button" className="hm-icon-btn" aria-label={t('ui.back')} onClick={onBack}><Icon name="back" size={22} /></button><h3>{title}</h3><button type="button" className="hm-icon-btn" aria-label={t('ui.close')} onClick={onBack}>×</button></div><div className="at-win-body">{children}</div></div></div>;
+}
 export interface RoomRef { id: string; name: string }
 export function ClockSheet({ registry, entities, host, t, lang, runner, onClose, wide, rooms = [], room, alarms = [], onAlarms }: { registry: Registry; entities: ModuleEntities; host: Host; t: T; lang: Lang; runner: Runner; onClose: () => void; wide: boolean; rooms?: RoomRef[]; /** opened from a room page: the editor starts with this room */ room?: string | null; alarms?: Alarm[]; onAlarms?: (alarms: Alarm[]) => Promise<void> }) {
   const [win, setWin] = useState<'timer' | 'alarms' | 'settings' | null>(null); // windows over the sheet: no long column, no scroll
@@ -129,8 +133,6 @@ export function ClockSheet({ registry, entities, host, t, lang, runner, onClose,
 
   const headBtns = <div className="at-cam-head-btns"><button type="button" className="hm-icon-btn at-cam-gear" aria-label={tx('clock.settings')} onClick={() => setWin('settings')}><Icon name="gear" size={20} /></button><button type="button" className="hm-icon-btn" aria-label={t('ui.close')} onClick={onClose}>×</button></div>;
   const head = <div className="hm-sheet-head"><span className="hm-sheet-photo at-clock-photo"><Icon name="clock" size={30} /></span><div><small>{t('section.home')}</small><h2>{tx('clock.title')}</h2></div>{!wide && headBtns}</div>;
-  /** A window over the sheet (centred card on a tablet, the whole sheet on a phone); closes by the cross or a tap outside. */
-  const Win = ({ title, onBack, children, wide: w }: { title: string; onBack: () => void; children: ComponentChildren; wide?: boolean }) => <div className="at-win-scrim" onClick={e => { if (e.target === e.currentTarget) onBack(); }}><div className={`at-win ${w ? 'is-wide' : ''}`} role="dialog" aria-modal="true" aria-label={title}><div className="at-win-head"><button type="button" className="hm-icon-btn" aria-label={t('ui.back')} onClick={onBack}><Icon name="back" size={22} /></button><h3>{title}</h3><button type="button" className="hm-icon-btn" aria-label={t('ui.close')} onClick={onBack}>×</button></div><div className="at-win-body">{children}</div></div></div>;
   const face = <>
     {wide && <div className="at-clock-face-wrap"><ClockFace now={now} sun={entities.sun ? S[entities.sun] : undefined} settings={{ ...settings, seconds: true }} /></div>}
     <div className="at-clock-big"><b>{clockTime(nowMs, lang)}</b><span>{String(now.getSeconds()).padStart(2, '0')}</span></div>
@@ -227,10 +229,10 @@ export function ClockSheet({ registry, entities, host, t, lang, runner, onClose,
   </>;
   const cards = <>{timersCard}{alarmsCard}{people}{alarmBlock}{note && <p className="at-feeder-note at-cam-note" role="status">{note}</p>}</>;
   const windows = <>
-    {win === 'timer' && <Win title={tx('clock.newTimer')} onBack={() => setWin(null)} wide>{timerWin}</Win>}
-    {win === 'alarms' && !edit && <Win title={tx('alarm.title')} onBack={() => setWin(null)}>{alarmsWin}</Win>}
-    {win === 'alarms' && edit && <Win title={alarms.some(x => x.id === edit.id) ? tx('alarm.edit') : tx('alarm.new')} onBack={() => setEdit(null)} wide>{editor}</Win>}
-    {win === 'settings' && <Win title={tx('clock.settings')} onBack={() => setWin(null)}>{settingsPage}</Win>}
+    {win === 'timer' && <Win t={t} title={tx('clock.newTimer')} onBack={() => setWin(null)} wide>{timerWin}</Win>}
+    {win === 'alarms' && !edit && <Win t={t} title={tx('alarm.title')} onBack={() => setWin(null)}>{alarmsWin}</Win>}
+    {win === 'alarms' && edit && <Win t={t} title={alarms.some(x => x.id === edit.id) ? tx('alarm.edit') : tx('alarm.new')} onBack={() => setEdit(null)} wide>{editor}</Win>}
+    {win === 'settings' && <Win t={t} title={tx('clock.settings')} onBack={() => setWin(null)}>{settingsPage}</Win>}
   </>;
   if (wide) return <div className="hm-sheet-body ah-sheet at-cam at-clock is-split" data-kind="clock" data-win={win ?? 'none'}>
     <div className="at-cam-left">{head}{face}</div>
