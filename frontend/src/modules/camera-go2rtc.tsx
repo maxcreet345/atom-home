@@ -123,5 +123,5 @@ export const cameraGo2rtc: ModuleDef = {
   claims: cameraClaims,
   tileState: (registry, entities, t) => cameraTileState(registry.states, entities, k => t(k as Key)),
   Sheet: CameraSheet,
-  Player: ({ options, host, t, mode, poster }) => <Go2rtcView options={options} host={host} t={t} mode={mode} poster={poster} />,
+  Player: ({ entities, options, host, t, mode, poster }) => <Go2rtcView options={options} host={host} t={t} mode={mode} poster={poster} webrtcEntity={entities.camera} />,
 };

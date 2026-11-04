@@ -4,7 +4,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defaultConfig } from '../src/model/config.ts';
 import { doorbellSpec, activeSpecs } from '../src/modules/catalog.ts';
-import { doorbellClaims, doorbellTileState, autoOpenSeconds, parseHistory, when, ago } from '../src/modules/doorbell-state.ts';
+import { doorbellClaims, doorbellTileState, autoOpenSeconds, parseHistory, when, ago, parseMediaDay, mergeEvents, dayFolders, mediaRoot } from '../src/modules/doorbell-state.ts';
 import { discover } from '../src/model/discover.ts';
 import { translator } from '../src/i18n/index.ts';
 const camPath = resolve(import.meta.dirname, '../../private/fixtures/criuleni-camera-20261104.json');
@@ -48,4 +48,18 @@ test('G4: auto-open seconds, logbook rows, relative time', () => {
   const now = Date.parse('2026-11-04T10:52:00+02:00');
   assert.equal(ago(now - 30_000, now, tx, 'ru'), 'только что'); assert.equal(ago(now - 5 * 60_000, now, tx, 'ru'), '5 мин назад'); assert.equal(ago(now - 3 * 3_600_000, now, tx, 'ru'), '3 ч назад');
   assert.match(when(now - 60_000, now, tx, 'ru'), /^\d\d:\d\d$/); assert.match(when(now - 86_400_000, now, tx, 'ru'), /^вчера \d\d:\d\d$/);
+});
+
+test('G4 stage 2: saved files are parsed and matched to recorder events', () => {
+  const day = '2026-11-04', ch = [{ title: '12-11-05_ring.jpg', media_content_id: 'media-source://media_source/local/doorbell/2026-11-04/12-11-05_ring.jpg' }, { title: '12-11-05_ring.mp4', media_content_id: 'm:ring.mp4' }, { title: '12-30-00_motion.jpg', media_content_id: 'm:motion.jpg' }, { title: 'last_ring.jpg', media_content_id: 'm:last' }, { title: 'notes.txt', media_content_id: 'm:txt' }];
+  const files = parseMediaDay(day, ch); assert.equal(files.length, 3); assert.equal(files[0].kind, 'motion'); assert.equal(files[2].type, 'mp4');
+  assert.deepEqual(parseMediaDay('bad', ch), []); assert.deepEqual(parseMediaDay(day, null), []);
+  const ringAt = new Date(2026, 10, 4, 12, 11, 3).getTime(), motionAt = new Date(2026, 10, 4, 12, 29, 58).getTime();
+  const merged = mergeEvents([{ kind: 'ring', at: ringAt }, { kind: 'motion', at: motionAt }, { kind: 'motion', at: motionAt - 3_600_000 }], files);
+  assert.equal(merged.length, 3, 'files within 10 s join their events; no orphans');
+  const ring = merged.find(e => e.kind === 'ring')!; assert.ok(ring.snapshot?.endsWith('12-11-05_ring.jpg')); assert.equal(ring.clip, 'm:ring.mp4');
+  const motion = merged.find(e => e.at === motionAt)!; assert.equal(motion.snapshot, 'm:motion.jpg'); assert.equal(motion.clip, undefined);
+  const orphan = mergeEvents([], files); assert.equal(orphan.length, 2, 'files without events become events'); assert.equal(orphan[1].clip, 'm:ring.mp4');
+  assert.equal(dayFolders(Date.parse('2026-11-04T12:00:00'), 3).join(','), '2026-11-04,2026-11-03,2026-11-02');
+  assert.equal(mediaRoot('doorbell'), 'media-source://media_source/local/doorbell');
 });

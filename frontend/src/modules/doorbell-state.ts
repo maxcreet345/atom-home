@@ -43,7 +43,35 @@ export function doorbellTileState(states: Record<string, StateRow>, entities: Mo
   const motionAt = ms(motion?.last_changed);
   return { line: motionAt !== null && now - motionAt < 86_400_000 ? tx('module.doorbell.quietMotion', { ago: ago(motionAt, now, tx, lang) }) : tx('module.doorbell.quiet'), closed: false, icon: null };
 }
-export interface DoorEvent { kind: 'ring' | 'motion'; at: number }
+export interface DoorEvent { kind: 'ring' | 'motion'; at: number; /** media_source ids of the snapshot and the clip HA saved for this event (stage 2) */ snapshot?: string; clip?: string }
+/** A file HA's automation saved: `/media/<dir>/YYYY-MM-DD/HH-MM-SS_ring|motion.jpg|mp4`. */
+export interface DoorFile { kind: 'ring' | 'motion'; at: number; id: string; type: 'jpg' | 'mp4' }
+export const mediaRoot = (dir: string) => `media-source://media_source/local/${dir}`;
+/** Parse one day folder's listing (`media_source/browse_media` children) into files; the folder name gives the date. */
+export function parseMediaDay(day: string, children: unknown): DoorFile[] {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day); if (!m || !Array.isArray(children)) return [];
+  const out: DoorFile[] = [];
+  for (const c of children as Array<Record<string, unknown>>) {
+    const title = typeof c?.title === 'string' ? c.title : '', id = typeof c?.media_content_id === 'string' ? c.media_content_id : '';
+    const f = /^(\d{2})-(\d{2})-(\d{2})_(ring|motion)\.(jpg|mp4)$/.exec(title); if (!f || !id) continue;
+    const at = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(f[1]), Number(f[2]), Number(f[3])).getTime();
+    out.push({ kind: f[4] as 'ring' | 'motion', at, id, type: f[5] as 'jpg' | 'mp4' });
+  }
+  return out.sort((a, b) => b.at - a.at);
+}
+/** Recorder events + saved files → one list: a file within `tolMs` of an event of the same kind belongs to it; files without an event (the recorder purged it) become events of their own. */
+export function mergeEvents(events: DoorEvent[], files: DoorFile[], tolMs = 10_000): DoorEvent[] {
+  const out: DoorEvent[] = events.map(e => ({ ...e })), used = new Set<DoorFile>();
+  for (const e of out) for (const f of files) { if (used.has(f) || f.kind !== e.kind || Math.abs(f.at - e.at) > tolMs) continue; if (f.type === 'jpg' && !e.snapshot) { e.snapshot = f.id; used.add(f); } else if (f.type === 'mp4' && !e.clip) { e.clip = f.id; used.add(f); } }
+  const orphans = new Map<string, DoorEvent>();
+  for (const f of files) { if (used.has(f)) continue; const key = `${f.kind}:${Math.round(f.at / 1000)}`; const e = orphans.get(key) ?? { kind: f.kind, at: f.at }; if (f.type === 'jpg') e.snapshot = f.id; else e.clip = f.id; orphans.set(key, e); }
+  return [...out, ...orphans.values()].sort((a, b) => b.at - a.at);
+}
+/** The day folders to read for the last `days` days, newest first. */
+export function dayFolders(now: number, days = 7): string[] {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return Array.from({ length: days }, (_, i) => { const d = new Date(now - i * 86_400_000); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; });
+}
 /** HA `history/history_during_period` (minimal response: `{s, lc, lu}` rows per entity) → events, newest first. A ring is every new timestamp of the event entity, motion counts when it turns on; the first row (the state at the start of the window) is not an event. */
 export function parseHistory(raw: unknown, entities: ModuleEntities, startMs: number): DoorEvent[] {
   if (!raw || typeof raw !== 'object') return [];

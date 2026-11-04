@@ -6,7 +6,7 @@ export interface Hass {
   connected?: boolean; language?: string;
   callWS<T = unknown>(message: Record<string, unknown>): Promise<T>;
   callService(domain: string, service: string, data?: Record<string, unknown>): Promise<unknown>;
-  connection?: { subscribeEvents?(cb: (e: unknown) => void, type: string): Promise<() => void> };
+  connection?: { subscribeEvents?(cb: (e: unknown) => void, type: string): Promise<() => void>; subscribeMessage?<T = unknown>(cb: (message: T) => void, message: Record<string, unknown>): Promise<() => void> };
 }
 export interface Host {
   registry(): Promise<Pick<Registry, 'areas' | 'devices' | 'entities'>>;
@@ -15,6 +15,8 @@ export interface Host {
   history?(entityIds: string[], hours: number): Promise<Record<string, Array<[number, number]>>>;
   /** Raw WebSocket command on the authenticated connection (modules such as the go2rtc player need Supervisor ingress info). */
   ws?<T = unknown>(message: Record<string, unknown>): Promise<T>;
+  /** Subscription on the authenticated connection (WebRTC offer/answer/candidates for the camera stream). Resolves to the unsubscribe function. */
+  subscribe?<T = unknown>(message: Record<string, unknown>, callback: (message: T) => void): Promise<() => void>;
   readonly admin: boolean; readonly online: boolean;
 }
 const toRow = (e: Record<string, unknown>): EntityRow => ({
@@ -36,6 +38,7 @@ export function liveHost(hass: Hass): Host {
     },
     async call(domain, service, data) { await hass.callService(domain, service, data); },
     ws: <T,>(message: Record<string, unknown>) => hass.callWS<T>(message),
+    subscribe: <T,>(message: Record<string, unknown>, callback: (m: T) => void) => { const sub = hass.connection?.subscribeMessage; if (!sub) return Promise.reject(new Error('no subscription API')); return sub<T>(callback, message); },
     async history(entityIds, hours) {
       const end = new Date(), start = new Date(end.getTime() - hours * 3600000);
       const raw = await hass.callWS<Record<string, Array<{ s?: unknown; lu?: number; lc?: number }>>>({ type: 'history/history_during_period', start_time: start.toISOString(), end_time: end.toISOString(), entity_ids: entityIds, minimal_response: true, no_attributes: true, significant_changes_only: false });

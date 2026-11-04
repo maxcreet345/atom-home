@@ -5,16 +5,29 @@ import type { T } from '../i18n/index.ts';
 import { Icon } from '../ui/primitives.tsx';
 import { mountGo2rtcPlayer, mseAvailable, type Player, type PlayerStatus } from './go2rtc-player.ts';
 import { readFrame, writeFrame, posterEnabled } from './doorbell-state.ts';
+import { mountWebrtcPlayer, webrtcAvailable, type WebrtcPlayer } from './webrtc-player.ts';
 /** Live MSE video from the go2rtc add-on shared by the camera modules: the last frame as a poster until the stream is up, HD/SD switch when a second stream exists, sound toggle on the stage when the stream carries audio. */
-export function Go2rtcView({ options, host, t, mode, poster, live = true }: { options: ModuleOptions; host: Host; t: T; mode: 'tile' | 'stage'; poster?: string | null; /** false: no stream, only the poster (a battery doorbell is not watched all day from every tile) */ live?: boolean }) {
+export function Go2rtcView({ options, host, t, mode, poster, live = true, webrtcEntity }: { options: ModuleOptions; host: Host; t: T; mode: 'tile' | 'stage'; poster?: string | null; /** false: no stream, only the poster (a battery doorbell is not watched all day from every tile) */ live?: boolean; /** HA camera with a stream: WebRTC through HA's own go2rtc for users who cannot use the add-on ingress (not admins), and as the fallback when the ingress stream fails */ webrtcEntity?: string }) {
   const mount = useRef<HTMLDivElement>(null), hostRef = useRef(host), playerRef = useRef<Player | null>(null); hostRef.current = host;
   const [status, setStatus] = useState<PlayerStatus>('connecting'), [hd, setHd] = useState(false), [hdBroken, setHdBroken] = useState(false), [audio, setAudio] = useState(false), [sound, setSound] = useState(false);
   useEffect(() => { if (hd && status === 'error') { setHd(false); setHdBroken(true); } }, [hd, status]);
   const addon = options.addon ?? '', stream = hd && options.streamHd ? options.streamHd : options.stream;
   const [stored, setStored] = useState(() => readFrame(addon, options.stream));
   const [picBroken, setPicBroken] = useState(false);
+  const canIngress = !!hostRef.current.ws && !!addon && mseAvailable() && hostRef.current.admin;
+  const [path, setPath] = useState<'mse' | 'webrtc'>(() => canIngress || !webrtcEntity ? 'mse' : 'webrtc');
+  // The add-on ingress refused or broke (not an admin, 403, codec): try HA's own WebRTC once before giving up.
+  useEffect(() => { if (path === 'mse' && status === 'error' && webrtcEntity && webrtcAvailable() && hostRef.current.subscribe) setPath('webrtc'); }, [status, path, webrtcEntity]);
   useEffect(() => {
-    const node = mount.current; if (!node || !live) return;
+    const node = mount.current; if (!node || !live || path !== 'webrtc' || !webrtcEntity) return;
+    const h = hostRef.current; if (!h.ws || !h.subscribe || !webrtcAvailable()) { setStatus('error'); return; }
+    let player: WebrtcPlayer;
+    try { player = mountWebrtcPlayer(node, { entityId: webrtcEntity, host: { ws: m => hostRef.current.ws!(m), subscribe: (m, cb) => hostRef.current.subscribe!(m, cb), get online() { return hostRef.current.online; } }, onStatus: setStatus, onAudio: setAudio, onFrame: posterEnabled(options) ? data => { writeFrame(addon, options.stream, data); setStored({ at: Date.now(), data }); } : undefined }); playerRef.current = player as unknown as Player; }
+    catch { setStatus('error'); return; }
+    return () => { player.dispose(); playerRef.current = null; };
+  }, [path, webrtcEntity, live]);
+  useEffect(() => {
+    const node = mount.current; if (!node || !live || path !== 'mse') return;
     if (!hostRef.current.ws || !addon || !mseAvailable()) { setStatus('error'); return; }
     let player: Player;
     try {
@@ -23,12 +36,12 @@ export function Go2rtcView({ options, host, t, mode, poster, live = true }: { op
       playerRef.current = player;
     } catch { setStatus('error'); return; }
     return () => { player.dispose(); playerRef.current = null; };
-  }, [addon, stream, live]);
+  }, [addon, stream, live, path]);
   const showPoster = status !== 'live' || !live, posterSrc = stored?.data ?? (poster && !picBroken ? poster : null);
   const toggleSound = (e: Event) => { e.stopPropagation(); const v = playerRef.current?.video; if (!v) return; v.muted = !v.muted; setSound(!v.muted); if (!v.muted) void v.play().catch(() => undefined); };
   return <>
     {showPoster && posterSrc && <img className="at-cam-poster" src={posterSrc} alt="" onError={() => { if (!stored) setPicBroken(true); }} />}
-    <div className={`hm-camera-mount at-go2rtc is-${live ? status : 'idle'}`} ref={mount} data-player-status={live ? status : 'idle'} data-stream={stream ?? 'auto'} />
+    <div className={`hm-camera-mount at-go2rtc is-${live ? status : 'idle'}`} ref={mount} data-player-status={live ? status : 'idle'} data-stream={stream ?? 'auto'} data-path={live ? path : 'none'} />
     {live && status !== 'live' && <div className={`hm-camera-wait ${posterSrc ? 'is-poster' : ''}`}>{posterSrc ? <i className="at-cam-spin" /> : <Icon name="camera" size={32} />}<span>{t(status === 'error' ? 'module.camera.fail' : status === 'stalled' ? 'module.camera.stalled' : 'module.camera.wait')}</span></div>}
     <span className={`hm-live ${live && status === 'live' ? 'is-live' : ''}`}><i />{live && status === 'live' ? (sound ? `LIVE · ${t('module.camera.sound')}` : 'LIVE') : !live ? (stored ? new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(stored.at) : t('state.idle')) : status === 'error' ? t('state.unavailable') : t('state.idle')}</span>
     {mode === 'stage' && options.streamHd && <button type="button" className="hm-camera-q at-camera-q" aria-pressed={hd} disabled={hdBroken} title={hdBroken ? t('module.camera.hdUnsupported') : undefined} onClick={e => { e.stopPropagation(); setHd(!hd); }}>{hd ? 'HD' : 'SD'}</button>}
