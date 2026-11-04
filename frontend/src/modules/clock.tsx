@@ -70,8 +70,8 @@ const CONDITIONS = ['clear-night', 'cloudy', 'fog', 'hail', 'lightning', 'lightn
 
 /** The «Time» sheet: big clock, sun, three shared timers, who is home, the speakers' next alarm, settings. */
 /** A window over the sheet (centred card on a tablet, the whole sheet on a phone); closes by the cross or a tap outside. Module-level on purpose: a component created inside the sheet would be a new type on every one-second tick and remount (and re-animate) the window each time. */
-function Win({ title, onBack, children, wide, t }: { title: string; onBack: () => void; children: ComponentChildren; wide?: boolean; t: T }) {
-  return <div className="at-win-scrim" onClick={e => { if (e.target === e.currentTarget) onBack(); }}><div className={`at-win ${wide ? 'is-wide' : ''}`} role="dialog" aria-modal="true" aria-label={title}><div className="at-win-head"><button type="button" className="hm-icon-btn" aria-label={t('ui.back')} onClick={onBack}><Icon name="back" size={22} /></button><h3>{title}</h3><button type="button" className="hm-icon-btn" aria-label={t('ui.close')} onClick={onBack}>×</button></div><div className="at-win-body">{children}</div></div></div>;
+function Win({ title, onBack, children, wide, t, bodyKey }: { title: string; onBack: () => void; children: ComponentChildren; wide?: boolean; t: T; bodyKey: string }) {
+  return <div className="at-win-scrim" onClick={e => { if (e.target === e.currentTarget) onBack(); }}><div className={`at-win ${wide ? 'is-wide' : ''}`} role="dialog" aria-modal="true" aria-label={title}><div className="at-win-head"><button type="button" className="hm-icon-btn" aria-label={t('ui.back')} onClick={onBack}><Icon name="back" size={22} /></button><h3>{title}</h3><button type="button" className="hm-icon-btn" aria-label={t('ui.close')} onClick={onBack}>×</button></div><div className="at-win-body" key={bodyKey}>{children}</div></div></div>;
 }
 /** The big digits with seconds: the only part of the sheet that re-renders every second. */
 function LiveTime({ lang }: { lang: Lang }) {
@@ -241,12 +241,12 @@ export function ClockSheet({ registry, entities, host, t, lang, runner, onClose,
     </div>
   </>;
   const cards = <>{timersCard}{alarmsCard}{people}{alarmBlock}{note && <p className="at-feeder-note at-cam-note" role="status">{note}</p>}</>;
-  const windows = <>
-    {win === 'timer' && <Win t={t} title={tx('clock.newTimer')} onBack={() => setWin(null)} wide>{timerWin}</Win>}
-    {win === 'alarms' && !edit && <Win t={t} title={tx('alarm.title')} onBack={() => setWin(null)}>{alarmsWin}</Win>}
-    {win === 'alarms' && edit && <Win t={t} title={alarms.some(x => x.id === edit.id) ? tx('alarm.edit') : tx('alarm.new')} onBack={() => setEdit(null)} wide>{editor}</Win>}
-    {win === 'settings' && <Win t={t} title={tx('clock.settings')} onBack={() => setWin(null)}>{settingsPage}</Win>}
-  </>;
+  // One window element for every screen: switching list → editor swaps only the body, so the scrim and the card never re-animate.
+  const screen = win === 'timer' ? { title: tx('clock.newTimer'), back: () => setWin(null), wide: true, body: timerWin, key: 'timer' }
+    : win === 'alarms' && edit ? { title: alarms.some(x => x.id === edit.id) ? tx('alarm.edit') : tx('alarm.new'), back: () => setEdit(null), wide: true, body: editor, key: 'alarm-edit' }
+    : win === 'alarms' ? { title: tx('alarm.title'), back: () => setWin(null), wide: false, body: alarmsWin, key: 'alarms' }
+    : win === 'settings' ? { title: tx('clock.settings'), back: () => setWin(null), wide: false, body: settingsPage, key: 'settings' } : null;
+  const windows = screen && <Win t={t} title={screen.title} onBack={screen.back} wide={screen.wide} bodyKey={screen.key}>{screen.body}</Win>;
   if (wide) return <div className="hm-sheet-body ah-sheet at-cam at-clock is-split" data-kind="clock" data-win={win ?? 'none'}>
     <div className="at-cam-left">{head}{face}</div>
     <div className="at-cam-right">{headBtns}{cards}</div>

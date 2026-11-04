@@ -231,6 +231,8 @@
 @keyframes at-fade{from{opacity:0}to{opacity:1}}
 .hm-shell .at-win{display:flex;flex-direction:column;width:min(440px,100%);max-height:100%;border-radius:22px;background:var(--ah-sheet);color:var(--ah-ink);box-shadow:0 24px 70px #00000055;overflow:hidden;animation:at-rise .38s var(--ah-spring)}
 .hm-shell .at-win.is-wide{width:min(560px,100%)}
+.hm-shell .at-win{transition:width .3s var(--ah-ease)}
+.hm-shell .at-win-body{animation:at-fade .2s ease}
 @keyframes at-rise{from{transform:translateY(26px) scale(.97);opacity:0}to{transform:none;opacity:1}}
 .hm-shell .at-win-head{display:flex;align-items:center;gap:8px;padding:10px 10px 6px}.hm-shell .at-win-head h3{flex:1;margin:0;font-size:17px;font-weight:650;text-align:center}
 .hm-shell .at-win-body{display:flex;flex-direction:column;gap:10px;padding:4px 14px 16px;overflow:auto;min-height:0}
