@@ -14,7 +14,7 @@ await new Promise(r => server.listen(0, '127.0.0.1', r)); const origin = 'http:/
 const browser = await chromium.launch(); const report = { checks: [], errors: [] };
 const check = (name, ok, extra = '') => { report.checks.push({ name, ok, extra }); console.log(`${ok ? '✔' : '✖'} ${name}${extra ? ' — ' + extra : ''}`); };
 try {
-  for (const [w, h, label] of [[402, 874, 'phone'], [1070, 764, 'tablet'], [698, 751, 'open']]) {
+  for (const [w, h, label] of [[402, 874, 'phone'], [874, 402, 'phone-land'], [1070, 764, 'tablet'], [764, 1070, 'tablet-port'], [698, 751, 'open'], [751, 698, 'open-land']]) {
     const page = await browser.newPage({ viewport: { width: w, height: h } }); page.on('pageerror', e => report.errors.push(`${label}: ${e.message}`)); page.on('console', m => { if (m.type() === 'error' && !/404/.test(m.text())) report.errors.push(`${label} console: ${m.text()}`); }); // camera_proxy frames are 404 on the preview host
     await page.goto(origin); await page.waitForFunction(() => window.ready);
     await page.evaluate(async cfg => { const fx = await (await fetch('/fixture.json')).json(); await window.mountPreview(document.getElementById('root'), fx, cfg); }, config);
@@ -26,19 +26,21 @@ try {
     const systems = await page.evaluate(() => { location.hash = '#systems'; return new Promise(r => setTimeout(() => r([...document.querySelectorAll('.hm-card')].map(c => c.textContent).filter(x => /ИИ|Патрул|Слежен|Время на картинке|Детекция/.test(x)).length), 400)); });
     check(`${label}: no camera switches in Systems`, systems === 0, `${systems} leftover tiles`);
     await page.evaluate(() => { location.hash = '#home?device=e%3Acamera.entrance_camera'; }); await page.waitForSelector('.at-cam'); await shot('sheet');
-    const sheet = await page.evaluate(() => { const s = document.querySelector('.at-cam'); const rows = [...s.querySelectorAll('.ah-row strong')].map(x => x.textContent); return { wide: s.classList.contains('is-split'), power: s.querySelector('.ah-power strong')?.textContent, hero: s.querySelector('.ah-hero-main b')?.textContent, status: s.querySelector('.ah-hero-main small')?.textContent, modes: [...s.querySelectorAll('.ah-modes-title')].map(x => x.textContent), rows, tools: [...s.querySelectorAll('.at-cam-tool')].map(b => b.textContent + (b.disabled ? '(off)' : '')), gear: !!s.querySelector('.at-cam-gear') }; });
-    check(`${label}: sheet power/hero`, sheet.power === 'Закрыть объектив' && sheet.hero === 'Включена', `${sheet.power} / ${sheet.hero} / ${sheet.status}`);
-    check(`${label}: modes night+hdr`, sheet.modes.join(',') === 'Ночное видение,HDR', sheet.modes.join(','));
+    const sheet = await page.evaluate(() => { const s = document.querySelector('.at-cam'); const rows = [...s.querySelectorAll('.ah-row strong')].map(x => x.textContent); return { wide: s.classList.contains('is-split'), power: s.querySelector('.at-cam-lens')?.textContent, hero: !!s.querySelector('.ah-hero'), rows, tools: [...s.querySelectorAll('.at-cam-tool')].map(b => b.textContent + (b.disabled ? '(off)' : '')), gear: !!s.querySelector('.at-cam-gear'), live: (() => { const l = s.querySelector('.at-cam-stage .hm-live'); return l ? getComputedStyle(l).bottom : null; })() }; });
+    check(`${label}: lens tool, no hero`, sheet.power === 'Закрыть объектив' && sheet.hero === false, `${sheet.power} / hero=${sheet.hero}`);
+    check(`${label}: LIVE at the bottom of the stage`, sheet.live === '10px', String(sheet.live));
     check(`${label}: rows`, sheet.rows.length >= 16 && sheet.rows.includes('Слежение за человеком') && sheet.rows.includes('Плач ребёнка') && sheet.rows.includes('Громкость динамика') && !sheet.rows.includes('Время на картинке'), `${sheet.rows.length} rows: ${sheet.rows.join(' | ')}`);
-    check(`${label}: tools`, sheet.tools.join(',') === 'Снимок,Разговор(off),Во весь экран', sheet.tools.join(','));
-    check(`${label}: layout ${label === 'tablet' ? 'two columns' : 'one column'}`, sheet.wide === (label === 'tablet'), `is-wide=${sheet.wide}`);
+    check(`${label}: tools`, sheet.tools.join(',') === 'Снимок,Разговор(off),Во весь экран,Закрыть объектив,Ночное видениеАвто,HDRВыкл', sheet.tools.join(','));
+    const expectSplit = w >= 800 && w > h; check(`${label}: layout ${expectSplit ? 'two columns' : 'one column'}`, sheet.wide === expectSplit, `is-split=${sheet.wide}`);
     await page.click('.at-cam-gear'); await page.waitForTimeout(300); await shot('settings');
     const settings = await page.evaluate(() => { const s = document.querySelector('.at-cam'); return { page: s.dataset.page, rows: [...s.querySelectorAll('.ah-row strong')].map(x => x.textContent), kv: [...s.querySelectorAll('.at-cam-kv')].map(x => x.textContent), title: s.querySelector('h2, .at-cam-h3')?.textContent }; });
     check(`${label}: settings page`, settings.page === 'settings' && settings.rows.includes('Время на картинке') && settings.rows.includes('Перевернуть изображение') && settings.kv.some(x => x.includes('Нет карты')) && settings.kv.some(x => x.includes('H.265')), `${settings.title}: ${settings.rows.join(' | ')} // ${settings.kv.join(' | ')}`);
     await page.click('[aria-label="Назад"]'); await page.waitForTimeout(300);
+    await page.click('.at-cam-night'); await page.waitForTimeout(400); const night = await page.evaluate(() => window.atomPreview?.host?.log?.slice(-1)[0] ?? null);
+    check(`${label}: night button cycles Auto → On`, !!night && night.service === 'select_option' && night.data.option === 'On', JSON.stringify(night));
     const back = await page.evaluate(() => document.querySelector('.at-cam')?.dataset.page); check(`${label}: back to main`, back === 'main', String(back));
     // closing the lens asks for confirmation; the preview host rejects the command
-    await page.click('.ah-power'); await page.waitForTimeout(300); const confirmText = await page.evaluate(() => document.querySelector('.hm-confirm p')?.textContent ?? '');
+    await page.click('.at-cam-lens'); await page.waitForTimeout(300); const confirmText = await page.evaluate(() => document.querySelector('.hm-confirm p')?.textContent ?? '');
     check(`${label}: close lens asks first`, confirmText.includes('Закрыть объектив'), confirmText); await shot('confirm');
     await page.keyboard.press('Escape'); await page.waitForTimeout(200);
     // closed lens: swap the snapshot and remount
@@ -47,8 +49,8 @@ try {
     const closedTile = await page.evaluate(() => { const t = document.querySelector('.hm-camera-tile.is-large'); return t ? { closed: t.classList.contains('is-closed'), line: t.querySelector('.hm-camera-caption small')?.textContent, wait: t.querySelector('.hm-camera-wait span')?.textContent } : null; });
     check(`${label}: closed lens tile`, closedTile?.closed === true && closedTile.line === 'Объектив закрыт', JSON.stringify(closedTile));
     await page.evaluate(() => { location.hash = '#home?device=e%3Acamera.entrance_camera'; }); await page.waitForSelector('.at-cam'); await shot('sheet-closed');
-    const closedSheet = await page.evaluate(() => { const s = document.querySelector('.at-cam'); return { power: s.querySelector('.ah-power strong')?.textContent, hero: s.querySelector('.ah-hero-main b')?.textContent, stage: s.querySelector('.at-cam-stage-closed span')?.textContent, snapshotOff: s.querySelector('.at-cam-snapshot')?.disabled }; });
-    check(`${label}: closed lens sheet`, closedSheet.power === 'Открыть объектив' && closedSheet.hero === 'Объектив закрыт' && closedSheet.stage === 'Объектив закрыт' && closedSheet.snapshotOff === true, JSON.stringify(closedSheet));
+    const closedSheet = await page.evaluate(() => { const s = document.querySelector('.at-cam'); return { power: s.querySelector('.at-cam-lens')?.textContent, stage: s.querySelector('.at-cam-stage-closed span')?.textContent, snapshotOff: s.querySelector('.at-cam-snapshot')?.disabled }; });
+    check(`${label}: closed lens sheet`, closedSheet.power === 'Открыть объектив' && closedSheet.stage === 'Объектив закрыт' && closedSheet.snapshotOff === true, JSON.stringify(closedSheet));
     served = JSON.stringify(fixture);
     await page.close();
   }

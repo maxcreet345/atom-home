@@ -21,12 +21,6 @@ function refOf(registry: Registry, id: string | undefined): EntityRef | null {
 }
 const stamp = () => { const d = new Date(), p = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`; };
 
-/** Round mode chips (night vision, HDR) with the module's own option labels. */
-function Modes({ title, action, labels, glyphs, device, runner, disabled }: { title: string; action: Action; labels: (o: string) => string; glyphs?: Record<string, string>; device: HomeDevice; runner: Runner; disabled: boolean }) {
-  return <div className="ah-modes" role="radiogroup" aria-label={title}><small className="ah-modes-title">{title}</small>
-    <div className="ah-modes-row">{(action.options ?? []).map(o => { const active = String(action.current) === o, g = glyphs?.[o.toLowerCase()]; return <button type="button" role="radio" aria-checked={active} className={`ah-mode ${active ? 'is-active' : ''}`} disabled={disabled} onClick={() => void runner.run(device, action, o)}><span className="ah-mode-glyph">{g && g.length > 3 ? <Icon name={g} size={22} /> : <b>{g ?? o.slice(0, 1).toUpperCase()}</b>}</span><span className="ah-mode-label">{labels(o)}</span></button>; })}</div>
-  </div>;
-}
 /** Settings-style select row with the module's own option labels. */
 function SelectRow({ action, labels, device, runner, disabled, icon, color }: { action: Action; labels: (o: string) => string; device: HomeDevice; runner: Runner; disabled: boolean; icon: string; color: string }) {
   const name = String(action.label);
@@ -56,9 +50,6 @@ function CameraSheet({ device, registry, entities, options, t, lang, runner, onC
   const onOffAuto = (o: string) => ({ 'выкл': t('mode.off'), off: t('mode.off'), 'вкл': t('state.on'), on: t('state.on'), 'авто': t('mode.auto'), auto: t('mode.auto') } as Record<string, string>)[o.toLowerCase()] ?? o;
   const sens = (o: string) => ({ low: tx('module.camera.sens.low'), middle: tx('module.camera.sens.middle'), medium: tx('module.camera.sens.middle'), high: tx('module.camera.sens.high') } as Record<string, string>)[o.toLowerCase()] ?? o;
   const rec = (o: string) => ({ 'no record': tx('module.camera.rec.none'), 'motion record': tx('module.camera.rec.motion'), 'all record': tx('module.camera.rec.all') } as Record<string, string>)[o.toLowerCase()] ?? o;
-  const vol = ref('volume'), mute = ref('mute'), tracking = ref('tracking'), cruise = ref('cruise'), petTracking = ref('petTracking');
-  const nightNow = ref('night')?.state;
-  const status = [closed ? null : nightNow ? `${tx('module.camera.night')}: ${nightLabel(nightNow).toLowerCase()}` : null, cruise?.state === 'on' ? tx('module.camera.cruise') : tracking?.state === 'on' ? tx('module.camera.tracking') : petTracking?.state === 'on' ? tx('module.camera.petTracking') : null, mute?.state === 'on' ? tx('module.camera.muted') : vol && Number.isFinite(Number(vol.state)) ? `${tx('module.camera.volume')} ${num(Number(vol.state), lang, 0)} %` : null].filter(Boolean).join(' · ');
   const powerAction: Action | null = power ? { id: 'toggle', label: closed ? tx('module.camera.openLens') : tx('module.camera.closeLens'), kind: 'toggle', domain: 'switch', service: closed ? 'turn_on' : 'turn_off', entityId: power.id, confirm: !closed, risk: 'security' } : null;
   const pic = typeof device.primary.attributes.entity_picture === 'string' ? device.primary.attributes.entity_picture : null;
   const snapshot = async () => {
@@ -85,20 +76,21 @@ function CameraSheet({ device, registry, entities, options, t, lang, runner, onC
   const head = page === 'main' || wide
     ? <div className="hm-sheet-head"><span className="hm-sheet-photo"><Icon name="camera" size={30} /></span><div><small>{t('kind.camera')}{roomShown ? ` · ${roomShown}` : ''}</small><h2>{device.name}</h2></div>{!wide && headBtns}</div>
     : <div className="hm-sheet-head"><button type="button" className="hm-icon-btn" aria-label={t('ui.back')} onClick={() => setPage('main')}><Icon name="back" size={22} /></button><div><small>{device.name}</small><h2>{tx('module.camera.settings')}</h2></div>{headBtns}</div>;
+  const cycle = (a: Action) => { const opts = a.options ?? []; const i = opts.indexOf(String(a.current ?? '')); return opts[(i + 1) % opts.length]; };
+  const nightNowLabel = night && night.kind === 'select' && night.current ? nightLabel(String(night.current)) : null, hdrNowLabel = hdr && hdr.kind === 'select' && hdr.current ? onOffAuto(String(hdr.current)) : null;
   const video = <>
     <div className="hm-camera-frame at-camera-stage at-cam-stage" ref={stageRef}>{stage ?? <div className="hm-camera-wait"><Icon name="camera" size={32} /><span>{device.primary.available ? t('state.idle') : tx('module.camera.noLink')}</span></div>}</div>
     <div className="at-cam-tools">
       <button type="button" className="at-cam-tool at-cam-snapshot" disabled={!pic || closed} onClick={() => void snapshot()}><b><Icon name="camera" size={22} /></b>{tx('module.camera.tool.snapshot')}</button>
       <button type="button" className="at-cam-tool" disabled title={tx('module.camera.tool.talkLater')}><b><Icon name="sensor" size={22} /></b>{tx('module.camera.tool.talk')}</button>
       <button type="button" className="at-cam-tool at-cam-full" disabled={!stage} onClick={fullscreen}><b><Icon name="panel" size={22} /></b>{tx('module.camera.tool.fullscreen')}</button>
+      {powerAction && <button type="button" className={`at-cam-tool at-cam-lens ${closed ? '' : 'is-on'}`} disabled={busy || off} onClick={() => void runner.run(device, powerAction)}><b><Icon name="power" size={22} /></b>{String(powerAction.label)}</button>}
+      {night && night.kind === 'select' && <button type="button" className={`at-cam-tool at-cam-night ${String(night.current).toLowerCase() !== 'off' ? 'is-on' : ''}`} disabled={busy || off} title={tx('module.camera.tool.cycle')} onClick={() => void runner.run(device, night, cycle(night))}><b><Icon name="motion" size={22} /></b>{tx('module.camera.night')}<small>{nightNowLabel}</small></button>}
+      {hdr && hdr.kind === 'select' && <button type="button" className={`at-cam-tool at-cam-hdr ${/^(выкл|off)$/i.test(String(hdr.current)) ? '' : 'is-on'}`} disabled={busy || off} title={tx('module.camera.tool.cycle')} onClick={() => void runner.run(device, hdr, cycle(hdr))}><b>HDR</b><small>{hdrNowLabel}</small></button>}
     </div>
     {note && <p className="at-feeder-note at-cam-note" role="status">{note}</p>}
-    <div className={`ah-hero ${closed ? '' : 'is-on'}`}><span className={`ah-hero-glyph ${closed ? '' : 'is-on'}`} style="--tile:#8e8e93"><Icon name="camera" size={44} /></span><div className="ah-hero-main"><b>{closed ? tx('module.camera.closed') : off ? t('state.unavailable') : tx('module.camera.on')}</b>{status && <small>{status}</small>}</div></div>
-    {powerAction && <button type="button" className={`ah-power ${closed ? '' : 'is-on'}`} disabled={busy || off} onClick={() => void runner.run(device, powerAction)}><span className="ah-power-icon"><Icon name="power" size={22} /></span><strong>{String(powerAction.label)}</strong></button>}
   </>;
   const main = <>
-    {night && night.kind === 'select' && <Modes title={tx('module.camera.night')} action={night} labels={nightLabel} glyphs={{ auto: 'A', on: '●', off: '○' }} device={device} runner={runner} disabled={busy || off} />}
-    {hdr && hdr.kind === 'select' && <Modes title={tx('module.camera.hdr')} action={hdr} labels={onOffAuto} glyphs={{ 'выкл': '—', off: '—', 'вкл': 'HDR', on: 'HDR', 'авто': 'A', auto: 'A' }} device={device} runner={runner} disabled={busy || off} />}
     {(entities.tracking || entities.petTracking || entities.cruise) && <div className="ah-rows"><Title>{tx('module.camera.group.ptz')}</Title>{toggleRow('tracking', tx('module.camera.tracking'), 'person', '#0a84ff')}{toggleRow('petTracking', tx('module.camera.petTracking'), 'paw', '#0a84ff')}{toggleRow('cruise', tx('module.camera.cruise'), 'vacuum', '#0a84ff')}</div>}
     {(entities.motion || entities.aiHuman) && <div className="ah-rows"><Title>{tx('module.camera.group.detection')}</Title>{toggleRow('motion', tx('module.camera.motion'), 'motion', '#30d158')}{selectRow('motionSens', tx('module.camera.motionSens'), sens)}{sliderRow('alarmInterval', tx('module.camera.alarmInterval'), tx('module.camera.min'))}
       {entities.aiHuman && <Title>{tx('module.camera.group.ai')}</Title>}{toggleRow('aiHuman', tx('module.camera.ai.human'), 'person', '#30d158')}{toggleRow('aiMotion', tx('module.camera.ai.motion'), 'motion', '#30d158')}{selectRow('moveSens', tx('module.camera.moveSens'), sens)}{toggleRow('aiPet', tx('module.camera.ai.pet'), 'paw', '#30d158')}{toggleRow('aiFace', tx('module.camera.ai.face'), 'person', '#30d158')}{toggleRow('aiBabycry', tx('module.camera.ai.babycry'), 'sensor', '#30d158')}{toggleRow('aiSound', tx('module.camera.ai.sound'), 'media', '#30d158')}{selectRow('soundSens', tx('module.camera.soundSens'), sens)}</div>}

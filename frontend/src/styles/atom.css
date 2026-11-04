@@ -40,7 +40,13 @@
 .hm-shell .at-cam .hm-sheet-head{gap:12px}
 .hm-shell .at-cam .hm-sheet-head>div:not(.at-cam-head-btns){flex:1;min-width:0}
 .hm-shell .at-cam-stage{margin:0}
-.hm-shell .at-cam-tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.hm-shell .at-cam-tools{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+.is-narrow .at-cam-tools{grid-template-columns:repeat(3,minmax(0,1fr));row-gap:14px}
+.hm-shell .at-cam-tool small{font-size:11px;color:var(--ah-accent);line-height:1.1}
+.hm-shell .at-cam-tool.is-on b{background:var(--ah-accent);color:#fff}.hm-shell .at-cam-tool.at-cam-lens.is-on b{background:#ff7a3d}
+.hm-shell .at-cam-tool b{font-size:14px;font-weight:700}
+/* the camera burns its clock into the top-left corner: LIVE goes to the bottom */
+.hm-shell .at-cam-stage .hm-live{top:auto;bottom:10px}
 .hm-shell button.at-cam-tool{display:flex;flex-direction:column;align-items:center;gap:6px;padding:4px 0;color:var(--ah-muted);font-size:12px;text-align:center;background:none;border:0;cursor:pointer}
 .hm-shell .at-cam-tool b{display:grid;place-items:center;width:52px;height:52px;border-radius:50%;background:var(--ah-group);color:var(--ah-ink);box-shadow:0 1px 2px #00000010;transition:transform .32s var(--ah-spring)}
 .hm-shell .at-cam-tool:active:not(:disabled) b{transform:scale(.95)}
