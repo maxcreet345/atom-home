@@ -49,4 +49,5 @@ export const en: Dictionary = {
   'alarm.alice': 'Alice', 'alarm.alice.off': 'No', 'alarm.alice.tts': 'Phrase', 'alarm.alice.music': 'Music', 'alarm.alicePhrase': 'Alice: phrase', 'alarm.aliceMusic': 'Alice: music', 'alarm.noStation': 'no speaker in this room', 'alarm.phrasePlaceholder': 'Good morning, time to get up',
   'alarm.repeats': 'Repeats', 'alarm.noRepeats': 'no repeats', 'alarm.repeats0': 'none', 'alarm.repeatsNote': '{n} times, every {m} min, no sunrise', 'alarm.repeatsShort': 'repeat ×{n}', 'alarm.every': 'every {m} min', 'alarm.push': 'Push to phones',
   'alarm.ringing': 'Alarm', 'alarm.repeatsLeft': '{n} more', 'alarm.snooze': '9 more minutes',
+  'clock.noTimers': 'No timers', 'alarm.all': 'All · {n}',
 };

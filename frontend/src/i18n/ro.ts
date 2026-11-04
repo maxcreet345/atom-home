@@ -49,4 +49,5 @@ export const ro: Dictionary = {
   'alarm.alice': 'Alice', 'alarm.alice.off': 'Nu', 'alarm.alice.tts': 'Frază', 'alarm.alice.music': 'Muzică', 'alarm.alicePhrase': 'Alice: frază', 'alarm.aliceMusic': 'Alice: muzică', 'alarm.noStation': 'în această cameră nu e boxă', 'alarm.phrasePlaceholder': 'Bună dimineața, e timpul să te trezești',
   'alarm.repeats': 'Repetări', 'alarm.noRepeats': 'fără repetări', 'alarm.repeats0': 'nu', 'alarm.repeatsNote': 'de {n} ori, la fiecare {m} min, fără răsărit', 'alarm.repeatsShort': 'repetare ×{n}', 'alarm.every': 'la {m} min', 'alarm.push': 'Push pe telefoane',
   'alarm.ringing': 'Alarmă', 'alarm.repeatsLeft': 'încă {n}', 'alarm.snooze': 'Încă 9 minute',
+  'clock.noTimers': 'Fără temporizatoare', 'alarm.all': 'Toate · {n}',
 };

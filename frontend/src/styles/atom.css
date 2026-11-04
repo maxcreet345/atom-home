@@ -212,3 +212,30 @@
 .hm-shell .at-clock-grid.is-waiting{opacity:.45}
 .hm-shell button.at-room-alarms{display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;margin:0 0 14px;border:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
 .hm-shell .at-room-alarms .ah-row-text{flex:1;display:grid;min-width:0}.hm-shell .at-room-alarms strong{font-size:15px;font-weight:600}.hm-shell .at-room-alarms small{color:var(--ah-muted);font-size:13px}
+
+/* the Time sheet, compact: summary cards on the main screen, everything else in windows over the sheet */
+.hm-shell .at-clock{position:relative}
+.hm-shell .at-clock-card{display:grid;gap:10px;padding:12px 14px;border-radius:18px;background:var(--ah-group);flex:none}
+.hm-shell .at-clock-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.hm-shell .at-clock-card-head h4{margin:0;font-size:13px;font-weight:600;color:var(--ah-muted)}
+.hm-shell .hm-pill.is-small.at-clock-new,.hm-shell .hm-pill.is-small.at-alarm-add{min-height:32px;padding:0 12px;font-size:13px}
+.hm-shell .at-clock-empty{margin:0;font-size:14px;color:var(--ah-muted)}
+.hm-shell .at-clock-alarms{gap:6px}
+.hm-shell button.at-alarm-chip{display:flex;align-items:baseline;gap:8px;min-height:40px;padding:4px 10px;border:0;border-radius:12px;background:var(--ah-inset,#0000000f);font:inherit;color:var(--ah-ink);text-align:left;cursor:pointer}
+.hm-shell .at-alarm-chip b{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.5px}.hm-shell .at-alarm-chip span{font-size:14px;font-weight:600}.hm-shell .at-alarm-chip small{margin-left:auto;font-size:12px;color:var(--ah-muted)}
+.hm-shell .at-clock-all{justify-self:end;display:inline-flex;align-items:center;gap:2px;font-size:13px}
+.hm-shell .at-clock-card.is-rows{padding:0;gap:1px}.hm-shell .at-clock-card.is-rows .ah-row{min-height:50px}
+.hm-shell .at-clock-people{display:flex;gap:10px}.hm-shell .at-clock-person{width:64px}.hm-shell .at-clock-person b{width:44px;height:44px;font-size:15px}.hm-shell .at-clock-person small{font-size:11px}
+.hm-shell .at-clock-timers .at-clock-trow .at-clock-ring{width:52px;height:52px}.hm-shell .at-clock-timers .at-clock-trow .at-clock-ring svg{width:52px;height:52px}.hm-shell .at-clock-timers .at-clock-ring b{font-size:12px}
+.is-narrow .at-clock .at-clock-big b{font-size:44px}.is-narrow .at-clock .at-clock-sun{padding:10px 14px;gap:4px}.is-narrow .at-clock .at-clock-arc{height:48px}.is-narrow .at-clock .at-clock-sun-row{font-size:13px}
+.hm-shell .at-win-scrim{position:absolute;inset:0;z-index:6;display:grid;place-items:center;padding:12px;background:#0f172066;backdrop-filter:blur(6px);animation:at-fade .25s ease}
+@keyframes at-fade{from{opacity:0}to{opacity:1}}
+.hm-shell .at-win{display:flex;flex-direction:column;width:min(440px,100%);max-height:100%;border-radius:22px;background:var(--ah-sheet);color:var(--ah-ink);box-shadow:0 24px 70px #00000055;overflow:hidden;animation:at-rise .38s var(--ah-spring)}
+.hm-shell .at-win.is-wide{width:min(560px,100%)}
+@keyframes at-rise{from{transform:translateY(26px) scale(.97);opacity:0}to{transform:none;opacity:1}}
+.hm-shell .at-win-head{display:flex;align-items:center;gap:8px;padding:10px 10px 6px}.hm-shell .at-win-head h3{flex:1;margin:0;font-size:17px;font-weight:650;text-align:center}
+.hm-shell .at-win-body{display:flex;flex-direction:column;gap:10px;padding:4px 14px 16px;overflow:auto;min-height:0}
+.hm-shell .at-win-body>*{flex:none}
+.hm-shell .at-win .at-alarm-editor{padding:0;background:none;animation:none}.hm-shell .at-win .at-alarms{border-radius:16px}
+.is-narrow .at-win-scrim{padding:0;align-items:stretch}.is-narrow .at-win{width:100%;max-height:100%;border-radius:22px 22px 0 0;margin-top:auto}
+.hm-shell .at-clock .at-clock-sun,.hm-shell .at-clock .at-clock-card{flex:none}
+.hm-shell .at-clock:not(.is-split){gap:8px}.hm-shell .at-clock:not(.is-split) .at-clock-sun-row:last-child{display:none}.hm-shell .at-clock:not(.is-split) .at-clock-arc{height:40px}.hm-shell .at-clock:not(.is-split) .at-clock-date{font-size:14px}.hm-shell .at-clock:not(.is-split) .at-clock-big b{font-size:44px}

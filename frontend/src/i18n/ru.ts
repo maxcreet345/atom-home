@@ -48,5 +48,6 @@ export const ru = {
   'alarm.alice': 'Алиса', 'alarm.alice.off': 'Нет', 'alarm.alice.tts': 'Фраза', 'alarm.alice.music': 'Музыка', 'alarm.alicePhrase': 'Алиса: фраза', 'alarm.aliceMusic': 'Алиса: музыка', 'alarm.noStation': 'в этой комнате нет Станции', 'alarm.phrasePlaceholder': 'Доброе утро, пора вставать',
   'alarm.repeats': 'Повторы', 'alarm.noRepeats': 'без повторов', 'alarm.repeats0': 'нет', 'alarm.repeatsNote': '{n} раз, каждые {m} мин, без рассвета', 'alarm.repeatsShort': 'повтор ×{n}', 'alarm.every': 'каждые {m} мин', 'alarm.push': 'Push на телефоны',
   'alarm.ringing': 'Будильник', 'alarm.repeatsLeft': 'ещё {n} повт.', 'alarm.snooze': 'Ещё 9 минут',
+  'clock.noTimers': 'Таймеров нет', 'alarm.all': 'Все · {n}',
 };
 export type Dictionary = typeof ru;
