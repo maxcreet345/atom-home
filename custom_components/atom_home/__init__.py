@@ -22,6 +22,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.storage import Store
 from aiohttp import web
 
+from .light_sleep import LightSleep
 from .alarms import AlarmScheduler, normalise_alarms
 from .config_state import ConfigState, ConfigWriteError
 from .const import (
@@ -109,7 +110,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     version = await hass.async_add_executor_job(_version)
     scheduler = AlarmScheduler(hass)
     scheduler.set_alarms(normalise_alarms((data.get("config") or {}).get("alarms")))
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"store": store, "state": ConfigState(data.get("config"), data.get("revision", 0), store.async_save), "alarms": scheduler}
+    sleep = LightSleep(hass)
+    await sleep.async_load()
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"store": store, "state": ConfigState(data.get("config"), data.get("revision", 0), store.async_save), "alarms": scheduler, "light_sleep": sleep}
     hass.data[DOMAIN]["_version"] = version
 
     photos_dir = Path(hass.config.path(PHOTOS_DIR))
@@ -144,6 +147,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     bucket = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None) or {}
     if (sched := bucket.get("alarms")):
         sched.shutdown()
+    if (sleep := bucket.get("light_sleep")):
+        sleep.shutdown()
     return True
 
 
@@ -168,7 +173,7 @@ def _register_ws(hass: HomeAssistant) -> None:
     @callback
     def ws_capabilities(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
         """What this backend supports; a panel that gets `unknown_command` here is talking to an older integration."""
-        connection.send_result(msg["id"], {"configRevision": 1, "composition": 1, "assist": 0, "alarms": 1})
+        connection.send_result(msg["id"], {"configRevision": 1, "composition": 1, "assist": 0, "alarms": 1, "lightSleep": 1})
 
     @websocket_api.websocket_command({
         vol.Required("type"): f"{DOMAIN}/config/set",
@@ -229,6 +234,30 @@ def _register_ws(hass: HomeAssistant) -> None:
             await sched.snooze(msg.get("minutes", 9))
         connection.send_result(msg["id"], {"snoozed": True})
 
+    @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/light/sleep", vol.Required("entity_id"): str, vol.Required("minutes"): vol.All(int, vol.Range(min=0, max=720))})
+    @websocket_api.async_response
+    async def ws_light_sleep(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+        """Any user of the house may set «turn off in N minutes» on a lamp (0 cancels)."""
+        sleep: LightSleep | None = (_entry_data(hass) or {}).get("light_sleep")
+        if sleep is None:
+            connection.send_error(msg["id"], "not_ready", "Atom Home is not set up")
+            return
+        if hass.states.get(msg["entity_id"]) is None:
+            connection.send_error(msg["id"], "not_found", "no such light")
+            return
+        try:
+            at = await sleep.schedule(msg["entity_id"], msg["minutes"])
+        except ValueError as err:
+            connection.send_error(msg["id"], "invalid", str(err))
+            return
+        connection.send_result(msg["id"], {"until": at.isoformat() if at else None, "pending": sleep.summary()})
+
+    @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/light/sleep/state"})
+    @callback
+    def ws_light_sleep_state(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+        sleep: LightSleep | None = (_entry_data(hass) or {}).get("light_sleep")
+        connection.send_result(msg["id"], {"pending": sleep.summary() if sleep else {}})
+
     @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/alarms/state"})
     @callback
     def ws_alarms_state(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
@@ -288,3 +317,5 @@ def _register_ws(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_alarm_stop)
     websocket_api.async_register_command(hass, ws_alarm_snooze)
     websocket_api.async_register_command(hass, ws_alarms_state)
+    websocket_api.async_register_command(hass, ws_light_sleep)
+    websocket_api.async_register_command(hass, ws_light_sleep_state)

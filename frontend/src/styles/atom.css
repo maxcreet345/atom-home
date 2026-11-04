@@ -283,3 +283,36 @@
 .hm-shell .hm-sheet.is-roomy .at-light-body{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .is-narrow .at-vs{width:110px;height:250px}
 @media (prefers-reduced-motion:reduce){.hm-shell .ah-tile.kind-light.is-on .ah-glyph,.hm-shell .at-relay-glyph.is-on{animation:none}}
+
+/* light rows in a room, the lights page by rooms, «turn off in» */
+.hm-shell .at-lights-bar{margin-bottom:2px}
+.hm-shell .at-lights-room .hm-section-head h2{font-size:16px;font-weight:650}
+.hm-shell .at-light-rows{border-radius:18px}
+.hm-shell .at-light-row{padding:8px 12px 8px 14px;gap:10px}
+.hm-shell .at-light-row-hit{flex:1;display:flex;align-items:center;gap:12px;min-width:0;padding:4px 0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.hm-shell .at-light-row-icon{position:relative;transition:background-color .3s ease}.hm-shell .at-light-row.is-on .at-light-row-icon{color:#2a1d06;box-shadow:0 0 14px #ffcc0088}
+.hm-shell .at-light-row-icon .at-tile-amb{right:-3px;bottom:-3px;width:9px;height:9px}
+.hm-shell .at-light-row .ah-row-text small{font-variant-numeric:tabular-nums}
+.hm-shell .at-light-mini{display:block;width:100%;max-width:260px;margin-top:6px;accent-color:#f0b400}
+.hm-shell .at-light-rows-sec .hm-section-head .hm-switch{margin-left:auto}
+.hm-shell .at-sleep-chips{padding:0}
+.hm-shell .at-sleep-at{display:flex;align-items:center;gap:10px;color:var(--ah-ink)}.hm-shell .at-sleep-at strong{flex:1;font-weight:600}.hm-shell .at-sleep-at svg{color:var(--ah-accent)}
+.hm-shell .at-sleep-note{color:#c24a1a}
+
+/* light tiles as in the approved mock: glyph top-left in a glowing circle, name and state bottom-left, «···», the ambient dot */
+.hm-shell .ah-tile.kind-light .ah-tile-hit{align-items:flex-start;justify-content:space-between;text-align:left;padding:12px;min-height:120px;gap:8px}
+.hm-shell .ah-tile.kind-light .ah-glyph{width:42px;height:42px;background:#ffffffaa;color:#6e6e73}.hm-shell .ah-tile.kind-light .ah-glyph svg{width:24px;height:24px}
+.hm-shell .ah-tile.kind-light.is-on .ah-glyph{background:#fff;color:#f0b400}
+.hm-shell .ah-tile.kind-light .ah-tile-text strong{font-size:15px;font-weight:620;-webkit-line-clamp:2}
+.hm-shell .ah-tile.kind-light .ah-tile-text small{font-size:12.5px;opacity:.85}
+.hm-shell .ah-tile.kind-light .ah-tile-more{opacity:.5;top:8px;right:8px}
+.hm-shell.ah-shell[data-theme="dark"] .ah-tile.kind-light .ah-glyph{background:#ffffff2e;color:#fff}.hm-shell.ah-shell[data-theme="dark"] .ah-tile.kind-light.is-on .ah-glyph{background:#fff;color:#f0b400}
+/* the tablet sheet as in the mock: slider centred with the five levels under it on the left, temperature and ambient on the right */
+.hm-shell .hm-sheet.is-roomy .at-light-hero{grid-template-columns:minmax(0,1fr);justify-items:center;align-content:start;gap:12px}
+.hm-shell .hm-sheet.is-roomy .at-vs{width:140px;height:320px}
+.hm-shell .hm-sheet.is-roomy .at-light-side{width:100%;gap:8px}
+.hm-shell .hm-sheet.is-roomy .at-light-state{text-align:center}.hm-shell .hm-sheet.is-roomy .at-light-state b{display:none}
+.hm-shell .hm-sheet.is-roomy .at-light-levels{grid-template-columns:repeat(5,minmax(0,1fr))}
+.hm-shell .hm-sheet.is-roomy button.at-light-level.is-off{grid-column:auto}
+.hm-shell .at-light-row.is-ambient{padding-left:14px}
+.hm-shell .at-light-level .at-short{display:none}.hm-shell .hm-sheet.is-roomy .at-light-level .at-long{display:none}.hm-shell .hm-sheet.is-roomy .at-light-level .at-short{display:inline}

@@ -52,5 +52,6 @@ export const ru = {
   'alarm.noStationRooms': 'Будильники ставятся в комнатах со Станцией — пока таких нет',
   'module.camera.role.ring': 'События: звонок (глазок)', 'module.camera.role.motionEvent': 'События: движение (глазок)',
   'light.level.night': 'Ночник', 'light.temp': 'Температура', 'light.preset.warm': 'Тёплый', 'light.preset.cozy': 'Уютный', 'light.preset.neutral': 'Нейтральный', 'light.preset.day': 'Дневной', 'light.ambient': 'Подсветка', 'light.white.warm': 'Тёплая белая', 'light.white.cold': 'Холодная белая', 'light.since': 'с {time}', 'light.relay': 'реле', 'light.color': 'Цвет', 'light.color.amber': 'Янтарь', 'light.color.peach': 'Персик', 'light.color.rose': 'Роза', 'light.color.lavender': 'Лаванда', 'light.color.mint': 'Бирюза', 'light.color.sky': 'Небо',
+  'light.sleep': 'Выключить через', 'light.sleepAt': 'Выключится в {time}', 'light.sleepCancel': 'Отменить', 'light.allInRoom': 'Весь свет в комнате',
 };
 export type Dictionary = typeof ru;

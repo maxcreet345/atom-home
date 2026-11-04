@@ -40,3 +40,13 @@ export function ambientHex(a: Record<string, unknown>): string {
   const k = kelvinOf(a); return k !== null ? kelvinColor(k) : '#ff7eb6';
 }
 export const clampKelvin = (k: number, min: number, max: number) => Math.max(min, Math.min(max, Math.round(k / 50) * 50));
+/** «Выключить через» choices, minutes. */
+export const SLEEP_MINUTES: readonly number[] = [15, 30, 60];
+/** The integration mirrors pending switch-offs into `input_text.atom_light_sleep` as «light.x|17:40;light.y|18:05». */
+export function parseSleep(text: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (typeof text !== 'string') return out;
+  for (const part of text.split(';')) { const [id, at] = part.split('|'); if (id && /^light\.[a-z0-9_]+$/.test(id) && at && /^\d\d:\d\d$/.test(at)) out[id] = at; }
+  return out;
+}
+export const SLEEP_MIRROR = 'input_text.atom_light_sleep';

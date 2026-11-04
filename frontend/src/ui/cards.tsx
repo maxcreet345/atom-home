@@ -68,7 +68,7 @@ export function tileStatus(device: HomeDevice, t: T, lang: Lang): string {
   const e = device.primary;
   if (!e.available) return t('state.unavailable');
   if (device.kind === 'climate') { const cur = typeof e.attributes.current_temperature === 'number' ? e.attributes.current_temperature : null, target = typeof e.attributes.temperature === 'number' ? e.attributes.temperature : null; return e.state === 'off' ? (cur === null ? t('state.off') : `${t('state.off')} · ${num(cur, lang)}°`) : `${target === null ? '—' : num(target, lang) + '°'}${cur === null ? '' : ` · ${num(cur, lang)}°`}`; }
-  if (device.kind === 'light' && isOn(e) && typeof e.attributes.brightness === 'number') return `${t('state.on')} · ${Math.round(e.attributes.brightness / 2.55)} %`;
+  if (device.kind === 'light' && isOn(e) && typeof e.attributes.brightness === 'number') return `${t('mode.on')} · ${Math.max(1, Math.round(e.attributes.brightness / 2.55))} %`;
   return stateText(e, t, lang);
 }
 const READ_KINDS = ['environment', 'measurement', 'leak', 'opening', 'motion', 'person', 'weather', 'camera', 'energy', 'alarm'];
@@ -78,7 +78,7 @@ export function AccessoryTile({ device, name, sub, room, pending, onToggle, onOp
   const color = tileColor(device), label = name ?? device.name;
   // second line: the room for things you switch; the state (plus the room unless the name already ends with it) for everything else
   const roomShown = room && !label.trim().toLowerCase().endsWith(room.trim().toLowerCase()) ? room : '';
-  const line2 = sub ?? (device.kind === 'climate' ? tileStatus(device, t, lang) : onToggle ? (roomShown || tileStatus(device, t, lang)) : [tileStatus(device, t, lang), roomShown].filter(Boolean).join(' · '));
+  const line2 = sub ?? (device.kind === 'climate' || device.kind === 'light' ? tileStatus(device, t, lang) : onToggle ? (roomShown || tileStatus(device, t, lang)) : [tileStatus(device, t, lang), roomShown].filter(Boolean).join(' · '));
   // long press (500 ms) opens details, like a press-and-hold on a HomeView module
   const hold = useRef<ReturnType<typeof setTimeout> | null>(null), held = useRef(false);
   const down = () => { held.current = false; hold.current = setTimeout(() => { held.current = true; onOpen(); }, 500); };
@@ -88,7 +88,7 @@ export function AccessoryTile({ device, name, sub, room, pending, onToggle, onOp
   return <div className={`ah-tile hm-card ${active ? 'is-on' : ''} ${alert ? 'is-alert' : ''} ${e.available ? '' : 'is-off'} ${pending ? 'is-pending' : ''} ${wide ? 'is-wide' : ''} kind-${device.kind}`} data-device-key={device.key} style={`--tile:${color}${device.kind === 'light' ? `;--glow:${glowOf(e.attributes).toFixed(2)}` : ''}`}>
     {ambient && <i className="at-tile-amb" style={`--amb:${ambientHex(ambient.attributes)}`} aria-hidden="true" />}
     <button type="button" className="ah-tile-hit hm-light-hit" disabled={pending || !e.available && !!onToggle} onClick={click} onPointerDown={down} onPointerUp={up} onPointerLeave={up} onPointerCancel={up} onContextMenu={ev => { ev.preventDefault(); if (!held.current) onOpen(); }} aria-label={onToggle ? `${label}: ${on ? t('action.off') : t('action.on')}` : `${t('ui.details')}: ${label}`}>
-      <span className="ah-glyph">{device.photo ? <img src={device.photo} alt="" loading="lazy" /> : <Icon name={device.icon ?? iconOfKind[device.kind] ?? 'generic'} size={34} />}</span>
+      <span className="ah-glyph">{device.photo ? <img src={device.photo} alt="" loading="lazy" /> : <Icon name={device.icon ?? (device.kind === 'light' && artOf(device) === 'chandelier' ? 'chandelier' : iconOfKind[device.kind]) ?? 'generic'} size={34} />}</span>
       <span className="ah-tile-text"><strong>{label}</strong>{line2 && <small><Tick value={line2} /></small>}</span>
     </button>
     <button type="button" className="ah-tile-more hm-light-more" aria-label={`${t('ui.details')}: ${label}`} onClick={onOpen}><Icon name="more" size={16} /></button>

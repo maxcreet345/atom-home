@@ -9,6 +9,7 @@ import { stateText, isOn, num, iconOfKind, type Lang } from './format.ts';
 import { metricLabel, Switch, artOf, tileColor } from './cards.tsx';
 import { DeviceArt } from './device-art.tsx';
 import { LightBody } from './light-sheet.tsx';
+import { parseSleep, SLEEP_MIRROR } from '../model/lights.ts';
 
 export interface Runner { run(device: HomeDevice, action: Action, value?: unknown): Promise<void>; busy: ReadonlySet<string> }
 type Common = { device: HomeDevice; runner: Runner; t: T; lang: Lang };
@@ -136,7 +137,7 @@ export function DeviceSheet({ device, runner, onClose, t, lang, stage, host, roo
   const toggle = acts.find(a => a.kind === 'toggle' && (a.id === 'toggle')), selects = acts.filter(a => a.kind === 'select'), sliders = acts.filter(a => a.kind === 'number' && !(device.kind === 'climate' && a.id === 'temperature')), buttons = acts.filter(a => a.kind === 'button'), otherToggles = acts.filter(a => a.kind === 'toggle' && a !== toggle);
   const head = <div className="hm-sheet-head"><span className="hm-sheet-photo">{device.photo ? <img src={device.photo} alt="" /> : artOf(device) ? <DeviceArt type={artOf(device)!} fill /> : <Icon name={iconOfKind[device.kind] ?? 'generic'} size={30} />}</span><div><small>{t(`kind.${device.kind}` as Key)}{roomShown ? ` · ${roomShown}` : ''}</small><h2>{device.name}</h2></div><button type="button" className="hm-icon-btn" aria-label={t('ui.close')} onClick={onClose}>×</button></div>;
   // The light card: a lamp of the room draws its own body (slider, temperature, ambient light; a relay gets the big bulb), then the readings and settings as everywhere.
-  if (device.kind === 'light') return <div className="hm-sheet-body ah-sheet at-light-sheet" data-kind="light">{head}<LightBody device={device} runner={runner} t={t} lang={lang} /><Facts device={device} t={t} lang={lang} /><Settings device={device} runner={runner} t={t} lang={lang} host={host} /></div>;
+  if (device.kind === 'light') return <div className="hm-sheet-body ah-sheet at-light-sheet" data-kind="light">{head}<LightBody device={device} runner={runner} t={t} lang={lang} host={host} sleepAt={parseSleep(host?.states?.()[SLEEP_MIRROR]?.state)[device.primary.id] ?? null} /><Facts device={device} t={t} lang={lang} /><Settings device={device} runner={runner} t={t} lang={lang} host={host} /></div>;
   return <div className="hm-sheet-body ah-sheet" data-kind={device.kind}>
     {head}
     {stage ? <div className="hm-camera-frame at-camera-stage">{stage}</div> : <Hero device={device} runner={runner} t={t} lang={lang} host={host} />}

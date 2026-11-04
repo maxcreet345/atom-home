@@ -53,4 +53,5 @@ export const ro: Dictionary = {
   'alarm.noStationRooms': 'Alarmele se pun în camere cu boxă — încă nu sunt',
   'module.camera.role.ring': 'Evenimente: sonerie', 'module.camera.role.motionEvent': 'Evenimente: mișcare',
   'light.level.night': 'Veioză', 'light.temp': 'Temperatură', 'light.preset.warm': 'Cald', 'light.preset.cozy': 'Confortabil', 'light.preset.neutral': 'Neutru', 'light.preset.day': 'Lumina zilei', 'light.ambient': 'Lumină ambientală', 'light.white.warm': 'Alb cald', 'light.white.cold': 'Alb rece', 'light.since': 'din {time}', 'light.relay': 'releu', 'light.color': 'Culoare', 'light.color.amber': 'Chihlimbar', 'light.color.peach': 'Piersică', 'light.color.rose': 'Roz', 'light.color.lavender': 'Lavandă', 'light.color.mint': 'Mentă', 'light.color.sky': 'Cer',
+  'light.sleep': 'Stinge peste', 'light.sleepAt': 'Se stinge la {time}', 'light.sleepCancel': 'Anulează', 'light.allInRoom': 'Toată lumina din cameră',
 };

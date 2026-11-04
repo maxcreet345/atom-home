@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { discover } from '../src/model/discover.ts';
 import { defaultConfig } from '../src/model/config.ts';
-import { kelvinColor, isIndicatorLight, isAmbientLight, nearestColor, glowOf, clampKelvin } from '../src/model/lights.ts';
+import { kelvinColor, isIndicatorLight, isAmbientLight, nearestColor, glowOf, clampKelvin, parseSleep } from '../src/model/lights.ts';
 import { actionsFor, serviceCall } from '../src/runtime/actions.ts';
 import type { Registry, EntityRow, StateRow } from '../src/model/registry.ts';
 
@@ -66,4 +66,8 @@ test('colour action sends rgb_color; brightness keeps its transition', () => {
   const amb = { ...acts[0], id: 'color', entityId: 'light.kids_chandelier_ambient', service: 'turn_on' };
   assert.deepEqual(serviceCall(amb, [255, 126, 182]).data, { entity_id: 'light.kids_chandelier_ambient', rgb_color: [255, 126, 182] });
   assert.deepEqual(serviceCall({ ...amb, id: 'brightness', data: { transition: 0.3 } }, 40).data, { entity_id: 'light.kids_chandelier_ambient', transition: 0.3, brightness_pct: 40 });
+});
+test('the sleep mirror parses and ignores junk', () => {
+  assert.deepEqual(parseSleep('light.kids_chandelier|17:40;light.hall_light|18:05'), { 'light.kids_chandelier': '17:40', 'light.hall_light': '18:05' });
+  assert.deepEqual(parseSleep('switch.x|17:40;light.y|nope;'), {}); assert.deepEqual(parseSleep(undefined), {}); assert.deepEqual(parseSleep(''), {});
 });

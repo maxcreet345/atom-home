@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { HomeDevice, EntityRef } from '../model/discover.ts';
 import type { Runner } from './sheet.tsx';
+import type { Host } from '../runtime/host.ts';
 import type { Action } from '../runtime/actions.ts';
 import type { T, Key } from '../i18n/index.ts';
 import { Icon } from './primitives.tsx';
 import { Switch } from './cards.tsx';
 import { isOn, num, type Lang } from './format.ts';
-import { isDimmable, hasColorTemp, hasColor, brightnessPct, kelvinOf, kelvinRange, kelvinColor, LEVELS, TEMP_PRESETS, AMBIENT_COLORS, nearestColor, rgbHex, ambientHex, clampKelvin } from '../model/lights.ts';
+import { isDimmable, hasColorTemp, hasColor, brightnessPct, kelvinOf, kelvinRange, kelvinColor, LEVELS, TEMP_PRESETS, AMBIENT_COLORS, nearestColor, rgbHex, ambientHex, clampKelvin, SLEEP_MINUTES } from '../model/lights.ts';
 
 type Common = { device: HomeDevice; runner: Runner; t: T; lang: Lang };
 /** A light service call for any light entity of the card (the lamp or its ambient light); `serviceCall` maps the id to the HA field. */
@@ -49,14 +50,14 @@ function TempStrip({ value, min, max, disabled, label, onCommit }: { value: numb
     onKeyDown={e => { const d = e.key === 'ArrowRight' ? 100 : e.key === 'ArrowLeft' ? -100 : 0; if (d) { e.preventDefault(); onCommit(clampKelvin(k + d, min, max)); } }}><i /></div>;
 }
 /** The dimmable lamp: slider, quick levels, temperature with presets, effects, the ambient light. A relay lamp gets the big bulb and the power row instead. */
-export function LightBody({ device, runner, t, lang }: Common) {
+export function LightBody({ device, runner, t, lang, host, sleepAt }: Common & { host?: Host; sleepAt?: string | null }) {
   const e = device.primary, a = e.attributes, on = isOn(e), avail = e.available;
   const ambient = device.controls.find((c, i) => i > 0 && c.domain === 'light') ?? null;
   const [draft, setDraft] = useState<number | null>(null); // brightness shown while dragging, until HA reports it
   const live = brightnessPct(a) ?? 0;
   useEffect(() => { if (draft !== null && on && Math.abs(live - draft) <= 2) setDraft(null); }, [live, on, draft]);
   useEffect(() => { if (draft === null) return; const id = setTimeout(() => setDraft(null), 2500); return () => clearTimeout(id); }, [draft]);
-  if (!isDimmable(a)) return <RelayHero device={device} runner={runner} t={t} lang={lang} />;
+  if (!isDimmable(a)) return <><RelayHero device={device} runner={runner} t={t} lang={lang} /><SleepRow entityId={e.id} on={on && avail} host={host} sleepAt={sleepAt ?? null} t={t} /></>;
   const pct = draft ?? live, shownOn = on || draft !== null;
   const send = useThrottled(v => void runner.run(device, act(e.id, 'brightness', { transition: 0.3 }), v));
   const k = kelvinOf(a), range = kelvinRange(a), temp = hasColorTemp(a);
@@ -68,7 +69,7 @@ export function LightBody({ device, runner, t, lang }: Common) {
       <VSlider pct={pct} on={shownOn} kelvin={k} disabled={!avail} label={t('action.brightness')} onChange={v => { setDraft(v); send(v); }} onCommit={v => { setDraft(v); send(v, true); }} />
       <div className="at-light-side">
         <div className="at-light-state"><b>{avail ? t(shownOn ? 'state.on' : 'state.off') : t('state.unavailable')}</b><small>{state}</small></div>
-        <div className="at-light-levels">{LEVELS.map(level)}<button type="button" className="at-light-level is-off" disabled={!avail || !on} onClick={() => { setDraft(null); void runner.run(device, act(e.id, 'off', undefined, 'turn_off', 'button')); }}><Icon name="power" size={16} />{t('ui.turnOff')}</button></div>
+        <div className="at-light-levels">{LEVELS.map(level)}<button type="button" className="at-light-level is-off" disabled={!avail || !on} onClick={() => { setDraft(null); void runner.run(device, act(e.id, 'off', undefined, 'turn_off', 'button')); }}><Icon name="power" size={16} /><span className="at-long">{t('ui.turnOff')}</span><span className="at-short">{t('mode.off')}</span></button></div>
       </div>
     </div>
     {(temp || effects.length > 0 || ambient) && <div className="at-light-right">
@@ -80,6 +81,7 @@ export function LightBody({ device, runner, t, lang }: Common) {
       </div>}
       {ambient && <AmbientRows device={device} ambient={ambient} runner={runner} t={t} lang={lang} />}
     </div>}
+    <SleepRow entityId={e.id} on={on && avail} host={host} sleepAt={sleepAt ?? null} t={t} />
   </div>;
 }
 /** The lamp's ambient light: switch, six colours and white tones, its own brightness. */
@@ -96,6 +98,18 @@ function AmbientRows({ device, ambient, runner, t, lang }: Common & { ambient: E
       </div>
       {isDimmable(a) && <input type="range" className="at-amb-range" min={1} max={100} step={1} value={pct} aria-label={`${t('light.ambient')} · ${t('action.brightness')}`} style={`--c:${hex}`} onChange={ev => void runner.run(device, act(ambient.id, 'brightness', { transition: 0.3 }), Number((ev.target as HTMLInputElement).value))} />}
     </div>}
+  </div>;
+}
+/** «Выключить через 15/30/60»: the integration keeps the timer and switches the lamp off; the pending time comes back through the mirror text. */
+function SleepRow({ entityId, on, host, sleepAt, t }: { entityId: string; on: boolean; host?: Host; sleepAt: string | null; t: T }) {
+  const ws = host?.ws; if (!ws) return null;
+  const [busy, setBusy] = useState(false), [note, setNote] = useState('');
+  const set = async (minutes: number) => { if (busy) return; setBusy(true); setNote(''); try { await ws({ type: 'atom_home/light/sleep', entity_id: entityId, minutes }); } catch (err) { setNote(err instanceof Error ? err.message : String(err)); } finally { setBusy(false); } };
+  return <div className="ah-group at-sleep" data-sleep={sleepAt ?? ''}>
+    <small className="ah-group-title">{t('light.sleep')}</small>
+    {sleepAt ? <div className="at-sleep-at"><Icon name="clock" size={18} /><strong>{t('light.sleepAt', { time: sleepAt })}</strong><button type="button" className="hm-pill" disabled={busy} onClick={() => void set(0)}>{t('light.sleepCancel')}</button></div>
+      : <div className="hm-chips at-sleep-chips">{SLEEP_MINUTES.map(m => <button type="button" className="hm-pill" disabled={busy || !on} onClick={() => void set(m)}>{m} {t('ui.min')}</button>)}</div>}
+    {note && <small className="at-sleep-note">{note}</small>}
   </div>;
 }
 /** A relay lamp: the big bulb with its bloom, when it was switched, one power row. */

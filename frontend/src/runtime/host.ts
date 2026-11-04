@@ -50,5 +50,5 @@ export function liveHost(hass: Hass): Host {
 }
 /** Isolated host for previews and QA: a frozen snapshot, every command recorded and rejected. */
 export function previewHost(snapshot: Registry, log: Array<{ domain: string; service: string; data: Record<string, unknown> }> = []): Host & { log: typeof log } {
-  return { admin: true, online: true, log, states: () => snapshot.states, registry: async () => ({ areas: snapshot.areas, devices: snapshot.devices, entities: snapshot.entities }), async call(domain, service, data) { log.push({ domain, service, data }); throw new Error('preview: commands are rejected'); }, async history() { return {}; } };
+  return { admin: true, online: true, log, states: () => snapshot.states, registry: async () => ({ areas: snapshot.areas, devices: snapshot.devices, entities: snapshot.entities }), async call(domain, service, data) { log.push({ domain, service, data }); throw new Error('preview: commands are rejected'); }, async ws(message) { log.push({ domain: 'ws', service: String(message.type), data: message }); throw new Error('preview: commands are rejected'); }, async history() { return {}; } };
 }

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/ho
 import { Icon } from './primitives.tsx';
 import type { Registry } from '../model/registry.ts';
 import type { HouseConfig } from '../model/config.ts';
-import { discover, roomClimate, type Home, type HomeDevice } from '../model/discover.ts';
+import { discover, roomClimate, NO_ROOM, type Home, type HomeDevice, type Room } from '../model/discover.ts';
 import { SECTIONS, type Section, type Kind } from '../model/kinds.ts';
 import type { Host } from '../runtime/host.ts';
 import { actionsFor, serviceCall, customAction, type Action } from '../runtime/actions.ts';
@@ -17,11 +17,12 @@ import { activeModules, claimedEntities, type ActiveModule, type TileState, type
 import type { JSX } from 'preact';
 import { SaveError, type ConfigStore } from '../runtime/store.ts';
 import { Cascade } from './motion.tsx';
+import { LightRows } from './light-rows.tsx';
 
 type View = { section: Section | 'setup'; room: string | null; device: string | null };
 /** Apple Home-style navigation: Home · Rooms · Systems (+ Settings for admins). The former per-kind screens live under Systems as segments. */
-const NAV: Array<{ id: Section; icon: string }> = [{ id: 'home', icon: 'home' }, { id: 'rooms', icon: 'rooms' }, { id: 'systems', icon: 'systems' }];
-const SYSTEM_TABS: Section[] = ['climate', 'lights', 'cleaning', 'energy', 'systems'];
+const NAV: Array<{ id: Section; icon: string }> = [{ id: 'home', icon: 'home' }, { id: 'rooms', icon: 'rooms' }, { id: 'lights', icon: 'light' }, { id: 'systems', icon: 'systems' }]; // «Свет» is its own entry under Rooms (owner's wish, 04.11.2026)
+const SYSTEM_TABS: Section[] = ['climate', 'cleaning', 'energy', 'systems'];
 const decode = (hash: string): View => { const [s, q = ''] = hash.replace(/^#/, '').split('?'); const p = new URLSearchParams(q); return { section: s === 'setup' ? 'setup' : (SECTIONS as readonly string[]).includes(s) ? s as Section : 'home', room: p.get('room'), device: p.get('device') }; };
 const encode = (v: View) => { const p = new URLSearchParams(); if (v.room) p.set('room', v.room); if (v.device) p.set('device', v.device); return `#${v.section}${p.size ? '?' + p : ''}`; };
 function useNavIndicator<T extends HTMLElement>(deps: unknown[]) {
@@ -132,7 +133,7 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
   const subtitle = view.section === 'home' ? `${greeting(now, t)} · ${date}` : view.section === 'rooms' && !view.room ? t('rooms.count', { n: rooms.length }) : '';
   const pageKey = `${view.section}/${view.room ?? ''}`;
   const modal = !!device || clockOpen || !!confirm;
-  const navItems = [...NAV, ...(host.admin ? [{ id: 'setup' as const, icon: 'gear' }] : [])];
+  const navItems = [...NAV.filter(n => n.id !== 'lights' || (present('lights') && !config.sections.lights?.hidden)), ...(host.admin ? [{ id: 'setup' as const, icon: 'gear' }] : [])];
   const navLabel = (id: Section | 'setup') => id === 'setup' ? t('section.settings') : t(`section.${id}` as Key);
   return <div className={`hm-shell daily-shell at-shell ah-shell ${wide && !short ? 'daily-fit-screen' : ''} ${wide ? 'is-wide' : 'is-narrow'} ${wide && viewport.width < 760 ? 'is-compact' : ''} ${landscape ? 'is-landscape' : 'is-portrait'} ${short ? 'is-short' : ''} hm-route-${view.section}`} lang={lang} data-theme={config.home.theme} style={`--hm-height:${viewport.height}px`}>
     <div className="ah-wallpaper" aria-hidden="true" />
@@ -155,7 +156,7 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
         {view.section === 'home' && <Overview home={home} registry={registry} config={config} modules={modules} player={player} tileState={tileState} host={host} runner={runner} toggle={toggle} go={go} t={t} lang={lang} now={now} />}
         {view.section === 'rooms' && !view.room && <div className="hm-room-grid is-page">{rooms.map(r => { const c = roomClimate(home, registry, r.id); return <RoomTile room={r} temperature={c.temperature} humidity={c.humidity} co2={c.co2} lightsOn={c.lights.filter(l => isOn(l.primary)).length} onClick={() => go({ section: 'rooms', room: r.id })} t={t} lang={lang} label={r.name || t('room.none')} />; })}</div>}
         {view.section === 'rooms' && view.room && <RoomPage home={home} registry={registry} roomId={view.room} runner={runner} toggle={toggle} go={go} t={t} lang={lang} alarms={clockMod && registry.entities.some(e => e.entity_id.startsWith('media_player.') && e.platform === 'yandex_station' && !e.disabled_by && (e.area_id ?? registry.devices.find(d => d.id === e.device_id)?.area_id) === view.room) ? config.alarms.filter(a => a.room === view.room) : null} />}
-        {view.section === 'lights' && <LightsPage devices={enabled.filter(d => d.kind === 'light')} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} />}
+        {view.section === 'lights' && <LightsPage devices={enabled.filter(d => d.kind === 'light')} rooms={home.rooms} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} />}
         {view.section === 'climate' && <>{modules.filter(m => m.def.placement.includes('climate')).map(m => <m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} />)}<ClimatePage devices={enabled.filter(d => d.section === 'climate')} runner={runner} go={go} t={t} lang={lang} roomName={roomName} /></>}
         {view.section === 'cleaning' && <KindList devices={enabled.filter(d => d.section === 'cleaning')} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} />}
         {view.section === 'energy' && <EnergyPage devices={energyDevices} go={go} t={t} lang={lang} roomName={roomName} />}
@@ -268,14 +269,16 @@ function RoomPage({ home, registry, roomId, runner, toggle, go, t, lang, alarms 
       {c.lights.length > 0 && <Pill icon="light" color={c.lights.some(l => isOn(l.primary)) ? '#ffcc00' : '#8e8e93'} label={t('section.lights')} value={`${c.lights.filter(l => isOn(l.primary)).length} / ${c.lights.length}`} />}
     </div>
     {alarms && <button type="button" className="hm-card at-room-alarms" onClick={() => go({ section: 'rooms', room: roomId, device: 'clock' })}><span className="ah-row-icon" style="--tile:#7b74d8"><Icon name="bell" size={18} /></span><span className="ah-row-text"><strong>{t('alarm.title')}</strong><small>{alarms.length ? alarms.map(a => `${a.time}${a.enabled ? '' : ' (' + t('state.off').toLowerCase() + ')'}`).join(' · ') : t('alarm.addHere')}</small></span><Icon name="next" size={18} /></button>}
-    <div className="hm-room-columns">{groups.map(([kinds, title]) => { const list = inRoom.filter(d => kinds.includes(d.kind)); return list.length ? <Block title={title}><Tiles devices={list} section="rooms" room={roomId} runner={runner} toggle={toggle} go={go} t={t} lang={lang} nameOf={x => inRoomName(x, home.rooms.find(rm => rm.id === roomId)?.name ?? '')} /></Block> : null; })}</div>
+    <div className="hm-room-columns">{groups.map(([kinds, title]) => { const list = inRoom.filter(d => kinds.includes(d.kind)); if (list.length && kinds[0] === 'light') return <LightRows devices={list} room={home.rooms.find(rm => rm.id === roomId)?.name ?? ''} runner={runner} toggle={toggle} open={d => go({ section: 'rooms', room: roomId, device: d.key })} t={t} lang={lang} />; return list.length ? <Block title={title}><Tiles devices={list} section="rooms" room={roomId} runner={runner} toggle={toggle} go={go} t={t} lang={lang} nameOf={x => inRoomName(x, home.rooms.find(rm => rm.id === roomId)?.name ?? '')} /></Block> : null; })}</div>
   </div>;
 }
-function LightsPage({ devices, runner, toggle, go, t, lang, roomName }: Common & { devices: HomeDevice[]; toggle: (d: HomeDevice) => void; roomName: (id: string) => string }) {
+/** The Lights section: lamps grouped by room (room title, tiles named without the room), «N on» and «all off» on top. */
+function LightsPage({ devices, rooms, runner, toggle, go, t, lang, roomName }: Common & { devices: HomeDevice[]; rooms: Room[]; toggle: (d: HomeDevice) => void; roomName: (id: string) => string }) {
   const on = devices.filter(d => isOn(d.primary));
   if (!devices.length) return <p className="hm-muted">{t('ui.nodevices')}</p>;
-  return <div className="hm-light-page"><div className="hm-toolbar"><span>{on.length ? t('overview.lights.on', { n: on.length }) : t('overview.lights.off')}</span>{on.length > 0 && <button type="button" className="hm-pill" onClick={() => on.forEach(toggle)}>{t('ui.lightsOff')}</button>}</div>
-    <Tiles devices={devices} section="lights" runner={runner} toggle={toggle} go={go} t={t} lang={lang} nameOf={d => canToggle(d) ? inRoomName(d, roomName(d.roomId)) : d.name} roomOf={d => canToggle(d) ? roomName(d.roomId) : undefined as unknown as string} /></div>;
+  const order = [...rooms.map(r => r.id), NO_ROOM], groups = [...new Set(devices.map(d => d.roomId))].sort((a, b) => (order.indexOf(a) + 1 || 999) - (order.indexOf(b) + 1 || 999));
+  return <div className="hm-light-page"><div className="hm-toolbar at-lights-bar"><span>{on.length ? t('overview.lights.on', { n: on.length }) : t('overview.lights.off')}</span>{on.length > 0 && <button type="button" className="hm-pill" onClick={() => on.forEach(toggle)}>{t('ui.lightsOff')}</button>}</div>
+    {groups.map(roomId => { const list = devices.filter(d => d.roomId === roomId), lit = list.filter(d => isOn(d.primary)).length, room = roomName(roomId); return <Block title={room} className="at-lights-room" action={<small className="hm-muted">{lit ? `${lit} / ${list.length}` : ''}</small>}><Tiles devices={list} section="lights" runner={runner} toggle={toggle} go={go} t={t} lang={lang} nameOf={d => canToggle(d) ? inRoomName(d, room) : d.name} /></Block>; })}</div>;
 }
 function ClimatePage({ devices, runner, go, t, lang, roomName }: Common & { devices: HomeDevice[]; roomName: (id: string) => string }) {
   if (!devices.length) return <p className="hm-muted">{t('ui.nodevices')}</p>;
