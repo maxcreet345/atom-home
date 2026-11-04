@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import type { ModuleDef, ModuleEntities } from './types.ts';
 import { clockSpec } from './catalog.ts';
@@ -19,11 +19,15 @@ const clockTime = (at: number, lang: Lang) => new Intl.DateTimeFormat(locale(lan
 /** One-second heartbeat for countdowns and the digital seconds, only while something needs it. */
 function useTick(active: boolean) { const [, set] = useState(0); useEffect(() => { if (!active) return; const i = setInterval(() => set(x => x + 1), 1000); return () => clearInterval(i); }, [active]); }
 
+/** The seconds hand steps once a second from its own tick: a continuous CSS animation on SVG makes Android WebView repaint the whole tile at 60 fps (visible flicker on the tablet and phones). */
+function SecondsHand() {
+  useTick(true); const sec = new Date().getSeconds();
+  return <line x1="50" y1="59" x2="50" y2="16" className="ah-hand is-sec" transform={`rotate(${sec * 6} 50 50)`} />;
+}
 /** The analog face: daylight arc on a 24-hour rim, numerals, hands; the seconds hand sweeps with a CSS animation started at the current second. In timer mode the hands give way to a ring and the remaining time. */
 export function ClockFace({ now, sun, settings, timer }: { now: Date; sun?: StateRow; settings: ClockSettings; timer?: { remainingMs: number; durationMs: number; label: string; more: number } | null }) {
   const h = now.getHours(), m = now.getMinutes();
   const info = sunInfo(sun, now.getTime());
-  const secDelay = useMemo(() => -(new Date().getSeconds() + new Date().getMilliseconds() / 1000), []);
   const arc = settings.arc && info.rise !== null && info.set !== null ? (() => { const a1 = (new Date(info.rise!).getHours() + new Date(info.rise!).getMinutes() / 60) * 15, a2 = (new Date(info.set!).getHours() + new Date(info.set!).getMinutes() / 60) * 15; const p1 = pt(a1, 44), p2 = pt(a2, 44); const nowA = (h + m / 60) * 15, sp = pt(nowA, 44); return { d: `M${p1[0].toFixed(2)} ${p1[1].toFixed(2)} A44 44 0 ${a2 - a1 > 180 ? 1 : 0} 1 ${p2[0].toFixed(2)} ${p2[1].toFixed(2)}`, sp }; })() : null;
   const hourA = ((h % 12) + m / 60) * 30, minA = m * 6;
   const [hx, hy] = pt(hourA, 22), [hx0, hy0] = pt(hourA + 180, 5), [mx, my] = pt(minA, 31), [mx0, my0] = pt(minA + 180, 6);
@@ -38,7 +42,7 @@ export function ClockFace({ now, sun, settings, timer }: { now: Date; sun?: Stat
       <g className="ah-clock-nums">{Array.from({ length: 12 }, (_, i) => { const [x, y] = pt((i + 1) * 30, 36); return <text x={x} y={y} text-anchor="middle" dominant-baseline="central" font-size="7" font-weight="500">{i + 1}</text>; })}</g>
       <line x1={hx0} y1={hy0} x2={hx} y2={hy} className="ah-hand is-hour" />
       <line x1={mx0} y1={my0} x2={mx} y2={my} className="ah-hand is-min" />
-      {settings.seconds && <g className="ah-sec" style={`animation-delay:${secDelay.toFixed(2)}s`}><line x1="50" y1="59" x2="50" y2="16" className="ah-hand is-sec" /></g>}
+      {settings.seconds && <SecondsHand />}
       <circle cx="50" cy="50" r="2.2" className="ah-hand-cap" />
     </>}
   </svg>;

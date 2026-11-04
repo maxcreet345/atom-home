@@ -138,8 +138,7 @@
 .hm-shell .ah-clock-svg.is-night .ah-clock-arc{stroke:#3d6ef266}
 .hm-shell .ah-clock-sun{fill:#e9a224;stroke:#fff;stroke-width:1.2;transition:cx 1s ease,cy 1s ease}.hm-shell .ah-clock-svg.is-night .ah-clock-sun{fill:#9fb1c5;stroke:#1c2436}
 .hm-shell .ah-hand.is-sec{stroke:var(--ah-red,#ff3b30);stroke-width:1;stroke-linecap:round}
-.hm-shell .ah-sec{transform-origin:50px 50px;animation:ah-sweep 60s linear infinite}
-@keyframes ah-sweep{to{transform:rotate(360deg)}}
+.hm-shell .ah-hand.is-sec{transition:transform .25s cubic-bezier(.2,.8,.2,1)}
 .hm-shell .ah-hand-cap{fill:var(--ah-red,#ff3b30)}
 .hm-shell .ah-clock-ring-bg{fill:none;stroke:var(--ah-inset,#0000000f);stroke-width:4}.hm-shell .ah-clock-ring{fill:none;stroke:var(--ah-accent);stroke-width:4;stroke-linecap:round;transition:stroke-dashoffset 1s linear}
 .hm-shell .ah-clock-big{position:absolute;inset:0 0 18px;display:grid;place-content:center;text-align:center;animation:ah-pop .4s var(--ah-spring)}
@@ -173,7 +172,7 @@
 .hm-shell .at-door-ring{animation:at-drop .45s var(--ah-spring)}
 @keyframes at-drop{from{transform:translate(-50%,-24px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
 .hm-shell .at-cam .at-clock-sun,.hm-shell .at-cam .at-clock-timers,.hm-shell .at-cam .at-clock-people{flex:none}
-@media (prefers-reduced-motion:reduce){.hm-shell .ah-sec{animation:none}}
+@media (prefers-reduced-motion:reduce){.hm-shell .ah-hand.is-sec{transition:none}}
 .hm-shell .at-door-seg.at-clock-seg{padding:0;background:none;gap:4px;flex:none}.hm-shell .at-door-seg.at-clock-seg button{flex:none;padding:7px 12px}
 .hm-shell .at-door-ring>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw}
 
