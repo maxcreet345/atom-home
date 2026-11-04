@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import type { ModuleDef, ModuleEntities } from './types.ts';
 import { clockSpec } from './catalog.ts';
-import { sunInfo, timerInfo, nearestTimer, fmtRemaining, toDuration, parseLabels, withLabel, weekNumber, PRESETS, QUICK_LABELS, readClockSettings, writeClockSettings, personState, initials, type ClockSettings, type TimerInfo } from './clock-state.ts';
+import { sunInfo, timerInfo, nearestTimer, fmtRemaining, toDuration, parseLabels, withLabel, labelText, weekNumber, PRESETS, QUICK_LABELS, readClockSettings, writeClockSettings, personState, initials, type ClockSettings, type TimerInfo } from './clock-state.ts';
 import { Icon } from '../ui/primitives.tsx';
 import { Switch } from '../ui/cards.tsx';
 import type { Runner } from '../ui/sheet.tsx';
@@ -51,7 +51,7 @@ export function ClockTile({ now, lang, t, registry, entities, onOpen }: { now: D
   useTick(!!near || settings.style === 'digital');
   const live = new Date();
   const labels = parseLabels(registry.states[entities.labels ?? '']?.state);
-  const timer = near ? { remainingMs: near.timer.state === 'active' && near.timer.finishesAt ? Math.max(0, near.timer.finishesAt - live.getTime()) : near.timer.remainingMs, durationMs: near.timer.durationMs, label: labels[near.timer.id] ?? '', more: near.running - 1 } : null;
+  const timer = near ? { remainingMs: near.timer.state === 'active' && near.timer.finishesAt ? Math.max(0, near.timer.finishesAt - live.getTime()) : near.timer.remainingMs, durationMs: near.timer.durationMs, label: labelText(labels[near.timer.id]), more: near.running - 1 } : null;
   const date = new Intl.DateTimeFormat(locale(lang), { weekday: 'short', day: 'numeric', month: 'long' }).format(now);
   const time = clockTime(now.getTime(), lang);
   return <button type="button" className={`ah-tile ah-clock hm-card ${timer ? 'is-timer' : ''} is-${settings.style}`} aria-label={`${time} · ${date}`} onClick={onOpen}>
@@ -88,10 +88,10 @@ export function ClockSheet({ registry, entities, host, t, lang, runner, onClose,
   const dev = { key: 'clock', name: tx('clock.title'), primary: { available: true } } as unknown as HomeDevice;
   const busy = runner.busy.has('clock');
   const call = async (domain: string, service: string, data: Record<string, unknown>) => { try { await host.call(domain, service, data); } catch (e) { setNote(e instanceof Error ? e.message : String(e)); } };
-  const saveLabel = (id: string, text: string) => entities.labels ? call('input_text', 'set_value', { entity_id: entities.labels, value: withLabel(labels, id, text) }) : Promise.resolve();
+  const saveLabel = (id: string, text: string, seconds: number) => entities.labels ? call('input_text', 'set_value', { entity_id: entities.labels, value: withLabel(labels, id, text, seconds) }) : Promise.resolve();
   const start = async (totalSec: number) => {
     const slot = timers.find(x => x.state === 'idle' || x.state === 'unknown'); if (!slot) { setNote(tx('clock.timer.full')); return; }
-    await saveLabel(slot.id, label); await call('timer', 'start', { entity_id: slot.id, duration: toDuration(totalSec) }); setLabel(''); setCustom(null);
+    await saveLabel(slot.id, label, totalSec); await call('timer', 'start', { entity_id: slot.id, duration: toDuration(totalSec) }); setLabel(''); setCustom(null);
   };
   useEffect(() => { if (!note) return; const i = setTimeout(() => setNote(''), 4000); return () => clearTimeout(i); }, [note]);
   const update = (patch: Partial<ClockSettings>) => { const next = { ...settings, ...patch }; setSettings(next); writeClockSettings(next); };
@@ -117,7 +117,7 @@ export function ClockSheet({ registry, entities, host, t, lang, runner, onClose,
   const running = timers.filter(x => x.state === 'active' || x.state === 'paused');
   const timerRow = (x: TimerInfo) => { const left = x.state === 'active' && x.finishesAt ? Math.max(0, x.finishesAt - nowMs) : x.remainingMs; const frac = x.durationMs ? left / x.durationMs : 0; const C = 2 * Math.PI * 28;
     return <div className={`at-clock-trow is-${x.state}`} key={x.id}><div className="at-clock-ring"><svg viewBox="0 0 64 64"><circle className="bg" cx="32" cy="32" r="28" /><circle className="fg" cx="32" cy="32" r="28" stroke-dasharray={C.toFixed(1)} stroke-dashoffset={(C * (1 - frac)).toFixed(1)} /></svg><b>{fmtRemaining(left)}</b></div>
-      <div className="at-clock-tt"><strong>{labels[x.id] || tx('clock.timer')}</strong><small>{Math.round(x.durationMs / 60_000)} {tx('clock.min')}{x.state === 'paused' ? ` · ${tx('clock.paused')}` : ''}</small></div>
+      <div className="at-clock-tt"><strong>{labelText(labels[x.id]) || tx('clock.timer')}</strong><small>{Math.round(x.durationMs / 60_000)} {tx('clock.min')}{x.state === 'paused' ? ` · ${tx('clock.paused')}` : ''}</small></div>
       <button type="button" className="at-clock-ctl" aria-label={x.state === 'paused' ? tx('clock.resume') : tx('clock.pause')} disabled={busy} onClick={() => void call('timer', x.state === 'paused' ? 'start' : 'pause', { entity_id: x.id })}><Icon name={x.state === 'paused' ? 'play' : 'pause'} size={18} /></button>
       <button type="button" className="at-clock-ctl is-stop" aria-label={tx('clock.cancel')} disabled={busy} onClick={() => void call('timer', 'cancel', { entity_id: x.id })}>×</button></div>; };
   const timersBlock = timerIds.length > 0 && <div className="at-clock-timers">
@@ -167,7 +167,8 @@ export const clock: ModuleDef = {
     const done = entities.done ? registry.states[entities.done] : undefined; if (!done || done.state !== 'on') return null;
     const ids = [entities.timer1, entities.timer2, entities.timer3].filter((x): x is string => !!x);
     const labels = parseLabels(registry.states[entities.labels ?? '']?.state);
-    const label = ids.map(id => labels[id]).find(Boolean) ?? '';
-    return { id: 'timer', text: t('clock.timerDone' as Key), sub: label, icon: 'clock', sound: true, stop: async () => { await host.call('input_boolean', 'turn_off', { entity_id: entities.done! }); } };
+    const raw = ids.map(id => labels[id]).find(Boolean); const label = labelText(raw), sec = raw ? Number(raw.split('|')[1]) : NaN;
+    const sub = [label, Number.isFinite(sec) && sec > 0 ? `${Math.round(sec / 60)} ${t('clock.min' as Key)}` : ''].filter(Boolean).join(' · ');
+    return { id: 'timer', text: t('clock.timerDone' as Key), sub, icon: 'clock', sound: true, stop: async () => { await host.call('input_boolean', 'turn_off', { entity_id: entities.done! }); } };
   },
 };

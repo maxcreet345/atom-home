@@ -43,12 +43,12 @@ try {
     // start a 10-minute timer with a label: the preview host records the commands
     await page.click('.at-clock-labels .hm-pill:nth-child(2)'); await page.click('.at-clock-preset:nth-child(4)'); await page.waitForTimeout(400);
     const log = await page.evaluate(() => window.atomPreview.host.log.slice(-2));
-    check(`${label}: preset 10 → label saved, timer.start 00:10:00`, log.length === 2 && log[0].domain === 'input_text' && log[0].data.value === '{"timer.atom_1":"Чай"}' && log[1].domain === 'timer' && log[1].service === 'start' && log[1].data.duration === '00:10:00' && log[1].data.entity_id === 'timer.atom_1', JSON.stringify(log));
+    check(`${label}: preset 10 → label saved, timer.start 00:10:00`, log.length === 2 && log[0].domain === 'input_text' && log[0].data.value === '{"timer.atom_1":"Чай|600"}' && log[1].domain === 'timer' && log[1].service === 'start' && log[1].data.duration === '00:10:00' && log[1].data.entity_id === 'timer.atom_1', JSON.stringify(log));
     // custom time wheel
     await page.click('.at-clock-preset.is-custom'); await page.waitForTimeout(300); const wheel = await page.evaluate(() => ({ wheel: !!document.querySelector('.at-clock-wheel'), go: document.querySelector('.at-clock-go')?.textContent }));
     check(`${label}: custom wheel opens at 10:00`, wheel.wheel && /10:00/.test(wheel.go ?? ''), JSON.stringify(wheel));
     // running timer: mutate the snapshot and redraw — the tile shows the countdown, the sheet a ring
-    await page.evaluate(() => { window.fx.states['timer.atom_1'] = { ...window.fx.states['timer.atom_1'], state: 'active', attributes: { duration: '0:10:00', finishes_at: new Date(Date.now() + 581000).toISOString() } }; window.fx.states['input_text.atom_timer_labels'] = { ...window.fx.states['input_text.atom_timer_labels'], state: '{"timer.atom_1":"Чай"}' }; window.atomPreview.redraw(); });
+    await page.evaluate(() => { window.fx.states['timer.atom_1'] = { ...window.fx.states['timer.atom_1'], state: 'active', attributes: { duration: '0:10:00', finishes_at: new Date(Date.now() + 581000).toISOString() } }; window.fx.states['input_text.atom_timer_labels'] = { ...window.fx.states['input_text.atom_timer_labels'], state: '{"timer.atom_1":"Чай|600"}' }; window.atomPreview.redraw(); });
     await page.waitForTimeout(600); await shot('timer');
     const run = await page.evaluate(() => { const s = document.querySelector('.at-clock'); return { rows: s.querySelectorAll('.at-clock-trow').length, left: s.querySelector('.at-clock-ring b')?.textContent, label: s.querySelector('.at-clock-tt strong')?.textContent, ctl: s.querySelectorAll('.at-clock-ctl').length }; });
     check(`${label}: running timer row with ring, label, pause and cancel`, run.rows === 1 && /^9:(40|41)$/.test(run.left ?? '') && run.label === 'Чай' && run.ctl === 2, JSON.stringify(run));
@@ -59,7 +59,7 @@ try {
     await page.evaluate(() => { window.fx.states['timer.atom_1'] = { ...window.fx.states['timer.atom_1'], state: 'idle', attributes: { duration: '0:10:00' } }; window.fx.states['input_boolean.timer_done'] = { ...window.fx.states['input_boolean.timer_done'], state: 'on' }; window.atomPreview.redraw(); });
     await page.waitForTimeout(600); await shot('banner');
     const banner = await page.evaluate(() => ({ text: document.querySelector('.at-house-banner')?.textContent ?? null, tileTimer: document.querySelector('button.ah-clock')?.classList.contains('is-timer') }));
-    check(`${label}: timer-done banner with Stop, tile back to hands`, !!banner.text && banner.text.includes('Таймер готов') && banner.text.includes('Чай') && banner.text.includes('Стоп') && banner.tileTimer === false, JSON.stringify(banner));
+    check(`${label}: timer-done banner with Stop, tile back to hands`, !!banner.text && banner.text.includes('Таймер готов') && banner.text.includes('Чай · 10 мин') && banner.text.includes('Стоп') && banner.tileTimer === false, JSON.stringify(banner));
     await page.click('.at-house-banner .hm-pill'); await page.waitForTimeout(300); const stop = await page.evaluate(() => window.atomPreview.host.log.slice(-1)[0]);
     check(`${label}: Stop turns the flag off`, stop?.domain === 'input_boolean' && stop.service === 'turn_off' && stop.data.entity_id === 'input_boolean.timer_done', JSON.stringify(stop));
     // settings: digital style persists per device

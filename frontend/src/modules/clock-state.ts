@@ -32,13 +32,15 @@ export function nearestTimer(states: Record<string, StateRow>, ids: string[], no
 }
 export const fmtRemaining = (msLeft: number) => { const s = Math.max(0, Math.round(msLeft / 1000)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60; return h ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}` : `${m}:${String(sec).padStart(2, '0')}`; };
 export const toDuration = (totalSec: number) => { const s = Math.max(1, Math.round(totalSec)); return `${String(Math.floor(s / 3600)).padStart(2, '0')}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
-/** Labels of the timers live in one HA `input_text` as JSON {"timer.atom_1":"Чай"} so every user and device sees them. */
+/** Labels of the timers live in one HA `input_text` as JSON {"timer.atom_1":"Чай|60"} (label, then the seconds it was started with — HA's timer forgets its duration once it ends, and the automation wants both) so every user, device and the automation see them. */
 export function parseLabels(raw: unknown): Record<string, string> {
   if (typeof raw !== 'string' || !raw.trim()) return {};
-  try { const v = JSON.parse(raw) as unknown; if (!v || typeof v !== 'object' || Array.isArray(v)) return {}; return Object.fromEntries(Object.entries(v as Record<string, unknown>).filter(([k, x]) => /^timer\.[a-z0-9_]+$/.test(k) && typeof x === 'string').map(([k, x]) => [k, (x as string).slice(0, 24)])); } catch { return {}; }
+  try { const v = JSON.parse(raw) as unknown; if (!v || typeof v !== 'object' || Array.isArray(v)) return {}; return Object.fromEntries(Object.entries(v as Record<string, unknown>).filter(([k, x]) => /^timer\.[a-z0-9_]+$/.test(k) && typeof x === 'string').map(([k, x]) => [k, (x as string).slice(0, 32)])); } catch { return {}; }
 }
-export function withLabel(labels: Record<string, string>, id: string, label: string): string {
-  const next = { ...labels }; if (label.trim()) next[id] = label.trim().slice(0, 24); else delete next[id];
+export const labelText = (v: string | undefined) => (v ?? '').split('|')[0];
+export const labelSeconds = (v: string | undefined) => { const n = Number((v ?? '').split('|')[1]); return Number.isFinite(n) && n > 0 ? n : null; };
+export function withLabel(labels: Record<string, string>, id: string, label: string, seconds?: number): string {
+  const next = { ...labels }; const text = label.trim().slice(0, 20); if (text || seconds) next[id] = seconds ? `${text}|${Math.round(seconds)}` : text; else delete next[id];
   let out = JSON.stringify(next); while (out.length > 255 && Object.keys(next).length) { delete next[Object.keys(next)[0]]; out = JSON.stringify(next); }
   return out;
 }

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { sunInfo, timerInfo, nearestTimer, fmtRemaining, toDuration, parseLabels, withLabel, weekNumber, personState, initials } from '../src/modules/clock-state.ts';
+import { sunInfo, timerInfo, nearestTimer, fmtRemaining, toDuration, parseLabels, withLabel, labelText, labelSeconds, weekNumber, personState, initials } from '../src/modules/clock-state.ts';
 import { clockSpec, activeSpecs } from '../src/modules/catalog.ts';
 import { defaultConfig } from '../src/model/config.ts';
 const camPath = resolve(import.meta.dirname, '../../private/fixtures/criuleni-camera-20261104.json');
@@ -31,7 +31,8 @@ test('clock: timers, nearest, formatting, labels, week, people', () => {
   assert.equal(nearestTimer({}, ['timer.x'], now), null);
   assert.equal(fmtRemaining(3_723_000), '1:02:03'); assert.equal(toDuration(630), '00:10:30'); assert.equal(toDuration(3600), '01:00:00');
   assert.deepEqual(parseLabels('{"timer.atom_1":"Чай","bad key":"x","timer.atom_2":5}'), { 'timer.atom_1': 'Чай' }); assert.deepEqual(parseLabels('junk'), {}); assert.deepEqual(parseLabels(undefined), {});
-  assert.equal(withLabel({ 'timer.atom_1': 'Чай' }, 'timer.atom_2', ' Стирка '), '{"timer.atom_1":"Чай","timer.atom_2":"Стирка"}'); assert.equal(withLabel({ 'timer.atom_1': 'Чай' }, 'timer.atom_1', ''), '{}');
+  assert.equal(withLabel({ 'timer.atom_1': 'Чай' }, 'timer.atom_2', ' Стирка ', 1800), '{"timer.atom_1":"Чай","timer.atom_2":"Стирка|1800"}'); assert.equal(withLabel({ 'timer.atom_1': 'Чай' }, 'timer.atom_1', ''), '{}'); assert.equal(withLabel({}, 'timer.atom_1', '', 60), '{"timer.atom_1":"|60"}');
+  assert.equal(labelText('Чай|600'), 'Чай'); assert.equal(labelText('|60'), ''); assert.equal(labelSeconds('Чай|600'), 600); assert.equal(labelSeconds('Чай'), null);
   assert.ok(withLabel({}, 'timer.atom_1', 'x'.repeat(300)).length <= 255);
   assert.equal(weekNumber(new Date(2026, 10, 4)), 45); assert.equal(weekNumber(new Date(2026, 0, 1)), 1);
   assert.deepEqual(personState(row('home')), { home: true, zone: null }); assert.deepEqual(personState(row('Atom Service')), { home: false, zone: 'Atom Service' }); assert.deepEqual(personState(row('not_home')), { home: false, zone: null });
