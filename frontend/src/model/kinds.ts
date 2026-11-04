@@ -14,8 +14,8 @@ const ENV_CLASSES = new Set(['temperature', 'humidity', 'carbon_dioxide', 'pm25'
 const ENERGY_CLASSES = new Set(['power', 'energy', 'voltage', 'current', 'apparent_power', 'reactive_power', 'power_factor', 'frequency', 'gas', 'water']);
 const DIAG_SENSOR_CLASSES = new Set(['battery', 'signal_strength', 'timestamp', 'duration', 'data_size', 'data_rate', 'enum']);
 const OPENING = new Set(['opening', 'door', 'window', 'garage_door', 'garage']);
-const MOTION = new Set(['motion', 'occupancy', 'presence', 'vibration']);
-const ALARM = new Set(['smoke', 'gas', 'carbon_monoxide', 'safety', 'tamper', 'sound']);
+const MOTION = new Set(['motion', 'occupancy', 'presence', 'vibration', 'tamper']); // a knocked window contact is an event, not an alarm (audit H3)
+const ALARM = new Set(['smoke', 'gas', 'carbon_monoxide', 'safety', 'sound']);
 const DIAG_BINARY = new Set(['connectivity', 'running', 'battery', 'battery_charging', 'plug', 'power', 'update', 'problem', 'heat', 'cold', 'light', 'lock', 'moving']);
 /** Domains that never become household cards. */
 export const SERVICE_DOMAINS = new Set(['update', 'automation', 'script', 'scene', 'input_boolean', 'input_number', 'input_select', 'input_text', 'input_button', 'input_datetime', 'zone', 'sun', 'tts', 'stt', 'conversation', 'event', 'todo', 'calendar', 'notify', 'device_tracker', 'remote', 'siren', 'image', 'date', 'time', 'datetime', 'counter', 'timer', 'schedule', 'assist_satellite', 'tag']);

@@ -48,11 +48,13 @@ try {
     // the timer window
     await page.click('.at-clock-new'); await page.waitForTimeout(400); await shot('timer-win');
     const tw = await page.evaluate(() => { const s = document.querySelector('.at-win'); return { win: !!s, title: s?.querySelector('h3')?.textContent, presets: [...s.querySelectorAll('.at-clock-grid:not(.is-named) .at-clock-tile')].map(b => b.querySelector('b').textContent), named: [...s.querySelectorAll('.at-clock-grid.is-named .at-clock-tile strong')].map(b => b.textContent) }; });
-    check(`${label}: timer window with presets`, tw.win && tw.title === 'Новый таймер' && tw.presets.join(',') === '1,3,5,10,15,30,1' && tw.named.join(',') === 'Яйца,Чай,Паста,Стирка,Духовка,своё…', JSON.stringify(tw));
+    check(`${label}: timer window opens with the station step first (no presets yet)`, tw.win && tw.title === 'Новый таймер' && tw.presets.length === 0 && tw.named.length === 0, JSON.stringify(tw));
     // the station is a mandatory choice: presets wait until it is made
     const waiting = await page.evaluate(() => ({ required: !!document.querySelector('.at-clock-stations.is-required'), disabled: document.querySelector('.at-clock-grid .at-clock-tile')?.disabled, chips: [...document.querySelectorAll('.at-clock-stations .hm-pill')].map(b => b.textContent) }));
-    check(`${label}: timer waits for the station choice`, waiting.required && waiting.disabled === true && waiting.chips.join(',') === 'Без Алисы,Гостиная,Детская', JSON.stringify(waiting));
+    check(`${label}: timer waits for the station choice`, waiting.required && waiting.disabled === undefined && waiting.chips.join(',') === 'Без Алисы,Гостиная,Детская', JSON.stringify(waiting));
     await page.click('.at-clock-stations .hm-pill:nth-child(2)'); await page.waitForTimeout(200);
+    const tw2 = await page.evaluate(() => { const s = document.querySelector('.at-win'); return { presets: [...s.querySelectorAll('.at-clock-grid:not(.is-named) .at-clock-tile')].map(b => b.querySelector('b').textContent), named: [...s.querySelectorAll('.at-clock-grid.is-named .at-clock-tile strong')].map(b => b.textContent) }; });
+    check(`${label}: presets appear once the station is chosen`, tw2.presets.join(',') === '1,3,5,10,15,30,1' && tw2.named.join(',') === 'Яйца,Чай,Паста,Стирка,Духовка,своё…', JSON.stringify(tw2));
     // start a 4-minute «Чай» with Alice in the living room: label carries the station, Alice gets the phrase
     await page.click('.at-clock-grid.is-named .at-clock-tile:nth-child(2)'); await page.waitForTimeout(400);
     const log = await page.evaluate(() => window.atomPreview.host.log.slice(-3));

@@ -53,5 +53,6 @@ export const ru = {
   'module.camera.role.ring': 'События: звонок (глазок)', 'module.camera.role.motionEvent': 'События: движение (глазок)',
   'light.level.night': 'Ночник', 'light.temp': 'Температура', 'light.preset.warm': 'Тёплый', 'light.preset.cozy': 'Уютный', 'light.preset.neutral': 'Нейтральный', 'light.preset.day': 'Дневной', 'light.ambient': 'Подсветка', 'light.white.warm': 'Тёплая белая', 'light.white.cold': 'Холодная белая', 'light.since': 'с {time}', 'light.relay': 'реле', 'light.color': 'Цвет', 'light.color.amber': 'Янтарь', 'light.color.peach': 'Персик', 'light.color.rose': 'Роза', 'light.color.lavender': 'Лаванда', 'light.color.mint': 'Бирюза', 'light.color.sky': 'Небо',
   'light.sleep': 'Выключить через', 'light.sleepAt': 'Выключится в {time}', 'light.sleepCancel': 'Отменить', 'light.allInRoom': 'Весь свет в комнате',
+  'climate.heatTo': 'Включить нагрев до {t}°', 'confirm.lightsOff': 'Выключить весь свет в доме ({n})?', 'overview.openings': 'Окна и двери', 'overview.allClosed': 'Закрыто', 'overview.opened': 'открыто {n}', 'overview.doorsWindows': 'все {n} закрыты', 'module.camera.offline': 'Нет связи с камерой', 'module.camera.retry': 'Повторить', 'energy.today': 'сегодня', 'energy.month': 'за месяц', 'energy.yesterday': 'вчера', 'energy.total': 'всего',
 };
 export type Dictionary = typeof ru;

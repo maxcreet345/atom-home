@@ -43,7 +43,7 @@ try {
   await page.evaluate(() => document.querySelector('.hm-scene-custom .hm-scene-hit')?.click()); await page.waitForTimeout(300);
   check('button-asks-confirmation', await $('.hm-confirm'));
   await page.evaluate(() => document.querySelector('.hm-confirm .is-primary')?.click()); await page.waitForTimeout(500);
-  const log = await page.evaluate(() => window.atomPreview.host.log);
+  const log = await page.evaluate(() => window.atomPreview.host.log.filter(c => c.domain !== 'ws'));
   check('button-calls-service-once', log.length === 1 && log[0].domain === 'light' && log[0].service === 'turn_off' && log[0].data.entity_id === 'all', { log });
   await shot('overview-after-button');
   // 4. export/import

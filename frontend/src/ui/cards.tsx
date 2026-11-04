@@ -95,12 +95,15 @@ export function AccessoryTile({ device, name, sub, room, pending, onToggle, onOp
   </div>;
 }
 /** 2×2 thermostat module: big target number, chevrons at the bottom corners, name and room underneath. */
-export function ThermostatTile({ device, sub, target, current, onStep, onOpen, t, lang, disabled }: { device: HomeDevice; sub?: string; target: number | null; current: number | null; onStep?: (dir: 1 | -1) => void; onOpen: () => void; t: T; lang: Lang; disabled?: boolean }) {
+export function ThermostatTile({ device, name, sub, target, current, onStep, onOpen, t, lang, disabled }: { device: HomeDevice; name?: string; sub?: string; target: number | null; current: number | null; onStep?: (dir: 1 | -1) => void; onOpen: () => void; t: T; lang: Lang; disabled?: boolean }) {
   const e = device.primary, on = e.available && e.state !== 'off';
+  // C3 of the audit: the big number is always the room temperature; the mode and the target are the second line
+  const big = current ?? target, mode = !e.available ? t('state.unavailable') : on ? stateText(e, t, lang).split(' · ')[0] : t('mode.off');
+  const line = target === null ? mode : `${mode} · ${t('ui.target')} ${num(target, lang)}°`;
   return <div className={`ah-tile ah-thermo kind-climate hm-card ${on ? 'is-on' : ''} ${e.available ? '' : 'is-off'}`} data-device-key={device.key} style={`--tile:${tileColor(device)}`}>
     <button type="button" className="ah-tile-hit" onClick={onOpen} aria-label={`${t('ui.details')}: ${device.name}`}>
-      <span className="ah-thermo-value">{on ? <><b><Tick value={target === null ? (current === null ? '—' : num(current, lang, 0)) : num(target, lang, target % 1 ? 1 : 0)} /></b>{current !== null && target !== null && <small>{t('ui.now')} {num(current, lang)}°</small>}</> : <>{current === null ? <b className="is-text">{e.available ? t('mode.off') : '—'}</b> : <b><Tick value={num(current, lang, current % 1 ? 1 : 0)} /></b>}{target !== null && <small>{t('ui.target')} <Tick value={`${num(target, lang)}°`} /></small>}</>}</span>
-      <span className="ah-tile-text"><strong>{device.name}</strong><small>{sub && !device.name.trim().toLowerCase().endsWith(sub.trim().toLowerCase()) ? sub : (on ? stateText(e, t, lang) : t('state.off'))}</small></span>
+      <span className="ah-thermo-value">{big === null ? <b className="is-text">{e.available ? t('mode.off') : '—'}</b> : <b><Tick value={num(big, lang, big % 1 ? 1 : 0)} /></b>}<small><Tick value={line} /></small></span>
+      <span className="ah-tile-text"><strong>{name ?? device.name}</strong><small>{sub && !(name ?? device.name).trim().toLowerCase().endsWith(sub.trim().toLowerCase()) ? sub : ''}</small></span>
     </button>
     {onStep && <><button type="button" className="ah-chev is-down" aria-label="−" disabled={disabled || !e.available} onClick={ev => { (ev.currentTarget as HTMLElement).classList.remove('is-bump'); void (ev.currentTarget as HTMLElement).offsetWidth; (ev.currentTarget as HTMLElement).classList.add('is-bump'); onStep(-1); }}><Icon name="back" size={22} /></button><button type="button" className="ah-chev is-up" aria-label="+" disabled={disabled || !e.available} onClick={ev => { (ev.currentTarget as HTMLElement).classList.remove('is-bump'); void (ev.currentTarget as HTMLElement).offsetWidth; (ev.currentTarget as HTMLElement).classList.add('is-bump'); onStep(1); }}><Icon name="back" size={22} /></button></>}
   </div>;

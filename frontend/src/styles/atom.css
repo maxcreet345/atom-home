@@ -324,3 +324,17 @@
 .hm-shell .at-lights-room .ah-grid{grid-template-columns:repeat(1,minmax(0,1fr))}.hm-shell .at-lights-room.span-2 .ah-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hm-shell .at-lights-room.span-3 .ah-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 .hm-shell .at-lights-room .hm-section-head h2{font-size:14px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hm-shell .at-lights-room .hm-section-head{gap:6px;min-width:0}
+
+/* audit 04.11.2026: H2 room pills wrap on phones; H3 room sub-blocks in Systems; H5 no hyphenation in tile names; H7 visible «···»; C2 no native play overlay, «no connection» state; N5 empty states */
+.is-narrow .ah-room-pills{flex-wrap:wrap;overflow:visible;margin-inline:0;padding-inline:0}
+.hm-shell .at-sys-rooms{display:grid;gap:14px}
+.hm-shell .at-sys-room{display:grid;gap:8px}.hm-shell .at-sys-room h3{margin:0;font-size:14px;font-weight:650;color:var(--ah-muted)}
+.hm-shell .ah-tile-text strong{hyphens:manual;-webkit-hyphens:manual;overflow-wrap:anywhere}
+.hm-shell .ah-tile-more{opacity:.7;width:30px;height:30px;background:#00000012}.hm-shell.ah-shell[data-theme="dark"] .ah-tile-more{background:#ffffff1f}
+.hm-shell .ah-tile.kind-light .ah-tile-more{opacity:.7}
+.hm-shell video::-webkit-media-controls,.hm-shell video::-webkit-media-controls-overlay-play-button,.hm-shell video::-webkit-media-controls-start-playback-button{display:none!important;-webkit-appearance:none}
+.hm-shell .hm-camera-wait.is-down{color:#fff;background:#00000066}.hm-shell .hm-camera-wait.is-down span{font-weight:600}
+.hm-shell .at-cam-retry{margin-top:6px;background:#ffffff2e;color:#fff}
+.hm-shell .at-empty{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.hm-shell .ah-thermo-value small{font-variant-numeric:tabular-nums}
+.hm-shell .at-lights-room .hm-section-head h2{font-size:16px}

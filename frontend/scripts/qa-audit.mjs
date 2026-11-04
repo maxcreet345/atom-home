@@ -19,7 +19,7 @@ try {
     const tag = `${w}x${h}`, shot = name => page.screenshot({ path: resolve(out, `${tag}-${name}.png`) });
     const go = async id => { await page.evaluate(id => { location.hash = '#' + id; }, id); await page.waitForTimeout(400); };
     const log = () => page.evaluate(() => window.atomPreview.host.log);
-    const last = async () => { const l = await log(); return l[l.length - 1]; };
+    const last = async () => { const l = (await log()).filter(c => c.domain !== 'ws'); return l[l.length - 1]; }; // ws calls (go2rtc add-on info) are not service calls
     const text = sel => page.evaluate(sel => document.querySelector(sel)?.innerText ?? '', sel);
     const has = sel => page.evaluate(sel => !!document.querySelector(sel), sel);
     const rawKeys = () => page.evaluate(() => [...document.querySelectorAll('.at-shell *')].filter(e => e.children.length === 0 && /^[a-z]+\.[a-zA-Z0-9_.]+$/.test(e.textContent.trim())).map(e => e.textContent.trim()).slice(0, 10));
@@ -31,10 +31,13 @@ try {
     await go('home');
     // 2. thermostat chevrons → climate.set_temperature ±0.5 around the target
     const target = await page.evaluate(() => { const v = document.querySelector('.ah-thermo .ah-thermo-value'); const m = /(\d+(?:[.,]\d+)?)°/.exec(v.querySelector('small')?.innerText ?? ''); return Number((m && /цель|target|țint/i.test(v.querySelector('small').innerText) ? m[1] : v.querySelector('b').innerText).replace(',', '.')); });
-    await page.evaluate(() => document.querySelector('.ah-thermo .ah-chev.is-up').click()); await page.waitForTimeout(400); c = await last();
-    check(`${tag}/thermostat-up-sets-target-plus-step`, c.domain === 'climate' && c.service === 'set_temperature' && (Math.abs(c.data.temperature - (target + 0.5)) < 1e-6 || Math.abs(c.data.temperature - (target + 1)) < 1e-6), { c, target });
-    await page.evaluate(() => document.querySelector('.ah-thermo .ah-chev.is-down').click()); await page.waitForTimeout(400); c = await last();
-    check(`${tag}/thermostat-down-sets-target-minus-step`, c.domain === 'climate' && (Math.abs(c.data.temperature - (target - 0.5)) < 1e-6 || Math.abs(c.data.temperature - (target - 1)) < 1e-6), { c });
+    // audit C1: a switched-off thermostat asks before heating starts; the confirmed call carries hvac_mode heat
+    const thermoOff = await page.evaluate(() => /Выкл|Off|Oprit/i.test(document.querySelector('.ah-thermo .ah-thermo-value small')?.innerText ?? ''));
+    const confirmIfAsked = async () => { const dlg = await page.$('.hm-confirm'); if (dlg) { await page.click('.hm-confirm .is-primary'); await page.waitForTimeout(300); return true; } return false; };
+    await page.evaluate(() => document.querySelector('.ah-thermo .ah-chev.is-up').click()); await page.waitForTimeout(400); const askedUp = await confirmIfAsked(); c = await last();
+    check(`${tag}/thermostat-up-sets-target-plus-step`, c.domain === 'climate' && c.service === 'set_temperature' && (Math.abs(c.data.temperature - (target + 0.5)) < 1e-6 || Math.abs(c.data.temperature - (target + 1)) < 1e-6) && (!thermoOff || (askedUp && c.data.hvac_mode === 'heat')), { c, target, thermoOff, askedUp });
+    await page.evaluate(() => document.querySelector('.ah-thermo .ah-chev.is-down').click()); await page.waitForTimeout(400); const askedDown = await confirmIfAsked(); c = await last();
+    check(`${tag}/thermostat-down-sets-target-minus-step`, c.domain === 'climate' && (Math.abs(c.data.temperature - (target - 0.5)) < 1e-6 || Math.abs(c.data.temperature - (target - 1)) < 1e-6) && (!thermoOff || askedDown), { c });
     // 3. scene button → homeassistant.turn_off with 9 lights, no confirm
     await page.evaluate(() => [...document.querySelectorAll('.ah-scene strong')].find(s => /Свет выкл/.test(s.innerText)).closest('button').click()); await page.waitForTimeout(400); c = await last();
     check(`${tag}/scene-calls-service-with-targets`, c.domain === 'homeassistant' && c.service === 'turn_off' && Array.isArray(c.data.entity_id) && c.data.entity_id.length === 9 && !(await has('.hm-confirm')), { c });
@@ -68,7 +71,7 @@ try {
     // 8. segments hide a section hidden in the config
     await go('systems'); const segs = await page.evaluate(() => [...document.querySelectorAll('.ah-segments button')].map(b => b.innerText));
     await page.evaluate(() => { const cfg = window.atomPreview.config; cfg.sections = { ...cfg.sections, cleaning: { hidden: true } }; window.atomPreview.redraw?.(); }); await page.waitForTimeout(300);
-    check(`${tag}/segments-list-sections`, segs.length === 5, { segs });
+    check(`${tag}/segments-list-sections`, segs.length === 4, { segs }); // «Свет» is its own nav entry since 1.10.0
     // 9. languages: switch to ro and en, no raw keys anywhere on home/systems/setup
     const langResults = {};
     for (const lang of ['ro', 'en', 'ru']) {

@@ -14,6 +14,8 @@ import { parseSleep, SLEEP_MIRROR } from '../model/lights.ts';
 export interface Runner { run(device: HomeDevice, action: Action, value?: unknown): Promise<void>; busy: ReadonlySet<string> }
 type Common = { device: HomeDevice; runner: Runner; t: T; lang: Lang };
 const label = (a: Action, t: T) => t(a.label as Key) === a.label ? a.label : t(a.label as Key);
+/** C1 of the audit: a thermostat that is off does not start heating from a stray «+»; the step becomes an explicit, confirmed «turn heating on to X°». */
+export const heatOn = (temp: Action, v: number, t: T): Action => ({ ...temp, label: t('climate.heatTo', { t: String(v).replace('.', ',') }), confirm: true, data: { ...(temp.data ?? {}), hvac_mode: 'heat' } });
 /** Secondary entity names without the device's own name in front («Розетка туалет Delayed power on time» → «Delayed power on time»). */
 const short = (name: string, device: HomeDevice) => { const dev = (typeof device.primary.attributes.friendly_name === 'string' ? device.primary.attributes.friendly_name : device.name).trim(); const a = name.split(/\s+/); let best = 0; for (const base of [dev, device.name]) { if (base === name) continue; const b = base.split(/\s+/); let n = 0; while (n < a.length - 1 && n < b.length && a[n].toLowerCase() === b[n].toLowerCase()) n++; if (n === b.length && n > best) best = n; } return best > 0 ? a.slice(best).join(' ').replace(/^[—·:-]+\s*/, '') : name; };
 /** Words every name in a group starts with (at least two, e.g. «Главный блок распределения Sonoff SPM») — dropped from all of them. */
@@ -103,7 +105,7 @@ function Hero({ device, runner, t, lang, host }: Common & { host?: Host }) {
   const glyph = <span className={`ah-hero-glyph ${on ? 'is-on' : ''}`} style={`--tile:${color}`}><Icon name={device.icon ?? iconOfKind[device.kind] ?? 'generic'} size={44} /></span>;
   if (device.kind === 'climate') {
     const cur = typeof a.current_temperature === 'number' ? a.current_temperature : null, target = typeof a.temperature === 'number' ? a.temperature : null, temp = acts.find(x => x.id === 'temperature'), active = p.state !== 'off' && p.available;
-    const step = (dir: 1 | -1) => temp && target !== null && void runner.run(device, temp, Math.round((target + dir * (temp.step ?? 0.5)) * 10) / 10);
+    const step = (dir: 1 | -1) => { if (!temp || target === null) return; const v = Math.round((target + dir * (temp.step ?? 0.5)) * 10) / 10; void runner.run(device, p.state === 'off' ? heatOn(temp, v, t) : temp, v); };
     const action = typeof a.hvac_action === 'string' ? a.hvac_action : null;
     return <div className={`ah-hero ah-hero-climate ${active ? 'is-on' : ''}`}>
       <div className="ah-hero-main"><b>{cur === null ? (target === null ? '—' : num(target, lang)) : num(cur, lang)}<i>°</i></b><small>{action && action !== 'off' ? optionLabel(action === 'heating' ? 'heat' : action === 'cooling' ? 'cool' : action, t) : stateText(p, t, lang).split(' · ')[0]}</small></div>
