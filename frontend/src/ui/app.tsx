@@ -4,7 +4,7 @@ import type { Registry } from '../model/registry.ts';
 import type { HouseConfig } from '../model/config.ts';
 import { discover, roomClimate, NO_ROOM, type Home, type HomeDevice, type Room, type EntityRef } from '../model/discover.ts';
 import { SECTIONS, type Section, type Kind } from '../model/kinds.ts';
-import type { Host } from '../runtime/host.ts';
+import type { Host, AutomationRow } from '../runtime/host.ts';
 import { actionsFor, serviceCall, customAction, type Action } from '../runtime/actions.ts';
 import { translator, type Key } from '../i18n/index.ts';
 import { RoomTile, AccessoryTile, ThermostatTile, ClockTile as PlainClockTile, SceneTile, ValueTile, Pill, Section as Block, artOf } from './cards.tsx';
@@ -69,6 +69,10 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
   const go = (next: Partial<View>) => { const v = { section: view.section, room: null, device: null, filter: null, ...next } as View; navigationWindow.history.pushState(null, '', encode(v)); setView(v); };
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set()), [toast, setToast] = useState(''), [confirm, setConfirm] = useState<{ device: HomeDevice; action: Action; value?: unknown } | null>(null);
   const notify = (text: string, ms = 4000) => { setToast(text); setTimeout(() => setToast(cur => cur === text ? '' : cur), ms); };
+  // AUTO-2 of the audit: which HA automations touch a card (read-only); loaded once, refreshed when the host changes
+  const [automations, setAutomations] = useState<AutomationRow[]>([]);
+  useEffect(() => { let alive = true; void host.automations?.().then(rows => { if (alive) setAutomations(rows); }); return () => { alive = false; }; }, [host, view.device]); // refreshed whenever a sheet opens, so «last ran» is current
+  const automationsFor = (dev: HomeDevice) => { const ids = new Set([dev.primary, ...dev.controls, ...dev.metrics, ...dev.parameters].map(x => x.id)); return automations.filter(a => a.entities.some(id => ids.has(id)) || (dev.haDeviceId !== null && a.devices.includes(dev.haDeviceId))).map(a => ({ ...a, byRoom: false })).concat(automations.filter(a => !a.entities.some(id => ids.has(id)) && !(dev.haDeviceId !== null && a.devices.includes(dev.haDeviceId)) && a.areas.includes(dev.roomId) && ['light', 'climate', 'switch', 'socket', 'cover', 'fan'].includes(dev.kind)).map(a => ({ ...a, byRoom: true }))); };
   const busyRef = useRef<Set<string>>(new Set()); // ST-3 of the audit: synchronous, so a second tap before the first render is dropped
   const runner: Runner = {
     busy,
@@ -191,7 +195,7 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
       const roomy = device.kind === 'light' && wide && landscape && viewport.width >= 800; // a dimmable lamp's sheet: slider left, temperature and ambient light right
       const sheetWide = !!mod && wide && landscape && viewport.width >= 800; // a phone on its side (874×402) splits too: video left, controls right, instead of a video that fills the whole height
       return <div className="hm-scrim" onClick={e => { if (e.target === e.currentTarget) close(); }}><section className={`hm-sheet ${sheetWide ? 'is-split' : ''} ${roomy ? 'is-roomy' : ''} ${autoClose?.key === device.key ? 'is-alarm' : ''}`} role="dialog" aria-modal="true" aria-label={device.name} ref={sheetRef} {...swipeToClose(close)} onPointerDownCapture={() => { if (autoClose?.key === device.key) setAutoClose(null); }} onKeyDownCapture={() => { if (autoClose?.key === device.key) setAutoClose(null); }}>
-        {mod?.def.Sheet ? <mod.def.Sheet device={device} registry={registry} entities={mod.entities} options={mod.options} host={host} t={t} lang={lang} runner={runner} onClose={close} room={roomName_} stage={stage} wide={sheetWide} setOption={setModuleOption(mod.def.id)} autoClose={autoCloseFor(device.key)} /> : <DeviceSheet device={device} runner={runner} onClose={close} t={t} lang={lang} stage={stage} host={host} room={roomName_} />}
+        {mod?.def.Sheet ? <mod.def.Sheet device={device} registry={registry} entities={mod.entities} options={mod.options} host={host} t={t} lang={lang} runner={runner} onClose={close} room={roomName_} stage={stage} wide={sheetWide} setOption={setModuleOption(mod.def.id)} autoClose={autoCloseFor(device.key)} /> : <DeviceSheet device={device} runner={runner} onClose={close} t={t} lang={lang} stage={stage} host={host} room={roomName_} automations={automationsFor(device)} />}
       </section></div>;
     })()}
     {confirm && (() => { // AUTO-1 of the audit: the question names the consequence («Вода пойдёт сразу»), the button carries the verb and the risk colour

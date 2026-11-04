@@ -2,7 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { Icon } from './primitives.tsx';
 import type { HomeDevice, EntityRef } from '../model/discover.ts';
-import type { Host } from '../runtime/host.ts';
+import type { Host, AutomationRow } from '../runtime/host.ts';
 import type { T, Key } from '../i18n/index.ts';
 import { actionsFor, entityActions, type Action } from '../runtime/actions.ts';
 import { stateText, isOn, num, iconOfKind, type Lang } from './format.ts';
@@ -133,13 +133,27 @@ function Hero({ device, runner, t, lang, host }: Common & { host?: Host }) {
   }
   return <div className={`ah-hero ${on ? 'is-on' : ''}`}>{glyph}<div className="ah-hero-main"><b>{stateText(p, t, lang)}</b></div></div>;
 }
-export function DeviceSheet({ device, runner, onClose, t, lang, stage, host, room }: { device: HomeDevice; runner: Runner; onClose: () => void; t: T; lang: Lang; stage?: ComponentChildren; host?: Host; room?: string }) {
+/** AUTO-2 of the audit: the automations of HA that drive this card — name, last run, on/off dot. Read-only, nothing to tap. */
+export type SheetAutomation = AutomationRow & { byRoom: boolean };
+const locales: Record<Lang, string> = { ru: 'ru-RU', ro: 'ro-RO', en: 'en-GB' };
+function whenRan(iso: string | null, lang: Lang, t: T): string {
+  if (!iso) return t('auto.never'); const d = new Date(iso); if (Number.isNaN(d.getTime())) return t('auto.never');
+  const now = new Date(), time = new Intl.DateTimeFormat(locales[lang], { hour: '2-digit', minute: '2-digit' }).format(d);
+  if (d.toDateString() === now.toDateString()) return `${time} ${t('auto.today')}`;
+  const y = new Date(now); y.setDate(now.getDate() - 1); if (d.toDateString() === y.toDateString()) return `${t('auto.yesterday')}, ${time}`;
+  return new Intl.DateTimeFormat(locales[lang], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(d);
+}
+function Automations({ rows, t, lang }: { rows: SheetAutomation[]; t: T; lang: Lang }) {
+  if (!rows.length) return null;
+  return <Fold title={`${t('auto.title')} (${rows.length})`}>{rows.map(a => <div className={`ah-row hm-setting at-auto-row ${a.enabled ? '' : 'is-off'}`}><span className="ah-row-icon at-auto-icon"><Icon name="settings" size={18} /></span><span className="ah-row-text"><strong>{a.name}</strong><small>{[a.description, a.byRoom ? t('auto.byRoom') : ''].filter(Boolean).join(' · ')}</small></span><small className="at-auto-when">{a.enabled ? whenRan(a.lastTriggered, lang, t) : t('auto.off')}<i className="at-auto-dot" aria-hidden="true" /></small></div>)}</Fold>;
+}
+export function DeviceSheet({ device, runner, onClose, t, lang, stage, host, room, automations = [] }: { device: HomeDevice; runner: Runner; onClose: () => void; t: T; lang: Lang; stage?: ComponentChildren; host?: Host; room?: string; automations?: SheetAutomation[] }) {
   const roomShown = room && !device.name.trim().toLowerCase().endsWith(room.trim().toLowerCase()) ? room : '';
   const acts = actionsFor(device), p = device.primary;
   const toggle = acts.find(a => a.kind === 'toggle' && (a.id === 'toggle')), selects = acts.filter(a => a.kind === 'select'), sliders = acts.filter(a => a.kind === 'number' && !(device.kind === 'climate' && a.id === 'temperature')), buttons = acts.filter(a => a.kind === 'button'), otherToggles = acts.filter(a => a.kind === 'toggle' && a !== toggle);
   const head = <div className="hm-sheet-head"><span className="hm-sheet-photo">{device.photo ? <img src={device.photo} width={64} height={64} alt="" /> : artOf(device) ? <DeviceArt type={artOf(device)!} fill /> : <Icon name={iconOfKind[device.kind] ?? 'generic'} size={30} />}</span><div><small>{t(`kind.${device.kind}` as Key)}{roomShown ? ` · ${roomShown}` : ''}</small><h2>{device.name}</h2></div><button type="button" className="hm-icon-btn" aria-label={t('ui.close')} onClick={onClose}>×</button></div>;
   // The light card: a lamp of the room draws its own body (slider, temperature, ambient light; a relay gets the big bulb), then the readings and settings as everywhere.
-  if (device.kind === 'light') return <div className="hm-sheet-body ah-sheet at-light-sheet" data-kind="light">{head}<LightBody device={device} runner={runner} t={t} lang={lang} host={host} sleepAt={parseSleep(host?.states?.()[SLEEP_MIRROR]?.state)[device.primary.id] ?? null} /><Facts device={device} t={t} lang={lang} /><Settings device={device} runner={runner} t={t} lang={lang} host={host} /></div>;
+  if (device.kind === 'light') return <div className="hm-sheet-body ah-sheet at-light-sheet" data-kind="light">{head}<LightBody device={device} runner={runner} t={t} lang={lang} host={host} sleepAt={parseSleep(host?.states?.()[SLEEP_MIRROR]?.state)[device.primary.id] ?? null} /><Facts device={device} t={t} lang={lang} /><Automations rows={automations} t={t} lang={lang} /><Settings device={device} runner={runner} t={t} lang={lang} host={host} /></div>;
   return <div className="hm-sheet-body ah-sheet" data-kind={device.kind}>
     {head}
     {stage ? <div className="hm-camera-frame at-camera-stage">{stage}</div> : <Hero device={device} runner={runner} t={t} lang={lang} host={host} />}
@@ -148,6 +162,7 @@ export function DeviceSheet({ device, runner, onClose, t, lang, stage, host, roo
     {selects.map(a => <ModeRow device={device} action={a} runner={runner} t={t} lang={lang} />)}
     {(sliders.length > 0 || otherToggles.length > 0) && <div className="ah-rows">{sliders.map(a => <SliderRow device={device} action={a} runner={runner} t={t} lang={lang} />)}{otherToggles.map(a => <SettingRow device={device} action={a} runner={runner} t={t} lang={lang} icon="power" color="#30d158" />)}</div>}
     <Facts device={device} t={t} lang={lang} />
+    <Automations rows={automations} t={t} lang={lang} />
     <Settings device={device} runner={runner} t={t} lang={lang} host={host} />
   </div>;
 }

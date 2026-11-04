@@ -83,6 +83,13 @@ try {
     await page.evaluate(() => window.atomPreview.setOnline(true)); await page.waitForTimeout(600);
     const back = await page.evaluate(() => ({ badge: document.querySelector('.hm-badge.tone-danger')?.innerText ?? null, veil: document.querySelector('.at-shell')?.classList.contains('is-offline') }));
     check(`${label}: recovery — offline shows «Нет связи с домом», veils the tiles and refuses the tap; online clears it`, (off.badge !== null || /is-off/.test(off.conn ?? '')) && off.veil === true && off.sent === 0 && back.badge === null && back.veil === false, { off, back });
+    // --- AUTO-2: the automation fold in a device sheet (preview fixture: two on, one off)
+    await go('home'); await page.evaluate(id => window.atomPreview.setAutomations([{ entityId: 'automation.a', name: 'Отопление: график', description: '21° днём', enabled: true, lastTriggered: new Date().toISOString(), entities: [id], devices: [], areas: [] }, { entityId: 'automation.b', name: 'Отопление: окна', description: '', enabled: true, lastTriggered: null, entities: [id], devices: [], areas: [] }, { entityId: 'automation.c', name: 'Отопление: отпуск', description: '', enabled: false, lastTriggered: null, entities: [id], devices: [], areas: [] }]), kinds.climate);
+    await go('home?device=e%3A' + encodeURIComponent(kinds.climate)); await page.waitForTimeout(500);
+    const auto = await page.evaluate(() => { const d = [...document.querySelectorAll('.hm-sheet details')].find(x => /Автоматика/.test(x.querySelector('summary')?.innerText ?? '')); if (!d) return null; d.open = true; return { title: d.querySelector('summary').innerText.trim(), rows: [...d.querySelectorAll('.at-auto-row')].map(r => r.innerText.replace(/\s+/g, ' ').trim()) }; });
+    if (auto) await shot('07-automations');
+    check(`${label}: automations — fold «Автоматика (3)», last run, «выключена», no undefined`, !!auto && /Автоматика \(3\)/.test(auto.title) && auto.rows.length === 3 && /сегодня/.test(auto.rows[0]) && /не срабатывала/.test(auto.rows[1]) && /выключена/.test(auto.rows[2]) && !/undefined|NaN|null/.test(auto.rows.join(' ')), auto);
+    await page.keyboard.press('Escape'); await page.evaluate(() => window.atomPreview.setAutomations([]));
     // --- empty data: a room without devices, events without entries
     await go('rooms'); const emptyRoom = await page.evaluate(() => { const r = [...document.querySelectorAll('.at-room')].find(x => !/\d/.test(x.innerText)); return r ? r.innerText.replace(/\s+/g, ' ').slice(0, 60) : null; });
     check(`${label}: empty — a room card without readings has no NaN/undefined`, !/NaN|undefined|null/.test(emptyRoom ?? ''), { emptyRoom });

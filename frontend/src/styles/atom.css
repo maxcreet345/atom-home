@@ -338,3 +338,7 @@
 .hm-shell .at-empty{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
 .hm-shell .ah-thermo-value small{font-variant-numeric:tabular-nums}
 .hm-shell .at-lights-room .hm-section-head h2{font-size:16px}
+/* AUTO-2: automations of HA in the device sheet (read-only) */
+.hm-shell .at-auto-row{align-items:center}.hm-shell .at-auto-icon{--tile:#7b74d8}.hm-shell .at-auto-row .ah-row-text strong,.hm-shell .at-auto-row .ah-row-text small{white-space:normal;line-height:1.25}
+.hm-shell .at-auto-when{display:inline-flex;align-items:center;gap:7px;flex:none;color:var(--ah-muted);font-size:13px;white-space:nowrap}.hm-shell .at-auto-dot{width:9px;height:9px;border-radius:50%;background:#30d158;box-shadow:0 0 0 3px #30d15826}
+.hm-shell .at-auto-row.is-off .at-auto-dot{background:transparent;border:2px solid var(--ah-muted);box-shadow:none}.hm-shell .at-auto-row.is-off .ah-row-text strong{color:var(--ah-muted)}

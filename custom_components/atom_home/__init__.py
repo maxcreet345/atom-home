@@ -23,6 +23,7 @@ from homeassistant.helpers.storage import Store
 from aiohttp import web
 
 from .light_sleep import LightSleep
+from .automations import automation_rows
 from .alarms import AlarmScheduler, normalise_alarms
 from .config_state import ConfigState, ConfigWriteError
 from .const import (
@@ -180,7 +181,7 @@ def _register_ws(hass: HomeAssistant) -> None:
     @callback
     def ws_capabilities(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
         """What this backend supports; a panel that gets `unknown_command` here is talking to an older integration."""
-        connection.send_result(msg["id"], {"configRevision": 1, "composition": 1, "assist": 0, "alarms": 1, "lightSleep": 1})
+        connection.send_result(msg["id"], {"configRevision": 1, "composition": 1, "assist": 0, "alarms": 1, "lightSleep": 1, "automations": 1})
 
     @websocket_api.websocket_command({
         vol.Required("type"): f"{DOMAIN}/config/set",
@@ -265,6 +266,16 @@ def _register_ws(hass: HomeAssistant) -> None:
         sleep: LightSleep | None = (_entry_data(hass) or {}).get("light_sleep")
         connection.send_result(msg["id"], {"pending": sleep.summary() if sleep else {}})
 
+    @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/automations"})
+    @callback
+    def ws_automations(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+        """AUTO-2 of the audit: the automations that touch devices, read-only (name, description, enabled, last run, references)."""
+        try:
+            connection.send_result(msg["id"], automation_rows(hass))
+        except Exception as err:  # never break the panel over a listing
+            _LOGGER.warning("automation listing failed: %s", err)
+            connection.send_result(msg["id"], [])
+
     @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/alarms/state"})
     @callback
     def ws_alarms_state(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
@@ -326,3 +337,4 @@ def _register_ws(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_alarms_state)
     websocket_api.async_register_command(hass, ws_light_sleep)
     websocket_api.async_register_command(hass, ws_light_sleep_state)
+    websocket_api.async_register_command(hass, ws_automations)

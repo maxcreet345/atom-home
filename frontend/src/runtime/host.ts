@@ -8,6 +8,8 @@ export interface Hass {
   callService(domain: string, service: string, data?: Record<string, unknown>): Promise<unknown>;
   connection?: { subscribeEvents?(cb: (e: unknown) => void, type: string): Promise<() => void>; subscribeMessage?<T = unknown>(cb: (message: T) => void, message: Record<string, unknown>): Promise<() => void> };
 }
+/** An HA automation that touches a card (AUTO-2 of the audit): read-only — the panel never turns automations on or off. */
+export interface AutomationRow { entityId: string; name: string; description: string; enabled: boolean; lastTriggered: string | null; entities: string[]; devices: string[]; areas: string[] }
 export interface Host {
   registry(): Promise<Pick<Registry, 'areas' | 'devices' | 'entities'>>;
   states(): Record<string, StateRow>;
@@ -17,6 +19,8 @@ export interface Host {
   ws?<T = unknown>(message: Record<string, unknown>): Promise<T>;
   /** Subscription on the authenticated connection (WebRTC offer/answer/candidates for the camera stream). Resolves to the unsubscribe function. */
   subscribe?<T = unknown>(message: Record<string, unknown>, callback: (message: T) => void): Promise<() => void>;
+  /** Automations referencing entities, devices or areas (read-only, `atom_home/automations`); an older backend yields []. */
+  automations?(): Promise<AutomationRow[]>;
   readonly admin: boolean; readonly online: boolean;
 }
 const toRow = (e: Record<string, unknown>): EntityRow => ({
@@ -38,6 +42,7 @@ export function liveHost(hass: Hass): Host {
     },
     async call(domain, service, data) { await hass.callService(domain, service, data); },
     ws: <T,>(message: Record<string, unknown>) => hass.callWS<T>(message),
+    async automations() { try { const rows = await hass.callWS<AutomationRow[]>({ type: 'atom_home/automations' }); return Array.isArray(rows) ? rows : []; } catch { return []; } },
     subscribe: <T,>(message: Record<string, unknown>, callback: (m: T) => void) => { const conn = hass.connection; if (!conn?.subscribeMessage) return Promise.reject(new Error('no subscription API')); return conn.subscribeMessage<T>(callback, message); },
     async history(entityIds, hours) {
       const end = new Date(), start = new Date(end.getTime() - hours * 3600000);
@@ -49,7 +54,7 @@ export function liveHost(hass: Hass): Host {
   };
 }
 /** Isolated host for previews and QA: a frozen snapshot, every command recorded and rejected. */
-export function previewHost(snapshot: Registry, log: Array<{ domain: string; service: string; data: Record<string, unknown> }> = []): Host & { log: typeof log; setOnline(v: boolean): void; setDelay(ms: number): void } {
-  let online = true, delay = 0; // ST-4 / ST-3 of the audit: QA flips the connection and slows the answer to see the banner, the veil, the pending state and the refused command
-  return { admin: true, get online() { return online; }, setOnline(v: boolean) { online = v; }, setDelay(ms: number) { delay = ms; }, log, states: () => snapshot.states, registry: async () => ({ areas: snapshot.areas, devices: snapshot.devices, entities: snapshot.entities }), async call(domain, service, data) { log.push({ domain, service, data }); if (delay) await new Promise(r => setTimeout(r, delay)); throw new Error('preview: commands are rejected'); }, async ws(message) { log.push({ domain: 'ws', service: String(message.type), data: message }); throw new Error('preview: commands are rejected'); }, async history() { return {}; } };
+export function previewHost(snapshot: Registry, log: Array<{ domain: string; service: string; data: Record<string, unknown> }> = []): Host & { log: typeof log; setOnline(v: boolean): void; setDelay(ms: number): void; setAutomations(rows: AutomationRow[]): void } {
+  let online = true, delay = 0, automations: AutomationRow[] = []; // ST-4 / ST-3 of the audit: QA flips the connection and slows the answer to see the banner, the veil, the pending state and the refused command
+  return { admin: true, get online() { return online; }, setOnline(v: boolean) { online = v; }, setDelay(ms: number) { delay = ms; }, setAutomations(rows: AutomationRow[]) { automations = rows; }, async automations() { return automations; }, log, states: () => snapshot.states, registry: async () => ({ areas: snapshot.areas, devices: snapshot.devices, entities: snapshot.entities }), async call(domain, service, data) { log.push({ domain, service, data }); if (delay) await new Promise(r => setTimeout(r, delay)); throw new Error('preview: commands are rejected'); }, async ws(message) { log.push({ domain: 'ws', service: String(message.type), data: message }); throw new Error('preview: commands are rejected'); }, async history() { return {}; } };
 }
