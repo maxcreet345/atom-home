@@ -84,7 +84,8 @@ export function ClockSheet({ registry, entities, host, t, lang, runner, onClose,
   const weather = entities.weather ? S[entities.weather] : undefined;
   const wTemp = typeof weather?.attributes.temperature === 'number' ? weather.attributes.temperature : null;
   const wCond = weather && CONDITIONS.includes(weather.state) ? tx(`clock.weather.${weather.state}`) : null;
-  const persons = registry.entities.filter(e => e.entity_id.startsWith('person.') && !e.disabled_by && S[e.entity_id]).map(e => ({ id: e.entity_id, name: typeof S[e.entity_id].attributes.friendly_name === 'string' ? S[e.entity_id].attributes.friendly_name as string : e.entity_id, ...personState(S[e.entity_id]) }));
+  // People with the picture from their HA profile (the person entity's entity_picture); initials until a picture is set.
+  const persons = registry.entities.filter(e => e.entity_id.startsWith('person.') && !e.disabled_by && S[e.entity_id]).map(e => { const a = S[e.entity_id].attributes; return { id: e.entity_id, name: typeof a.friendly_name === 'string' ? a.friendly_name as string : e.entity_id, picture: typeof a.entity_picture === 'string' && /^(\/|https?:\/\/)/.test(a.entity_picture) ? a.entity_picture as string : null, ...personState(S[e.entity_id]) }; });
   const alarms = registry.entities.filter(e => e.entity_id.startsWith('calendar.') && /_alarms$/.test(e.entity_id) && !e.disabled_by && S[e.entity_id]).map(e => { const a = S[e.entity_id].attributes; const start = typeof a.start_time === 'string' ? Date.parse(a.start_time) : NaN; return { id: e.entity_id, name: typeof a.friendly_name === 'string' ? a.friendly_name as string : e.entity_id, message: typeof a.message === 'string' ? a.message as string : '', start: Number.isFinite(start) ? start : null }; }).filter(a => a.start !== null).sort((a, b) => a.start! - b.start!);
   const dev = { key: 'clock', name: tx('clock.title'), primary: { available: true } } as unknown as HomeDevice;
   const busy = runner.busy.has('clock');
@@ -153,7 +154,7 @@ export function ClockSheet({ registry, entities, host, t, lang, runner, onClose,
       <input className="at-clock-label-input" type="text" maxLength={20} placeholder={tx('clock.label')} value={label} onInput={e => setLabel((e.target as HTMLInputElement).value)} />
     </>}
   </div>;
-  const people = persons.length > 0 && <div className="at-clock-people">{persons.map(p => <div className={`at-clock-person ${p.home ? 'is-home' : ''}`}><b>{initials(p.name)}</b><strong>{p.name.split(' ')[0]}</strong><small>{p.home ? tx('clock.home') : p.zone ?? tx('clock.away')}</small></div>)}</div>;
+  const people = persons.length > 0 && <div className="at-clock-people">{persons.map(p => <div className={`at-clock-person ${p.home ? 'is-home' : ''}`}><b>{p.picture ? <img src={p.picture} alt="" onError={e => { (e.target as HTMLImageElement).remove(); }} /> : null}{initials(p.name)}</b><strong>{p.name.split(' ')[0]}</strong><small>{p.home ? tx('clock.home') : p.zone ?? tx('clock.away')}</small></div>)}</div>;
   const alarmBlock = alarms.length > 0 && <div className="ah-rows"><Title>{tx('clock.alarms')}</Title>{alarms.slice(0, 3).map(a => <div className="ah-row"><span className="ah-row-icon" style="--tile:#7b74d8"><Icon name="bell" size={18} /></span><span className="ah-row-text"><strong>{a.name.replace(/\s*·\s*будильники и таймеры$/i, '')}</strong><small>{a.message}</small></span><small className="at-door-when">{when(a.start!)}</small></div>)}</div>;
   const main = <>{timersBlock}{people}{alarmBlock}{note && <p className="at-feeder-note at-cam-note" role="status">{note}</p>}</>;
   const settingsPage = <>
