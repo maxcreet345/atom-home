@@ -44,9 +44,11 @@ try {
     await page.waitForTimeout(900); await shot('ring');
     const ring = await page.evaluate(() => { const s = document.querySelector('.at-door'); const t = [...document.querySelectorAll('.hm-camera-tile')].find(x => x.classList.contains('is-danger')); return { open: !!s, cnt: s?.querySelector('.at-door-cnt')?.textContent, alarm: !!document.querySelector('.hm-sheet.is-alarm'), tileLine: t?.querySelector('.hm-camera-caption small')?.textContent ?? null, hash: location.hash }; });
     check(`${label}: ring opens the sheet with a 60 s countdown`, ring.open && /^0:5\d$/.test(ring.cnt ?? '') && ring.alarm && ring.hash.includes('entrance_doorbell'), JSON.stringify(ring));
+    const noEvents = await page.evaluate(() => !document.querySelector('.at-door-events'));
+    check(`${label}: no events list while opened by the ring`, noEvents, 'events list present');
     await page.click('.at-door-stay'); await page.waitForTimeout(300);
-    const kept = await page.evaluate(() => ({ banner: !!document.querySelector('.at-door-banner'), open: !!document.querySelector('.at-door') }));
-    check(`${label}: «keep» cancels the countdown, sheet stays`, !kept.banner && kept.open, JSON.stringify(kept));
+    const kept = await page.evaluate(() => ({ banner: !!document.querySelector('.at-door-banner'), open: !!document.querySelector('.at-door'), events: !!document.querySelector('.at-door-events') }));
+    check(`${label}: «keep» cancels the countdown, sheet stays, events back`, !kept.banner && kept.open && kept.events, JSON.stringify(kept));
     // another sheet open: a ring shows the banner instead of switching
     await page.evaluate(() => { location.hash = '#home?device=e%3Acamera.entrance_camera'; }); await page.waitForSelector('.at-cam:not(.at-door)'); await page.waitForTimeout(300);
     await page.evaluate(() => { window.fx.states['event.entrance_doorbell_ring'] = { ...window.fx.states['event.entrance_doorbell_ring'], state: new Date(Date.now() + 1000).toISOString() }; window.atomPreview.redraw(); });
