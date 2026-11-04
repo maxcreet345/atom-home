@@ -57,3 +57,28 @@
 1. Панель: модуль камеры умеет несколько камер (карта «камера → поток»), карточка звонка по п. 3 без ленты (видео, кнопки, батарея, опознать, настройки с диагностикой), автооткрытие по звонку на 60 с, последний кадр как постер (для обеих камер).
 2. HA: Generic Camera + автоматизации снимков/клипов + media_source; панель: лента событий с миниатюрами и клипами; видео для не-админов HA (ingress add-on доступен только администраторам — на Windows-ПК под Daniela живого видео нет): `camera/webrtc/offer` через встроенный go2rtc HA или HLS Generic Camera.
 3. NAS-архив как media, уведомления как переключатели.
+
+## 6. Этап 2 — спецификация (04.11.2026, ждёт «да»)
+Макет: раздел 6 в https://claude.ai/artifact/2fPZps6QMEkxKscdyQitY1. Проверено в HA 2026.10.4: есть `stream`, `go2rtc` (core), `generic`, `media_source`, `ffmpeg`; `/media` в allowlist и пока пуст; `camera.record`/`camera.snapshot` доступны; add-on go2rtc 1.9.15 в host-сети (RTSP 8554 на хосте). Телефоны с приложением HA: OnePlus Open, Oppo N2 Flip, iPhone Daniela (13R пока без приложения — киоск). Станции: `media_player.living_yandex_max`, `media_player.office_yandex_lite`. Свет прихожей: `light.hall_light`.
+
+### HA (делаю через API HA из браузера под админом, ничего руками в YAML)
+1. **Generic Camera «Подъезд · Звонок (видео)»** — `camera.entrance_doorbell_video`: stream `rtsp://127.0.0.1:8554/entrance_doorbell`, still — снимок HomeKit `camera.entrance_doorbell`; без предзагрузки потока. Даёт `camera.record`, стрим в HA (HLS/WebRTC) и видео в push-уведомлениях.
+2. **Папки и файлы:** `/media/Подъезд/ГГГГ-ММ-ДД/ЧЧ-ММ-СС_ring|motion.jpg` и `.mp4` (10 с). Снимок берётся с `camera.entrance_doorbell` (мгновенно), клип — `camera.record` с `camera.entrance_doorbell_video` (3–5 с на пробуждение звонка входят в 10 с: сначала `camera.snapshot`, потом запись 12 с).
+3. **Автоматизации** (с выключателями `input_boolean.*`, они же — переключатели в настройках звонка):
+   - «Подъезд · Звонок — снимок и клип» — на `event.entrance_doorbell_ring`; всегда.
+   - «Подъезд · Движение — снимок и клип» — на `binary_sensor.entrance_doorbell_motion` → on; `input_boolean.doorbell_record_motion` (вкл по умолчанию); не чаще раза в 60 с.
+   - «Подъезд · Звонок — push на телефоны» — `input_boolean.doorbell_notify_phones` (вкл): `notify.mobile_app_*` со снимком и действием «Открыть панель» (ссылка `/atom-home#home?device=e%3Acamera.entrance_doorbell`).
+   - «Подъезд · Звонок — объявить на Станции» — `input_boolean.doorbell_notify_station` (выкл): TTS «Звонок в дверь» на Макс в гостиной.
+   - «Подъезд · Звонок — свет в прихожей» — `input_boolean.doorbell_hall_light` (выкл): включить `light.hall_light` на 3 мин, если он был выключен и темно (после заката).
+   - «Подъезд · Архив — чистка» — ночью удалять файлы старше 30 дней (shell_command `find /media/Подъезд -mtime +30 -delete`).
+4. **Видео для не-админов:** панель берёт поток `camera.entrance_doorbell_video` у HA (`camera/stream` HLS как запасной путь, WebRTC через go2rtc core — проверить через Nabu Casa). Ingress add-on остаётся для админов (MSE, быстрее).
+
+### Панель
+5. Лента: к событиям из recorder подбираются файлы из `/media/Подъезд` по времени (±5 с) через `media_source/browse_media`; миниатюра = снимок; бейдж «0:10» при клипе. Тап: клип играет на месте эфира (`media_source/resolve_media` → подписанный URL), «К эфиру» возвращает живое видео; без клипа — снимок крупно.
+6. Экран «Архив»: по дням, сетка миниатюр, фильтр звонки/движение; на этапе 3 — плюс NAS.
+7. Настройки звонка: раздел «Уведомления» с четырьмя переключателями (`input_boolean.doorbell_*`) и «Запись движения».
+8. Постер плитки: если в localStorage кадра нет — последний снимок события из `/media`.
+9. Модуль: роли `video` (generic camera), `recordMotion`, `notifyPhones`, `notifyStation`, `hallLight` — детект по id `input_boolean.doorbell_*` и `camera.*_doorbell_video`, можно переопределить в конфигураторе.
+
+### Проверка
+QA-скрипт с фикстурой `/media` (список файлов) на 6 размерах; на доме — имитация звонка через `POST /api/states` (файлы появятся в `/media`, лента покажет клип), прогон на всех устройствах.
