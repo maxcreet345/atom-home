@@ -46,7 +46,7 @@ try {
     check(`${label}: named preset «Чай» → label and 4 min saved, timer.start 00:04:00`, log.length === 2 && log[0].domain === 'input_text' && log[0].data.value === '{"timer.atom_1":"Чай|240"}' && log[1].domain === 'timer' && log[1].service === 'start' && log[1].data.duration === '00:04:00' && log[1].data.entity_id === 'timer.atom_1', JSON.stringify(log));
     // custom time wheel
     await page.click('.at-clock-tile.is-dial'); await page.waitForTimeout(300);
-    const dialBox = await page.locator('.at-clock-dial').boundingBox(); await page.mouse.click(dialBox.x + dialBox.width * 0.9, dialBox.y + dialBox.height / 2); await page.waitForTimeout(200);
+    await page.locator('.at-clock-dial').scrollIntoViewIfNeeded(); await page.waitForTimeout(200); const dialBox = await page.locator('.at-clock-dial').boundingBox(); await page.mouse.click(dialBox.x + dialBox.width * 0.9, dialBox.y + dialBox.height / 2); await page.waitForTimeout(200);
     const dial = await page.evaluate(() => ({ dial: !!document.querySelector('.at-clock-dial'), value: document.querySelector('.at-clock-dial .value')?.textContent, go: document.querySelector('.at-clock-go')?.textContent, knob: !!document.querySelector('.at-clock-dial .knob') }));
     check(`${label}: dial opens at 10:00, a tap at 3 o'clock sets 15:00`, dial.dial && dial.knob && dial.value === '15:00' && /15:00/.test(dial.go ?? ''), JSON.stringify(dial));
     // running timer: mutate the snapshot and redraw — the tile shows the countdown, the sheet a ring
