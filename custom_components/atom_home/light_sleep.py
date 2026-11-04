@@ -22,7 +22,7 @@ STORAGE_KEY = "atom_home.light_sleep"
 STORAGE_VERSION = 1
 MIRROR = "input_text.atom_light_sleep"
 MINUTES = (15, 30, 60)
-ENTITY_RE = re.compile(r"^light\.[a-z0-9_]+$")
+ENTITY_RE = re.compile(r"^(light|switch|input_boolean|fan)\.[a-z0-9_]+$")  # a relay the owner shows as a light is a switch (F2 of the audit)
 
 
 class LightSleep:
@@ -88,7 +88,10 @@ class LightSleep:
         self.pending.pop(entity_id, None)
         self._unsubs.pop(entity_id, lambda: None)()
         try:
-            await self.hass.services.async_call("light", "turn_off", {"entity_id": entity_id, "transition": 2}, blocking=True)
+            if entity_id.startswith("light."):
+                await self.hass.services.async_call("light", "turn_off", {"entity_id": entity_id, "transition": 2}, blocking=True)
+            else:  # S1 of the security review: light.turn_off silently ignores a switch, so the timer never switched a relay-light off
+                await self.hass.services.async_call("homeassistant", "turn_off", {"entity_id": entity_id}, blocking=True)
         except Exception as err:  # noqa: BLE001 — the lamp may be away; the timer is spent either way
             _LOGGER.warning("Atom Home light sleep: %s did not switch off: %s", entity_id, err)
         self._reschedule()
