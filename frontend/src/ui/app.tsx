@@ -201,7 +201,7 @@ function swipeToClose(onClose: () => void) {
 type Common = { runner: Runner; go: Nav; t: ReturnType<typeof translator>; lang: 'ru' | 'ro' | 'en' };
 const canToggle = (d: HomeDevice) => actionsFor(d).some(a => a.id === 'toggle');
 /** Inside a room the owner's «Свет · Кухня» reads as «Свет». */
-const inRoomName = (d: HomeDevice, room: string) => { const n = d.name.trim(), r = room.trim(); return r && n.toLowerCase().endsWith(' · ' + r.toLowerCase()) ? n.slice(0, -(r.length + 3)) : n; };
+const inRoomName = (d: HomeDevice, room: string) => { const n = d.name.trim(), r = room.trim().toLowerCase(); if (!r) return n; const l = n.toLowerCase(); return l.endsWith(' · ' + r) ? n.slice(0, -(r.length + 3)) : l.startsWith(r + ' · ') ? n.slice(r.length + 3) : n; };
 /** Tile grid for a list of devices; the toggle goes straight to the host, «…» opens the sheet in the given section. */
 function Tiles({ devices, section, room, runner, toggle, go, t, lang, nameOf, roomOf }: Common & { devices: HomeDevice[]; section: Section; room?: string | null; toggle: (d: HomeDevice) => void; nameOf?: (d: HomeDevice) => string; roomOf?: (d: HomeDevice) => string }) {
   return <Cascade className="ah-grid hm-light-grid">{devices.map(d => <AccessoryTile device={d} name={nameOf?.(d)} room={roomOf?.(d)} pending={runner.busy.has(d.key)} onToggle={canToggle(d) ? () => toggle(d) : undefined} onOpen={() => go({ section, room: room ?? null, device: d.key })} t={t} lang={lang} />)}</Cascade>;
@@ -278,7 +278,7 @@ function LightsPage({ devices, rooms, runner, toggle, go, t, lang, roomName }: C
   if (!devices.length) return <p className="hm-muted">{t('ui.nodevices')}</p>;
   const order = [...rooms.map(r => r.id), NO_ROOM], groups = [...new Set(devices.map(d => d.roomId))].sort((a, b) => (order.indexOf(a) + 1 || 999) - (order.indexOf(b) + 1 || 999));
   return <div className="hm-light-page"><div className="hm-toolbar at-lights-bar"><span>{on.length ? t('overview.lights.on', { n: on.length }) : t('overview.lights.off')}</span>{on.length > 0 && <button type="button" className="hm-pill" onClick={() => on.forEach(toggle)}>{t('ui.lightsOff')}</button>}</div>
-    {groups.map(roomId => { const list = devices.filter(d => d.roomId === roomId), lit = list.filter(d => isOn(d.primary)).length, room = roomName(roomId); return <Block title={room} className="at-lights-room" action={<small className="hm-muted">{lit ? `${lit} / ${list.length}` : ''}</small>}><Tiles devices={list} section="lights" runner={runner} toggle={toggle} go={go} t={t} lang={lang} nameOf={d => canToggle(d) ? inRoomName(d, room) : d.name} /></Block>; })}</div>;
+    <div className="at-lights-grid">{groups.map(roomId => { const list = devices.filter(d => d.roomId === roomId), lit = list.filter(d => isOn(d.primary)).length, room = roomName(roomId), span = Math.min(list.length, 3); return <Block title={room} className={`at-lights-room span-${span}`} action={<small className="hm-muted">{lit ? `${lit} / ${list.length}` : ''}</small>}><Tiles devices={list} section="lights" runner={runner} toggle={toggle} go={go} t={t} lang={lang} nameOf={d => canToggle(d) ? inRoomName(d, room) : d.name} /></Block>; })}</div></div>;
 }
 function ClimatePage({ devices, runner, go, t, lang, roomName }: Common & { devices: HomeDevice[]; roomName: (id: string) => string }) {
   if (!devices.length) return <p className="hm-muted">{t('ui.nodevices')}</p>;

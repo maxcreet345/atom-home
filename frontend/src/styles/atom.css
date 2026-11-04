@@ -316,3 +316,11 @@
 .hm-shell .hm-sheet.is-roomy button.at-light-level.is-off{grid-column:auto}
 .hm-shell .at-light-row.is-ambient{padding-left:14px}
 .hm-shell .at-light-level .at-short{display:none}.hm-shell .hm-sheet.is-roomy .at-light-level .at-long{display:none}.hm-shell .hm-sheet.is-roomy .at-light-level .at-short{display:inline}
+
+/* the lights page: room blocks side by side, a block as wide as its lamps (up to three), no long single column */
+.hm-shell .at-lights-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px var(--ah-gap);align-items:start}
+.is-wide .at-lights-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.is-wide.is-landscape .at-lights-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+.hm-shell .at-lights-room.span-2{grid-column:span 2}.hm-shell .at-lights-room.span-3{grid-column:span 3}
+.hm-shell .at-lights-room .ah-grid{grid-template-columns:repeat(1,minmax(0,1fr))}.hm-shell .at-lights-room.span-2 .ah-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hm-shell .at-lights-room.span-3 .ah-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.hm-shell .at-lights-room .hm-section-head h2{font-size:14px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-shell .at-lights-room .hm-section-head{gap:6px;min-width:0}

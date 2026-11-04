@@ -13,7 +13,7 @@ const act = (entityId: string, id: string, data?: Record<string, unknown>, servi
 export function LightRows({ devices, room, runner, toggle, open, t, lang }: { devices: HomeDevice[]; room: string; runner: Runner; toggle: (d: HomeDevice) => void; open: (d: HomeDevice) => void; t: T; lang: Lang }) {
   const lit = devices.filter(d => d.primary.available && isOn(d.primary)), any = lit.length > 0;
   const all = () => { if (any) lit.forEach(toggle); else devices.filter(d => d.primary.available).forEach(toggle); };
-  const name = (d: HomeDevice) => { const n = d.name.trim(), r = room.trim(); return r && n.toLowerCase().endsWith(' · ' + r.toLowerCase()) ? n.slice(0, -(r.length + 3)) : n; };
+  const name = (d: HomeDevice) => { const n = d.name.trim(), r = room.trim().toLowerCase(); if (!r) return n; const l = n.toLowerCase(); return l.endsWith(' · ' + r) ? n.slice(0, -(r.length + 3)) : l.startsWith(r + ' · ') ? n.slice(r.length + 3) : n; };
   return <Section title={t('section.lights')} className="at-light-rows-sec" action={<Switch on={any} label={t('light.allInRoom')} disabled={!devices.some(d => d.primary.available)} onToggle={all} />}>
     <div className="ah-rows at-light-rows">{devices.map(d => {
       const e = d.primary, a = e.attributes, on = e.available && isOn(e), dim = isDimmable(a), pct = brightnessPct(a), k = kelvinOf(a), busy = runner.busy.has(d.key);
