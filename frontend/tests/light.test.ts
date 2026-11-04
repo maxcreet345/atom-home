@@ -69,5 +69,5 @@ test('colour action sends rgb_color; brightness keeps its transition', () => {
 });
 test('the sleep mirror parses and ignores junk', () => {
   assert.deepEqual(parseSleep('light.kids_chandelier|17:40;light.hall_light|18:05'), { 'light.kids_chandelier': '17:40', 'light.hall_light': '18:05' });
-  assert.deepEqual(parseSleep('switch.x|17:40;light.y|nope;'), {}); assert.deepEqual(parseSleep(undefined), {}); assert.deepEqual(parseSleep(''), {});
+  assert.deepEqual(parseSleep('climate.x|17:40;light.y|nope;'), {}); assert.deepEqual(parseSleep('switch.relay|17:40'), { 'switch.relay': '17:40' }); assert.deepEqual(parseSleep(undefined), {}); assert.deepEqual(parseSleep(''), {});
 });

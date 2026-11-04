@@ -46,7 +46,7 @@ export const SLEEP_MINUTES: readonly number[] = [15, 30, 60];
 export function parseSleep(text: unknown): Record<string, string> {
   const out: Record<string, string> = {};
   if (typeof text !== 'string') return out;
-  for (const part of text.split(';')) { const [id, at] = part.split('|'); if (id && /^light\.[a-z0-9_]+$/.test(id) && at && /^\d\d:\d\d$/.test(at)) out[id] = at; }
+  for (const part of text.split(';')) { const [id, at] = part.split('|'); if (id && /^(light|switch|input_boolean|fan)\.[a-z0-9_]+$/.test(id) && at && /^\d\d:\d\d$/.test(at)) out[id] = at; }
   return out;
 }
 export const SLEEP_MIRROR = 'input_text.atom_light_sleep';

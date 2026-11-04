@@ -153,7 +153,8 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
   const activeIn = (el: HTMLElement | null) => ((el?.getRootNode() as Document | ShadowRoot | undefined)?.activeElement as HTMLElement | null) ?? null;
   const focusFirst = (el: HTMLElement | null) => el?.querySelector<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])')?.focus({ preventScroll: true });
   const sheetOpen = !!device || clockOpen;
-  useEffect(() => { if (sheetOpen) { sheetOpener.current ??= activeIn(mainRef.current); const raf = requestAnimationFrame(() => focusFirst(sheetRef.current)); return () => cancelAnimationFrame(raf); } const back = sheetOpener.current; sheetOpener.current = null; back?.focus?.({ preventScroll: true }); }, [sheetOpen, view.device]);
+  const lastInMain = useRef<HTMLElement | null>(null); // `main` is already inert when the effect runs, so the opener is remembered as focus moves, not read afterwards
+  useEffect(() => { if (sheetOpen) { sheetOpener.current ??= lastInMain.current; const raf = requestAnimationFrame(() => focusFirst(sheetRef.current)); return () => cancelAnimationFrame(raf); } const back = sheetOpener.current; sheetOpener.current = null; if (back?.isConnected) back.focus({ preventScroll: true }); }, [sheetOpen, view.device]);
   useEffect(() => { if (confirm) { confirmOpener.current ??= activeIn(mainRef.current); const raf = requestAnimationFrame(() => focusFirst(confirmRef.current)); return () => cancelAnimationFrame(raf); } const back = confirmOpener.current; confirmOpener.current = null; back?.focus?.({ preventScroll: true }); }, [!!confirm]);
   return <div className={`hm-shell daily-shell at-shell ah-shell ${host.online ? '' : 'is-offline'} ${wide && !short ? 'daily-fit-screen' : ''} ${wide ? 'is-wide' : 'is-narrow'} ${wide && viewport.width < 760 ? 'is-compact' : ''} ${landscape ? 'is-landscape' : 'is-portrait'} ${short ? 'is-short' : ''} hm-route-${view.section}`} lang={lang} data-theme={config.home.theme} style={`--hm-height:${viewport.height}px`}>
     <div className="ah-wallpaper" aria-hidden="true" />
@@ -164,7 +165,7 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
       <div className="ah-side-rooms"><small>{t('section.rooms')}</small>{rooms.map(r => <button type="button" className={view.section === 'rooms' && view.room === r.id ? 'is-active' : ''} onClick={() => go({ section: 'rooms', room: r.id })}>{r.name || t('room.none')}</button>)}</div>
       <button type="button" className={`hm-conn ${host.online ? '' : 'is-off'}`} aria-label={host.online ? t('ui.online') : t('ui.offline')}><i />{host.online ? t('ui.online') : t('ui.offline')}</button>
     </aside>}
-    <main className="hm-main" ref={mainRef} tabIndex={-1} inert={modal || undefined}>
+    <main className="hm-main" ref={mainRef} tabIndex={-1} inert={modal || undefined} onFocusIn={e => { lastInMain.current = e.target as HTMLElement; }}>
       <header className="hm-head">
         {view.section === 'rooms' && view.room ? <button type="button" className="hm-back" onClick={() => go({ section: 'rooms' })}><Icon name="back" size={20} />{t('section.rooms')}</button> : null}
         <div className="hm-head-title" key={pageKey}><h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</div>
@@ -197,7 +198,7 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
       const roomy = device.kind === 'light' && wide && landscape && viewport.width >= 800; // a dimmable lamp's sheet: slider left, temperature and ambient light right
       const sheetWide = !!mod && wide && landscape && viewport.width >= 800; // a phone on its side (874×402) splits too: video left, controls right, instead of a video that fills the whole height
       return <div className="hm-scrim" onClick={e => { if (e.target === e.currentTarget) close(); }}><section className={`hm-sheet ${sheetWide ? 'is-split' : ''} ${roomy ? 'is-roomy' : ''} ${autoClose?.key === device.key ? 'is-alarm' : ''}`} role="dialog" aria-modal="true" aria-label={device.name} ref={sheetRef} {...swipeToClose(close)} onPointerDownCapture={() => { if (autoClose?.key === device.key) setAutoClose(null); }} onKeyDownCapture={() => { if (autoClose?.key === device.key) setAutoClose(null); }}>
-        {mod?.def.Sheet ? <mod.def.Sheet device={device} registry={registry} entities={mod.entities} options={mod.options} host={host} t={t} lang={lang} runner={runner} onClose={close} room={roomName_} stage={stage} wide={sheetWide} setOption={setModuleOption(mod.def.id)} autoClose={autoCloseFor(device.key)} /> : <DeviceSheet device={device} runner={runner} onClose={close} t={t} lang={lang} stage={stage} host={host} room={roomName_} automations={automationsFor(device)} />}
+        {mod?.def.Sheet ? <mod.def.Sheet device={device} registry={registry} entities={mod.entities} options={mod.options} host={host} t={t} lang={lang} runner={runner} onClose={close} room={roomName_} stage={stage} wide={sheetWide} setOption={setModuleOption(mod.def.id)} autoClose={autoCloseFor(device.key)} /> : <DeviceSheet device={device} runner={runner} onClose={close} t={t} lang={lang} stage={stage} host={host} room={roomName_} automations={automationsFor(device)} title={inRoomName(device, roomName_ ?? '')} />}
       </section></div>;
     })()}
     {confirm && (() => { // AUTO-1 of the audit: the question names the consequence («Вода пойдёт сразу»), the button carries the verb and the risk colour

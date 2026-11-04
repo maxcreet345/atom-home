@@ -119,3 +119,12 @@ test('Criuleni registry snapshot (private) discovers rooms and household devices
   const light = enabled.find(d => d.kind === 'light')!; assert.ok(actionsFor(light).some(a => a.id === 'toggle'));
   const noRoom = enabled.filter(d => d.roomId === NO_ROOM).length; console.log('  without room:', noRoom, 'of', enabled.length);
 });
+
+test('automation rows: only short human descriptions reach the family', async () => {
+  const { familyDescription } = await import('../src/model/automation-text.ts');
+  assert.equal(familyDescription('21° с 06:00 до 23:00, ночью 18°'), '21° с 06:00 до 23:00, ночью 18°');
+  assert.equal(familyDescription('Выставляет головкам режим по sensor.<room>_heating_desired'), '');
+  assert.equal(familyDescription('См. book/04-automations/HEATING.md'), '');
+  assert.equal(familyDescription('Термостат: off → система выкл'), '');
+  assert.equal(familyDescription('x'.repeat(91)), '');
+});

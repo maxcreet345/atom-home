@@ -13,6 +13,7 @@ export function sunInfo(sun: StateRow | undefined, now: number): SunInfo {
   if (!night) { set = nextSet; rise = nextRise - 86_400_000; }
   else if (sameDay) { rise = nextRise; set = nextSet; } // before dawn: both are today's
   else { rise = nextRise - 86_400_000; set = nextSet - 86_400_000; } // evening: both are tomorrow's
+  if (set - rise > 86_400_000) rise += 86_400_000; // rolled-forward attributes can sit a day apart: a day is never longer than 24 h
   const dayMs = set - rise, frac = night ? null : Math.max(0, Math.min(1, (now - rise) / dayMs));
   return { rise, set, dayMs, frac, elevation, night, untilNext: night ? nextRise - now : nextSet - now };
 }

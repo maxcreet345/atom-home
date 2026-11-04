@@ -51,11 +51,12 @@ const SKELETON = '<style>:host{display:block;position:relative;width:100%;height
 const deep = (root, sel) => { const hit = root.querySelector && root.querySelector(sel); if (hit) return hit; for (const n of root.querySelectorAll ? root.querySelectorAll('*') : []) if (n.shadowRoot) { const f = deep(n.shadowRoot, sel); if (f) return f; } return null; };
 const skeleton = () => { try { if (customElements.get('atom-home-panel')) return; const main = document.querySelector('home-assistant'); const el = main ? deep(main.shadowRoot || main, 'atom-home-panel') : null; if (el && !el.shadowRoot) el.attachShadow({ mode: 'open' }).innerHTML = SKELETON; } catch (e) { /* cosmetic */ } };
 skeleton();
+const retry = setInterval(skeleton, 20); setTimeout(() => clearInterval(retry), 15000); // HA adds the element a moment after this module starts
 if (!document.querySelector('meta[name="theme-color"]')) { const meta = document.createElement('meta'); meta.name = 'theme-color'; meta.content = '#f2f2f6'; document.head.append(meta); }
 const r = await fetch('/atom_home/meta?t=' + Date.now(), { cache: 'no-store', credentials: 'same-origin' }).catch(() => null);
 const m = r && r.ok ? await r.json().catch(() => ({})) : {};
-skeleton();
 await import('/atom_home/bundle.js?e=' + encodeURIComponent(m.etag || Date.now()));
+clearInterval(retry);
 """
 
 
