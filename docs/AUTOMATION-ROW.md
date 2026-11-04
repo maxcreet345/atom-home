@@ -1,6 +1,6 @@
 # Строка «Автоматика» в листе устройства — спецификация (AUTO-2 аудита 04.11.2026)
 
-Статус: **предложение, ждёт «да» заказчика.** Код не писался.
+Статус: **одобрено 04.11.2026 («Да, делай»), реализовано в v1.13.0.** Фронт: `ui/sheet.tsx` (`Automations`, `whenRan`), `ui/app.tsx` (`automationsFor`: по сущностям карточки, device_id, затем по комнате с пометкой «по комнате»), `runtime/host.ts` (`automations()`), превью `atomPreview.setAutomations`. Бэкенд: `custom_components/atom_home/automations.py` (`entities_in_automation` / `devices_in_automation` / `areas_in_automation` + обход `raw_config` как запасной путь, `description` из `raw_config`), WS `atom_home/automations`, capability `automations: 1`. QA: `qa-states` «automations — fold «Автоматика (3)»». Макет: `logs/audit-ux/auto2-mock/`. Нужен перезапуск HA после установки.
 
 ## Зачем
 Житель не понимает, почему свет в коридоре «сам» включился или почему радиатор не греет: панель показывает будильники и таймер выключения света, но не показывает автоматизации HA, которые управляют устройством. Аудит (home-assistant-best-practices, AUTO-2) рекомендует показывать источники автоматики — только чтение, без изменений в HA.
