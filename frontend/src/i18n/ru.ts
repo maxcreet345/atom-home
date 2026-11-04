@@ -50,5 +50,6 @@ export const ru = {
   'alarm.ringing': 'Будильник', 'alarm.repeatsLeft': 'ещё {n} повт.', 'alarm.snooze': 'Ещё 9 минут',
   'clock.noTimers': 'Таймеров нет', 'alarm.all': 'Все · {n}',
   'alarm.noStationRooms': 'Будильники ставятся в комнатах со Станцией — пока таких нет',
+  'module.camera.role.ring': 'События: звонок (глазок)', 'module.camera.role.motionEvent': 'События: движение (глазок)',
 };
 export type Dictionary = typeof ru;

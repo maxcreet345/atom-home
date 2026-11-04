@@ -51,4 +51,5 @@ export const ro: Dictionary = {
   'alarm.ringing': 'Alarmă', 'alarm.repeatsLeft': 'încă {n}', 'alarm.snooze': 'Încă 9 minute',
   'clock.noTimers': 'Fără temporizatoare', 'alarm.all': 'Toate · {n}',
   'alarm.noStationRooms': 'Alarmele se pun în camere cu boxă — încă nu sunt',
+  'module.camera.role.ring': 'Evenimente: sonerie', 'module.camera.role.motionEvent': 'Evenimente: mișcare',
 };

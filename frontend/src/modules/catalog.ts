@@ -33,8 +33,8 @@ export const CAMERA_CONTROL_ROLES: ReadonlyArray<{ role: string; domain: string;
 /** Live video from the go2rtc add-on through its ingress (MSE). Detected by the Supervisor-named generic camera `camera.<slug>_go2rtc`; the functions come from a Xiaomi MIoT camera device (chuangmi.camera.*). */
 export const cameraGo2rtcSpec: ModuleSpec = {
   id: 'camera_go2rtc', titleKey: 'module.camera_go2rtc', placement: [],
-  roles: [{ role: 'camera', labelKey: 'module.camera.entity', required: true }, ...CAMERA_CONTROL_ROLES.map(r => ({ role: r.role, labelKey: `module.camera.role.${r.role}`, required: false }))],
-  options: [{ key: 'addon', labelKey: 'module.camera.addon', required: true, placeholder: 'a1b2c3d4_go2rtc' }, { key: 'stream', labelKey: 'module.camera.stream', required: false, placeholder: 'auto' }, { key: 'streamHd', labelKey: 'module.camera.streamHd', required: false }],
+  roles: [{ role: 'camera', labelKey: 'module.camera.entity', required: true }, ...CAMERA_CONTROL_ROLES.map(r => ({ role: r.role, labelKey: `module.camera.role.${r.role}`, required: false })), { role: 'ring', labelKey: 'module.camera.role.ring', required: false }, { role: 'motionEvent', labelKey: 'module.camera.role.motionEvent', required: false }],
+  options: [{ key: 'addon', labelKey: 'module.camera.addon', required: true, placeholder: 'a1b2c3d4_go2rtc' }, { key: 'stream', labelKey: 'module.camera.stream', required: false, placeholder: 'auto' }, { key: 'streamHd', labelKey: 'module.camera.streamHd', required: false }, { key: 'mediaDir', labelKey: 'module.doorbell.mediaDir', required: false, placeholder: 'camera' }],
   detect(reg) {
     const cam = reg.entities.find(e => addonFromEntity(e.entity_id) && !e.disabled_by && reg.states[e.entity_id]);
     const funcDev = reg.devices.find(d => /camera/i.test(d.model ?? '') && reg.entities.some(e => e.device_id === d.id && e.platform === 'xiaomi_miot'));
@@ -45,6 +45,9 @@ export const cameraGo2rtcSpec: ModuleSpec = {
       const own = reg.entities.filter(e => e.device_id === funcDev.id && !e.disabled_by && reg.states[e.entity_id]);
       for (const r of CAMERA_CONTROL_ROLES) { const hit = own.find(e => e.entity_id.startsWith(r.domain + '.') && r.suffix.test(e.entity_id)); if (hit) entities[r.role] = hit.entity_id; }
     }
+    // The entrance has one doorbell: its ring and motion events also time the camera's recordings (no motion events of its own in HA).
+    const ringEnt = reg.entities.find(e => e.entity_id.startsWith('event.') && !e.disabled_by && reg.states[e.entity_id]?.attributes.device_class === 'doorbell');
+    if (ringEnt) { entities.ring = ringEnt.entity_id; const mot = reg.entities.find(e => e.device_id === ringEnt.device_id && e.entity_id.startsWith('binary_sensor.') && /_motion$/.test(e.entity_id) && !e.disabled_by && reg.states[e.entity_id]); if (mot) entities.motionEvent = mot.entity_id; }
     const dev = cam ? reg.devices.find(d => d.id === cam.device_id) : funcDev;
     const friendly = cam ? reg.states[cam.entity_id]?.attributes.friendly_name : undefined;
     return { label: dev?.name ?? (typeof friendly === 'string' ? friendly : 'go2rtc'), entities, options: cam ? { addon: addonFromEntity(cam.entity_id)! } : {} };

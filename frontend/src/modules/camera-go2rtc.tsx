@@ -12,6 +12,7 @@ import { domainOf, type Registry } from '../model/registry.ts';
 import type { T, Key } from '../i18n/index.ts';
 import { num, type Lang } from '../ui/format.ts';
 import { Go2rtcView } from './go2rtc-view.tsx';
+import { useEventFeed, ClipStage, FeedList, ArchiveGrid, ArchiveHead } from './event-feed.tsx';
 
 /** A module entity as the sheet rows expect it (name from HA, no kind). */
 function refOf(registry: Registry, id: string | undefined): EntityRef | null {
@@ -30,11 +31,14 @@ function SelectRow({ action, labels, device, runner, disabled, icon, color }: { 
 const Title = ({ children }: { children: ComponentChildren }) => <div className="ah-row at-cam-title"><small>{children}</small></div>;
 const KV = ({ k, v }: { k: string; v: ComponentChildren }) => <div className="at-cam-kv"><span>{k}</span><small>{v}</small></div>;
 
-function CameraSheet({ device, registry, entities, options, t, lang, runner, onClose, room, stage, wide }: ModuleSheetProps) {
-  const [page, setPage] = useState<'main' | 'settings'>('main');
+function CameraSheet({ device, registry, entities, options, host, t, lang, runner, onClose, room, stage, wide }: ModuleSheetProps) {
+  const [page, setPage] = useState<'main' | 'settings' | 'archive'>('main');
   const [note, setNote] = useState('');
   const stageRef = useRef<HTMLDivElement>(null);
   const tx = (k: string) => t(k as Key);
+  // Events and recordings (snapshots + 12 s clips on the doorbell's ring and motion) under /media/<dir>.
+  const mediaDir = options.mediaDir && /^[\w-]{1,40}$/.test(options.mediaDir) ? options.mediaDir : 'camera';
+  const feed = useEventFeed(host, { ring: entities.ring, motion: entities.motionEvent }, mediaDir, entities.ring ? registry.states[entities.ring]?.state : undefined, () => setNote(t('module.doorbell.clipFail')));
   const ref = (role: string) => refOf(registry, entities[role]);
   const act = (role: string, label: string): Action | null => {
     const r = ref(role); if (!r) return null;
@@ -72,14 +76,14 @@ function CameraSheet({ device, registry, entities, options, t, lang, runner, onC
   const sd = ref('sdStatus'), sdFree = ref('sdFree'), sdUsed = ref('sdUsed'), hasCard = !!sd && sd.state.toLowerCase() === 'normal';
   const mb = (r: EntityRef | null) => r && Number.isFinite(Number(r.state)) && Number(r.state) > 0 ? `${num(Number(r.state) / 1024, lang, 1)} GB` : '—';
 
-  const headBtns = <div className="at-cam-head-btns">{page === 'settings' && wide && <button type="button" className="hm-icon-btn" aria-label={t('ui.back')} onClick={() => setPage('main')}><Icon name="back" size={22} /></button>}{hasControls && page === 'main' && <button type="button" className="hm-icon-btn at-cam-gear" aria-label={tx('module.camera.settings')} onClick={() => setPage('settings')}><Icon name="gear" size={20} /></button>}<button type="button" className="hm-icon-btn" aria-label={t('ui.close')} onClick={onClose}>×</button></div>;
+  const headBtns = <div className="at-cam-head-btns">{page !== 'main' && wide && <button type="button" className="hm-icon-btn" aria-label={t('ui.back')} onClick={() => setPage('main')}><Icon name="back" size={22} /></button>}{hasControls && page === 'main' && <button type="button" className="hm-icon-btn at-cam-gear" aria-label={tx('module.camera.settings')} onClick={() => setPage('settings')}><Icon name="gear" size={20} /></button>}<button type="button" className="hm-icon-btn" aria-label={t('ui.close')} onClick={onClose}>×</button></div>;
   const head = page === 'main' || wide
     ? <div className="hm-sheet-head"><span className="hm-sheet-photo"><Icon name="camera" size={30} /></span><div><small>{t('kind.camera')}{roomShown ? ` · ${roomShown}` : ''}</small><h2>{device.name}</h2></div>{!wide && headBtns}</div>
     : <div className="hm-sheet-head"><button type="button" className="hm-icon-btn" aria-label={t('ui.back')} onClick={() => setPage('main')}><Icon name="back" size={22} /></button><div><small>{device.name}</small><h2>{tx('module.camera.settings')}</h2></div>{headBtns}</div>;
   const cycle = (a: Action) => { const opts = a.options ?? []; const i = opts.indexOf(String(a.current ?? '')); return opts[(i + 1) % opts.length]; };
   const nightNowLabel = night && night.kind === 'select' && night.current ? nightLabel(String(night.current)) : null, hdrNowLabel = hdr && hdr.kind === 'select' && hdr.current ? onOffAuto(String(hdr.current)) : null;
   const video = <>
-    <div className="hm-camera-frame at-camera-stage at-cam-stage" ref={stageRef}>{stage ?? <div className="hm-camera-wait"><Icon name="camera" size={32} /><span>{device.primary.available ? t('state.idle') : tx('module.camera.noLink')}</span></div>}</div>
+    <div className={`hm-camera-frame at-camera-stage at-cam-stage ${feed.playing ? 'is-clip at-door-stage' : ''}`} ref={stageRef}>{feed.playing ? <ClipStage feed={feed} t={t} lang={lang} /> : stage ?? <div className="hm-camera-wait"><Icon name="camera" size={32} /><span>{device.primary.available ? t('state.idle') : tx('module.camera.noLink')}</span></div>}</div>
     <div className="at-cam-tools">
       <button type="button" className="at-cam-tool at-cam-snapshot" disabled={!pic || closed} onClick={() => void snapshot()}><b><Icon name="camera" size={22} /></b>{tx('module.camera.tool.snapshot')}</button>
       <button type="button" className="at-cam-tool" disabled title={tx('module.camera.tool.talkLater')}><b><Icon name="sensor" size={22} /></b>{tx('module.camera.tool.talk')}</button>
@@ -91,6 +95,7 @@ function CameraSheet({ device, registry, entities, options, t, lang, runner, onC
     {note && <p className="at-feeder-note at-cam-note" role="status">{note}</p>}
   </>;
   const main = <>
+    {(entities.ring || entities.motionEvent) && <FeedList feed={feed} t={t} lang={lang} onArchive={() => setPage('archive')} />}
     {(entities.tracking || entities.petTracking || entities.cruise) && <div className="ah-rows"><Title>{tx('module.camera.group.ptz')}</Title>{toggleRow('tracking', tx('module.camera.tracking'), 'person', '#0a84ff')}{toggleRow('petTracking', tx('module.camera.petTracking'), 'paw', '#0a84ff')}{toggleRow('cruise', tx('module.camera.cruise'), 'vacuum', '#0a84ff')}</div>}
     {(entities.motion || entities.aiHuman) && <div className="ah-rows"><Title>{tx('module.camera.group.detection')}</Title>{toggleRow('motion', tx('module.camera.motion'), 'motion', '#30d158')}{selectRow('motionSens', tx('module.camera.motionSens'), sens)}{sliderRow('alarmInterval', tx('module.camera.alarmInterval'), tx('module.camera.min'))}
       {entities.aiHuman && <Title>{tx('module.camera.group.ai')}</Title>}{toggleRow('aiHuman', tx('module.camera.ai.human'), 'person', '#30d158')}{toggleRow('aiMotion', tx('module.camera.ai.motion'), 'motion', '#30d158')}{selectRow('moveSens', tx('module.camera.moveSens'), sens)}{toggleRow('aiPet', tx('module.camera.ai.pet'), 'paw', '#30d158')}{toggleRow('aiFace', tx('module.camera.ai.face'), 'person', '#30d158')}{toggleRow('aiBabycry', tx('module.camera.ai.babycry'), 'sensor', '#30d158')}{toggleRow('aiSound', tx('module.camera.ai.sound'), 'media', '#30d158')}{selectRow('soundSens', tx('module.camera.soundSens'), sens)}</div>}
@@ -109,10 +114,13 @@ function CameraSheet({ device, registry, entities, options, t, lang, runner, onC
       <KV k={tx('module.camera.diag.stream')} v={`${options.stream ?? 'auto'}${options.streamHd ? ` · HD ${options.streamHd}` : ''}`} />
     </div>
   </>;
+  const archive = <ArchiveGrid feed={feed} t={t} lang={lang} onPlayed={() => { if (!wide) setPage('main'); }} />;
+  const archiveHead = <ArchiveHead feed={feed} t={t} title={device.name} onBack={() => setPage('main')} onClose={wide ? undefined : onClose} />;
   if (wide) return <div className="hm-sheet-body ah-sheet at-cam is-split" data-kind="camera" data-page={page}>
     <div className="at-cam-left">{head}{video}</div>
-    <div className="at-cam-right">{headBtns}{page === 'main' ? main : <><h3 className="at-cam-h3">{tx('module.camera.settings')}</h3>{settings}</>}</div>
+    <div className="at-cam-right">{page === 'archive' ? <>{archiveHead}{archive}</> : <>{headBtns}{page === 'main' ? main : <><h3 className="at-cam-h3">{tx('module.camera.settings')}</h3>{settings}</>}</>}</div>
   </div>;
+  if (page === 'archive') return <div className="hm-sheet-body ah-sheet at-cam" data-kind="camera" data-page="archive">{archiveHead}{archive}</div>;
   return <div className="hm-sheet-body ah-sheet at-cam" data-kind="camera" data-page={page}>{head}{page === 'main' ? <>{video}{main}</> : settings}</div>;
 }
 

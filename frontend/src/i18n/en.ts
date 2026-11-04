@@ -51,4 +51,5 @@ export const en: Dictionary = {
   'alarm.ringing': 'Alarm', 'alarm.repeatsLeft': '{n} more', 'alarm.snooze': '9 more minutes',
   'clock.noTimers': 'No timers', 'alarm.all': 'All · {n}',
   'alarm.noStationRooms': 'Alarms live in rooms with a speaker — none yet',
+  'module.camera.role.ring': 'Events: ring (doorbell)', 'module.camera.role.motionEvent': 'Events: motion (doorbell)',
 };

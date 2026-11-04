@@ -53,7 +53,8 @@ test('C700: functions are matched to roles, claimed by the card and gone from «
   assert.equal(match!.entities.camera, undefined, 'no Supervisor-named go2rtc camera in this snapshot: the camera comes from the config');
   assert.equal(match!.entities.power, 'switch.entrance_camera_power'); assert.equal(match!.entities.night, 'select.entrance_camera_night_mode'); assert.equal(match!.entities.indicator, 'light.entrance_camera_indicator');
   assert.equal(match!.entities.mute, 'switch.entrance_camera_mute'); assert.equal(match!.entities.volume, 'number.entrance_camera_volume'); assert.equal(match!.entities.info, 'button.entrance_camera_info');
-  assert.equal(Object.keys(match!.entities).length, 29, 'all 29 control roles of the C700');
+  assert.equal(Object.keys(match!.entities).filter(k => k !== 'ring' && k !== 'motionEvent').length, 29, 'all 29 control roles of the C700');
+  assert.equal(match!.entities.ring, 'event.entrance_doorbell_ring', 'the doorbell\'s ring times the camera\'s recordings'); assert.equal(match!.entities.motionEvent, 'binary_sensor.entrance_doorbell_motion');
   const cfg = defaultConfig(); cfg.modules.camera_go2rtc = { entities: { camera: 'camera.entrance_camera' }, options: { addon: 'a889bffc_go2rtc', stream: 'entrance_camera_h264', streamHd: 'entrance_camera_hd' } };
   const active = activeSpecs(cam!, cfg).find(a => a.spec.id === 'camera_go2rtc'); assert.ok(active); assert.equal(active!.entities.camera, 'camera.entrance_camera');
   const claimed = new Set(cameraClaims(active!.entities)); assert.equal(claimed.size, 29); assert.ok(claimed.has('switch.entrance_camera_ai_face'));
