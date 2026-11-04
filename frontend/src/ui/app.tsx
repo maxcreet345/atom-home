@@ -299,7 +299,18 @@ function KindList({ devices, runner, toggle, go, t, lang, roomName, admin }: Com
 function EnergyPage({ devices, go, t, lang, roomName, admin }: { devices: HomeDevice[]; go: Nav; t: ReturnType<typeof translator>; lang: 'ru' | 'ro' | 'en'; roomName: (id: string) => string; admin?: boolean }) {
   if (!devices.length) return <Empty go={go} t={t} admin={admin} />;
   // H8 of the audit: «Гостиная · Розетка Xiaomi (очиститель) Energy Today» → «сегодня»
-  const caption = (m: EntityRef, d: HomeDevice) => { let n = m.name.trim(); for (const base of [d.primary.name, d.name]) { if (base && n.toLowerCase().startsWith(base.toLowerCase())) { n = n.slice(base.length).replace(/^[\s·—:-]+/, ''); break; } } const key = n.toLowerCase().replace(/[\s_]+/g, ' '); const map: Record<string, Key> = { 'energy today': 'energy.today', 'energy month': 'energy.month', 'energy yesterday': 'energy.yesterday', 'energy total': 'energy.total', 'энергия сегодня': 'energy.today', 'энергия вчера': 'energy.yesterday', 'энергия всего': 'energy.total', 'энергия': 'energy.total', 'ток': 'metric.current', 'напряжение': 'metric.voltage', 'current': 'metric.current', 'voltage': 'metric.voltage', 'power': 'metric.power' }; return map[key] ? t(map[key]) : (n || metricLabel(m, t)); };
+  const caption = (m: EntityRef, d: HomeDevice) => {
+    let n = m.name.trim();
+    const room = roomName(d.roomId);
+    for (const base of [d.primary.name, d.name, room ? `${room} · ${d.name}` : '']) { if (base && n.toLowerCase().startsWith(base.toLowerCase())) { n = n.slice(base.length); break; } }
+    if (room && n.toLowerCase().startsWith(room.toLowerCase() + ' · ')) n = n.slice(room.length + 3);
+    n = n.replace(/\s*\([^)]*\)/g, '').replace(/^[\s·—:-]+/, '').replace(/\s{2,}/g, ' ').trim();
+    // the leading product words («Розетка Xiaomi», «Розетка увлажнителя реле Tuya с измерением») are the device, not the reading
+    n = n.replace(/^(розетка|розетки|socket|plug)\b[^·]*?(?=(energy|энергия|ток|напряжение|current|voltage|power|мощность)\b)/i, '').trim();
+    const key = n.toLowerCase().replace(/[\s_]+/g, ' ');
+    const map: Record<string, Key> = { 'energy today': 'energy.today', 'energy month': 'energy.month', 'energy yesterday': 'energy.yesterday', 'energy total': 'energy.total', 'энергия сегодня': 'energy.today', 'энергия вчера': 'energy.yesterday', 'энергия всего': 'energy.total', 'энергия': 'energy.total', 'ток': 'metric.current', 'напряжение': 'metric.voltage', 'current': 'metric.current', 'voltage': 'metric.voltage', 'power': 'metric.power', 'мощность': 'metric.power' };
+    return map[key] ? t(map[key]) : (n || metricLabel(m, t));
+  };
   const pw = (d: HomeDevice) => { const m = d.metrics.find(x => x.deviceClass === 'power' && x.available); return m ? Number(m.state) * (m.unit === 'kW' ? 1000 : 1) : null; };
   const max = Math.max(1, ...devices.map(d => pw(d) ?? 0));
   return <div className="hm-energy"><div className="hm-energy-lines">{devices.map(d => { const w = pw(d); return <button type="button" className="hm-card hm-line" data-device-key={d.key} onClick={() => go({ section: 'energy', device: d.key })}>
