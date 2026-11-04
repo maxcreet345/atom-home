@@ -68,7 +68,8 @@ function DoorbellSheet({ device, registry, entities, options, host, t, lang, run
   const list = (events ?? []).filter(e => filter === 'all' || e.kind === filter).slice(0, 30);
   const rings = (events ?? []).filter(e => e.kind === 'ring').length, motions = (events ?? []).filter(e => e.kind === 'motion').length;
 
-  const headBtns = <div className="at-cam-head-btns">{page === 'settings' && wide && <button type="button" className="hm-icon-btn" aria-label={t('ui.back')} onClick={() => setPage('main')}><Icon name="back" size={22} /></button>}{page === 'main' && <button type="button" className="hm-icon-btn at-cam-gear" aria-label={tx('module.doorbell.settings')} onClick={() => setPage('settings')}><Icon name="gear" size={20} /></button>}<button type="button" className="hm-icon-btn" aria-label={t('ui.close')} onClick={onClose}>×</button></div>;
+  const alarm = !!autoClose; // opened by the ring: one column, video and tools across the whole sheet, nothing else
+  const headBtns = <div className="at-cam-head-btns">{page === 'settings' && wide && <button type="button" className="hm-icon-btn" aria-label={t('ui.back')} onClick={() => setPage('main')}><Icon name="back" size={22} /></button>}{page === 'main' && !alarm && <button type="button" className="hm-icon-btn at-cam-gear" aria-label={tx('module.doorbell.settings')} onClick={() => setPage('settings')}><Icon name="gear" size={20} /></button>}<button type="button" className="hm-icon-btn" aria-label={t('ui.close')} onClick={onClose}>×</button></div>;
   const head = page === 'main' || wide
     ? <div className="hm-sheet-head"><span className="hm-sheet-photo"><Icon name="bell" size={30} /></span><div><small>{tx('module.doorbell.kind')}{roomShown ? ` · ${roomShown}` : ''}</small><h2>{device.name}</h2></div>{!wide && headBtns}</div>
     : <div className="hm-sheet-head"><button type="button" className="hm-icon-btn" aria-label={t('ui.back')} onClick={() => setPage('main')}><Icon name="back" size={22} /></button><div><small>{device.name}</small><h2>{tx('module.doorbell.settings')}</h2></div>{headBtns}</div>;
@@ -84,9 +85,8 @@ function DoorbellSheet({ device, registry, entities, options, host, t, lang, run
     </div>
     {note && <p className="at-feeder-note at-cam-note" role="status">{note}</p>}
   </>;
-  // Opened by the ring itself: only the video, the tools and the battery — the week of events comes back once the sheet is kept or opened by hand.
   const main = <>
-    {!autoClose && (entities.ring || entities.motion) && <div className="ah-rows at-door-events"><Title>{tx('module.doorbell.events')}</Title>
+    {(entities.ring || entities.motion) && <div className="ah-rows at-door-events"><Title>{tx('module.doorbell.events')}</Title>
       <div className="at-door-seg" role="tablist">{(['all', 'ring', 'motion'] as const).map(f => <button type="button" role="tab" aria-selected={filter === f} className={filter === f ? 'is-on' : ''} onClick={() => setFilter(f)}>{f === 'all' ? t('ui.all') : f === 'ring' ? `${tx('module.doorbell.rings')} · ${rings}` : `${tx('module.doorbell.motions')} · ${motions}`}</button>)}</div>
       {events === null ? <div className="at-cam-kv"><span>{tx('module.doorbell.loading')}</span></div> : list.length === 0 ? <div className="at-cam-kv"><span>{tx('module.doorbell.noEvents')}</span></div>
         : list.map(e => <div className={`ah-row at-door-ev is-${e.kind}`}><span className="ah-row-icon" style={`--tile:${e.kind === 'ring' ? '#ff3b30' : '#0a84ff'}`}><Icon name={e.kind === 'ring' ? 'bell' : 'motion'} size={18} /></span><span className="ah-row-text"><strong>{tx(e.kind === 'ring' ? 'module.doorbell.ringEvent' : 'module.doorbell.motionEvent')}</strong></span><small className="at-door-when">{when(e.at, now, tx, lang)}</small></div>)}
@@ -114,6 +114,7 @@ function DoorbellSheet({ device, registry, entities, options, host, t, lang, run
       <p className="at-feeder-note at-cam-note">{tx('module.doorbell.aqaraNote')}</p>
     </div>
   </>;
+  if (alarm) return <div className="hm-sheet-body ah-sheet at-cam at-door is-alarm" data-kind="camera" data-page="alarm"><div className="hm-sheet-head"><span className="hm-sheet-photo"><Icon name="bell" size={30} /></span><div><small>{tx('module.doorbell.kind')}{roomShown ? ` · ${roomShown}` : ''}</small><h2>{device.name}</h2></div>{headBtns}</div>{video}</div>;
   if (wide) return <div className="hm-sheet-body ah-sheet at-cam at-door is-split" data-kind="camera" data-page={page}>
     <div className="at-cam-left">{head}{video}</div>
     <div className="at-cam-right">{headBtns}{page === 'main' ? main : <><h3 className="at-cam-h3">{tx('module.doorbell.settings')}</h3>{settings}</>}</div>

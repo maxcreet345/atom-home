@@ -44,8 +44,8 @@ try {
     await page.waitForTimeout(900); await shot('ring');
     const ring = await page.evaluate(() => { const s = document.querySelector('.at-door'); const t = [...document.querySelectorAll('.hm-camera-tile')].find(x => x.classList.contains('is-danger')); return { open: !!s, cnt: s?.querySelector('.at-door-cnt')?.textContent, alarm: !!document.querySelector('.hm-sheet.is-alarm'), tileLine: t?.querySelector('.hm-camera-caption small')?.textContent ?? null, hash: location.hash }; });
     check(`${label}: ring opens the sheet with a 60 s countdown`, ring.open && /^0:5\d$/.test(ring.cnt ?? '') && ring.alarm && ring.hash.includes('entrance_doorbell'), JSON.stringify(ring));
-    const noEvents = await page.evaluate(() => !document.querySelector('.at-door-events'));
-    check(`${label}: no events list while opened by the ring`, noEvents, 'events list present');
+    const alarm = await page.evaluate(() => { const s = document.querySelector('.at-door'); const st = s.querySelector('.at-cam-stage'); return { alarm: s.classList.contains('is-alarm'), rows: s.querySelectorAll('.ah-rows').length, gear: !!s.querySelector('.at-cam-gear'), right: !!s.querySelector('.at-cam-right'), stageW: st.getBoundingClientRect().width, sheetW: s.getBoundingClientRect().width, tools: s.querySelectorAll('.at-cam-tool').length, fits: s.scrollHeight <= s.clientHeight + 1 }; });
+    check(`${label}: ring mode — one column, video across the sheet, no groups, no gear`, alarm.alarm && alarm.rows === 0 && !alarm.gear && !alarm.right && alarm.tools === 6 && alarm.stageW >= alarm.sheetW - 40 && (alarm.fits || h < 600), JSON.stringify(alarm));
     await page.click('.at-door-stay'); await page.waitForTimeout(300);
     const kept = await page.evaluate(() => ({ banner: !!document.querySelector('.at-door-banner'), open: !!document.querySelector('.at-door'), events: !!document.querySelector('.at-door-events') }));
     check(`${label}: «keep» cancels the countdown, sheet stays, events back`, !kept.banner && kept.open && kept.events, JSON.stringify(kept));
