@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import type { ModuleDef, ModuleSheetProps } from './types.ts';
 import { doorbellSpec } from './catalog.ts';
-import { doorbellClaims, doorbellTileState, autoOpenSeconds, posterEnabled, parseLogbook, when, readFrame, clock, AUTO_OPEN_CHOICES, type DoorEvent } from './doorbell-state.ts';
+import { doorbellClaims, doorbellTileState, autoOpenSeconds, posterEnabled, parseHistory, when, readFrame, clock, AUTO_OPEN_CHOICES, type DoorEvent } from './doorbell-state.ts';
 import { Go2rtcView } from './go2rtc-view.tsx';
 import { Icon } from '../ui/primitives.tsx';
 import { Switch } from '../ui/cards.tsx';
@@ -44,13 +44,13 @@ function DoorbellSheet({ device, registry, entities, options, host, t, lang, run
   };
   const fullscreen = () => { const el = stageRef.current; if (!el) return; const v = el.querySelector('video') as (HTMLVideoElement & { webkitEnterFullscreen?: () => void }) | null; if (el.requestFullscreen) el.requestFullscreen().catch(() => v?.webkitEnterFullscreen?.()); else v?.webkitEnterFullscreen?.(); };
   useEffect(() => { if (!note) return; const id = setTimeout(() => setNote(''), 4000); return () => clearTimeout(id); }, [note]);
-  // The week of rings and motion from HA's logbook; refreshed a moment after a new ring arrives.
+  // The week of rings and motion from HA's recorder (history, the same call the energy sparklines use); refreshed a moment after a new ring arrives.
   const ringState = ring?.state;
   useEffect(() => {
     const ws = host.ws; if (!ws || (!entities.ring && !entities.motion)) { setEvents([]); return; }
     let gone = false;
     const id = setTimeout(() => { const end = new Date(), start = new Date(end.getTime() - 7 * 86_400_000);
-      ws({ type: 'logbook/get_events', start_time: start.toISOString(), end_time: end.toISOString(), entity_ids: [entities.ring, entities.motion].filter(Boolean) }).then(rows => { if (!gone) setEvents(parseLogbook(rows, entities)); }).catch(() => { if (!gone) setEvents([]); }); }, ringState === undefined ? 0 : 1500);
+      ws({ type: 'history/history_during_period', start_time: start.toISOString(), end_time: end.toISOString(), entity_ids: [entities.ring, entities.motion].filter(Boolean), minimal_response: true, no_attributes: true, significant_changes_only: false }).then(rows => { if (!gone) setEvents(parseHistory(rows, entities, start.getTime())); }).catch(() => { if (!gone) setEvents([]); }); }, ringState === undefined ? 0 : 1500);
     return () => { gone = true; clearTimeout(id); };
   }, [host, entities.ring, entities.motion, ringState]);
   /** Mute switches of HomeKit: «on» = muted, so the tool lights up when the thing is audible. */

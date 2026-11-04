@@ -4,7 +4,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defaultConfig } from '../src/model/config.ts';
 import { doorbellSpec, activeSpecs } from '../src/modules/catalog.ts';
-import { doorbellClaims, doorbellTileState, autoOpenSeconds, parseLogbook, when, ago } from '../src/modules/doorbell-state.ts';
+import { doorbellClaims, doorbellTileState, autoOpenSeconds, parseHistory, when, ago } from '../src/modules/doorbell-state.ts';
 import { discover } from '../src/model/discover.ts';
 import { translator } from '../src/i18n/index.ts';
 const camPath = resolve(import.meta.dirname, '../../private/fixtures/criuleni-camera-20261104.json');
@@ -42,9 +42,9 @@ test('G4: tile line — ring in the last minute, motion, low battery, quiet', { 
 test('G4: auto-open seconds, logbook rows, relative time', () => {
   assert.equal(autoOpenSeconds({}), 60); assert.equal(autoOpenSeconds({ autoOpen: 'off' }), 0); assert.equal(autoOpenSeconds({ autoOpenSec: '120' }), 120); assert.equal(autoOpenSeconds({ autoOpenSec: '7' }), 60);
   const e = { ring: 'event.x_ring', motion: 'binary_sensor.x_motion' };
-  const rows = [{ when: 1000, entity_id: 'event.x_ring', state: '2026-11-03T19:27:56+00:00' }, { when: 2000, entity_id: 'binary_sensor.x_motion', state: 'on' }, { when: 2100, entity_id: 'binary_sensor.x_motion', state: 'off' }, { when: 3000, entity_id: 'event.x_ring', state: 'unknown' }, 'junk'];
-  assert.deepEqual(parseLogbook(rows, e), [{ kind: 'motion', at: 2_000_000 }, { kind: 'ring', at: 1_000_000 }]);
-  assert.deepEqual(parseLogbook(null, e), []);
+  const raw = { 'event.x_ring': [{ s: '2026-11-01T10:00:00+00:00', lc: 500 }, { s: '2026-11-03T19:27:56+00:00', lc: 1000 }, { s: '2026-11-03T19:27:56+00:00', lu: 1200 }, { s: 'unknown', lc: 3000 }], 'binary_sensor.x_motion': [{ s: 'off', lc: 500 }, { s: 'on', lc: 2000 }, { s: 'off', lc: 2100 }, { s: 'on', lu: 2500 }] };
+  assert.deepEqual(parseHistory(raw, e, 900_000), [{ kind: 'motion', at: 2_500_000 }, { kind: 'motion', at: 2_000_000 }, { kind: 'ring', at: 1_000_000 }], 'the opening row and repeated timestamps are not events');
+  assert.deepEqual(parseHistory(null, e, 0), []); assert.deepEqual(parseHistory([], e, 0), []);
   const now = Date.parse('2026-11-04T10:52:00+02:00');
   assert.equal(ago(now - 30_000, now, tx, 'ru'), 'только что'); assert.equal(ago(now - 5 * 60_000, now, tx, 'ru'), '5 мин назад'); assert.equal(ago(now - 3 * 3_600_000, now, tx, 'ru'), '3 ч назад');
   assert.match(when(now - 60_000, now, tx, 'ru'), /^\d\d:\d\d$/); assert.match(when(now - 86_400_000, now, tx, 'ru'), /^вчера \d\d:\d\d$/);

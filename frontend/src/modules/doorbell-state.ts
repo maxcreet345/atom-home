@@ -44,17 +44,15 @@ export function doorbellTileState(states: Record<string, StateRow>, entities: Mo
   return { line: motionAt !== null && now - motionAt < 86_400_000 ? tx('module.doorbell.quietMotion', { ago: ago(motionAt, now, tx, lang) }) : tx('module.doorbell.quiet'), closed: false, icon: null };
 }
 export interface DoorEvent { kind: 'ring' | 'motion'; at: number }
-/** HA `logbook/get_events` rows for the ring and motion entities → events, newest first; motion counts when it turns on. */
-export function parseLogbook(rows: unknown, entities: ModuleEntities): DoorEvent[] {
-  if (!Array.isArray(rows)) return [];
+/** HA `history/history_during_period` (minimal response: `{s, lc, lu}` rows per entity) → events, newest first. A ring is every new timestamp of the event entity, motion counts when it turns on; the first row (the state at the start of the window) is not an event. */
+export function parseHistory(raw: unknown, entities: ModuleEntities, startMs: number): DoorEvent[] {
+  if (!raw || typeof raw !== 'object') return [];
   const out: DoorEvent[] = [];
-  for (const r of rows as Array<Record<string, unknown>>) {
-    if (!r || typeof r !== 'object') continue;
-    const at = typeof r.when === 'number' ? r.when * 1000 : typeof r.when === 'string' ? Date.parse(r.when) : NaN;
-    if (!Number.isFinite(at)) continue;
-    if (r.entity_id === entities.ring && typeof r.state === 'string' && r.state !== 'unknown' && r.state !== 'unavailable') out.push({ kind: 'ring', at });
-    else if (r.entity_id === entities.motion && r.state === 'on') out.push({ kind: 'motion', at });
-  }
+  const rowsOf = (id: string | undefined) => { const r = id ? (raw as Record<string, unknown>)[id] : undefined; return Array.isArray(r) ? r as Array<{ s?: unknown; lc?: unknown; lu?: unknown }> : []; };
+  const at = (r: { lc?: unknown; lu?: unknown }) => { const v = typeof r.lc === 'number' ? r.lc : typeof r.lu === 'number' ? r.lu : NaN; return Number.isFinite(v) ? v * 1000 : NaN; };
+  let prev: unknown;
+  for (const r of rowsOf(entities.ring)) { const t = at(r); if (Number.isFinite(t) && t >= startMs && typeof r.s === 'string' && r.s !== 'unknown' && r.s !== 'unavailable' && r.s !== prev) out.push({ kind: 'ring', at: t }); prev = r.s; }
+  for (const r of rowsOf(entities.motion)) { const t = at(r); if (Number.isFinite(t) && t >= startMs && r.s === 'on') out.push({ kind: 'motion', at: t }); }
   return out.sort((a, b) => b.at - a.at);
 }
 /** Where the panel keeps the last live frame of a stream (per browser). */
