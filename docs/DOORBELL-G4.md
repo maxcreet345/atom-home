@@ -83,7 +83,7 @@
 ### Проверка
 QA-скрипт с фикстурой `/media` (список файлов) на 6 размерах; на доме — имитация звонка через `POST /api/states` (файлы появятся в `/media`, лента покажет клип), прогон на всех устройствах.
 
-## 7. Этап 2 — сделано (04.11.2026, v1.5.0 → v1.5.2)
+## 7. Этап 2 — сделано и закрыт заказчиком (04.11.2026, v1.5.0 → v1.5.2)
 HA (через API под админом, без YAML):
 - Generic Camera `camera.entrance_doorbell_video` (entry «Подъезд · Звонок (видео, go2rtc)», stream `rtsp://127.0.0.1:8554/entrance_doorbell`, без still URL, framerate 2, TCP), устройство «Подъезд · Звонок (видео)» в Подъезде.
 - Помощники `input_boolean.doorbell_record_motion` (вкл), `doorbell_notify_phones` (вкл), `doorbell_notify_station` (выкл), `doorbell_hall_light` (выкл).
