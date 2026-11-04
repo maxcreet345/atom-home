@@ -10,4 +10,8 @@ export interface ActiveModule { def: ModuleDef; entities: ModuleEntities; label:
 export function activeModules(registry: Registry, config: HouseConfig): ActiveModule[] {
   return activeSpecs(registry, config, MODULES).map(a => ({ def: MODULES.find(m => m.id === a.spec.id)!, entities: a.entities, label: a.label, options: a.options }));
 }
-export type { ModuleDef, ModuleEntities, ModuleOptions } from './types.ts';
+/** Entity ids that active modules draw inside their own cards. */
+export function claimedEntities(registry: Registry, config: HouseConfig, modules: ActiveModule[] = activeModules(registry, config)): Set<string> {
+  return new Set(modules.flatMap(m => m.def.claims?.(m.entities) ?? []));
+}
+export type { ModuleDef, ModuleEntities, ModuleOptions, ModuleSheetProps, TileState } from './types.ts';

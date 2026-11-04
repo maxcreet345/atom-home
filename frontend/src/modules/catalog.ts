@@ -19,17 +19,35 @@ export const boilerEbusSpec: ModuleSpec = {
     return { label: dev?.name ?? 'eBUS', entities: { flow, pressure, return: find(reg, /ebusd?.*returntemp/i), flame: find(reg, /ebusd?.*flame$/i), hwc: find(reg, /ebusd?.*hwctemp_temp$/i), flowSet: find(reg, /number\..*(podachi|flow).*ustanovka|number\..*flow_temp/i), hwcSet: find(reg, /number\..*(gvs|hwc).*ustanovka|number\..*hwc_temp/i) } };
   },
 };
-/** Live video from the go2rtc add-on through its ingress (MSE). Detected by the Supervisor-named generic camera `camera.<slug>_go2rtc`. */
+/** Functions of a Xiaomi MIoT camera (hass-xiaomi-miot + the owner's template helpers) that the camera sheet draws; matched by entity suffix inside the camera's HA device. */
+export const CAMERA_CONTROL_ROLES: ReadonlyArray<{ role: string; domain: string; suffix: RegExp }> = [
+  { role: 'power', domain: 'switch', suffix: /_power$/ }, { role: 'night', domain: 'select', suffix: /_night_mode$/ }, { role: 'hdr', domain: 'select', suffix: /_hdr$/ },
+  { role: 'tracking', domain: 'switch', suffix: /_human_tracking$/ }, { role: 'petTracking', domain: 'switch', suffix: /_pet_tracking$/ }, { role: 'cruise', domain: 'switch', suffix: /_cruise$/ },
+  { role: 'motion', domain: 'switch', suffix: /_motion_detection$/ }, { role: 'motionSens', domain: 'select', suffix: /_motion_sensitivity$/ }, { role: 'alarmInterval', domain: 'number', suffix: /_alarm_interval$/ },
+  { role: 'aiHuman', domain: 'switch', suffix: /_ai_human$/ }, { role: 'aiMotion', domain: 'switch', suffix: /_ai_motion$/ }, { role: 'moveSens', domain: 'select', suffix: /_move_sensitivity$/ },
+  { role: 'aiPet', domain: 'switch', suffix: /_ai_pet$/ }, { role: 'aiFace', domain: 'switch', suffix: /_ai_face$/ }, { role: 'aiBabycry', domain: 'switch', suffix: /_ai_babycry$/ }, { role: 'aiSound', domain: 'switch', suffix: /_ai_sound$/ }, { role: 'soundSens', domain: 'select', suffix: /_sound_sensitivity$/ },
+  { role: 'volume', domain: 'number', suffix: /_volume$/ }, { role: 'mute', domain: 'switch', suffix: /_mute$/ },
+  { role: 'watermark', domain: 'switch', suffix: /_watermark$/ }, { role: 'distortion', domain: 'switch', suffix: /_distortion$/ }, { role: 'rotation', domain: 'number', suffix: /_rotation$/ }, { role: 'colorNight', domain: 'switch', suffix: /_color_night$/ }, { role: 'indicator', domain: 'light', suffix: /_indicator$/ },
+  { role: 'recording', domain: 'select', suffix: /_recording_mode$/ }, { role: 'sdStatus', domain: 'sensor', suffix: /_sd_status$/ }, { role: 'sdFree', domain: 'sensor', suffix: /_sd_free$/ }, { role: 'sdUsed', domain: 'sensor', suffix: /_sd_used$/ }, { role: 'info', domain: 'button', suffix: /_info$/ },
+];
+/** Live video from the go2rtc add-on through its ingress (MSE). Detected by the Supervisor-named generic camera `camera.<slug>_go2rtc`; the functions come from a Xiaomi MIoT camera device (chuangmi.camera.*). */
 export const cameraGo2rtcSpec: ModuleSpec = {
   id: 'camera_go2rtc', titleKey: 'module.camera_go2rtc', placement: [],
-  roles: [{ role: 'camera', labelKey: 'module.camera.entity', required: true }],
+  roles: [{ role: 'camera', labelKey: 'module.camera.entity', required: true }, ...CAMERA_CONTROL_ROLES.map(r => ({ role: r.role, labelKey: `module.camera.role.${r.role}`, required: false }))],
   options: [{ key: 'addon', labelKey: 'module.camera.addon', required: true, placeholder: 'a1b2c3d4_go2rtc' }, { key: 'stream', labelKey: 'module.camera.stream', required: false, placeholder: 'auto' }, { key: 'streamHd', labelKey: 'module.camera.streamHd', required: false }],
   detect(reg) {
     const cam = reg.entities.find(e => addonFromEntity(e.entity_id) && !e.disabled_by && reg.states[e.entity_id]);
-    if (!cam) return null;
-    const dev = reg.devices.find(d => d.id === cam.device_id);
-    const friendly = reg.states[cam.entity_id]?.attributes.friendly_name;
-    return { label: dev?.name ?? (typeof friendly === 'string' ? friendly : 'go2rtc'), entities: { camera: cam.entity_id }, options: { addon: addonFromEntity(cam.entity_id)! } };
+    const funcDev = reg.devices.find(d => /camera/i.test(d.model ?? '') && reg.entities.some(e => e.device_id === d.id && e.platform === 'xiaomi_miot'));
+    if (!cam && !funcDev) return null;
+    const entities: ModuleEntities = {};
+    if (cam) entities.camera = cam.entity_id;
+    if (funcDev) {
+      const own = reg.entities.filter(e => e.device_id === funcDev.id && !e.disabled_by && reg.states[e.entity_id]);
+      for (const r of CAMERA_CONTROL_ROLES) { const hit = own.find(e => e.entity_id.startsWith(r.domain + '.') && r.suffix.test(e.entity_id)); if (hit) entities[r.role] = hit.entity_id; }
+    }
+    const dev = cam ? reg.devices.find(d => d.id === cam.device_id) : funcDev;
+    const friendly = cam ? reg.states[cam.entity_id]?.attributes.friendly_name : undefined;
+    return { label: dev?.name ?? (typeof friendly === 'string' ? friendly : 'go2rtc'), entities, options: cam ? { addon: addonFromEntity(cam.entity_id)! } : {} };
   },
 };
 /** Xiaomi MIOT pet feeder (hass-xiaomi-miot): `button.<prefix>pet_food_out` plus the sibling sensors/switches by the same prefix. */

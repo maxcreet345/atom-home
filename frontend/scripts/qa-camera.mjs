@@ -1,0 +1,58 @@
+// Camera card QA on the Criuleni camera snapshot (preview host, commands rejected): home tile, sheet, settings page, closed lens — phone and tablet.
+// usage: node scripts/qa-camera.mjs <outDir>
+import { chromium } from '../node_modules/playwright/index.mjs';
+import { createServer } from 'node:http';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { resolve, extname } from 'node:path';
+const root = resolve(import.meta.dirname, '..'), dist = resolve(root, 'dist-preview');
+const out = resolve(process.argv[2] ?? resolve(root, 'evidence/camera-c700')); await mkdir(out, { recursive: true });
+const fixture = JSON.parse(await readFile(resolve(root, '../private/fixtures/criuleni-camera-20261104.json'), 'utf8'));
+const config = { schemaVersion: 1, home: { name: 'Мой дом', language: 'ru', theme: 'light' }, modules: { camera_go2rtc: { entities: { camera: 'camera.entrance_camera' }, options: { addon: 'a889bffc_go2rtc', stream: 'entrance_camera_h264', streamHd: 'entrance_camera_hd' } } } };
+let served = JSON.stringify(fixture);
+const server = createServer(async (req, res) => { try { const u = new URL(req.url, 'http://l'); if (u.pathname === '/') { res.setHeader('content-type', 'text/html'); res.end('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;overflow:hidden;background:#000}#root{height:100%}</style><div id="root"></div><script type="module">import "/atom-preview.js";window.ready=true</script>'); return; } if (u.pathname === '/fixture.json') { res.setHeader('content-type', 'application/json'); res.end(served); return; } const p = resolve(dist, '.' + decodeURIComponent(u.pathname)); res.setHeader('content-type', ({ '.js': 'application/javascript', '.css': 'text/css', '.webp': 'image/webp' })[extname(p)] ?? 'application/octet-stream'); res.end(await readFile(p)); } catch { res.statusCode = 404; res.end(); } });
+await new Promise(r => server.listen(0, '127.0.0.1', r)); const origin = 'http://127.0.0.1:' + server.address().port;
+const browser = await chromium.launch(); const report = { checks: [], errors: [] };
+const check = (name, ok, extra = '') => { report.checks.push({ name, ok, extra }); console.log(`${ok ? '✔' : '✖'} ${name}${extra ? ' — ' + extra : ''}`); };
+try {
+  for (const [w, h, label] of [[402, 874, 'phone'], [1070, 764, 'tablet'], [698, 751, 'open']]) {
+    const page = await browser.newPage({ viewport: { width: w, height: h } }); page.on('pageerror', e => report.errors.push(`${label}: ${e.message}`)); page.on('console', m => { if (m.type() === 'error' && !/404/.test(m.text())) report.errors.push(`${label} console: ${m.text()}`); }); // camera_proxy frames are 404 on the preview host
+    await page.goto(origin); await page.waitForFunction(() => window.ready);
+    await page.evaluate(async cfg => { const fx = await (await fetch('/fixture.json')).json(); await window.mountPreview(document.getElementById('root'), fx, cfg); }, config);
+    await page.waitForSelector('.at-shell'); await page.waitForTimeout(700);
+    const shot = async name => { await page.waitForTimeout(450); await page.screenshot({ path: resolve(out, `${label}-${name}.png`) }); };
+    await shot('home');
+    const tile = await page.evaluate(() => { const t = document.querySelector('.hm-camera-tile.is-large'); return t ? { line: t.querySelector('.hm-camera-caption small')?.textContent, badge: !!t.querySelector('.at-cam-badge'), closed: t.classList.contains('is-closed') } : null; });
+    check(`${label}: home tile second line`, tile?.line === 'Слежение за человеком' && tile.badge === true, JSON.stringify(tile));
+    const systems = await page.evaluate(() => { location.hash = '#systems'; return new Promise(r => setTimeout(() => r([...document.querySelectorAll('.hm-card')].map(c => c.textContent).filter(x => /ИИ|Патрул|Слежен|Время на картинке|Детекция/.test(x)).length), 400)); });
+    check(`${label}: no camera switches in Systems`, systems === 0, `${systems} leftover tiles`);
+    await page.evaluate(() => { location.hash = '#home?device=e%3Acamera.entrance_camera'; }); await page.waitForSelector('.at-cam'); await shot('sheet');
+    const sheet = await page.evaluate(() => { const s = document.querySelector('.at-cam'); const rows = [...s.querySelectorAll('.ah-row strong')].map(x => x.textContent); return { wide: s.classList.contains('is-split'), power: s.querySelector('.ah-power strong')?.textContent, hero: s.querySelector('.ah-hero-main b')?.textContent, status: s.querySelector('.ah-hero-main small')?.textContent, modes: [...s.querySelectorAll('.ah-modes-title')].map(x => x.textContent), rows, tools: [...s.querySelectorAll('.at-cam-tool')].map(b => b.textContent + (b.disabled ? '(off)' : '')), gear: !!s.querySelector('.at-cam-gear') }; });
+    check(`${label}: sheet power/hero`, sheet.power === 'Закрыть объектив' && sheet.hero === 'Включена', `${sheet.power} / ${sheet.hero} / ${sheet.status}`);
+    check(`${label}: modes night+hdr`, sheet.modes.join(',') === 'Ночное видение,HDR', sheet.modes.join(','));
+    check(`${label}: rows`, sheet.rows.length >= 16 && sheet.rows.includes('Слежение за человеком') && sheet.rows.includes('Плач ребёнка') && sheet.rows.includes('Громкость динамика') && !sheet.rows.includes('Время на картинке'), `${sheet.rows.length} rows: ${sheet.rows.join(' | ')}`);
+    check(`${label}: tools`, sheet.tools.join(',') === 'Снимок,Разговор(off),Во весь экран', sheet.tools.join(','));
+    check(`${label}: layout ${label === 'tablet' ? 'two columns' : 'one column'}`, sheet.wide === (label === 'tablet'), `is-wide=${sheet.wide}`);
+    await page.click('.at-cam-gear'); await page.waitForTimeout(300); await shot('settings');
+    const settings = await page.evaluate(() => { const s = document.querySelector('.at-cam'); return { page: s.dataset.page, rows: [...s.querySelectorAll('.ah-row strong')].map(x => x.textContent), kv: [...s.querySelectorAll('.at-cam-kv')].map(x => x.textContent), title: s.querySelector('h2, .at-cam-h3')?.textContent }; });
+    check(`${label}: settings page`, settings.page === 'settings' && settings.rows.includes('Время на картинке') && settings.rows.includes('Перевернуть изображение') && settings.kv.some(x => x.includes('Нет карты')) && settings.kv.some(x => x.includes('H.265')), `${settings.title}: ${settings.rows.join(' | ')} // ${settings.kv.join(' | ')}`);
+    await page.click('[aria-label="Назад"]'); await page.waitForTimeout(300);
+    const back = await page.evaluate(() => document.querySelector('.at-cam')?.dataset.page); check(`${label}: back to main`, back === 'main', String(back));
+    // closing the lens asks for confirmation; the preview host rejects the command
+    await page.click('.ah-power'); await page.waitForTimeout(300); const confirmText = await page.evaluate(() => document.querySelector('.hm-confirm p')?.textContent ?? '');
+    check(`${label}: close lens asks first`, confirmText.includes('Закрыть объектив'), confirmText); await shot('confirm');
+    await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+    // closed lens: swap the snapshot and remount
+    served = JSON.stringify({ ...fixture, states: { ...fixture.states, 'switch.entrance_camera_power': { ...fixture.states['switch.entrance_camera_power'], state: 'off' } } });
+    await page.evaluate(async cfg => { location.hash = '#home'; const fx = await (await fetch('/fixture.json')).json(); await window.mountPreview(document.getElementById('root'), fx, cfg); }, config); await page.waitForTimeout(600); await shot('home-closed');
+    const closedTile = await page.evaluate(() => { const t = document.querySelector('.hm-camera-tile.is-large'); return t ? { closed: t.classList.contains('is-closed'), line: t.querySelector('.hm-camera-caption small')?.textContent, wait: t.querySelector('.hm-camera-wait span')?.textContent } : null; });
+    check(`${label}: closed lens tile`, closedTile?.closed === true && closedTile.line === 'Объектив закрыт', JSON.stringify(closedTile));
+    await page.evaluate(() => { location.hash = '#home?device=e%3Acamera.entrance_camera'; }); await page.waitForSelector('.at-cam'); await shot('sheet-closed');
+    const closedSheet = await page.evaluate(() => { const s = document.querySelector('.at-cam'); return { power: s.querySelector('.ah-power strong')?.textContent, hero: s.querySelector('.ah-hero-main b')?.textContent, stage: s.querySelector('.at-cam-stage-closed span')?.textContent, snapshotOff: s.querySelector('.at-cam-snapshot')?.disabled }; });
+    check(`${label}: closed lens sheet`, closedSheet.power === 'Открыть объектив' && closedSheet.hero === 'Объектив закрыт' && closedSheet.stage === 'Объектив закрыт' && closedSheet.snapshotOff === true, JSON.stringify(closedSheet));
+    served = JSON.stringify(fixture);
+    await page.close();
+  }
+} finally { await browser.close(); server.close(); }
+await writeFile(resolve(out, 'report.json'), JSON.stringify(report, null, 2));
+console.log(`${report.checks.filter(c => c.ok).length}/${report.checks.length} checks, ${report.errors.length} errors`); for (const e of report.errors) console.log('  ' + e);
+process.exit(report.checks.every(c => c.ok) && report.errors.length === 0 ? 0 : 1);

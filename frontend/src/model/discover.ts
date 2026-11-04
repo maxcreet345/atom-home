@@ -25,8 +25,8 @@ const ref = (e: EntityRow, s: StateRow | undefined, kind: Kind | null, nameOverr
 });
 const deviceName = (d: DeviceRow) => d.name?.trim() || d.model || d.id;
 
-/** Build the household model from the HA registries, the live states and the house configuration. Pure; safe to call on every state change. */
-export function discover(reg: Registry, config: HouseConfig): Home {
+/** Build the household model from the HA registries, the live states and the house configuration. `claimed` entities belong to a module's card. Pure; safe to call on every state change. */
+export function discover(reg: Registry, config: HouseConfig, claimed: ReadonlySet<string> = new Set()): Home {
   const warnings: string[] = [];
   const devices = new Map(reg.devices.map(d => [d.id, d]));
   const byDevice = new Map<string, EntityRow[]>();
@@ -39,7 +39,8 @@ export function discover(reg: Registry, config: HouseConfig): Home {
   }
   const cards: HomeDevice[] = [];
   const roomOf = (e: EntityRow, d?: DeviceRow) => e.area_id ?? d?.area_id ?? NO_ROOM;
-  const entityHidden = (id: string) => config.entities[id]?.hidden === true;
+  // Hidden by the owner, or shown by a module inside its own card (claimed): never a card of its own.
+  const entityHidden = (id: string) => config.entities[id]?.hidden === true || claimed.has(id);
   const entityName = (id: string) => config.entities[id]?.name;
 
   for (const [deviceId, list] of byDevice) {

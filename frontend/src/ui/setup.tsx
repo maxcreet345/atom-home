@@ -6,7 +6,7 @@ import { SECTIONS, type Kind } from '../model/kinds.ts';
 import { normaliseConfig, type HouseConfig, type CustomButton } from '../model/config.ts';
 import { languages, type T, type Key } from '../i18n/index.ts';
 import { exportConfig, importConfig, type PhotoStore } from '../runtime/store.ts';
-import { MODULES } from '../modules/index.ts';
+import { MODULES, claimedEntities } from '../modules/index.ts';
 import { stockRoomArt } from './art.ts';
 import { artOf } from './cards.tsx';
 import { DeviceArt, DEVICE_ART_TYPES } from './device-art.tsx';
@@ -20,7 +20,7 @@ export interface SetupProps { registry: Registry; config: HouseConfig; onChange:
 export function Setup({ registry, config, onChange, admin, t, lang, storeLabel, warnings, photos }: SetupProps) {
   const [tab, setTab] = useState<Tab>('devices');
   const [note, setNote] = useState('');
-  const home = useMemo(() => discover(registry, config), [registry, config]);
+  const home = useMemo(() => discover(registry, config, claimedEntities(registry, config)), [registry, config]);
   /** «Saved» appears only after the store confirms; a refused save is reported by the panel and clears the note. */
   const commit = (next: HouseConfig, done: string) => { setNote(t('setup.saving')); Promise.resolve(onChange(next)).then(() => setNote(done), () => setNote('')); };
   const patch = (fn: (c: HouseConfig) => void) => { const next = structuredClone(config); fn(next); commit(normaliseConfig(next).config, t('setup.saved')); };

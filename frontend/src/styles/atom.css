@@ -29,3 +29,27 @@
 .hm-shell .hm-thumb,.hm-shell .hm-sheet-photo,.hm-shell .at-light-art{position:relative}.hm-shell .at-light-art .at-device-art{opacity:.9}.hm-shell .at-light.is-on .at-light-art .at-device-art{opacity:1}
 .hm-shell .at-module-art{position:relative;width:44px;height:44px;flex:none;border-radius:14px;overflow:hidden;box-shadow:inset 0 1px 0 #ffffff1a}.hm-shell .at-module-art.is-on{box-shadow:0 0 0 2px #f2c27999}
 .hm-shell .at-feeder-editor{display:grid;gap:10px;padding:12px;border-radius:14px;background:var(--hm-inset,#ffffff0a);border:1px solid var(--hm-line)}.hm-shell .at-feeder-edit-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.hm-shell .at-feeder-edit{align-self:flex-start}
+/* camera module sheet: video + tools + state on the left (or on top), controls on the right (or below); settings on a second page */
+.hm-shell .hm-sheet.is-split{width:min(1040px,100%);max-width:1040px}
+.hm-shell .at-cam-left,.hm-shell .at-cam-right{display:contents}
+.hm-shell .hm-sheet.is-split .at-cam{display:grid;grid-template-columns:minmax(0,1.15fr) 380px;gap:0;padding:0}
+.hm-shell .hm-sheet.is-split .at-cam-left,.hm-shell .hm-sheet.is-split .at-cam-right{display:flex;flex-direction:column;gap:12px;padding:18px 16px 24px;min-width:0}
+.hm-shell .hm-sheet.is-split .at-cam-right{border-left:1px solid var(--ah-line);max-height:calc(var(--hm-height,100dvh) - 48px);overflow:auto}
+.hm-shell .at-cam-head-btns{display:flex;gap:8px;margin-left:auto;flex:none}
+.hm-shell .hm-sheet.is-split .at-cam-right .at-cam-head-btns{justify-content:flex-end}
+.hm-shell .at-cam .hm-sheet-head{gap:12px}
+.hm-shell .at-cam .hm-sheet-head>div:not(.at-cam-head-btns){flex:1;min-width:0}
+.hm-shell .at-cam-stage{margin:0}
+.hm-shell .at-cam-tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.hm-shell button.at-cam-tool{display:flex;flex-direction:column;align-items:center;gap:6px;padding:4px 0;color:var(--ah-muted);font-size:12px;text-align:center;background:none;border:0;cursor:pointer}
+.hm-shell .at-cam-tool b{display:grid;place-items:center;width:52px;height:52px;border-radius:50%;background:var(--ah-group);color:var(--ah-ink);box-shadow:0 1px 2px #00000010;transition:transform .32s var(--ah-spring)}
+.hm-shell .at-cam-tool:active:not(:disabled) b{transform:scale(.95)}
+.hm-shell button.at-cam-tool:disabled{opacity:.45;cursor:default}
+.hm-shell .at-cam-title{min-height:40px;padding:12px 16px 2px;font-size:13px;color:var(--ah-muted)}
+.hm-shell .at-cam-kv{display:flex;justify-content:space-between;gap:10px;min-height:44px;padding:10px 16px;background:var(--ah-group);font-size:14px;color:var(--ah-ink)}.hm-shell .at-cam-kv small{font-size:14px;color:var(--ah-muted);text-align:right}
+.hm-shell .at-cam-h3{margin:0;font-size:18px;font-weight:650}
+.hm-shell .at-cam-note{margin:0}
+.hm-shell .at-cam-stage-closed{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:6px;color:#9fb1c5;font-size:14px;background:linear-gradient(160deg,#2a3245,#141a26)}
+.hm-shell .hm-camera-tile.is-closed .hm-camera-frame{background:linear-gradient(160deg,#2a3245,#141a26)}
+.hm-shell .at-cam-badge{position:absolute;top:10px;right:10px;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#000a;color:#fff}
+.hm-shell .at-cam-stage:fullscreen{background:#000}.hm-shell .at-cam-stage:fullscreen video{object-fit:contain}

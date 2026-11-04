@@ -41,3 +41,30 @@ test('go2rtc camera detected in the Criuleni snapshot; options from config win',
   const noAddon = defaultConfig(); noAddon.modules.camera_go2rtc = { entities: { camera: 'camera.chuangmi_081ae2_fdd3_camera_control' } };
   assert.ok(activeSpecs(fixture!, noAddon).some(a => a.spec.id === 'camera_go2rtc'), 'detected add-on slug still applies when only the camera is overridden');
 });
+
+import { cameraClaims, cameraTileState, sdStatusLabel } from '../src/modules/camera-state.ts';
+import { discover } from '../src/model/discover.ts';
+import { translator } from '../src/i18n/index.ts';
+const camPath = resolve(import.meta.dirname, '../../private/fixtures/criuleni-camera-20261104.json');
+const cam = existsSync(camPath) ? JSON.parse(readFileSync(camPath, 'utf8')) : null;
+
+test('C700: functions are matched to roles, claimed by the card and gone from «Systems»', { skip: !cam }, () => {
+  const match = cameraGo2rtcSpec.detect(cam!); assert.ok(match);
+  assert.equal(match!.entities.camera, undefined, 'no Supervisor-named go2rtc camera in this snapshot: the camera comes from the config');
+  assert.equal(match!.entities.power, 'switch.entrance_camera_power'); assert.equal(match!.entities.night, 'select.entrance_camera_night_mode'); assert.equal(match!.entities.indicator, 'light.entrance_camera_indicator');
+  assert.equal(match!.entities.mute, 'switch.entrance_camera_mute'); assert.equal(match!.entities.volume, 'number.entrance_camera_volume'); assert.equal(match!.entities.info, 'button.entrance_camera_info');
+  assert.equal(Object.keys(match!.entities).length, 29, 'all 29 control roles of the C700');
+  const cfg = defaultConfig(); cfg.modules.camera_go2rtc = { entities: { camera: 'camera.entrance_camera' }, options: { addon: 'a889bffc_go2rtc', stream: 'entrance_camera_h264', streamHd: 'entrance_camera_hd' } };
+  const active = activeSpecs(cam!, cfg).find(a => a.spec.id === 'camera_go2rtc'); assert.ok(active); assert.equal(active!.entities.camera, 'camera.entrance_camera');
+  const claimed = new Set(cameraClaims(active!.entities)); assert.equal(claimed.size, 29); assert.ok(claimed.has('switch.entrance_camera_ai_face'));
+  const before = discover(cam!, cfg), after = discover(cam!, cfg, claimed);
+  assert.ok(before.devices.some(d => d.key === 'e:switch.entrance_camera_power'), 'without the claim the switch is a card');
+  assert.ok(after.devices.some(d => d.key === 'e:camera.entrance_camera'), 'the camera card stays');
+  assert.ok(!after.devices.some(d => d.key === 'e:switch.entrance_camera_power' || d.key === 'e:switch.entrance_camera_ai_face' || d.key === 'e:light.entrance_camera_indicator' || d.key.startsWith('d:9ae05aa2')), 'its functions are no longer cards of their own');
+  assert.ok(after.devices.some(d => d.key === 'e:camera.entrance_doorbell'), 'the doorbell is untouched');
+  const t = translator('ru'), tx = (k: string) => t(k as never);
+  assert.deepEqual(cameraTileState(cam!.states, active!.entities, tx), { line: 'Слежение за человеком', closed: false, icon: 'motion' });
+  const states = { ...cam!.states, 'switch.entrance_camera_power': { ...cam!.states['switch.entrance_camera_power'], state: 'off' } };
+  assert.deepEqual(cameraTileState(states, active!.entities, tx), { line: 'Объектив закрыт', closed: true, icon: null });
+  assert.equal(sdStatusLabel('non existent', tx), 'Нет карты'); assert.equal(sdStatusLabel('normal', tx), 'Работает'); assert.equal(sdStatusLabel('broken', tx), 'Проблема с картой');
+});
