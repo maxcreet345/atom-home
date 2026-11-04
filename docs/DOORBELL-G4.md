@@ -58,7 +58,7 @@
 2. HA: Generic Camera + автоматизации снимков/клипов + media_source; панель: лента событий с миниатюрами и клипами; видео для не-админов HA (ingress add-on доступен только администраторам — на Windows-ПК под Daniela живого видео нет): `camera/webrtc/offer` через встроенный go2rtc HA или HLS Generic Camera.
 3. NAS-архив как media, уведомления как переключатели.
 
-## 6. Этап 2 — спецификация (04.11.2026, ждёт «да»)
+## 6. Этап 2 — спецификация (04.11.2026, принята; сделано в v1.5.0–1.5.2, см. §7)
 Макет: раздел 6 в https://claude.ai/artifact/2fPZps6QMEkxKscdyQitY1. Проверено в HA 2026.10.4: есть `stream`, `go2rtc` (core), `generic`, `media_source`, `ffmpeg`; `/media` в allowlist и пока пуст; `camera.record`/`camera.snapshot` доступны; add-on go2rtc 1.9.15 в host-сети (RTSP 8554 на хосте). Телефоны с приложением HA: OnePlus Open, Oppo N2 Flip, iPhone Daniela (13R пока без приложения — киоск). Станции: `media_player.living_yandex_max`, `media_player.office_yandex_lite`. Свет прихожей: `light.hall_light`.
 
 ### HA (делаю через API HA из браузера под админом, ничего руками в YAML)
@@ -82,3 +82,16 @@
 
 ### Проверка
 QA-скрипт с фикстурой `/media` (список файлов) на 6 размерах; на доме — имитация звонка через `POST /api/states` (файлы появятся в `/media`, лента покажет клип), прогон на всех устройствах.
+
+## 7. Этап 2 — сделано (04.11.2026, v1.5.0 → v1.5.2)
+HA (через API под админом, без YAML):
+- Generic Camera `camera.entrance_doorbell_video` (entry «Подъезд · Звонок (видео, go2rtc)», stream `rtsp://127.0.0.1:8554/entrance_doorbell`, без still URL, framerate 2, TCP), устройство «Подъезд · Звонок (видео)» в Подъезде.
+- Помощники `input_boolean.doorbell_record_motion` (вкл), `doorbell_notify_phones` (вкл), `doorbell_notify_station` (выкл), `doorbell_hall_light` (выкл).
+- Автоматизации (id `doorbell_*`): «Звонок — снимок и клип» (queued), «Движение — снимок и клип» (single + пауза 45 с), «Звонок — push на телефоны» (Open, Oppo N2 Flip, iPhone Daniela; снимок `/media/doorbell/last_ring.jpg`, тап открывает панель), «Звонок — объявить на Станции» (Макс в гостиной, text), «Звонок — свет в прихожей» (после заката, 3 мин). Папка **`/media/doorbell/ГГГГ-ММ-ДД/ЧЧ-ММ-СС_ring|motion.jpg|mp4`** (ASCII вместо «Подъезд» — проще для media_source). Клип 12 с (3–5 с уходит на пробуждение звонка). Чистка старше 30 дней пока не сделана (нужен shell_command в YAML) — ~1 МБ на клип, ~40 движений/день ≈ 1,2 ГБ/мес.
+Панель:
+- Роли `video`, `recordMotion`, `notifyPhones`, `notifyStation`, `hallLight` (детект по id), опция `mediaDir`.
+- Лента: события recorder + файлы за 7 дней (`media_source/browse_media` по дням, ±10 с), миниатюры (`resolve_media`), бейдж 0:12; тап — клип/снимок на месте эфира с «К эфиру» (поток go2rtc при этом останавливается — батарея). Повторное чтение через 20 с после звонка.
+- Архив: дни и сетка миниатюр с фильтром. Настройки: «Уведомления» (3 переключателя), «Запись» (движение, папка).
+- WebRTC через HA (`camera/webrtc/*`, `Host.subscribe`) — для не-админов и как запасной путь при ошибке ingress; TURN даёт Nabu Casa/Cloudflare. Соединение 7–9 с, кадры идут рывками через TURN (go2rtc core тянет RTSP у add-on), но эфир есть.
+Проверка 04.11 13:07–13:25: имитация звонка → файлы `13-07-49_ring.jpg/mp4`, push пришёл на Open («Подъезд · Звонок в дверь · 13:07»), лента с клипом на Pad, 13R, Open, встроенном браузере; клип играет на Pad с «К эфиру»; настоящее движение 13:21 записало клип; Windows под Daniela (не админ) — эфир WebRTC 1920 px, лента с миниатюрами. Пробы «звонка» через `POST /api/states` в истории: 12:11×2, 12:35, 12:41, 12:46, 12:48, 13:07.
+Не сделано из спецификации: постер плитки из /media (достаточно снимка HA), чистка архива, NAS (этап 3).
