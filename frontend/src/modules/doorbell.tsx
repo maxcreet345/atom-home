@@ -46,13 +46,16 @@ function DoorbellSheet({ device, registry, entities, options, host, t, lang, run
   useEffect(() => { if (!note) return; const id = setTimeout(() => setNote(''), 4000); return () => clearTimeout(id); }, [note]);
   // The week of rings and motion from HA's recorder (history, the same call the energy sparklines use); refreshed a moment after a new ring arrives.
   const ringState = ring?.state;
+  // The shell hands a fresh host object to every render, so the host lives in a ref and the effect depends only on the entities and the last ring (a busy house re-renders every second: an effect keyed on host would restart before its delay elapsed and never fetch).
+  const hostRef = useRef(host); hostRef.current = host;
   useEffect(() => {
-    const ws = host.ws; if (!ws || (!entities.ring && !entities.motion)) { setEvents([]); return; }
+    if (!hostRef.current.ws || (!entities.ring && !entities.motion)) { setEvents([]); return; }
     let gone = false;
-    const id = setTimeout(() => { const end = new Date(), start = new Date(end.getTime() - 7 * 86_400_000);
-      ws({ type: 'history/history_during_period', start_time: start.toISOString(), end_time: end.toISOString(), entity_ids: [entities.ring, entities.motion].filter(Boolean), minimal_response: true, no_attributes: true, significant_changes_only: false }).then(rows => { if (!gone) setEvents(parseHistory(rows, entities, start.getTime())); }).catch(() => { if (!gone) setEvents([]); }); }, ringState === undefined ? 0 : 1500);
+    const fetchEvents = () => { const ws = hostRef.current.ws; if (!ws) return; const end = new Date(), start = new Date(end.getTime() - 7 * 86_400_000);
+      ws({ type: 'history/history_during_period', start_time: start.toISOString(), end_time: end.toISOString(), entity_ids: [entities.ring, entities.motion].filter(Boolean), minimal_response: true, no_attributes: true, significant_changes_only: false }).then(rows => { if (!gone) setEvents(parseHistory(rows, entities, start.getTime())); }).catch(() => { if (!gone) setEvents(e => e ?? []); }); };
+    const id = setTimeout(fetchEvents, 1500); fetchEvents();
     return () => { gone = true; clearTimeout(id); };
-  }, [host, entities.ring, entities.motion, ringState]);
+  }, [entities.ring, entities.motion, ringState]);
   /** Mute switches of HomeKit: «on» = muted, so the tool lights up when the thing is audible. */
   const muteTool = (role: string, label: string, icon: string) => {
     const r = ref(role); if (!r) return null; const a = entityActions(r)[0]; if (!a) return null; const audible = r.state !== 'on';
