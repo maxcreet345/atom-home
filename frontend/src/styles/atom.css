@@ -304,7 +304,7 @@
 .hm-shell .ah-tile.kind-light .ah-glyph{width:42px;height:42px;background:#ffffffaa;color:#6e6e73}.hm-shell .ah-tile.kind-light .ah-glyph svg{width:24px;height:24px}
 .hm-shell .ah-tile.kind-light.is-on .ah-glyph{background:#fff;color:#f0b400}
 .hm-shell .ah-tile.kind-light .ah-tile-text strong{font-size:15px;font-weight:620;-webkit-line-clamp:2}
-.hm-shell .ah-tile.kind-light .ah-tile-text small{font-size:12.5px;opacity:.85}
+.hm-shell .ah-tile.kind-light .ah-tile-text small{font-size:13px;opacity:.85}
 .hm-shell .ah-tile.kind-light .ah-tile-more{opacity:.5;top:8px;right:8px}
 .hm-shell.ah-shell[data-theme="dark"] .ah-tile.kind-light .ah-glyph{background:#ffffff2e;color:#fff}.hm-shell.ah-shell[data-theme="dark"] .ah-tile.kind-light.is-on .ah-glyph{background:#fff;color:#f0b400}
 /* the tablet sheet as in the mock: slider centred with the five levels under it on the left, temperature and ambient on the right */

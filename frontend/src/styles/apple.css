@@ -44,7 +44,7 @@
     linear-gradient(160deg,#1f5658,#163b40 60%,#102c30);
   background-size:160px 160px,auto,auto,auto}
 .hm-shell .hm-main{position:relative;z-index:1;min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain;padding:12px var(--ah-pad) calc(var(--ah-pad) + 8px);scrollbar-width:thin}
-.is-narrow .hm-main{padding:8px 12px calc(84px + env(safe-area-inset-bottom))}
+.is-narrow .hm-main{padding:8px 12px calc(84px + env(safe-area-inset-bottom));scroll-padding-bottom:92px;overflow-x:hidden} /* F9: focus never lands under the tab bar; the rooms strip bleeds to the edge but the page never pans sideways */
 .hm-shell .hm-page{display:flex;flex-direction:column;gap:16px;max-width:1280px;margin-inline:auto}
 .hm-shell .hm-card{background:var(--ah-tile);border-radius:var(--ah-radius);color:var(--ah-ink);min-width:0}
 
@@ -73,10 +73,10 @@
 .hm-shell .hm-back{display:inline-flex;align-items:center;gap:2px;min-height:32px;padding:0 10px 0 2px;border-radius:999px;color:var(--ah-accent-ink);font-size:15px;font-weight:600;width:100%;justify-content:flex-start;margin-bottom:-6px}
 .hm-shell .hm-icon-btn{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--ah-tile);color:var(--ah-ink);font-size:20px;line-height:1;flex:none}
 .hm-shell .ah-head-btn{align-self:flex-start;margin-top:4px}
-.hm-shell .hm-badge{display:inline-flex;align-items:center;min-height:24px;padding:0 9px;border-radius:999px;font-size:12px;font-weight:600;background:var(--ah-tile);color:var(--ah-muted)}
+.hm-shell .hm-badge{display:inline-flex;align-items:center;min-height:24px;padding:0 8px;border-radius:999px;font-size:12px;font-weight:600;background:var(--ah-tile);color:var(--ah-muted)}
 .hm-shell .hm-badge.tone-danger{background:#ff3b3022;color:var(--ah-red)}.hm-shell .hm-badge.tone-calm{background:#30d15822;color:#1f9a44}
 .hm-shell .ah-segments,.hm-shell .hm-range-tabs{display:flex;gap:2px;padding:3px;border-radius:14px;background:var(--ah-tile);max-width:1280px;margin:-4px auto 12px;width:100%;overflow:auto;scrollbar-width:none}
-.hm-shell .ah-segments button,.hm-shell .hm-range-tabs button{flex:1;min-height:34px;padding:0 12px;border-radius:11px;font-size:14px;font-weight:600;color:var(--ah-ink);white-space:nowrap}
+.hm-shell .ah-segments button,.hm-shell .hm-range-tabs button{flex:1;min-height:34px;padding:0 12px;border-radius:12px;font-size:14px;font-weight:600;color:var(--ah-ink);white-space:nowrap}
 .hm-shell .ah-segments button.is-active,.hm-shell .hm-range-tabs button.is-active{background:var(--ah-group);color:var(--ah-ink);box-shadow:0 1px 3px #0000001f}
 .hm-shell.ah-shell[data-theme="dark"] .ah-segments button.is-active,.hm-shell.ah-shell[data-theme="dark"] .hm-range-tabs button.is-active{background:#ffffff33}
 .hm-shell .ah-segments.is-small{margin:0;width:auto}.hm-shell .ah-segments.is-small button{min-height:30px;font-size:13px}
@@ -428,6 +428,6 @@
 /* A11Y-1 (random sample #climate): the boiler module's captions on the inset tile and its amber warning text reach 4.5:1 */
 .hm-shell.ah-shell:not([data-theme="dark"]) .at-boiler-tile{--hm-muted:#525257}.hm-shell.ah-shell:not([data-theme="dark"]) .at-boiler-tile.is-warning strong,.hm-shell.ah-shell:not([data-theme="dark"]) .at-boiler-tile.is-warning>span{color:#8a4006}
 /* IA-2 of the audit (approved 04.11.2026): on a phone the rooms are one horizontal strip with snap, so the home face is one row shorter */
-.is-narrow .ah-rooms-strip .hm-room-grid{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -14px;padding:0 14px 6px!important;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-padding-left:14px}
+.is-narrow .ah-rooms-strip .hm-room-grid{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -12px;padding:0 12px 6px!important;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-padding-left:12px}
 .is-narrow .ah-rooms-strip .hm-room-grid::-webkit-scrollbar{display:none}
 .is-narrow .ah-rooms-strip .hm-room{flex:0 0 46%;scroll-snap-align:start;aspect-ratio:4/3}
