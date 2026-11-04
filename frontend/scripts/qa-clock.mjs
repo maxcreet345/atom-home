@@ -103,7 +103,7 @@ try {
     await page.evaluate(() => { window.fx.states['input_boolean.alarm_ringing'] = { ...window.fx.states['input_boolean.alarm_ringing'], state: 'on' }; window.fx.states['input_text.alarm_ringing'] = { ...window.fx.states['input_text.alarm_ringing'], state: 'a1|Детская|07:30|Дети|4' }; window.atomPreview.redraw(); });
     await page.waitForTimeout(500); await shot('alarm-banner');
     const ab = await page.evaluate(() => document.querySelector('.at-house-banner')?.textContent ?? null);
-    check(`${label}: alarm banner with room, time and repeats left`, !!ab && ab.includes('Будильник · Детская · 07:30') && ab.includes('ещё 4 повт.') && ab.includes('Стоп'), String(ab));
+    check(`${label}: alarm banner with room, time and repeats left`, !!ab && ab.includes('Будильник · Детская · 07:30') && /ещё 4 повтор(а|ов)?/.test(ab) && ab.includes('Стоп'), String(ab));
     await page.evaluate(() => { window.fx.states['input_boolean.alarm_ringing'] = { ...window.fx.states['input_boolean.alarm_ringing'], state: 'off' }; window.atomPreview.redraw(); });
     // settings: digital style persists per device
     await page.evaluate(() => { window.fx.states['input_boolean.timer_done'] = { ...window.fx.states['input_boolean.timer_done'], state: 'off' }; window.atomPreview.redraw(); location.hash = '#home?device=clock'; }); await page.waitForSelector('.at-clock'); await page.click('.at-clock .at-cam-gear'); await page.waitForTimeout(300); await shot('settings');

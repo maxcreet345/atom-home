@@ -84,7 +84,7 @@ try {
     await go(`#lights?device=e%3A${relay}`); await page.waitForSelector('.at-relay-hero'); await shot('relay');
     const rel = await page.evaluate(() => { const b = document.querySelector('.at-light-sheet'); return { hero: b.querySelector('.ah-hero-main b')?.textContent, sub: b.querySelector('.ah-hero-main small')?.textContent, glyphOn: b.querySelector('.at-relay-glyph')?.classList.contains('is-on'), power: b.querySelector('.ah-power strong')?.textContent, slider: !!b.querySelector('.at-vs') }; });
     const relayOn = fixture.states[relay].state === 'on';
-    check(`${label}: relay sheet — state, since, power row, no slider`, rel.hero === (relayOn ? 'Включено' : 'Выключено') && (!relayOn || /с \d\d:\d\d/.test(rel.sub ?? '')) && rel.glyphOn === relayOn && rel.power === (relayOn ? 'Выключить' : 'Включить') && !rel.slider, JSON.stringify(rel));
+    check(`${label}: relay sheet — state, since, power row, no slider`, rel.hero === (relayOn ? 'Включено' : 'Выключено') && (!relayOn || /с (\d+ [а-я]+\.?, )?\d\d:\d\d/.test(rel.sub ?? '')) && rel.glyphOn === relayOn && rel.power === (relayOn ? 'Выключить' : 'Включить') && !rel.slider, JSON.stringify(rel));
     const pend = await page.evaluate(() => ({ at: document.querySelector('.at-sleep')?.getAttribute('data-sleep'), text: document.querySelector('.at-sleep-at strong')?.textContent }));
     await page.click('.at-sleep-at .hm-pill'); await page.waitForTimeout(200); const cancel = await lastCall();
     check(`${label}: the relay shows «выключится в 17:40», cancel sends 0`, pend.at === '17:40' && /17:40/.test(pend.text ?? '') && cancel?.service === 'atom_home/light/sleep' && cancel?.data.minutes === 0, JSON.stringify({ pend, cancel: cancel?.data }));
