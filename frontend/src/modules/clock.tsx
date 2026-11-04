@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import type { ModuleDef, ModuleEntities } from './types.ts';
 import { clockSpec } from './catalog.ts';
-import { sunInfo, timerInfo, nearestTimer, fmtRemaining, toDuration, parseLabels, withLabel, labelText, weekNumber, PRESETS, QUICK_LABELS, readClockSettings, writeClockSettings, personState, initials, type ClockSettings, type TimerInfo } from './clock-state.ts';
+import { sunInfo, timerInfo, nearestTimer, fmtRemaining, toDuration, parseLabels, withLabel, labelText, weekNumber, PRESETS, NAMED_PRESETS, iconForLabel, dialMinutes, readClockSettings, writeClockSettings, personState, initials, type ClockSettings, type TimerInfo } from './clock-state.ts';
 import { Icon } from '../ui/primitives.tsx';
 import { Switch } from '../ui/cards.tsx';
 import type { Runner } from '../ui/sheet.tsx';
@@ -71,7 +71,8 @@ const CONDITIONS = ['clear-night', 'cloudy', 'fog', 'hail', 'lightning', 'lightn
 export function ClockSheet({ registry, entities, host, t, lang, runner, onClose, wide }: { registry: Registry; entities: ModuleEntities; host: Host; t: T; lang: Lang; runner: Runner; onClose: () => void; wide: boolean }) {
   const [page, setPage] = useState<'main' | 'settings'>('main');
   const [settings, setSettings] = useState(readClockSettings);
-  const [label, setLabel] = useState(''), [custom, setCustom] = useState<{ m: number; s: number } | null>(null), [note, setNote] = useState('');
+  const [label, setLabel] = useState(''), [dial, setDial] = useState<number | null>(null), [note, setNote] = useState('');
+  const dialRef = useRef<SVGSVGElement>(null), dragging = useRef(false);
   useTick(true);
   const tx = (k: string, p?: Record<string, string | number>) => t(k as Key, p);
   const now = new Date(), nowMs = now.getTime();
@@ -89,10 +90,16 @@ export function ClockSheet({ registry, entities, host, t, lang, runner, onClose,
   const busy = runner.busy.has('clock');
   const call = async (domain: string, service: string, data: Record<string, unknown>) => { try { await host.call(domain, service, data); } catch (e) { setNote(e instanceof Error ? e.message : String(e)); } };
   const saveLabel = (id: string, text: string, seconds: number) => entities.labels ? call('input_text', 'set_value', { entity_id: entities.labels, value: withLabel(labels, id, text, seconds) }) : Promise.resolve();
-  const start = async (totalSec: number) => {
+  const start = async (totalSec: number, withLabelText = label) => {
     const slot = timers.find(x => x.state === 'idle' || x.state === 'unknown'); if (!slot) { setNote(tx('clock.timer.full')); return; }
-    await saveLabel(slot.id, label, totalSec); await call('timer', 'start', { entity_id: slot.id, duration: toDuration(totalSec) }); setLabel(''); setCustom(null);
+    await saveLabel(slot.id, withLabelText, totalSec); await call('timer', 'start', { entity_id: slot.id, duration: toDuration(totalSec) }); setLabel(''); setDial(null);
   };
+  const names = Object.fromEntries(NAMED_PRESETS.map(p => [p.key, tx(`clock.preset.${p.key}`)]));
+  /** The dial: drag (or tap) anywhere on the ring to set minutes; the knob and the arc follow the finger. */
+  const dialAt = (ev: PointerEvent) => { const svg = dialRef.current; if (!svg) return; const r = svg.getBoundingClientRect(); setDial(dialMinutes(ev.clientX - r.left, ev.clientY - r.top, r.width / 2, r.height / 2) * 60); };
+  const dialDown = (ev: PointerEvent) => { dragging.current = true; (ev.currentTarget as Element).setPointerCapture?.(ev.pointerId); dialAt(ev); };
+  const dialMove = (ev: PointerEvent) => { if (dragging.current) dialAt(ev); };
+  const dialUp = () => { dragging.current = false; };
   useEffect(() => { if (!note) return; const i = setTimeout(() => setNote(''), 4000); return () => clearTimeout(i); }, [note]);
   const update = (patch: Partial<ClockSettings>) => { const next = { ...settings, ...patch }; setSettings(next); writeClockSettings(next); };
   const when = (at: number) => { const d = new Date(at), same = d.toDateString() === now.toDateString(); const tm = clockTime(at, lang); if (same) return tm; const tomorrow = new Date(nowMs + 86_400_000).toDateString() === d.toDateString(); return tomorrow ? `${tx('clock.tomorrow')} ${tm}` : `${new Intl.DateTimeFormat(locale(lang), { weekday: 'short' }).format(d)} ${tm}`; };
@@ -116,18 +123,34 @@ export function ClockSheet({ registry, entities, host, t, lang, runner, onClose,
   </>;
   const running = timers.filter(x => x.state === 'active' || x.state === 'paused');
   const timerRow = (x: TimerInfo) => { const left = x.state === 'active' && x.finishesAt ? Math.max(0, x.finishesAt - nowMs) : x.remainingMs; const frac = x.durationMs ? left / x.durationMs : 0; const C = 2 * Math.PI * 28;
+    const text = labelText(labels[x.id]);
     return <div className={`at-clock-trow is-${x.state}`} key={x.id}><div className="at-clock-ring"><svg viewBox="0 0 64 64"><circle className="bg" cx="32" cy="32" r="28" /><circle className="fg" cx="32" cy="32" r="28" stroke-dasharray={C.toFixed(1)} stroke-dashoffset={(C * (1 - frac)).toFixed(1)} /></svg><b>{fmtRemaining(left)}</b></div>
-      <div className="at-clock-tt"><strong>{labelText(labels[x.id]) || tx('clock.timer')}</strong><small>{Math.round(x.durationMs / 60_000)} {tx('clock.min')}{x.state === 'paused' ? ` · ${tx('clock.paused')}` : ''}</small></div>
+      <span className="at-clock-trow-icon"><Icon name={iconForLabel(text, names)} size={20} /></span>
+      <div className="at-clock-tt"><strong>{text || tx('clock.timer')}</strong><small>{Math.round(x.durationMs / 60_000)} {tx('clock.min')}{x.state === 'paused' ? ` · ${tx('clock.paused')}` : ''}</small></div>
       <button type="button" className="at-clock-ctl" aria-label={x.state === 'paused' ? tx('clock.resume') : tx('clock.pause')} disabled={busy} onClick={() => void call('timer', x.state === 'paused' ? 'start' : 'pause', { entity_id: x.id })}><Icon name={x.state === 'paused' ? 'play' : 'pause'} size={18} /></button>
       <button type="button" className="at-clock-ctl is-stop" aria-label={tx('clock.cancel')} disabled={busy} onClick={() => void call('timer', 'cancel', { entity_id: x.id })}>×</button></div>; };
   const timersBlock = timerIds.length > 0 && <div className="at-clock-timers">
-    <h4>{tx('clock.timers')}</h4>
-    {running.map(timerRow)}
+    {running.length > 0 && <><h4>{tx('clock.timers')}</h4>{running.map(timerRow)}</>}
     {running.length < timerIds.length && <>
       <h4>{tx('clock.newTimer')}</h4>
-      <div className="at-clock-presets">{PRESETS.map(p => <button type="button" className="hm-pill at-clock-preset" disabled={busy} onClick={() => void start(p * 60)}>{p}</button>)}<button type="button" className={`hm-pill at-clock-preset is-custom ${custom ? 'is-primary' : ''}`} onClick={() => setCustom(custom ? null : { m: 10, s: 0 })}>{tx('clock.custom')}</button></div>
-      {custom && <div className="at-clock-wheel"><div><button type="button" className="hm-icon-btn" aria-label="+" onClick={() => setCustom({ ...custom, m: Math.min(180, custom.m + 1) })}>+</button><b>{custom.m}</b><button type="button" className="hm-icon-btn" aria-label="−" onClick={() => setCustom({ ...custom, m: Math.max(0, custom.m - 1) })}>−</button><small>{tx('clock.minutes')}</small></div><div><button type="button" className="hm-icon-btn" aria-label="+" onClick={() => setCustom({ ...custom, s: (custom.s + 15) % 60 })}>+</button><b>{String(custom.s).padStart(2, '0')}</b><button type="button" className="hm-icon-btn" aria-label="−" onClick={() => setCustom({ ...custom, s: (custom.s + 45) % 60 })}>−</button><small>{tx('clock.seconds')}</small></div><button type="button" className="hm-pill is-primary at-clock-go" disabled={busy || custom.m * 60 + custom.s === 0} onClick={() => void start(custom.m * 60 + custom.s)}>{tx('clock.start')} {custom.m}:{String(custom.s).padStart(2, '0')}</button></div>}
-      <div className="at-clock-labels">{QUICK_LABELS.map(q => <button type="button" className={`hm-pill is-small ${label === q ? 'is-primary' : ''}`} onClick={() => setLabel(label === q ? '' : q)}>{q}</button>)}<input className="at-clock-label-input" type="text" maxLength={24} placeholder={tx('clock.label')} value={label} onInput={e => setLabel((e.target as HTMLInputElement).value)} /></div>
+      <div className="at-clock-grid">{PRESETS.map(p => <button type="button" className="at-clock-tile" disabled={busy} onClick={() => void start(p * 60)}><b>{p === 60 ? 1 : p}</b><small>{p === 60 ? tx('clock.hour') : tx('clock.min')}</small></button>)}</div>
+      <div className="at-clock-grid is-named">{NAMED_PRESETS.map(p => <button type="button" className="at-clock-tile is-named" disabled={busy} onClick={() => void start(p.minutes * 60, names[p.key])}><span className="at-clock-tile-icon"><Icon name={p.icon} size={22} /></span><strong>{names[p.key]}</strong><small>{p.minutes} {tx('clock.min')}</small></button>)}
+        <button type="button" className={`at-clock-tile is-named is-dial ${dial !== null ? 'is-on' : ''}`} onClick={() => setDial(dial === null ? 600 : null)}><span className="at-clock-tile-icon"><Icon name="hourglass" size={22} /></span><strong>{tx('clock.custom')}</strong><small>{tx('clock.dialHint')}</small></button></div>
+      {dial !== null && (() => { const mins = Math.floor(dial / 60), frac = (dial / 60) / 60, C = 2 * Math.PI * 80, ang = frac * 360, kx = 100 + 80 * Math.sin(ang * Math.PI / 180), ky = 100 - 80 * Math.cos(ang * Math.PI / 180);
+        return <div className="at-clock-dial-wrap">
+          <svg ref={dialRef} viewBox="0 0 200 200" className="at-clock-dial" onPointerDown={dialDown} onPointerMove={dialMove} onPointerUp={dialUp} onPointerCancel={dialUp}>
+            <rect x="0" y="0" width="200" height="200" fill="transparent" />
+            <circle cx="100" cy="100" r="80" className="track" />
+            {Array.from({ length: 12 }, (_, i) => { const a = i * 30 * Math.PI / 180; return <line x1={100 + 70 * Math.sin(a)} y1={100 - 70 * Math.cos(a)} x2={100 + 74 * Math.sin(a)} y2={100 - 74 * Math.cos(a)} className="tick" />; })}
+            <circle cx="100" cy="100" r="80" className="fill" stroke-dasharray={C.toFixed(1)} stroke-dashoffset={(C * (1 - Math.min(1, frac))).toFixed(1)} transform="rotate(-90 100 100)" />
+            <circle cx={kx.toFixed(1)} cy={ky.toFixed(1)} r="11" className="knob" />
+            <text x="100" y="96" text-anchor="middle" className="value">{mins}:{String(dial % 60).padStart(2, '0')}</text>
+            <text x="100" y="118" text-anchor="middle" className="unit">{tx('clock.dialDrag')}</text>
+          </svg>
+          <div className="at-clock-dial-ctl"><button type="button" className="hm-pill" onClick={() => setDial(Math.max(15, dial - 15))}>−15 {tx('clock.s')}</button><button type="button" className="hm-pill" onClick={() => setDial(Math.min(5400, dial + 15))}>+15 {tx('clock.s')}</button><button type="button" className="hm-pill" onClick={() => setDial(Math.min(5400, dial + 600))}>+10 {tx('clock.min')}</button></div>
+          <button type="button" className="hm-pill is-primary at-clock-go" disabled={busy || dial === 0} onClick={() => void start(dial)}>{tx('clock.start')} {mins}:{String(dial % 60).padStart(2, '0')}</button>
+        </div>; })()}
+      <input className="at-clock-label-input" type="text" maxLength={20} placeholder={tx('clock.label')} value={label} onInput={e => setLabel((e.target as HTMLInputElement).value)} />
     </>}
   </div>;
   const people = persons.length > 0 && <div className="at-clock-people">{persons.map(p => <div className={`at-clock-person ${p.home ? 'is-home' : ''}`}><b>{initials(p.name)}</b><strong>{p.name.split(' ')[0]}</strong><small>{p.home ? tx('clock.home') : p.zone ?? tx('clock.away')}</small></div>)}</div>;

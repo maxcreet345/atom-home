@@ -46,8 +46,14 @@ export function withLabel(labels: Record<string, string>, id: string, label: str
 }
 /** ISO-8601 week number. */
 export function weekNumber(d: Date): number { const x = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); const day = x.getUTCDay() || 7; x.setUTCDate(x.getUTCDate() + 4 - day); const y0 = new Date(Date.UTC(x.getUTCFullYear(), 0, 1)); return Math.ceil(((x.getTime() - y0.getTime()) / 86_400_000 + 1) / 7); }
-export const PRESETS = [1, 3, 5, 10, 15, 30] as const;
-export const QUICK_LABELS = ['Яйца', 'Чай', 'Стирка', 'Духовка'] as const;
+/** Plain presets (minutes), as on Apple Watch: a tap starts at once. */
+export const PRESETS = [1, 3, 5, 10, 15, 30, 60] as const;
+/** Kitchen presets with an icon, a label and their usual minutes. */
+export const NAMED_PRESETS: ReadonlyArray<{ key: string; icon: string; minutes: number }> = [{ key: 'eggs', icon: 'egg', minutes: 7 }, { key: 'tea', icon: 'cup', minutes: 4 }, { key: 'pasta', icon: 'pot', minutes: 10 }, { key: 'laundry', icon: 'washer', minutes: 45 }, { key: 'oven', icon: 'oven', minutes: 30 }];
+/** Icon for a running timer by its label (matches a named preset's label in any language), else the hourglass. */
+export const iconForLabel = (label: string, names: Record<string, string>): string => NAMED_PRESETS.find(p => names[p.key]?.toLowerCase() === label.trim().toLowerCase())?.icon ?? 'hourglass';
+/** Dial geometry: pointer position → minutes on a 60-minute ring (12 o'clock = 0/60, clockwise). */
+export function dialMinutes(x: number, y: number, cx: number, cy: number, max = 60): number { const a = Math.atan2(x - cx, cy - y); let deg = a * 180 / Math.PI; if (deg < 0) deg += 360; const m = Math.round(deg / 360 * max); return m === 0 ? max : m; }
 export interface ClockSettings { style: 'analog' | 'digital'; seconds: boolean; arc: boolean; beep: boolean }
 export const DEFAULT_CLOCK: ClockSettings = { style: 'analog', seconds: true, arc: true, beep: true };
 export const CLOCK_KEY = 'atom-home:clock';

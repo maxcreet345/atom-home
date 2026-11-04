@@ -176,3 +176,20 @@
 @media (prefers-reduced-motion:reduce){.hm-shell .ah-sec{animation:none}}
 .hm-shell .at-door-seg.at-clock-seg{padding:0;background:none;gap:4px;flex:none}.hm-shell .at-door-seg.at-clock-seg button{flex:none;padding:7px 12px}
 .hm-shell .at-door-ring>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw}
+
+/* timers, redesigned: preset tiles (Apple Watch), named kitchen presets with icons, a dial you turn with a finger */
+.hm-shell .at-clock-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px}
+.hm-shell .at-clock-grid.is-named{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
+.hm-shell button.at-clock-tile{display:grid;place-items:center;gap:0;min-height:64px;padding:8px 4px;border:0;border-radius:16px;background:var(--ah-inset,#0000000f);color:var(--ah-ink);font:inherit;cursor:pointer;transition:transform .32s var(--ah-spring),background-color .22s ease}
+.hm-shell button.at-clock-tile:active:not(:disabled){transform:scale(.94)}.hm-shell button.at-clock-tile:disabled{opacity:.5;cursor:default}
+.hm-shell .at-clock-tile b{font-size:24px;font-weight:700;letter-spacing:-.5px;line-height:1}.hm-shell .at-clock-tile small{font-size:11px;color:var(--ah-muted);text-transform:uppercase;letter-spacing:.04em}
+.hm-shell button.at-clock-tile.is-named{min-height:92px;gap:4px;padding:10px 6px}.hm-shell .at-clock-tile strong{font-size:14px;font-weight:600}.hm-shell .at-clock-tile.is-named small{text-transform:none;letter-spacing:0}
+.hm-shell .at-clock-tile-icon{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:#ff9f0a22;color:#e08a16}
+.hm-shell .at-clock-tile.is-dial .at-clock-tile-icon{background:color-mix(in srgb,var(--ah-accent) 18%,transparent);color:var(--ah-accent)}.hm-shell button.at-clock-tile.is-dial.is-on{background:var(--ah-accent);color:#fff}.hm-shell .at-clock-tile.is-dial.is-on small,.hm-shell .at-clock-tile.is-dial.is-on .at-clock-tile-icon{color:#fff;background:#ffffff2e}
+.hm-shell .at-clock-dial-wrap{display:grid;justify-items:center;gap:10px;animation:ah-pop .35s var(--ah-spring)}
+.hm-shell .at-clock-dial{width:min(220px,70%);aspect-ratio:1;touch-action:none;cursor:grab;user-select:none}
+.hm-shell .at-clock-dial .track{fill:none;stroke:var(--ah-inset,#0000000f);stroke-width:14}.hm-shell .at-clock-dial .fill{fill:none;stroke:var(--ah-accent);stroke-width:14;stroke-linecap:round;transition:stroke-dashoffset .12s ease}
+.hm-shell .at-clock-dial .tick{stroke:var(--ah-muted);stroke-width:1.5;opacity:.5}.hm-shell .at-clock-dial .knob{fill:#fff;stroke:var(--ah-accent);stroke-width:4;filter:drop-shadow(0 2px 4px #0003);transition:cx .12s ease,cy .12s ease}
+.hm-shell .at-clock-dial .value{font-size:30px;font-weight:700;fill:var(--ah-ink);font-variant-numeric:tabular-nums;font-family:inherit;letter-spacing:-1px}.hm-shell .at-clock-dial .unit{font-size:10px;fill:var(--ah-muted);font-family:inherit}
+.hm-shell .at-clock-dial-ctl{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.hm-shell .at-clock-trow-icon{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#ff9f0a22;color:#e08a16;flex:none}
