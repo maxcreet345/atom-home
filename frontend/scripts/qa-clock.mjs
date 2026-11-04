@@ -21,6 +21,8 @@ Object.assign(fixture.states, {
   'calendar.living_yandex_max_alarms': row('off', { friendly_name: 'Гостиная · Станция Макс · будильники и таймеры', message: 'Будильник', start_time: iso(7, 0, 1) }),
 });
 for (const [area_id, name] of [['gostinaia', 'Гостиная'], ['detskaia', 'Детская']]) if (!fixture.areas.some(a => a.area_id === area_id)) fixture.areas.push({ area_id, name, icon: null, picture: null });
+Object.assign(fixture.states, { 'media_player.kids_yandex_mini': row('idle', { friendly_name: 'Детская · Яндекс Станция Мини' }) });
+fixture.entities.push({ ...ent('media_player.kids_yandex_mini', 'yandex_station'), area_id: 'detskaia' });
 fixture.entities.push({ ...ent('media_player.living_yandex_max', 'yandex_station'), area_id: 'gostinaia' }, { ...ent('light.kids_chandelier'), area_id: 'detskaia' }, ent('input_boolean.alarm_ringing'), ent('input_text.alarm_ringing'));
 fixture.entities.push(...['sun.sun', 'weather.forecast_home', 'timer.atom_1', 'timer.atom_2', 'timer.atom_3', 'input_text.atom_timer_labels', 'input_boolean.timer_done', 'input_boolean.timer_announce', 'input_boolean.timer_push', 'person.gayane', 'person.ararat', 'person.daniela', 'calendar.living_yandex_max_alarms'].map(id => ent(id)));
 const config = { schemaVersion: 1, home: { name: 'Мой дом', language: 'ru', theme: 'light' }, modules: { camera_go2rtc: { entities: { camera: 'camera.entrance_camera' }, options: { addon: 'a889bffc_go2rtc', stream: 'entrance_camera_h264' } }, doorbell: { options: { addon: 'a889bffc_go2rtc' } } } };
@@ -49,7 +51,7 @@ try {
     check(`${label}: timer window with presets`, tw.win && tw.title === 'Новый таймер' && tw.presets.join(',') === '1,3,5,10,15,30,1' && tw.named.join(',') === 'Яйца,Чай,Паста,Стирка,Духовка,своё…', JSON.stringify(tw));
     // the station is a mandatory choice: presets wait until it is made
     const waiting = await page.evaluate(() => ({ required: !!document.querySelector('.at-clock-stations.is-required'), disabled: document.querySelector('.at-clock-grid .at-clock-tile')?.disabled, chips: [...document.querySelectorAll('.at-clock-stations .hm-pill')].map(b => b.textContent) }));
-    check(`${label}: timer waits for the station choice`, waiting.required && waiting.disabled === true && waiting.chips.join(',') === 'Без Алисы,Гостиная', JSON.stringify(waiting));
+    check(`${label}: timer waits for the station choice`, waiting.required && waiting.disabled === true && waiting.chips.join(',') === 'Без Алисы,Гостиная,Детская', JSON.stringify(waiting));
     await page.click('.at-clock-stations .hm-pill:nth-child(2)'); await page.waitForTimeout(200);
     // start a 4-minute «Чай» with Alice in the living room: label carries the station, Alice gets the phrase
     await page.click('.at-clock-grid.is-named .at-clock-tile:nth-child(2)'); await page.waitForTimeout(400);
@@ -85,12 +87,12 @@ try {
     // alarms: add one for the kids' room with sunrise and 5 repeats, save through the store, toggle it
     await page.evaluate(() => { location.hash = '#home?device=clock'; }); await page.waitForSelector('.at-clock'); await page.waitForTimeout(300);
     await page.click('.at-clock-alarms .at-alarm-add'); await page.waitForTimeout(400); await shot('alarm-win');
-    const kids = await page.evaluate(() => { const w = document.querySelector('.at-win'); const b = [...(w?.querySelectorAll('.at-alarm-editor .at-clock-presets:first-of-type .hm-pill') ?? [])].find(x => x.textContent === 'Детская'); b?.click(); return { win: !!w, title: w?.querySelector('h3')?.textContent, chip: !!b }; });
-    check(`${label}: editor window opens, room «Детская» available`, kids.win && kids.title === 'Новый будильник' && kids.chip, JSON.stringify(kids));
+    const kids = await page.evaluate(() => { const w = document.querySelector('.at-win'); const chips = [...(w?.querySelectorAll('.at-alarm-editor .at-clock-presets:first-of-type .hm-pill') ?? [])].map(x => x.textContent); const b = [...(w?.querySelectorAll('.at-alarm-editor .at-clock-presets:first-of-type .hm-pill') ?? [])].find(x => x.textContent === 'Детская'); b?.click(); return { win: !!w, title: w?.querySelector('h3')?.textContent, chip: !!b, chips }; });
+    check(`${label}: editor window opens with speaker rooms only (Гостиная, Детская), not Подъезд`, kids.win && kids.title === 'Новый будильник' && kids.chip && kids.chips.join(',') === 'Гостиная,Детская', JSON.stringify(kids));
     await page.waitForTimeout(200);
     await page.fill('.at-alarm-time input[type=time]', '07:30');
     const ed = await page.evaluate(() => { const e = document.querySelector('.at-alarm-editor'); const rep = [...e.querySelectorAll('.hm-pill')].find(x => x.textContent === '×5'); rep?.click(); return { light: [...e.querySelectorAll('.ah-row strong')].map(x => x.textContent), lightOn: e.querySelector('.ah-row .hm-switch')?.getAttribute('aria-checked'), noStation: e.textContent.includes('нет Станции'), rep: !!rep }; });
-    check(`${label}: kids' room → sunrise with the chandelier on by default, no station, repeats chosen`, ed.light.includes('Свет: плавный рассвет') && !ed.light.includes('Push на телефоны') && ed.lightOn === 'true' && ed.noStation && ed.rep, JSON.stringify(ed));
+    check(`${label}: kids' room → sunrise with the chandelier on by default, Alice offered, repeats chosen`, ed.light.includes('Свет: плавный рассвет') && !ed.light.includes('Push на телефоны') && ed.lightOn === 'true' && !ed.noStation && ed.rep, JSON.stringify(ed));
     await page.click('.at-alarm-save'); await page.waitForTimeout(500); await shot('alarm');
     const saved = await page.evaluate(() => { const r = document.querySelector('.at-win .at-alarm-row'); const chip = document.querySelector('.at-alarm-chip'); return { rows: document.querySelectorAll('.at-win .at-alarm-row').length, text: r?.textContent, chip: chip?.textContent, cfg: window.atomPreview.config.alarms?.map(a => `${a.room} ${a.time} light=${a.light} fade=${a.fadeMin} rep=${a.repeats}`) }; });
     check(`${label}: alarm saved, listed in the alarms window and as a chip on the card`, saved.rows === 1 && /Детская · 07:30/.test(saved.text ?? '') && /рассвет 15 мин/.test(saved.text ?? '') && /07:30Детская/.test(saved.chip ?? '') && saved.cfg?.[0] === 'detskaia 07:30 light=true fade=15 rep=5', JSON.stringify(saved));

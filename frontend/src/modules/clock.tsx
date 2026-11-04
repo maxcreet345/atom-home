@@ -73,6 +73,17 @@ const CONDITIONS = ['clear-night', 'cloudy', 'fog', 'hail', 'lightning', 'lightn
 function Win({ title, onBack, children, wide, t }: { title: string; onBack: () => void; children: ComponentChildren; wide?: boolean; t: T }) {
   return <div className="at-win-scrim" onClick={e => { if (e.target === e.currentTarget) onBack(); }}><div className={`at-win ${wide ? 'is-wide' : ''}`} role="dialog" aria-modal="true" aria-label={title}><div className="at-win-head"><button type="button" className="hm-icon-btn" aria-label={t('ui.back')} onClick={onBack}><Icon name="back" size={22} /></button><h3>{title}</h3><button type="button" className="hm-icon-btn" aria-label={t('ui.close')} onClick={onBack}>×</button></div><div className="at-win-body">{children}</div></div></div>;
 }
+/** The big digits with seconds: the only part of the sheet that re-renders every second. */
+function LiveTime({ lang }: { lang: Lang }) {
+  useTick(true); const live = new Date();
+  return <div className="at-clock-big"><b>{clockTime(live.getTime(), lang)}</b><span>{String(live.getSeconds()).padStart(2, '0')}</span></div>;
+}
+/** A running timer's ring and remaining time, ticking on its own. */
+function TimerRing({ timer: x }: { timer: TimerInfo }) {
+  useTick(x.state === 'active'); const nowMs = Date.now();
+  const left = x.state === 'active' && x.finishesAt ? Math.max(0, x.finishesAt - nowMs) : x.remainingMs, frac = x.durationMs ? left / x.durationMs : 0, C = 2 * Math.PI * 28;
+  return <div className="at-clock-ring"><svg viewBox="0 0 64 64"><circle className="bg" cx="32" cy="32" r="28" /><circle className="fg" cx="32" cy="32" r="28" stroke-dasharray={C.toFixed(1)} stroke-dashoffset={(C * (1 - frac)).toFixed(1)} /></svg><b>{fmtRemaining(left)}</b></div>;
+}
 export interface RoomRef { id: string; name: string }
 export function ClockSheet({ registry, entities, host, t, lang, runner, onClose, wide, rooms = [], room, alarms = [], onAlarms }: { registry: Registry; entities: ModuleEntities; host: Host; t: T; lang: Lang; runner: Runner; onClose: () => void; wide: boolean; rooms?: RoomRef[]; /** opened from a room page: the editor starts with this room */ room?: string | null; alarms?: Alarm[]; onAlarms?: (alarms: Alarm[]) => Promise<void> }) {
   const [win, setWin] = useState<'timer' | 'alarms' | 'settings' | null>(null); // windows over the sheet: no long column, no scroll
@@ -83,9 +94,8 @@ export function ClockSheet({ registry, entities, host, t, lang, runner, onClose,
   const blankRef = useRef<(rid: string) => Alarm>(() => ({ id: 'x', room: '', time: '07:00', days: [], enabled: true, label: '', alice: 'off', phrase: '', station: '', light: false, lightEntity: '', fadeMin: 15, push: false, repeats: 0, repeatEveryMin: 5 }));
   const blankFor = (rid: string) => blankRef.current(rid);
   const dialRef = useRef<SVGSVGElement>(null), dragging = useRef(false);
-  useTick(true);
   const tx = (k: string, p?: Record<string, string | number>) => t(k as Key, p);
-  useEffect(() => { if (room && onAlarms) { setWin('alarms'); if (!alarms.some(a => a.room === room)) setEdit(blankFor(room)); } }, [room]);
+  useEffect(() => { if (room && onAlarms && canAlarm(room)) { setWin('alarms'); if (!alarms.some(a => a.room === room)) setEdit(blankFor(room)); } }, [room]);
   const now = new Date(), nowMs = now.getTime();
   const S = registry.states;
   const sun = sunInfo(entities.sun ? S[entities.sun] : undefined, nowMs);
@@ -105,9 +115,12 @@ export function ClockSheet({ registry, entities, host, t, lang, runner, onClose,
   const names = Object.fromEntries(NAMED_PRESETS.map(p => [p.key, tx(`clock.preset.${p.key}`)]));
   // Rooms' gear for alarms and the timer: Yandex speakers and dimmable lights (brightness-capable, not indicators), by HA area.
   const areaOf = (id: string) => { const e = registry.entities.find(x => x.entity_id === id); if (!e) return null; return e.area_id ?? registry.devices.find(d => d.id === e.device_id)?.area_id ?? null; };
-  const stations = registry.entities.filter(e => e.entity_id.startsWith('media_player.') && e.platform === 'yandex_station' && !e.disabled_by && S[e.entity_id]).map(e => ({ id: e.entity_id, name: String(S[e.entity_id].attributes.friendly_name ?? e.entity_id), area: areaOf(e.entity_id) }));
+  const stations = registry.entities.filter(e => e.entity_id.startsWith('media_player.') && e.platform === 'yandex_station' && !e.disabled_by && S[e.entity_id]).map(e => ({ id: e.entity_id, name: String(S[e.entity_id].attributes.friendly_name ?? e.entity_id), area: areaOf(e.entity_id) })).sort((a, b) => (rooms.find(r => r.id === a.area)?.name ?? a.name).localeCompare(rooms.find(r => r.id === b.area)?.name ?? b.name, 'ru'));
   const dimmable = registry.entities.filter(e => e.entity_id.startsWith('light.') && !e.disabled_by && S[e.entity_id]).map(e => { const a = S[e.entity_id].attributes; const modes = Array.isArray(a.supported_color_modes) ? a.supported_color_modes as string[] : []; return { id: e.entity_id, name: String(a.friendly_name ?? e.entity_id), area: areaOf(e.entity_id), dim: modes.some(m => m !== 'onoff') }; }).filter(l => l.dim && !/индикатор|indicator/i.test(l.name));
   const roomName = (id: string) => rooms.find(r => r.id === id)?.name ?? id;
+  // Alarms are offered only for rooms with a Yandex speaker (owner's rule 04.11): Alice does the waking, the light is an extra.
+  const alarmRooms = rooms.filter(r => stations.some(st => st.area === r.id));
+  const canAlarm = (rid: string | null | undefined) => !!rid && alarmRooms.some(r => r.id === rid);
   const shortRoom = (name: string, rid: string) => { const r = rooms.find(x => x.id === rid)?.name ?? ''; return r && name.startsWith(r + ' · ') ? name.slice(r.length + 3) : name; };
   const start = async (totalSec: number, withLabelText = label) => {
     if (station === undefined && stations.length) { setNote(tx('clock.pickStation')); return; }
@@ -135,7 +148,7 @@ export function ClockSheet({ registry, entities, host, t, lang, runner, onClose,
   const head = <div className="hm-sheet-head"><span className="hm-sheet-photo at-clock-photo"><Icon name="clock" size={30} /></span><div><small>{t('section.home')}</small><h2>{tx('clock.title')}</h2></div>{!wide && headBtns}</div>;
   const face = <>
     {wide && <div className="at-clock-face-wrap"><ClockFace now={now} sun={entities.sun ? S[entities.sun] : undefined} settings={{ ...settings, seconds: true }} /></div>}
-    <div className="at-clock-big"><b>{clockTime(nowMs, lang)}</b><span>{String(now.getSeconds()).padStart(2, '0')}</span></div>
+    <LiveTime lang={lang} />
     <div className="at-clock-date"><b>{new Intl.DateTimeFormat(locale(lang), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(now)}</b> · {tx('clock.week', { n: weekNumber(now) })}{wTemp !== null ? ` · ${num(wTemp, lang, 1)}°${wCond ? ' ' + wCond : ''}` : ''}</div>
     {sun.rise !== null && sun.set !== null && <div className="at-clock-sun">
       <div className="at-clock-sun-row"><span>{tx('clock.sunrise')} <b>{clockTime(sun.rise, lang)}</b></span><span>{tx('clock.day')} <b>{hm(sun.dayMs ?? 0)}</b></span><span>{tx('clock.sunset')} <b>{clockTime(sun.set, lang)}</b></span></div>
@@ -144,9 +157,8 @@ export function ClockSheet({ registry, entities, host, t, lang, runner, onClose,
     </div>}
   </>;
   const running = timers.filter(x => x.state === 'active' || x.state === 'paused');
-  const timerRow = (x: TimerInfo) => { const left = x.state === 'active' && x.finishesAt ? Math.max(0, x.finishesAt - nowMs) : x.remainingMs; const frac = x.durationMs ? left / x.durationMs : 0; const C = 2 * Math.PI * 28;
-    const text = labelText(labels[x.id]);
-    return <div className={`at-clock-trow is-${x.state}`} key={x.id}><div className="at-clock-ring"><svg viewBox="0 0 64 64"><circle className="bg" cx="32" cy="32" r="28" /><circle className="fg" cx="32" cy="32" r="28" stroke-dasharray={C.toFixed(1)} stroke-dashoffset={(C * (1 - frac)).toFixed(1)} /></svg><b>{fmtRemaining(left)}</b></div>
+  const timerRow = (x: TimerInfo) => { const text = labelText(labels[x.id]);
+    return <div className={`at-clock-trow is-${x.state}`} key={x.id}><TimerRing timer={x} />
       <span className="at-clock-trow-icon"><Icon name={iconForLabel(text, names)} size={20} /></span>
       <div className="at-clock-tt"><strong>{text || tx('clock.timer')}</strong><small>{Math.round(x.durationMs / 60_000)} {tx('clock.min')}{labelStation(labels[x.id]) ? ` · ${tx('clock.withAlice')}` : ''}{x.state === 'paused' ? ` · ${tx('clock.paused')}` : ''}</small></div>
       <button type="button" className="at-clock-ctl" aria-label={x.state === 'paused' ? tx('clock.resume') : tx('clock.pause')} disabled={busy} onClick={() => void call('timer', x.state === 'paused' ? 'start' : 'pause', { entity_id: x.id })}><Icon name={x.state === 'paused' ? 'play' : 'pause'} size={18} /></button>
@@ -185,21 +197,22 @@ export function ClockSheet({ registry, entities, host, t, lang, runner, onClose,
     return <div className={`ah-row at-alarm-row ${a.enabled ? '' : 'is-off'}`} key={a.id}><button type="button" className="at-alarm-main" onClick={() => setEdit({ ...a })}><span className="ah-row-icon" style={`--tile:${a.enabled ? '#7b74d8' : '#8e8e93'}`}><Icon name="bell" size={18} /></span><span className="ah-row-text"><strong>{roomName(a.room)} · {a.time}{a.label ? ` · ${a.label}` : ''}</strong><small>{bits}</small></span></button><Switch on={a.enabled} label={a.time} disabled={!onAlarms} onToggle={() => void save(alarms.map(x => x.id === a.id ? { ...x, enabled: !x.enabled } : x))} /></div>; };
   const sortedAlarms = [...alarms].sort((a, b) => a.time.localeCompare(b.time) || a.room.localeCompare(b.room));
   const nextAlarms = sortedAlarms.filter(a => a.enabled).slice(0, 2);
-  const alarmsCard = <div className="at-clock-card at-clock-alarms"><div className="at-clock-card-head"><h4>{tx('alarm.title')}{alarms.length ? ` · ${alarms.length}` : ''}</h4>{onAlarms && rooms.length > 0 && <button type="button" className="hm-pill is-primary is-small at-alarm-add" onClick={() => { setWin('alarms'); setEdit(blankFor(room ?? alarms[0]?.room ?? rooms[0].id)); }}>+ {tx('alarm.add')}</button>}</div>
-    {nextAlarms.length ? nextAlarms.map(a => <button type="button" className="at-alarm-chip" onClick={() => setWin('alarms')}><b>{a.time}</b><span>{roomName(a.room)}</span><small>{daysText(a.days, dayNames, tx)}</small></button>) : <p className="at-clock-empty">{tx('alarm.none')}</p>}
+  const alarmsCard = <div className="at-clock-card at-clock-alarms"><div className="at-clock-card-head"><h4>{tx('alarm.title')}{alarms.length ? ` · ${alarms.length}` : ''}</h4>{onAlarms && alarmRooms.length > 0 && <button type="button" className="hm-pill is-primary is-small at-alarm-add" onClick={() => { setWin('alarms'); setEdit(blankFor(canAlarm(room) ? room! : alarms[0]?.room && canAlarm(alarms[0].room) ? alarms[0].room : alarmRooms[0].id)); }}>+ {tx('alarm.add')}</button>}</div>
+    {alarmRooms.length === 0 && <p className="at-clock-empty">{tx('alarm.noStationRooms')}</p>}
+    {nextAlarms.length ? nextAlarms.map(a => <button type="button" className="at-alarm-chip" onClick={() => setWin('alarms')}><b>{a.time}</b><span>{roomName(a.room)}</span><small>{daysText(a.days, dayNames, tx)}</small></button>) : alarmRooms.length > 0 ? <p className="at-clock-empty">{tx('alarm.none')}</p> : null}
     {alarms.length > 0 && <button type="button" className="hm-text-btn at-clock-all" onClick={() => setWin('alarms')}>{tx('alarm.all', { n: alarms.length })}<Icon name="next" size={16} /></button>}
   </div>;
   const alarmsWin = <div className="ah-rows at-alarms">
     {alarms.length === 0 && <div className="at-cam-kv"><span>{tx('alarm.none')}</span></div>}
     {sortedAlarms.map(alarmRow)}
-    {onAlarms && rooms.length > 0 && <button type="button" className="ah-row at-door-row-btn at-alarm-add" onClick={() => setEdit(blankFor(room ?? alarms[0]?.room ?? rooms[0].id))}><span className="ah-row-icon" style="--tile:#7b74d8">+</span><span className="ah-row-text"><strong>{tx('alarm.add')}</strong></span></button>}
+    {onAlarms && alarmRooms.length > 0 && <button type="button" className="ah-row at-door-row-btn at-alarm-add" onClick={() => setEdit(blankFor(canAlarm(room) ? room! : alarmRooms[0].id))}><span className="ah-row-icon" style="--tile:#7b74d8">+</span><span className="ah-row-text"><strong>{tx('alarm.add')}</strong></span></button>}
   </div>;
   const editor = edit && (() => { const a = edit, set = (patch: Partial<Alarm>) => setEdit({ ...a, ...patch }); const roomStations = stations.filter(x => x.area === a.room), roomLights = dimmable.filter(x => x.area === a.room);
     const toggleDay = (d: number) => set({ days: a.days.includes(d) ? a.days.filter(x => x !== d) : [...a.days, d].sort() });
     const pickRoom = (rid: string) => { const st = stations.find(x => x.area === rid), li = dimmable.find(x => x.area === rid); set({ room: rid, station: st?.id ?? '', alice: st ? (a.alice === 'off' ? 'tts' : a.alice) : 'off', lightEntity: li?.id ?? '', light: !!li }); };
     const exists = alarms.some(x => x.id === a.id);
     return <div className="at-alarm-editor">
-      <div className="at-clock-presets">{rooms.map(r => <button type="button" className={`hm-pill ${a.room === r.id ? 'is-primary' : ''}`} onClick={() => pickRoom(r.id)}>{r.name}</button>)}</div>
+      <div className="at-clock-presets">{alarmRooms.map(r => <button type="button" className={`hm-pill ${a.room === r.id ? 'is-primary' : ''}`} onClick={() => pickRoom(r.id)}>{r.name}</button>)}</div>
       <div className="at-alarm-time"><input type="time" value={a.time} onInput={e => { const v = (e.target as HTMLInputElement).value; if (/^\d\d:\d\d$/.test(v)) set({ time: v }); }} /><input className="at-clock-label-input" type="text" maxLength={40} placeholder={tx('clock.label')} value={a.label} onInput={e => set({ label: (e.target as HTMLInputElement).value })} /></div>
       <div className="at-clock-presets at-alarm-days">{WEEKDAYS.map(d => <button type="button" className={`hm-pill is-day ${a.days.includes(d) ? 'is-primary' : ''}`} onClick={() => toggleDay(d)}>{dayNames[d - 1]}</button>)}<button type="button" className="hm-pill is-small" onClick={() => set({ days: [...WORKDAYS] })}>{tx('alarm.workdays')}</button><button type="button" className="hm-pill is-small" onClick={() => set({ days: [...WEEKEND] })}>{tx('alarm.weekend')}</button><button type="button" className="hm-pill is-small" onClick={() => set({ days: [] })}>{tx('alarm.once')}</button></div>
       {roomLights.length > 0 ? <>

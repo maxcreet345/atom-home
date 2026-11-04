@@ -50,4 +50,5 @@ export const en: Dictionary = {
   'alarm.repeats': 'Repeats', 'alarm.noRepeats': 'no repeats', 'alarm.repeats0': 'none', 'alarm.repeatsNote': '{n} times, every {m} min, no sunrise', 'alarm.repeatsShort': 'repeat ×{n}', 'alarm.every': 'every {m} min', 'alarm.push': 'Push to phones',
   'alarm.ringing': 'Alarm', 'alarm.repeatsLeft': '{n} more', 'alarm.snooze': '9 more minutes',
   'clock.noTimers': 'No timers', 'alarm.all': 'All · {n}',
+  'alarm.noStationRooms': 'Alarms live in rooms with a speaker — none yet',
 };

@@ -227,7 +227,7 @@
 .hm-shell .at-clock-people{display:flex;gap:10px}.hm-shell .at-clock-person{width:64px}.hm-shell .at-clock-person b{width:44px;height:44px;font-size:15px}.hm-shell .at-clock-person small{font-size:11px}
 .hm-shell .at-clock-timers .at-clock-trow .at-clock-ring{width:52px;height:52px}.hm-shell .at-clock-timers .at-clock-trow .at-clock-ring svg{width:52px;height:52px}.hm-shell .at-clock-timers .at-clock-ring b{font-size:12px}
 .is-narrow .at-clock .at-clock-big b{font-size:44px}.is-narrow .at-clock .at-clock-sun{padding:10px 14px;gap:4px}.is-narrow .at-clock .at-clock-arc{height:48px}.is-narrow .at-clock .at-clock-sun-row{font-size:13px}
-.hm-shell .at-win-scrim{position:absolute;inset:0;z-index:6;display:grid;place-items:center;padding:12px;background:#0f172066;backdrop-filter:blur(6px);animation:at-fade .25s ease}
+.hm-shell .at-win-scrim{position:absolute;inset:0;z-index:6;display:grid;place-items:center;padding:12px;background:#0f172080;animation:at-fade .25s ease}
 @keyframes at-fade{from{opacity:0}to{opacity:1}}
 .hm-shell .at-win{display:flex;flex-direction:column;width:min(440px,100%);max-height:100%;border-radius:22px;background:var(--ah-sheet);color:var(--ah-ink);box-shadow:0 24px 70px #00000055;overflow:hidden;animation:at-rise .38s var(--ah-spring)}
 .hm-shell .at-win.is-wide{width:min(560px,100%)}

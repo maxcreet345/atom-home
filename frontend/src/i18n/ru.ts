@@ -49,5 +49,6 @@ export const ru = {
   'alarm.repeats': 'Повторы', 'alarm.noRepeats': 'без повторов', 'alarm.repeats0': 'нет', 'alarm.repeatsNote': '{n} раз, каждые {m} мин, без рассвета', 'alarm.repeatsShort': 'повтор ×{n}', 'alarm.every': 'каждые {m} мин', 'alarm.push': 'Push на телефоны',
   'alarm.ringing': 'Будильник', 'alarm.repeatsLeft': 'ещё {n} повт.', 'alarm.snooze': 'Ещё 9 минут',
   'clock.noTimers': 'Таймеров нет', 'alarm.all': 'Все · {n}',
+  'alarm.noStationRooms': 'Будильники ставятся в комнатах со Станцией — пока таких нет',
 };
 export type Dictionary = typeof ru;
