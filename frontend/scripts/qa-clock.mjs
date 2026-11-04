@@ -82,7 +82,7 @@ try {
     await page.waitForTimeout(200);
     await page.fill('.at-alarm-time input[type=time]', '07:30');
     const ed = await page.evaluate(() => { const e = document.querySelector('.at-alarm-editor'); const rep = [...e.querySelectorAll('.hm-pill')].find(x => x.textContent === '×5'); rep?.click(); return { light: [...e.querySelectorAll('.ah-row strong')].map(x => x.textContent), lightOn: e.querySelector('.ah-row .hm-switch')?.getAttribute('aria-checked'), noStation: e.textContent.includes('нет Станции'), rep: !!rep }; });
-    check(`${label}: kids' room → sunrise with the chandelier on by default, no station, repeats chosen`, ed.light.includes('Свет: плавный рассвет') && ed.lightOn === 'true' && ed.noStation && ed.rep, JSON.stringify(ed));
+    check(`${label}: kids' room → sunrise with the chandelier on by default, no station, repeats chosen`, ed.light.includes('Свет: плавный рассвет') && !ed.light.includes('Push на телефоны') && ed.lightOn === 'true' && ed.noStation && ed.rep, JSON.stringify(ed));
     await page.click('.at-alarm-save'); await page.waitForTimeout(500); await shot('alarm');
     const saved = await page.evaluate(() => { const r = document.querySelector('.at-alarm-row'); return { rows: document.querySelectorAll('.at-alarm-row').length, text: r?.textContent, cfg: window.atomPreview.config.alarms?.map(a => `${a.room} ${a.time} light=${a.light} fade=${a.fadeMin} rep=${a.repeats}`) }; });
     check(`${label}: alarm saved to the config and listed`, saved.rows === 1 && /Детская · 07:30/.test(saved.text ?? '') && /рассвет 15 мин/.test(saved.text ?? '') && saved.cfg?.[0] === 'detskaia 07:30 light=true fade=15 rep=5', JSON.stringify(saved));

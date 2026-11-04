@@ -1,7 +1,7 @@
 """Room alarms of the Atom Home panel.
 
 The list lives in the panel configuration (`alarms`); this module schedules the next ring of every enabled alarm,
-fades a dimmable light in before it, rings through the room's Yandex speaker and the phones, repeats as configured,
+fades a dimmable light in before it, rings through the room's Yandex speaker, repeats as configured,
 and raises the «ringing» flag the panel turns into a banner. Everything goes through ordinary HA services, so it
 works with no browser open. Stop/snooze arrive as WebSocket commands or as the flag being switched off.
 """
@@ -56,7 +56,7 @@ def normalise_alarms(raw: Any) -> list[dict]:
         out.append({
             "id": aid, "room": str(a.get("room") or "")[:64], "time": time, "days": days, "enabled": a.get("enabled") is not False,
             "label": str(a.get("label") or "")[:40], "alice": alice, "phrase": str(a.get("phrase") or "")[:120], "station": station,
-            "light": bool(a.get("light")) and bool(light), "lightEntity": light, "fadeMin": fade, "push": a.get("push") is not False,
+            "light": bool(a.get("light")) and bool(light), "lightEntity": light, "fadeMin": fade, "push": False,
             "repeats": repeats, "repeatEveryMin": every,
         })
     return out
@@ -165,10 +165,7 @@ class AlarmScheduler:
                     await self.hass.services.async_call("media_player", "play_media", {"entity_id": alarm["station"], "media_content_type": "text", "media_content_id": alarm["phrase"] or "Доброе утро, пора вставать"}, blocking=False)
                 else:
                     await self.hass.services.async_call("yandex_station", "send_command", {"entity_id": alarm["station"], "command": "включи музыку"}, blocking=False)
-            if alarm["push"]:
-                for svc in sorted(self.hass.services.async_services().get("notify", {})):
-                    if svc.startswith("mobile_app_"):
-                        await self.hass.services.async_call("notify", svc, {"title": "Будильник", "message": f"{alarm['room']} · {alarm['time']}" + (f" · {alarm['label']}" if alarm["label"] else ""), "data": {"tag": "atom-alarm", "channel": "Будильник", "importance": "high", "clickAction": "/atom-home#home?device=clock", "url": "/atom-home#home?device=clock"}}, blocking=False)
+            # No push for alarms (owner's decision 04.11.2026): the speaker, the light and the panel banner wake people up.
         except Exception as err:  # noqa: BLE001
             _LOGGER.warning("Atom Home alarm: ring failed: %s", err)
         # Without an answer: repeat after the interval while repeats remain, else stop after AUTO_STOP.
