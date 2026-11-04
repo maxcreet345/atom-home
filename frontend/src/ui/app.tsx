@@ -306,7 +306,7 @@ function EnergyPage({ devices, go, t, lang, roomName, admin }: { devices: HomeDe
     if (room && n.toLowerCase().startsWith(room.toLowerCase() + ' · ')) n = n.slice(room.length + 3);
     n = n.replace(/\s*\([^)]*\)/g, '').replace(/^[\s·—:-]+/, '').replace(/\s{2,}/g, ' ').trim();
     // the leading product words («Розетка Xiaomi», «Розетка увлажнителя реле Tuya с измерением») are the device, not the reading
-    n = n.replace(/^(розетка|розетки|socket|plug)\b[^·]*?(?=(energy|энергия|ток|напряжение|current|voltage|power|мощность)\b)/i, '').trim();
+    n = n.replace(/^(розетка|розетки|socket|plug)\s[^·]*?(?=(energy|энергия|ток|напряжение|current|voltage|power|мощность)(\s|$))/i, '').trim(); // no \b: JS \b is ASCII-only, Cyrillic words have none
     const key = n.toLowerCase().replace(/[\s_]+/g, ' ');
     const map: Record<string, Key> = { 'energy today': 'energy.today', 'energy month': 'energy.month', 'energy yesterday': 'energy.yesterday', 'energy total': 'energy.total', 'энергия сегодня': 'energy.today', 'энергия вчера': 'energy.yesterday', 'энергия всего': 'energy.total', 'энергия': 'energy.total', 'ток': 'metric.current', 'напряжение': 'metric.voltage', 'current': 'metric.current', 'voltage': 'metric.voltage', 'power': 'metric.power', 'мощность': 'metric.power' };
     return map[key] ? t(map[key]) : (n || metricLabel(m, t));
