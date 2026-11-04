@@ -195,6 +195,16 @@ class AlarmScheduler:
         if alarm and alarm["alice"] != "off" and alarm["station"]:
             await self.hass.services.async_call("media_player", "media_stop", {"entity_id": alarm["station"]}, blocking=False)
 
+    async def resume(self) -> None:
+        """After a restart nothing rings: a flag restored as «on» (HA restarted mid-alarm, 04.11.2026 21:52) would leave a stale
+        «Будильник» banner on every screen, so it is lowered together with the ringing text."""
+        if self._ringing is not None:
+            return
+        if (st := self.hass.states.get(RING_FLAG)) and st.state == "on":
+            await self.hass.services.async_call("input_boolean", "turn_off", {"entity_id": RING_FLAG}, blocking=False)
+        if (tx := self.hass.states.get(RING_TEXT)) and tx.state:
+            await self.hass.services.async_call("input_text", "set_value", {"entity_id": RING_TEXT, "value": ""}, blocking=False)
+
     async def stop(self) -> None:
         """Stop the sound and the repeats; the light stays as it is."""
         self._cancel_stop_timer()

@@ -118,6 +118,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     version = await hass.async_add_executor_job(_version)
     scheduler = AlarmScheduler(hass)
     scheduler.set_alarms(normalise_alarms((data.get("config") or {}).get("alarms")))
+    await scheduler.resume()  # a ringing flag restored across the restart is stale
     sleep = LightSleep(hass)
     await sleep.async_load()
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"store": store, "state": ConfigState(data.get("config"), data.get("revision", 0), store.async_save), "alarms": scheduler, "light_sleep": sleep}
