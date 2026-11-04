@@ -62,3 +62,6 @@
 3. **Разговор** (микрофон): WebRTC через go2rtc с отправкой звука (как карточка WebRTC на панели «Камеры»); через Nabu Casa нужен TURN — отдельное исследование.
 
 Не делаем: облачное наблюдение и архив Xiaomi (платно), ручной PTZ (нет в MIoT; в Mi Home он по закрытому P2P), калибровка гиростабилизатора.
+
+## События с видео (v1.8.0, 04.11.2026)
+У C700 в HA нет своих событий движения (только в Mi Home). Подъезд один: события глазка (`event.entrance_doorbell_ring`, `binary_sensor.entrance_doorbell_motion`) теперь пишут и C700 — автоматизации `doorbell_ring_record` и `doorbell_motion_record` дополнены снимком `camera.entrance_camera` и клипом 12 с (lookback 2 с) в `/media/camera/ГГГГ-ММ-ДД/ЧЧ-ММ-СС_ring|motion.jpg|mp4`. В листе C700 — та же лента со снимками и клипами, архив по дням, клип на месте эфира (общий модуль `event-feed.tsx`); роли `ring`/`motionEvent` модуля камеры находятся автоматически, папка — опция `mediaDir` (camera).
