@@ -53,3 +53,26 @@
 .hm-shell .hm-camera-tile.is-closed .hm-camera-frame{background:linear-gradient(160deg,#2a3245,#141a26)}
 .hm-shell .at-cam-badge{position:absolute;top:10px;right:10px;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#000a;color:#fff}
 .hm-shell .at-cam-stage:fullscreen{background:#000}.hm-shell .at-cam-stage:fullscreen video{object-fit:contain}
+/* laptops and monitors: the face grows with the screen instead of sitting in a 1280px column; tiles stay square and get a little bigger type */
+@media (min-width:1500px){
+  .hm-shell.is-wide .hm-page{max-width:1440px}
+  .hm-shell.is-wide.is-landscape .ah-grid,.hm-shell.is-wide .ah-grid{grid-template-columns:repeat(auto-fill,minmax(162px,1fr))}
+  .hm-shell.is-wide.is-landscape .ah-rooms-strip .hm-room-grid,.hm-shell.is-wide .ah-rooms-strip .hm-room-grid{grid-template-columns:repeat(auto-fill,minmax(224px,1fr))}
+}
+@media (min-width:2000px){
+  .hm-shell.is-wide .hm-page{max-width:1680px}
+  .hm-shell.is-wide.is-landscape .ah-grid,.hm-shell.is-wide .ah-grid{grid-template-columns:repeat(auto-fill,minmax(184px,1fr))}
+  .hm-shell.is-wide.is-landscape .ah-rooms-strip .hm-room-grid,.hm-shell.is-wide .ah-rooms-strip .hm-room-grid{grid-template-columns:repeat(auto-fill,minmax(252px,1fr))}
+  .hm-shell .hm-sheet.is-split{width:min(1200px,100%);max-width:1200px}
+  .hm-shell .hm-sheet.is-split .at-cam{grid-template-columns:minmax(0,1.2fr) 420px}
+}
+@media (min-width:3000px){
+  .hm-shell.is-wide .hm-page{max-width:1920px}
+  .hm-shell.is-wide.is-landscape .ah-grid,.hm-shell.is-wide .ah-grid{grid-template-columns:repeat(auto-fill,minmax(206px,1fr))}
+  .hm-shell.is-wide.is-landscape .ah-rooms-strip .hm-room-grid,.hm-shell.is-wide .ah-rooms-strip .hm-room-grid{grid-template-columns:repeat(auto-fill,minmax(284px,1fr))}
+}
+@container (min-width:185px){.hm-shell .ah-tile-text strong{font-size:16px}.hm-shell .ah-tile-text small{font-size:13px}.hm-shell .ah-tile .hm-status-text strong,.hm-shell .ah-tile .ah-value-num{font-size:26px}}
+/* the split sheet's columns scroll; their blocks must never be squeezed to fit (flex-shrink clipped the groups) */
+.hm-shell .hm-sheet.is-split .at-cam-left>*,.hm-shell .hm-sheet.is-split .at-cam-right>*{flex:none}
+.hm-shell .hm-sheet.is-split{max-height:calc(var(--hm-height,100dvh) - 48px)}
+.hm-shell .hm-sheet.is-split .at-cam-left{max-height:calc(var(--hm-height,100dvh) - 48px);overflow:auto}
