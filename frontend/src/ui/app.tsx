@@ -19,6 +19,7 @@ import type { JSX } from 'preact';
 import { SaveError, type ConfigStore } from '../runtime/store.ts';
 import { Cascade } from './motion.tsx';
 import { LightRows } from './light-rows.tsx';
+import { boilerDeviceIds, isElectric, mainsPower } from '../model/energy.ts';
 
 type View = { section: Section | 'setup'; room: string | null; device: string | null; filter: string | null };
 /** Apple Home-style navigation: Home · Rooms · Systems (+ Settings for admins). The former per-kind screens live under Systems as segments. */
@@ -124,7 +125,8 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
   useEffect(() => { const arm = () => armBeep(); navigationWindow.addEventListener('pointerdown', arm, { once: true, passive: true }); return () => navigationWindow.removeEventListener('pointerdown', arm); }, [navigationWindow]);
   const clockMod = modules.find(m => m.def.id === 'clock');
   const setModuleOption = (id: string) => host.admin ? (key: string, value: string | undefined) => { const cur = config.modules[id] ?? {}; const options = { ...(cur.options ?? {}) }; if (value === undefined) delete options[key]; else options[key] = value; void applyConfig({ ...config, modules: { ...config.modules, [id]: { ...cur, options } } }).catch(() => undefined); } : undefined;
-  const hasPower = (d: HomeDevice) => d.metrics.some(m => m.deviceClass === 'power' || m.deviceClass === 'energy');
+  const boilers = useMemo(() => boilerDeviceIds(modules, registry), [modules, registry]); // the boiler's thermal kW is not electricity
+  const hasPower = (d: HomeDevice) => d.metrics.some(m => isElectric(m, d, boilers) || m.deviceClass === 'energy');
   const energyDevices = enabled.filter(d => d.kind === 'energy' || hasPower(d));
   const present = (s: Section) => s === 'home' || s === 'rooms' || s === 'systems' || (s === 'energy' ? energyDevices.length > 0 : enabled.some(d => d.section === s));
   const systemTabs = SYSTEM_TABS.filter(s => present(s) && !config.sections[s]?.hidden);
@@ -178,7 +180,7 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
         {view.section === 'lights' && <LightsPage devices={enabled.filter(d => d.kind === 'light')} rooms={home.rooms} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} admin={host.admin} />}
         {view.section === 'climate' && <>{modules.filter(m => m.def.placement.includes('climate')).map(m => <m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} />)}<ClimatePage devices={enabled.filter(d => d.section === 'climate')} runner={runner} go={go} t={t} lang={lang} roomName={roomName} admin={host.admin} /></>}
         {view.section === 'cleaning' && <KindList devices={enabled.filter(d => d.section === 'cleaning')} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} admin={host.admin} />}
-        {view.section === 'energy' && <EnergyPage devices={energyDevices} go={go} t={t} lang={lang} roomName={roomName} admin={host.admin} />}
+        {view.section === 'energy' && <EnergyPage devices={energyDevices} go={go} t={t} lang={lang} roomName={roomName} admin={host.admin} boilers={boilers} />}
         {view.section === 'setup' && <Setup registry={registry} config={config} onChange={applyConfig} admin={host.admin} t={t} lang={lang} storeLabel={store?.label ?? 'memory'} warnings={configWarnings} photos={store?.photos} />}
         {view.section === 'systems' && <>{modules.filter(m => m.def.placement.includes('systems')).map(m => <m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} />)}</>}
         {view.section === 'systems' && <SystemsPage devices={enabled.filter(d => d.section === 'systems' || d.section === 'camera' || d.section === 'weather')} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} rooms={home.rooms} admin={host.admin} filter={view.filter} onFilter={f => go({ section: 'systems', filter: f })} />}
@@ -237,7 +239,8 @@ function Overview({ home, registry, config, modules, player, tileState, host, ru
   const leaks = d.filter(x => x.kind === 'leak'), wet = leaks.filter(x => x.primary.state === 'on'), leaksMute = leaks.length > 0 && leaks.every(x => !x.primary.available || x.primary.state === 'unknown');
   const co2 = d.flatMap(x => x.metrics).find(m => m.deviceClass === 'carbon_dioxide' && m.available && Number.isFinite(Number(m.state)));
   const co2v = co2 ? Number(co2.state) : null, air = co2Level(co2v, t), co2Dev = co2 ? d.find(x => x.metrics.includes(co2)) : undefined;
-  const power = d.flatMap(x => x.metrics).filter(m => m.deviceClass === 'power' && m.available && Number.isFinite(Number(m.state)));
+  const boilers = boilerDeviceIds(modules, registry);
+  const power = mainsPower(d, boilers); // the SPM feed channels only (owner's rule), electric readings as a fallback
   const watts = power.length ? power.reduce((a, m) => a + (m.unit === 'kW' ? Number(m.state) * 1000 : Number(m.state)), 0) : null;
   const hasPlayer = (x: HomeDevice) => modules.some(m => m.def.Player && m.entities.camera === x.primary.id);
   const tileLive = (x: HomeDevice) => modules.some(m => m.def.Player && m.def.tileStreams !== false && m.entities.camera === x.primary.id);
@@ -318,7 +321,7 @@ function KindList({ devices, runner, toggle, go, t, lang, roomName, admin }: Com
   return <div className="ah-grid at-list">{devices.map(d => <div className="ah-tile-stack at-device" data-device-key={d.key}><AccessoryTile device={d} name={withRoom(d.name, roomName(d.roomId))} pending={runner.busy.has(d.key)} onToggle={canToggle(d) ? () => toggle(d) : undefined} onOpen={() => go({ section: 'cleaning', device: d.key })} t={t} lang={lang} wide />
     <div className="hm-chips">{actionsFor(d).filter(a => a.kind === 'button').map(a => <button type="button" disabled={runner.busy.has(d.key) || !d.primary.available} onClick={() => void runner.run(d, a)}>{t(a.label as Key)}</button>)}</div></div>)}</div>;
 }
-function EnergyPage({ devices, go, t, lang, roomName, admin }: { devices: HomeDevice[]; go: Nav; t: ReturnType<typeof translator>; lang: 'ru' | 'ro' | 'en'; roomName: (id: string) => string; admin?: boolean }) {
+function EnergyPage({ devices, go, t, lang, roomName, admin, boilers }: { devices: HomeDevice[]; go: Nav; t: ReturnType<typeof translator>; lang: 'ru' | 'ro' | 'en'; roomName: (id: string) => string; admin?: boolean; boilers: Set<string> }) {
   if (!devices.length) return <Empty go={go} t={t} admin={admin} />;
   // H8 of the audit: «Гостиная · Розетка Xiaomi (очиститель) Energy Today» → «сегодня»
   const caption = (m: EntityRef, d: HomeDevice) => {
@@ -333,7 +336,7 @@ function EnergyPage({ devices, go, t, lang, roomName, admin }: { devices: HomeDe
     const map: Record<string, Key> = { 'energy today': 'energy.today', 'energy month': 'energy.month', 'energy yesterday': 'energy.yesterday', 'energy total': 'energy.total', 'энергия сегодня': 'energy.today', 'энергия вчера': 'energy.yesterday', 'энергия всего': 'energy.total', 'энергия': 'energy.total', 'ток': 'metric.current', 'напряжение': 'metric.voltage', 'current': 'metric.current', 'voltage': 'metric.voltage', 'power': 'metric.power', 'мощность': 'metric.power' };
     return map[key] ? t(map[key]) : (n || metricLabel(m, t));
   };
-  const pw = (d: HomeDevice) => { const m = d.metrics.find(x => x.deviceClass === 'power' && x.available); return m ? Number(m.state) * (m.unit === 'kW' ? 1000 : 1) : null; };
+  const pw = (d: HomeDevice) => { const m = d.metrics.find(x => isElectric(x, d, boilers) && x.available); return m ? Number(m.state) * (m.unit === 'kW' ? 1000 : 1) : null; };
   const max = Math.max(1, ...devices.map(d => pw(d) ?? 0));
   return <div className="hm-energy"><div className="hm-energy-lines">{devices.map(d => { const w = pw(d); return <button type="button" className="hm-card hm-line" data-device-key={d.key} onClick={() => go({ section: 'energy', device: d.key })}>
     <span className="hm-line-head"><span className="ah-glyph is-small" style="--tile:#30d158"><Icon name="energy" size={16} /></span><strong>{inRoomName(d, roomName(d.roomId))}</strong><span className="hm-badge">{roomName(d.roomId)}</span></span>
