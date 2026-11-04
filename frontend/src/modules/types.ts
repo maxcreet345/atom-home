@@ -34,6 +34,8 @@ export interface ModuleDef {
   tileStreams?: boolean;
   /** Optional sheet that replaces the generic DeviceSheet for the card whose primary entity is `entities.camera`. */
   Sheet?: ComponentType<ModuleSheetProps>;
+  /** A house-wide notice the shell shows on every device while it holds (a timer that ended): text, optional second line, whether the device should beep once, and what «Stop» does. */
+  banner?(registry: Registry, entities: ModuleEntities, t: T, host: Host): { id: string; text: string; sub?: string; icon?: string; sound?: boolean; stop(): Promise<void> } | null;
   /** Optional state for the camera tile (second line, closed lens, badge). */
   tileState?(registry: Registry, entities: ModuleEntities, t: T, lang: Lang): TileState;
 }

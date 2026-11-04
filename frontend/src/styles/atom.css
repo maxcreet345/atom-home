@@ -131,3 +131,48 @@
 .hm-shell .at-door-cell.is-ring::before{content:"";position:absolute;left:8px;top:8px;width:10px;height:10px;border-radius:50%;background:var(--ah-red,#ff3b30);box-shadow:0 0 0 2px #fff8}
 .hm-shell .at-door-seg.is-head{padding:0;background:none;gap:4px;flex:none}.hm-shell .at-door-seg.is-head button{flex:none;padding:7px 10px}
 .is-narrow .at-door-seg.is-head{display:none}
+/* clock: live face (sweeping seconds, daylight arc), timer on the tile, the «Time» sheet, kitchen timers, people, house banner */
+.hm-shell button.ah-clock{border:0;font:inherit;color:inherit;cursor:pointer;text-align:center;position:relative;padding:6px 6px 22px}
+.hm-shell .ah-clock .ah-clock-svg{width:100%;height:100%;display:block}
+.hm-shell .ah-clock-arc{fill:none;stroke:#e9a224;stroke-width:2.4;stroke-linecap:round;transition:stroke .4s ease}
+.hm-shell .ah-clock-svg.is-night .ah-clock-arc{stroke:#3d6ef266}
+.hm-shell .ah-clock-sun{fill:#e9a224;stroke:#fff;stroke-width:1.2;transition:cx 1s ease,cy 1s ease}.hm-shell .ah-clock-svg.is-night .ah-clock-sun{fill:#9fb1c5;stroke:#1c2436}
+.hm-shell .ah-hand.is-sec{stroke:var(--ah-red,#ff3b30);stroke-width:1;stroke-linecap:round}
+.hm-shell .ah-sec{transform-origin:50px 50px;animation:ah-sweep 60s linear infinite}
+@keyframes ah-sweep{to{transform:rotate(360deg)}}
+.hm-shell .ah-hand-cap{fill:var(--ah-red,#ff3b30)}
+.hm-shell .ah-clock-ring-bg{fill:none;stroke:var(--ah-inset,#0000000f);stroke-width:4}.hm-shell .ah-clock-ring{fill:none;stroke:var(--ah-accent);stroke-width:4;stroke-linecap:round;transition:stroke-dashoffset 1s linear}
+.hm-shell .ah-clock-big{position:absolute;inset:0 0 18px;display:grid;place-content:center;text-align:center;animation:ah-pop .4s var(--ah-spring)}
+.hm-shell .ah-clock-big b{font-size:26px;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums;line-height:1}.hm-shell .ah-clock-big small{font-size:11px;color:var(--ah-muted)}
+@keyframes ah-pop{from{transform:scale(.85);opacity:0}to{transform:none;opacity:1}}
+.hm-shell .ah-clock .ah-clock-date{display:block;position:absolute;left:0;right:0;bottom:7px;font-size:12px;font-weight:600;color:var(--ah-muted)}.hm-shell .ah-clock .ah-clock-date::first-letter{text-transform:uppercase}
+.hm-shell .ah-clock-digital{display:flex;align-items:baseline;justify-content:center;gap:4px;height:100%}.hm-shell .ah-clock-digital b{font-size:34px;font-weight:700;letter-spacing:-1px;font-variant-numeric:tabular-nums}.hm-shell .ah-clock-digital span{font-size:14px;color:var(--ah-muted);font-variant-numeric:tabular-nums}
+@container (min-width:185px){.hm-shell .ah-clock-digital b{font-size:42px}.hm-shell .ah-clock-big b{font-size:32px}}
+.hm-shell .at-clock-photo{color:var(--ah-accent)}
+.hm-shell .at-clock-face-wrap{width:min(260px,70%);margin:0 auto;aspect-ratio:1}
+.hm-shell .at-clock-big{display:flex;align-items:baseline;justify-content:center;gap:8px;padding:4px 0 0}.hm-shell .at-clock-big b{font-size:52px;font-weight:700;letter-spacing:-2px;font-variant-numeric:tabular-nums;line-height:1}.hm-shell .at-clock-big span{font-size:20px;color:var(--ah-muted);font-variant-numeric:tabular-nums}
+.hm-shell .at-clock-date{text-align:center;color:var(--ah-muted);font-size:15px}.hm-shell .at-clock-date b{color:var(--ah-ink);font-weight:600}.hm-shell .at-clock-date b::first-letter{text-transform:uppercase}
+.hm-shell .at-clock-sun{display:grid;gap:6px;padding:14px 16px;border-radius:18px;background:var(--ah-group)}
+.hm-shell .at-clock-sun-row{display:flex;justify-content:space-between;gap:8px;font-size:14px;color:var(--ah-muted);flex-wrap:wrap}.hm-shell .at-clock-sun-row b{color:var(--ah-ink);font-weight:600}
+.hm-shell .at-clock-arc{width:100%;height:64px;display:block}.hm-shell .at-clock-arc .bg{fill:none;stroke:var(--ah-inset,#0000000f);stroke-width:3}.hm-shell .at-clock-arc .fg{fill:none;stroke:#e9a224;stroke-width:3;stroke-linecap:round;transition:stroke-dashoffset 1s ease}.hm-shell .at-clock-arc .dot{fill:#e9a224;stroke:#fff;stroke-width:2}.hm-shell .at-clock-arc .base{stroke:var(--ah-line);stroke-width:1}
+.hm-shell .at-clock-timers{display:grid;gap:10px;padding:14px 16px;border-radius:18px;background:var(--ah-group)}.hm-shell .at-clock-timers h4{margin:0;font-size:13px;font-weight:600;color:var(--ah-muted)}
+.hm-shell .at-clock-presets,.hm-shell .at-clock-labels{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.hm-shell .hm-pill.at-clock-preset{min-width:52px;font-size:15px;font-weight:600}
+.hm-shell .at-clock-trow{display:flex;align-items:center;gap:14px;animation:ah-pop .4s var(--ah-spring)}
+.hm-shell .at-clock-ring{position:relative;width:64px;height:64px;flex:none}.hm-shell .at-clock-ring svg{width:64px;height:64px;transform:rotate(-90deg)}.hm-shell .at-clock-ring circle{fill:none;stroke-width:5}.hm-shell .at-clock-ring .bg{stroke:var(--ah-inset,#0000000f)}.hm-shell .at-clock-ring .fg{stroke:var(--ah-accent);stroke-linecap:round;transition:stroke-dashoffset 1s linear}
+.hm-shell .at-clock-trow.is-paused .at-clock-ring .fg{stroke:var(--ah-muted)}
+.hm-shell .at-clock-ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.hm-shell .at-clock-tt{flex:1;display:grid;min-width:0}.hm-shell .at-clock-tt strong{font-size:16px}.hm-shell .at-clock-tt small{color:var(--ah-muted);font-size:13px}
+.hm-shell button.at-clock-ctl{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;border:0;background:var(--ah-inset,#0000000f);color:var(--ah-ink);font:inherit;font-size:20px;cursor:pointer;transition:transform .32s var(--ah-spring)}.hm-shell button.at-clock-ctl:active{transform:scale(.9)}.hm-shell button.at-clock-ctl.is-stop{background:#ff3b3022;color:#ff3b30}
+.hm-shell .at-clock-wheel{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:4px 0;animation:ah-pop .35s var(--ah-spring)}.hm-shell .at-clock-wheel>div{display:grid;justify-items:center;gap:2px;width:84px;padding:6px 0;border-radius:14px;background:var(--ah-inset,#0000000f);font-variant-numeric:tabular-nums}.hm-shell .at-clock-wheel>div b{font-size:28px}.hm-shell .at-clock-wheel>div small{font-size:11px;color:var(--ah-muted)}.hm-shell .at-clock-wheel .hm-icon-btn{width:40px;height:32px;font-size:20px}
+.hm-shell .at-clock-go{min-width:150px}
+.hm-shell .at-clock-label-input{flex:1;min-width:120px;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--ah-line);background:var(--ah-inset,#0000000f);color:var(--ah-ink);font:inherit;font-size:14px}
+.hm-shell .at-clock-people{display:flex;gap:12px;padding:14px 16px;border-radius:18px;background:var(--ah-group);overflow-x:auto;scrollbar-width:none}
+.hm-shell .at-clock-person{display:grid;justify-items:center;gap:4px;font-size:12px;color:var(--ah-muted);text-align:center;width:76px;flex:none}.hm-shell .at-clock-person b{display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:var(--ah-inset,#0000000f);font-size:16px;font-weight:700;color:var(--ah-ink);box-shadow:0 0 0 3px #8e8e93;transition:box-shadow .4s ease}.hm-shell .at-clock-person.is-home b{box-shadow:0 0 0 3px #30d158}.hm-shell .at-clock-person strong{color:var(--ah-ink);font-weight:600}
+.hm-shell .at-house-banner{background:var(--ah-accent)}.hm-shell .at-house-banner .hm-pill{color:var(--ah-accent)}.hm-shell .at-house-banner small{font-weight:500;opacity:.9}
+.hm-shell .at-door-ring{animation:at-drop .45s var(--ah-spring)}
+@keyframes at-drop{from{transform:translate(-50%,-24px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+.hm-shell .at-cam .at-clock-sun,.hm-shell .at-cam .at-clock-timers,.hm-shell .at-cam .at-clock-people{flex:none}
+@media (prefers-reduced-motion:reduce){.hm-shell .ah-sec{animation:none}}
+.hm-shell .at-door-seg.at-clock-seg{padding:0;background:none;gap:4px;flex:none}.hm-shell .at-door-seg.at-clock-seg button{flex:none;padding:7px 12px}
+.hm-shell .at-door-ring>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw}

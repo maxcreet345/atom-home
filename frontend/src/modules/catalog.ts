@@ -109,7 +109,18 @@ export const doorbellSpec: ModuleSpec = {
     return { label: dev?.name ?? 'Doorbell', entities, options };
   },
 };
-export const MODULE_SPECS: ModuleSpec[] = [boilerEbusSpec, cameraGo2rtcSpec, doorbellSpec, petFeederSpec];
+/** The clock tile and the «Time» sheet: the sun from `sun.sun`, three shared kitchen timers `timer.atom_1…3` with their labels in one `input_text`, the «timer done» flag, the announce/push switches, the weather for the date line. */
+export const clockSpec: ModuleSpec = {
+  id: 'clock', titleKey: 'module.clock', placement: [],
+  roles: [{ role: 'sun', labelKey: 'module.clock.role.sun', required: true }, { role: 'weather', labelKey: 'module.clock.role.weather', required: false }, { role: 'timer1', labelKey: 'module.clock.role.timer1', required: false }, { role: 'timer2', labelKey: 'module.clock.role.timer2', required: false }, { role: 'timer3', labelKey: 'module.clock.role.timer3', required: false }, { role: 'labels', labelKey: 'module.clock.role.labels', required: false }, { role: 'done', labelKey: 'module.clock.role.done', required: false }, { role: 'announce', labelKey: 'module.clock.role.announce', required: false }, { role: 'push', labelKey: 'module.clock.role.push', required: false }],
+  detect(reg) {
+    if (!reg.states['sun.sun']) return null;
+    const has = (id: string) => reg.states[id] && !reg.entities.some(e => e.entity_id === id && e.disabled_by) ? id : undefined;
+    const weather = reg.entities.map(e => e.entity_id).find(id => id.startsWith('weather.') && reg.states[id] && reg.states[id].state !== 'unavailable');
+    return { label: 'clock', entities: { sun: 'sun.sun', weather, timer1: has('timer.atom_1'), timer2: has('timer.atom_2'), timer3: has('timer.atom_3'), labels: has('input_text.atom_timer_labels'), done: has('input_boolean.timer_done'), announce: has('input_boolean.timer_announce'), push: has('input_boolean.timer_push') } };
+  },
+};
+export const MODULE_SPECS: ModuleSpec[] = [boilerEbusSpec, cameraGo2rtcSpec, doorbellSpec, petFeederSpec, clockSpec];
 export interface ActiveSpec { spec: ModuleSpec; entities: ModuleEntities; label: string; options: ModuleOptions }
 /** Modules whose hardware is present (or that the owner configured by hand) and that are not disabled. */
 export function activeSpecs(registry: Registry, config: HouseConfig, specs: ModuleSpec[] = MODULE_SPECS): ActiveSpec[] {

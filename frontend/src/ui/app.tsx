@@ -7,7 +7,8 @@ import { SECTIONS, type Section, type Kind } from '../model/kinds.ts';
 import type { Host } from '../runtime/host.ts';
 import { actionsFor, serviceCall, customAction, type Action } from '../runtime/actions.ts';
 import { translator, type Key } from '../i18n/index.ts';
-import { RoomTile, AccessoryTile, ThermostatTile, ClockTile, SceneTile, ValueTile, Pill, Section as Block } from './cards.tsx';
+import { RoomTile, AccessoryTile, ThermostatTile, ClockTile as PlainClockTile, SceneTile, ValueTile, Pill, Section as Block } from './cards.tsx';
+import { ClockTile, ClockSheet, beep, armBeep } from '../modules/clock.tsx';
 import { DeviceSheet, type Runner } from './sheet.tsx';
 import { stateText, isOn, num, co2Level, withRoom } from './format.ts';
 import { Setup } from './setup.tsx';
@@ -99,6 +100,12 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
     return () => clearInterval(i);
   }, [autoClose, view.device]);
   const autoCloseFor = (key: string): AutoClose | null => autoClose && autoClose.key === key ? { left: Math.ceil((autoClose.until - Date.now()) / 1000), keep: () => setAutoClose(null) } : null;
+  // House-wide notices from modules (a timer that ended): shown on every device, with one beep here if this device allows it.
+  const banner = modules.map(m => m.def.banner?.(registry, m.entities, t, host) ?? null).find(Boolean) ?? null;
+  const bannerSeen = useRef<string | null>(null);
+  useEffect(() => { const key = banner ? `${banner.id}:${banner.text}:${banner.sub ?? ''}` : null; if (key && key !== bannerSeen.current && banner?.sound) { try { if (JSON.parse(localStorage.getItem('atom-home:clock') ?? '{}').beep !== false) beep(); } catch { beep(); } } bannerSeen.current = key; }, [banner?.id, banner?.text, banner?.sub]);
+  useEffect(() => { const arm = () => armBeep(); navigationWindow.addEventListener('pointerdown', arm, { once: true, passive: true }); return () => navigationWindow.removeEventListener('pointerdown', arm); }, [navigationWindow]);
+  const clockMod = modules.find(m => m.def.id === 'clock');
   const setModuleOption = (id: string) => host.admin ? (key: string, value: string | undefined) => { const cur = config.modules[id] ?? {}; const options = { ...(cur.options ?? {}) }; if (value === undefined) delete options[key]; else options[key] = value; void applyConfig({ ...config, modules: { ...config.modules, [id]: { ...cur, options } } }).catch(() => undefined); } : undefined;
   const hasPower = (d: HomeDevice) => d.metrics.some(m => m.deviceClass === 'power' || m.deviceClass === 'energy');
   const energyDevices = enabled.filter(d => d.kind === 'energy' || hasPower(d));
@@ -111,12 +118,13 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
   const sideNav = useNavIndicator<HTMLElement>([view.section, wide, viewport.width, viewport.height]);
   const tabNav = useNavIndicator<HTMLElement>([view.section, wide, viewport.width]);
   const device = view.device ? enabled.find(d => d.key === view.device) : undefined;
+  const clockOpen = view.device === 'clock' && !!clockMod;
   const rooms = home.rooms.filter(r => !r.hidden);
   const roomName = (id: string) => home.rooms.find(r => r.id === id)?.name || t('room.none');
   const title = view.section === 'setup' ? t('setup.title') : view.section === 'rooms' && view.room ? roomName(view.room) : view.section === 'home' ? home.name : inSystems ? t('section.systems') : t(`section.${view.section}` as Key);
   const subtitle = view.section === 'home' ? `${greeting(now, t)} · ${date}` : view.section === 'rooms' && !view.room ? t('rooms.count', { n: rooms.length }) : '';
   const pageKey = `${view.section}/${view.room ?? ''}`;
-  const modal = !!device || !!confirm;
+  const modal = !!device || clockOpen || !!confirm;
   const navItems = [...NAV, ...(host.admin ? [{ id: 'setup' as const, icon: 'gear' }] : [])];
   const navLabel = (id: Section | 'setup') => id === 'setup' ? t('section.settings') : t(`section.${id}` as Key);
   return <div className={`hm-shell daily-shell at-shell ah-shell ${wide && !short ? 'daily-fit-screen' : ''} ${wide ? 'is-wide' : 'is-narrow'} ${wide && viewport.width < 760 ? 'is-compact' : ''} ${landscape ? 'is-landscape' : 'is-portrait'} ${short ? 'is-short' : ''} hm-route-${view.section}`} lang={lang} data-theme={config.home.theme} style={`--hm-height:${viewport.height}px`}>
@@ -150,6 +158,9 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
       </div>
     </main>
     {!wide && <nav className="hm-tabbar" aria-label={t('section.more')} inert={modal || undefined} ref={tabNav}><i className="hm-nav-ind" aria-hidden="true" />{navItems.map(n => <button type="button" className={navActive(n.id) ? 'is-active' : ''} onClick={() => go({ section: navTarget(n.id) })}><Icon name={n.icon} size={24} /><span>{navLabel(n.id)}</span></button>)}</nav>}
+    {clockOpen && clockMod && (() => { const close = () => go({ section: view.section, room: view.room }); const sheetWide = wide && landscape && viewport.width >= 800;
+      return <div className="hm-scrim" onClick={e => { if (e.target === e.currentTarget) close(); }}><section className={`hm-sheet ${sheetWide ? 'is-split' : ''}`} role="dialog" aria-modal="true" aria-label={t('clock.title')} {...swipeToClose(close)}>
+        <ClockSheet registry={registry} entities={clockMod.entities} host={host} t={t} lang={lang} runner={runner} onClose={close} wide={sheetWide} /></section></div>; })()}
     {device && (() => {
       const close = () => go({ section: view.section, room: view.room }), roomName_ = home.rooms.find(r => r.id === device.roomId)?.name;
       const mod = device.kind === 'camera' ? modules.find(m => m.def.Sheet && m.entities.camera === device.primary.id) : undefined, st = device.kind === 'camera' ? tileState(device) : null;
@@ -160,6 +171,7 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
       </section></div>;
     })()}
     {confirm && <div className="hm-scrim is-top" onClick={e => { if (e.target === e.currentTarget) setConfirm(null); }}><div className="hm-confirm" role="alertdialog" aria-modal="true" aria-label={t('confirm.title')}><h2>{t('confirm.title')}</h2><p>{(() => { const a = t(confirm.action.label as Key) === confirm.action.label ? confirm.action.label : t(confirm.action.label as Key); return a === confirm.device.name ? t('confirm.text.one', { action: a }) : t('confirm.text', { action: a, device: confirm.device.name }); })()}</p><div><button type="button" className="hm-pill" onClick={() => setConfirm(null)}>{t('confirm.no')}</button><button type="button" className="hm-pill is-primary" onClick={() => void runner.run(confirm.device, confirm.action, confirm.value)}>{t('confirm.yes')}</button></div></div></div>}
+    {banner && <div className="at-door-ring at-house-banner" role="alert"><Icon name={banner.icon ?? 'clock'} size={20} /><span>{banner.text}{banner.sub ? <small> · {banner.sub}</small> : null}</span><button type="button" className="hm-pill is-primary" onClick={() => void banner.stop().catch(() => undefined)}>{t('clock.stop')}</button></div>}
     {ringBanner && <div className="at-door-ring" role="alert"><Icon name="bell" size={20} /><span>{t('module.doorbell.ringing')}</span><button type="button" className="hm-pill is-primary" onClick={() => openAlarm(ringBanner.key, ringBanner.seconds)}>{t('ui.open')}</button><button type="button" className="hm-icon-btn" aria-label={t('ui.close')} onClick={() => setRingBanner(null)}>×</button></div>}
     {toast && <div className="hm-toast" role="alert" onClick={() => setToast('')}><Icon name="warning" size={18} /><span>{toast}</span></div>}
   </div>;
@@ -212,7 +224,7 @@ function Overview({ home, registry, config, modules, player, tileState, host, ru
   const step = (dir: 1 | -1) => { if (climate && tempAction && temp !== null) void runner.run(climate, tempAction, Math.round((temp + dir * (tempAction.step ?? 0.5)) * 10) / 10); };
   const tile = (x: HomeDevice, section: Section = 'home') => <AccessoryTile device={x} name={canToggle(x) ? inRoomName(x, roomOf(x)) : x.name} room={canToggle(x) ? roomOf(x) : undefined} pending={runner.busy.has(x.key)} onToggle={canToggle(x) ? () => toggle(x) : undefined} onOpen={() => go({ section, device: x.key })} t={t} lang={lang} />;
   return <Cascade className="hm-home ah-home ah-grid ah-face" data-face="home-modular">
-    <ClockTile now={now} lang={lang} />
+    {modules.some(m => m.def.id === 'clock') ? <ClockTile now={now} lang={lang} t={t} registry={registry} entities={modules.find(m => m.def.id === 'clock')!.entities} onOpen={() => go({ section: 'home', device: 'clock' })} /> : <PlainClockTile now={now} lang={lang} />}
     {climate && <ThermostatTile device={climate} sub={roomOf(climate)} target={temp} current={cur} onStep={tempAction ? step : undefined} onOpen={() => go({ section: 'home', device: climate.key })} t={t} lang={lang} disabled={runner.busy.has(climate.key)} />}
     {cameras.slice(0, 1).map(c => { const st = tileState(c); return <CameraTile device={c} state={st} player={st?.closed ? null : player(c, 'tile')} onOpen={() => go({ section: 'home', device: c.key })} t={t} lang={lang} large />; })}
     {modules.filter(m => m.def.placement.includes('overview')).map(m => <div className="ah-tile ah-module" role="link" tabIndex={0} onClick={e => { if ((e.target as HTMLElement).closest('button, a, input, select, label')) return; go({ section: (m.def.placement.find(p => p !== 'overview') ?? 'systems') as Section }); }} onKeyDown={e => { if (e.key === 'Enter') go({ section: (m.def.placement.find(p => p !== 'overview') ?? 'systems') as Section }); }}><m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} compact /></div>)}
