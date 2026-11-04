@@ -7,7 +7,7 @@ import { SECTIONS, type Section, type Kind } from '../model/kinds.ts';
 import type { Host } from '../runtime/host.ts';
 import { actionsFor, serviceCall, customAction, type Action } from '../runtime/actions.ts';
 import { translator, type Key } from '../i18n/index.ts';
-import { RoomTile, AccessoryTile, ThermostatTile, ClockTile as PlainClockTile, SceneTile, ValueTile, Pill, Section as Block } from './cards.tsx';
+import { RoomTile, AccessoryTile, ThermostatTile, ClockTile as PlainClockTile, SceneTile, ValueTile, Pill, Section as Block, artOf } from './cards.tsx';
 import { ClockTile, ClockSheet, beep, armBeep } from '../modules/clock.tsx';
 import type { Alarm } from '../model/config.ts';
 import { DeviceSheet, heatOn, type Runner } from './sheet.tsx';
@@ -237,7 +237,9 @@ function Overview({ home, registry, config, modules, player, tileState, host, ru
   const watts = power.length ? power.reduce((a, m) => a + (m.unit === 'kW' ? Number(m.state) * 1000 : Number(m.state)), 0) : null;
   const hasPlayer = (x: HomeDevice) => modules.some(m => m.def.Player && m.entities.camera === x.primary.id);
   const tileLive = (x: HomeDevice) => modules.some(m => m.def.Player && m.def.tileStreams !== false && m.entities.camera === x.primary.id);
-  const climate = d.find(x => x.kind === 'climate'), cameras = d.filter(x => x.kind === 'camera' && (x.primary.available || hasPlayer(x))).sort((a, b) => Number(tileLive(b)) - Number(tileLive(a)) || Number(hasPlayer(b)) - Number(hasPlayer(a)) || Number(typeof b.primary.attributes.entity_picture === 'string') - Number(typeof a.primary.attributes.entity_picture === 'string')), weather = d.find(x => x.kind === 'weather');
+  // the owner's wish (04.11.2026): the home face shows the house thermostat (the boiler's), never a room's radiator head
+  const isTrv = (x: HomeDevice) => artOf(x) === 'radiator';
+  const climate = d.filter(x => x.kind === 'climate').sort((a, b) => Number(isTrv(a)) - Number(isTrv(b)))[0], cameras = d.filter(x => x.kind === 'camera' && (x.primary.available || hasPlayer(x))).sort((a, b) => Number(tileLive(b)) - Number(tileLive(a)) || Number(hasPlayer(b)) - Number(hasPlayer(a)) || Number(typeof b.primary.attributes.entity_picture === 'string') - Number(typeof a.primary.attributes.entity_picture === 'string')), weather = d.find(x => x.kind === 'weather');
   const wtemp = weather && typeof weather.primary.attributes.temperature === 'number' ? weather.primary.attributes.temperature : null;
   // Home face = favourites + one summary module per group (Xiaomi Home «Освещение · всё выключено»), rooms underneath; everything else lives in Rooms and Systems.
   const favourites = d.filter(x => x.favorite && x !== climate && x.kind !== 'camera' && x.kind !== 'weather');
@@ -304,7 +306,7 @@ function LightsPage({ devices, rooms, runner, toggle, go, t, lang, roomName, adm
 }
 function ClimatePage({ devices, runner, go, t, lang, roomName, admin }: Common & { devices: HomeDevice[]; roomName: (id: string) => string }) {
   if (!devices.length) return <Empty go={go} t={t} admin={admin} />;
-  return <div className="ah-grid ah-climate-grid">{devices.map(d => { const e = d.primary, acts = actionsFor(d), temp = acts.find(a => a.id === 'temperature'), target = typeof e.attributes.temperature === 'number' ? e.attributes.temperature : null, cur = typeof e.attributes.current_temperature === 'number' ? e.attributes.current_temperature : null;
+  return <div className="ah-grid ah-climate-grid">{[...devices].sort((a, b) => Number(artOf(a) === 'radiator') - Number(artOf(b) === 'radiator')).map(d => { const e = d.primary, acts = actionsFor(d), temp = acts.find(a => a.id === 'temperature'), target = typeof e.attributes.temperature === 'number' ? e.attributes.temperature : null, cur = typeof e.attributes.current_temperature === 'number' ? e.attributes.current_temperature : null;
     return <ThermostatTile device={d} name={inRoomName(d, roomName(d.roomId))} sub={roomName(d.roomId)} target={target} current={cur} onStep={temp ? dir => target !== null && void runner.run(d, temp, Math.round((target + dir * (temp.step ?? 0.5)) * 10) / 10) : undefined} onOpen={() => go({ section: 'climate', device: d.key })} t={t} lang={lang} disabled={runner.busy.has(d.key)} />; })}</div>;
 }
 function KindList({ devices, runner, toggle, go, t, lang, roomName, admin }: Common & { devices: HomeDevice[]; toggle: (d: HomeDevice) => void; roomName: (id: string) => string }) {
