@@ -1,8 +1,9 @@
 import type { StateRow } from '../model/registry.ts';
 import type { ModuleEntities, ModuleOptions, TileState } from './types.ts';
-import { DOORBELL_ROLES } from './catalog.ts';
+import { DOORBELL_ROLES, DOORBELL_HOUSE_ROLES } from './catalog.ts';
 /** Pure helpers of the doorbell module (testable under Node): claims, the tile line, auto-open settings, logbook rows → events, relative time. */
-export const doorbellClaims = (entities: ModuleEntities): string[] => DOORBELL_ROLES.map(r => entities[r.role]).filter((id): id is string => !!id);
+/** Everything the doorbell card draws itself, plus the recording camera and the automation switches of stage 2: none of them is a card of its own. */
+export const doorbellClaims = (entities: ModuleEntities): string[] => [...DOORBELL_ROLES.map(r => entities[r.role]), ...DOORBELL_HOUSE_ROLES.map(r => entities[r.role])].filter((id): id is string => !!id);
 export const RING_FRESH_MS = 60_000, AUTO_OPEN_CHOICES = [30, 60, 120] as const;
 /** Seconds the sheet stays open after a ring; 0 = auto-open off. */
 export function autoOpenSeconds(options: ModuleOptions): number {

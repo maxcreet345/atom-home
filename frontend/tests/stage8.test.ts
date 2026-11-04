@@ -19,7 +19,8 @@ test('G4: the doorbell is detected by its ring event, its functions claimed by t
   const cfg = defaultConfig(); cfg.modules.doorbell = { options: { addon: 'a889bffc_go2rtc' } };
   const active = activeSpecs(cam!, cfg).find(a => a.spec.id === 'doorbell'); assert.ok(active, 'active once the add-on is known'); assert.equal(active!.options.stream, 'entrance_doorbell');
   assert.ok(!activeSpecs(cam!, defaultConfig()).some(a => a.spec.id === 'doorbell'), 'without an add-on slug the module stays off');
-  const claimed = new Set(doorbellClaims(active!.entities)); assert.equal(claimed.size, 7);
+  const claimed = new Set(doorbellClaims(active!.entities)); assert.equal(claimed.size, 7, 'the snapshot predates the recording camera and the switches');
+  assert.ok(doorbellClaims({ ...active!.entities, video: 'camera.entrance_doorbell_video', notifyPhones: 'input_boolean.doorbell_notify_phones' }).includes('camera.entrance_doorbell_video'), 'the recording camera is not a tile of its own');
   const before = discover(cam!, cfg), after = discover(cam!, cfg, claimed);
   const idsOf = (h: typeof before) => new Set(h.devices.flatMap(d => [d.primary, ...d.controls, ...d.metrics, ...d.parameters, ...d.diagnostics].map(e => e.id)));
   assert.ok(idsOf(before).has('switch.entrance_doorbell_chime_mute')); assert.ok(!idsOf(after).has('switch.entrance_doorbell_chime_mute'), 'mute switches live in the sheet, not as cards');
