@@ -57,6 +57,8 @@ export function SettingRow({ device, action, runner, t, icon, color }: Common & 
 function History({ entity, host, t, lang }: { entity: EntityRef; host?: Host; t: T; lang: Lang }) {
   const [pts, setPts] = useState<Array<[number, number]> | null>(null);
   useEffect(() => { let alive = true; setPts(null); if (!host?.history) return; host.history([entity.id], 24).then(d => { if (alive) setPts(d[entity.id] ?? []); }).catch(() => { if (alive) setPts([]); }); return () => { alive = false; }; }, [entity.id, host]);
+  // the chart's place is held while it loads, so the sheet does not jump when it arrives
+  if (!pts && host?.history) return <div className="ah-history" style="visibility:hidden" aria-hidden="true"><div className="ah-history-head"><small>{t('ui.history')}</small></div><svg viewBox="0 0 100 28" preserveAspectRatio="none" /></div>;
   if (!pts || pts.length < 2) return null;
   const ys = pts.map(p => p[1]), min = Math.min(...ys), max = Math.max(...ys), span = max - min || 1, x0 = pts[0][0], xs = (pts[pts.length - 1][0] - x0) || 1;
   const d = pts.map((p, i) => `${i ? 'L' : 'M'}${(100 * (p[0] - x0) / xs).toFixed(1)} ${(28 - 24 * (p[1] - min) / span - 2).toFixed(1)}`).join(' ');

@@ -28,25 +28,27 @@ const toRow = (e: Record<string, unknown>): EntityRow => ({
   platform: String(e.platform ?? ''), entity_category: (e.entity_category as EntityRow['entity_category']) ?? null, disabled_by: (e.disabled_by as string | null) ?? null, hidden_by: (e.hidden_by as string | null) ?? null,
   icon: (e.icon as string | null) ?? null, original_icon: (e.original_icon as string | null) ?? null, device_class: ((e.original_device_class ?? e.device_class) as string | null) ?? null, unit: (e.unit_of_measurement as string | null) ?? null, has_entity_name: e.has_entity_name === true,
 });
-/** Live host over the authenticated `hass` object: registry via WebSocket (read-only), states from hass, commands via callService. */
-export function liveHost(hass: Hass): Host {
+/** Live host over the authenticated `hass` object: registry via WebSocket (read-only), states from hass, commands via callService.
+ * HA hands the panel a new `hass` on every state change, several times a second. One host lives as long as the panel and reads the current
+ * `hass` when asked: effects keyed on the host must not restart with every update (the chart blinked and every panel re-queried HA, 05.11.2026). */
+export function liveHost(current: () => Hass): Host {
   return {
-    get admin() { return hass.user?.is_admin === true; },
-    get online() { return hass.connected !== false; },
-    states: () => hass.states,
+    get admin() { return current().user?.is_admin === true; },
+    get online() { return current().connected !== false; },
+    states: () => current().states,
     async registry() {
       const [areas, devices, entities] = await Promise.all([
-        hass.callWS<AreaRow[]>({ type: 'config/area_registry/list' }), hass.callWS<Array<Record<string, unknown>>>({ type: 'config/device_registry/list' }), hass.callWS<Array<Record<string, unknown>>>({ type: 'config/entity_registry/list' }),
+        current().callWS<AreaRow[]>({ type: 'config/area_registry/list' }), current().callWS<Array<Record<string, unknown>>>({ type: 'config/device_registry/list' }), current().callWS<Array<Record<string, unknown>>>({ type: 'config/entity_registry/list' }),
       ]);
       return { areas, devices: devices.map(d => ({ id: String(d.id), name: ((d.name_by_user ?? d.name) as string | null) ?? null, model: (d.model as string | null) ?? null, manufacturer: (d.manufacturer as string | null) ?? null, area_id: (d.area_id as string | null) ?? null, entry_type: (d.entry_type as string | null) ?? null, disabled_by: (d.disabled_by as string | null) ?? null, via_device_id: (d.via_device_id as string | null) ?? null } satisfies DeviceRow)), entities: entities.map(toRow) };
     },
-    async call(domain, service, data) { await hass.callService(domain, service, data); },
-    ws: <T,>(message: Record<string, unknown>) => hass.callWS<T>(message),
-    async automations() { try { const rows = await hass.callWS<AutomationRow[]>({ type: 'atom_home/automations' }); return Array.isArray(rows) ? rows : []; } catch { return []; } },
-    subscribe: <T,>(message: Record<string, unknown>, callback: (m: T) => void) => { const conn = hass.connection; if (!conn?.subscribeMessage) return Promise.reject(new Error('no subscription API')); return conn.subscribeMessage<T>(callback, message); },
+    async call(domain, service, data) { await current().callService(domain, service, data); },
+    ws: <T,>(message: Record<string, unknown>) => current().callWS<T>(message),
+    async automations() { try { const rows = await current().callWS<AutomationRow[]>({ type: 'atom_home/automations' }); return Array.isArray(rows) ? rows : []; } catch { return []; } },
+    subscribe: <T,>(message: Record<string, unknown>, callback: (m: T) => void) => { const conn = current().connection; if (!conn?.subscribeMessage) return Promise.reject(new Error('no subscription API')); return conn.subscribeMessage<T>(callback, message); },
     async history(entityIds, hours) {
       const end = new Date(), start = new Date(end.getTime() - hours * 3600000);
-      const raw = await hass.callWS<Record<string, Array<{ s?: unknown; lu?: number; lc?: number }>>>({ type: 'history/history_during_period', start_time: start.toISOString(), end_time: end.toISOString(), entity_ids: entityIds, minimal_response: true, no_attributes: true, significant_changes_only: false });
+      const raw = await current().callWS<Record<string, Array<{ s?: unknown; lu?: number; lc?: number }>>>({ type: 'history/history_during_period', start_time: start.toISOString(), end_time: end.toISOString(), entity_ids: entityIds, minimal_response: true, no_attributes: true, significant_changes_only: false });
       const out: Record<string, Array<[number, number]>> = {};
       for (const id of entityIds) { const rows = Array.isArray(raw?.[id]) ? raw[id] : []; const pts: Array<[number, number]> = []; for (const r of rows) { const v = Number(r.s); const t = (r.lu ?? r.lc ?? 0) * 1000; if (Number.isFinite(v) && t > 0) pts.push([t, v]); } const step = Math.max(1, Math.ceil(pts.length / 144)); out[id] = pts.filter((_, i) => i % step === 0 || i === pts.length - 1); }
       return out;

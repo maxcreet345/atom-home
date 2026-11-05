@@ -26,6 +26,8 @@ export class AtomHomePanel extends HTMLElement {
   /** One store for the panel's life: it carries the config revision between saves. */
   private store: ConfigStore | null = null;
   private configStore() { return this.store ??= haStore(() => this._hass!); }
+  /** One host for the panel's life, for the same reason: `hass` is a new object on every state change. */
+  private host = liveHost(() => this._hass!);
   narrow = false;
   panel: { config?: Record<string, unknown> } | null = null;
 
@@ -59,7 +61,7 @@ export class AtomHomePanel extends HTMLElement {
     if (this.loading || !this._hass) return;
     this.loading = true; const epoch = ++this.epoch;
     try {
-      const host = liveHost(this._hass), store = this.configStore();
+      const host = this.host, store = this.configStore();
       const [reg, cfg] = await Promise.all([host.registry(), store.load().catch(e => ({ config: normaliseConfig(null).config, warnings: [`store: ${e instanceof Error ? e.message : String(e)}`] }))]);
       if (epoch !== this.epoch) return;
       this.registry = { ...reg, states: this._hass.states }; this.config = cfg.config; this.warnings = cfg.warnings; this.loadedAt = Date.now();
@@ -72,7 +74,7 @@ export class AtomHomePanel extends HTMLElement {
     if (!this.registry || !this.config) { render(this.warnings.length ? <div className="hm-shell daily-shell at-shell is-wide" data-theme="light"><div className="hm-main"><p className="hm-muted" style="padding:24px">{this.warnings.join('; ')}</p></div></div> : <><style>{SKELETON_CSS}</style><div dangerouslySetInnerHTML={{ __html: skeletonHtml(undefined, readSkeletonTheme()) }} /></>, this.mount); return; }
     rememberSkeletonTheme(this.config.home.theme);
     const registry: Registry = { ...this.registry, states: this._hass.states };
-    render(<AtomApp registry={registry} config={this.config} host={liveHost(this._hass)} viewport={this.viewport} store={this.configStore()} configWarnings={this.warnings} onConfigChange={next => { this.config = next; rememberSkeletonTheme(next.home.theme); }} />, this.mount);
+    render(<AtomApp registry={registry} config={this.config} host={this.host} viewport={this.viewport} store={this.configStore()} configWarnings={this.warnings} onConfigChange={next => { this.config = next; rememberSkeletonTheme(next.home.theme); }} />, this.mount);
   }
 }
 if (!customElements.get('atom-home-panel')) customElements.define('atom-home-panel', AtomHomePanel);
