@@ -20,3 +20,4 @@ test('a plan edited in real time is saved in the feeder\'s own time, with its ro
   shown[0].time = '07:30';
   assert.equal(editFeederSchedule(raw, shown.map(m => ({ ...m, time: shiftTime(m.time, 60) }))), '[1,08300101,11000101]');
 });
+test('meals go to the feeder in its own clock and in its order', async () => { const { mealsForFeeder } = await import('../src/modules/feeder-log.ts'); assert.deepEqual(mealsForFeeder([{ time: '23:30', portions: 1 }, { time: '07:00', portions: 2 }], 60), [{ time: '00:30', portions: 1 }, { time: '08:00', portions: 2 }]); });

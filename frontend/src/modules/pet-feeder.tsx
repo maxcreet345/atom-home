@@ -19,7 +19,7 @@ const tk = (t: T, k: string, params?: Record<string, string | number>) => t(`mod
 /** One command at a time for the whole panel, not per sheet: closing and reopening the sheet during a slow dispense must not feed twice. */
 let commandRunning = false;
 /** When the last dispense was sent: the journal lags, and a second tap in that minute would feed twice. */
-let lastFeed = 0;
+let lastFeed = 0, lastFeedSure = true;
 const FEED_LOCK_MS = 60000, ZONE_KEY = 'atom-home-feeder-tz', known = new Map<string, { log: FeederLog; at: number }>(), PLAN_KEY = 'atom-home-feeder-plan';
 const storedZone = () => { try { const v = localStorage.getItem(ZONE_KEY); return v === null ? null : Number(v); } catch { return null; } };
 /** The journal lives in Xiaomi's cloud: read on open and every two minutes while visible. A failed read keeps the last good journal; a reopened sheet starts from what is known. */
@@ -103,8 +103,7 @@ export function FeederSheet(props: Props & { room?: string; onClose: () => void;
   useEffect(() => { if (!expected) return; if (schedule && schedule.raw !== expected.before) { setExpected(null); return; } if (expected.late) return; const late = setTimeout(() => setExpected(e => e && { ...e, late: true }), 90000); return () => clearTimeout(late); }, [expected, schedule?.raw]);
   // a meal is «missed» only against a plan that stood at that hour: remember when the plan last changed
   const planStamp = useRef<{ raw: string; on: boolean; at: number } | null>(null);
-  if (schedule && !planStamp.current) { try { const v = JSON.parse(localStorage.getItem(PLAN_KEY) ?? 'null'); planStamp.current = v?.raw === schedule.raw && v?.on === planOn ? v : null; } catch { planStamp.current = null; } if (!planStamp.current) { planStamp.current = { raw: schedule.raw, on: planOn, at: Date.now() }; try { localStorage.setItem(PLAN_KEY, JSON.stringify(planStamp.current)); } catch { /* private mode */ } } }
-  useEffect(() => { if (!schedule || !planStamp.current) return; if (planStamp.current.raw !== schedule.raw || planStamp.current.on !== planOn) { planStamp.current = { raw: schedule.raw, on: planOn, at: Date.now() }; try { localStorage.setItem(PLAN_KEY, JSON.stringify(planStamp.current)); } catch { /* private mode */ } } }, [schedule?.raw, planOn]);
+  if (schedule && (!planStamp.current || planStamp.current.raw !== schedule.raw || planStamp.current.on !== planOn)) { let v: { raw: string; on: boolean; at: number } | null = null; if (!planStamp.current) try { v = JSON.parse(localStorage.getItem(PLAN_KEY) ?? 'null'); } catch { v = null; } if (v?.raw === schedule.raw && v?.on === planOn) planStamp.current = v; else { planStamp.current = { raw: schedule.raw, on: planOn, at: Date.now() }; try { localStorage.setItem(PLAN_KEY, JSON.stringify(planStamp.current)); } catch { /* private mode */ } } }
   const feedLocked = Date.now() - lastFeed < FEED_LOCK_MS;
   useEffect(() => { if (!feedLocked) return; const left = FEED_LOCK_MS - (Date.now() - lastFeed), unlock = setTimeout(() => setTick(n => n + 1), left + 50); return () => clearTimeout(unlock); });
   // the draft keeps the shift it was opened with: a journal arriving later must not move the plan by an hour
@@ -116,7 +115,7 @@ export function FeederSheet(props: Props & { room?: string; onClose: () => void;
     catch (e) { const code = (e as { code?: unknown })?.code; if (!host.online || code === 3 || /connection/i.test(String((e as { message?: unknown })?.message ?? ''))) { setNote(tk(t, 'unknownResult')); return 'unknown'; } setNote(`${t('module.feeder.fail')}: ${e instanceof Error ? e.message : String((e as { message?: unknown })?.message ?? e)}`); return false; }
     finally { commandRunning = false; setBusy(false); setConfirm(null); }
   };
-  const feed = async () => { const ok = await run(feedCall(entities.feed!, dose, max), ''); if (!ok) return; lastFeed = Date.now(); setDose(1); setFeedOpen(false); if (ok === true) setNote(''); setTimeout(refresh, 20000); setTimeout(refresh, 60000); }; // a lost answer locks too: the food may have dropped
+  const feed = async () => { const ok = await run(feedCall(entities.feed!, dose, max), ''); if (!ok) return; lastFeed = Date.now(); lastFeedSure = ok === true; setTick(n => n + 1); setDose(1); setFeedOpen(false); if (ok === true) setNote(''); setTimeout(refresh, 20000); setTimeout(refresh, 60000); }; // a lost answer locks too: the food may have dropped
   const bodyRef = useRef<HTMLDivElement>(null), firstView = useRef(true);
   // a new page of the sheet starts at its top, and keyboard and screen-reader focus lands on it instead of falling out of the dialog
   useEffect(() => { if (firstView.current) { firstView.current = false; return; } const body = bodyRef.current; if (!body) return; const sheet = body.closest('.hm-sheet'); if (sheet) sheet.scrollTop = 0; body.querySelector<HTMLElement>('.at-fd-back, .hm-sheet-head .hm-icon-btn')?.focus({ preventScroll: true }); }, [view]);
@@ -135,7 +134,7 @@ export function FeederSheet(props: Props & { room?: string; onClose: () => void;
     const done = events.map(e => ({ time: clock(e.at), past: true, next: false, missed: false, text: e.kind === 'ate' ? tk(t, 'ate', { g: e.grams }) : tk(t, e.kind === 'plan' ? 'fedPlan' : 'fedManual', { n: portions(Math.max(1, Math.round(e.grams / grams))) }) }));
     // a plan meal that passed a quarter of an hour ago with no dispense on record: the owner should see it, not lose it
     const fedAt = events.filter(e => e.kind === 'plan').map(e => minutes(clock(e.at)));
-    const planFrom = planStamp.current && dayKey(new Date(planStamp.current.at)) === today ? minutes(clock(Math.floor(planStamp.current.at / 1000))) : -1, journalFresh = Date.now() - fetchedAt < 600000;
+    const changed = Date.parse(planS?.last_changed ?? '') || 0, stood = Math.max(planStamp.current?.at ?? 0, changed), planFrom = stood && dayKey(new Date(stood)) === today ? minutes(clock(Math.floor(stood / 1000))) : -1, journalFresh = Date.now() - fetchedAt < 600000;
     const missed = key === today && planOn && log && journalFresh ? meals.filter(m => minutes(m.time) > planFrom && minutes(hhmm) - minutes(m.time) > 15 && !fedAt.some(f => Math.abs(f - minutes(m.time)) <= 15)).map(m => ({ time: m.time, past: true, next: false, missed: true, text: tk(t, 'notFed', { n: portions(m.portions) }) })) : [];
     const planned = key === today && planOn ? meals.filter(m => m.time > hhmm).map(m => ({ time: m.time, past: false, next: next?.time === m.time, missed: false, text: `${portions(m.portions)} · ${approx(m.portions)}` })) : [];
     const rows = [...done, ...missed, ...planned].sort((a, b) => a.time.localeCompare(b.time)), shown = limit ? rows.filter((r, i) => r.missed || i >= rows.length - limit) : rows;
@@ -185,7 +184,7 @@ export function FeederSheet(props: Props & { room?: string; onClose: () => void;
       </div>
       <div className="at-fd-bowl"><span className="at-fd-ico is-big"><Glyph name="bowl" size={26} /></span><span className="at-fd-bowl-text"><b>{bowl === null ? '—' : `${num(bowl, lang, 0)} ${unit}`}</b><small>{tk(t, 'bowlLabel')}</small>{stock !== undefined && <small className={low ? 'at-fd-low' : ''}>{low ? t('module.feeder.stockLow') : t('module.feeder.stockOk')}</small>}</span><button type="button" className="hm-pill at-fd-amber at-feeder-go" disabled={busy || !available || feedLocked} onClick={() => setFeedOpen(o => !o)}>{tk(t, 'feedNow')}</button></div>
       {feedOpen && <div className="at-fd-feed" role="group" aria-label={tk(t, 'feedNow')}><div className="hm-stepper"><button type="button" className="hm-round" aria-label={tk(t, 'less')} disabled={busy || dose <= 1} onClick={() => setDose(d => Math.max(1, d - 1))}>−</button><div className="at-feeder-dose"><strong>{portions(dose)}</strong><small>{approx(dose)}</small></div><button type="button" className="hm-round" aria-label={tk(t, 'more')} disabled={busy || dose >= max} onClick={() => setDose(d => Math.min(max, d + 1))}>+</button></div><div className="at-fd-ask-btns"><button type="button" className="hm-pill at-fd-amber at-feeder-yes" disabled={busy || !available || feedLocked} onClick={() => void feed()}>{tk(t, 'give')}</button><button type="button" className="hm-pill" disabled={busy} onClick={() => setFeedOpen(false)}>{t('ui.close')}</button></div></div>}
-      {notice}{feedLocked && !note && <p className="at-feeder-note" role="status">{tk(t, 'fedAt', { time: clock(Math.floor(lastFeed / 1000)) })}</p>}
+      {notice}{feedLocked && !note && <p className="at-feeder-note" role="status">{lastFeedSure ? tk(t, 'fedAt', { time: clock(Math.floor(lastFeed / 1000)) }) : tk(t, 'unknownResult')}</p>}
     </div>
     <div className="at-feeder-col">
       <div className="at-fd-card"><button type="button" className="at-fd-card-head" onClick={() => go('journal')}><strong>{tk(t, 'journalToday')}</strong><Icon name="next" size={18} /></button>{timeline(today, 6)}</div>
