@@ -64,7 +64,20 @@ export const petFeederSpec: ModuleSpec = {
   ],
   options: [{ key: 'portionGrams', labelKey: 'module.feeder.portionGrams', required: false, placeholder: '10' }, { key: 'maxPortions', labelKey: 'module.feeder.maxPortions', required: false, placeholder: '15' }],
   detect(reg) {
-    const feed = reg.entities.find(e => /^button\.[a-z0-9_]+_pet_food_out$/.test(e.entity_id) && e.platform === 'xiaomi_miot' && !e.disabled_by && reg.states[e.entity_id]);
+    const live = (e: { entity_id: string; disabled_by: string | null }) => !e.disabled_by && !!reg.states[e.entity_id];
+    // a house may have renamed the entities (kitchen_cat_feeder_dispense): then the device's model finds the feeder and the suffixes the roles
+    const byModel = reg.devices.find(d => /^xiaomi\.feeder\./.test(d.model ?? ''));
+    if (byModel && !reg.entities.some(e => /_pet_food_out$/.test(e.entity_id) && live(e))) {
+      const own = reg.entities.filter(e => e.device_id === byModel.id && live(e)), find = (domain: string, suffix: string) => own.find(e => e.entity_id.startsWith(`${domain}.`) && e.entity_id.endsWith(suffix))?.entity_id;
+      const feedId = find('button', '_dispense');
+      if (feedId) return { label: byModel.model ?? 'MIOT', entities: {
+        feed: feedId, info: find('button', '_info'), plan: find('switch', '_schedule'), stock: find('sensor', '_food_level'), outStatus: find('sensor', '_dispense_status'), desiccant: find('sensor', '_desiccant_level'),
+        bowl: own.map(e => e.entity_id).find(id => id.startsWith('sensor.') && Object.keys(reg.states[id].attributes).some(k => /eaten_food_measure-2-22/.test(k))),
+        stuck: find('sensor', '_food_stuck'), battery: find('binary_sensor', '_battery_low'), compensate: find('switch', '_compensate'), noPile: find('switch', '_prevent_accumulation'), reminder: find('switch', '_add_meal_reminder'), lowIntake: find('switch', '_low_intake_alert'), lock: find('switch', '_child_lock'), resetDesiccant: find('button', '_reset_desiccant'), calibrate: find('button', '_calibrate'), screen: find('select', '_screen'), threshold: find('number', '_low_intake_threshold'),
+        device: byModel.id, rest: own.map(e => e.entity_id).join(','),
+      } };
+    }
+    const feed = reg.entities.find(e => /^button\.[a-z0-9_]+_pet_food_out$/.test(e.entity_id) && e.platform === 'xiaomi_miot' && live(e));
     if (!feed) return null;
     const prefix = feed.entity_id.slice('button.'.length, -'pet_food_out'.length);
     const has = (id: string) => reg.states[id] && reg.entities.some(e => e.entity_id === id && !e.disabled_by) ? id : undefined;
@@ -73,7 +86,7 @@ export const petFeederSpec: ModuleSpec = {
       feed: feed.entity_id, info: has(`button.${prefix}info`), plan: has(`switch.${prefix}schedule_state`), stock: has(`sensor.${prefix}pet_food_left_level`),
       // the gram sensor among the four `eaten_food_measure*` siblings: the one that carries the 2/22 property (bowl weight on iv2001), else the first with a unit
       bowl: reg.entities.map(e => e.entity_id).find(id => id.startsWith(`sensor.${prefix}eaten_food_measure`) && reg.states[id] && Object.keys(reg.states[id].attributes).some(k => /eaten_food_measure-2-22/.test(k))) ?? reg.entities.map(e => e.entity_id).find(id => id.startsWith(`sensor.${prefix}eaten_food_measure`) && reg.states[id]?.attributes.unit_of_measurement === 'g'),
-      outStatus: has(`sensor.${prefix}food_out_status`), desiccant: has(`sensor.${prefix}desiccant_left_level`),
+      outStatus: has(`sensor.${prefix}food_out_status`), desiccant: has(`sensor.${prefix}desiccant_left_level`), device: feed.device_id ?? undefined,
     } };
   },
 };

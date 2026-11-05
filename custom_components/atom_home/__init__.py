@@ -24,6 +24,7 @@ from aiohttp import web
 
 from .light_sleep import LightSleep
 from .automations import automation_rows
+from .feeder import feeder_log
 from .alarms import AlarmScheduler, normalise_alarms
 from .config_state import ConfigState, ConfigWriteError
 from .const import (
@@ -184,7 +185,7 @@ def _register_ws(hass: HomeAssistant) -> None:
     @callback
     def ws_capabilities(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
         """What this backend supports; a panel that gets `unknown_command` here is talking to an older integration."""
-        connection.send_result(msg["id"], {"configRevision": 1, "composition": 1, "assist": 0, "alarms": 1, "lightSleep": 1, "automations": 1})
+        connection.send_result(msg["id"], {"configRevision": 1, "composition": 1, "assist": 0, "alarms": 1, "lightSleep": 1, "automations": 1, "feederLog": 1})
 
     @websocket_api.websocket_command({
         vol.Required("type"): f"{DOMAIN}/config/set",
@@ -278,6 +279,16 @@ def _register_ws(hass: HomeAssistant) -> None:
         except Exception as err:  # never break the panel over a listing
             _LOGGER.warning("automation listing failed: %s", err)
             connection.send_result(msg["id"], [])
+
+    @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/feeder/log", vol.Required("entity_id"): str})
+    @websocket_api.async_response
+    async def ws_feeder_log(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+        """The pet feeder's journal, eaten grams and desiccant from Xiaomi's cloud, read-only; null when there are none."""
+        try:
+            connection.send_result(msg["id"], await feeder_log(hass, msg["entity_id"]))
+        except Exception as err:  # never break the panel over a journal
+            _LOGGER.warning("feeder journal failed: %s", err)
+            connection.send_result(msg["id"], None)
 
     @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/alarms/state"})
     @callback

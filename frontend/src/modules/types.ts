@@ -23,7 +23,9 @@ export interface ModuleDef {
   detect(registry: Registry): ModuleMatch | null;
   /** Where the card goes: a section screen and/or the overview status row. */
   placement: Array<'climate' | 'overview' | 'systems'>;
-  Card: ComponentType<{ registry: Registry; entities: ModuleEntities; options: ModuleOptions; host: Host; t: T; lang: Lang; compact?: boolean }>;
+  /** The module has a sheet of its own, reached as `device=<sheetKey>`: its tile opens the sheet, there is no wide card on the section screen. */
+  sheetKey?: string;
+  Card: ComponentType<{ registry: Registry; entities: ModuleEntities; options: ModuleOptions; host: Host; t: T; lang: Lang; compact?: boolean; /** the tile opens the module's own sheet (see `sheetKey`) */ onOpen?: () => void }>;
   /** Optional live player that replaces the still image of the camera named by `entities.camera` (overview tile and the device sheet). */
   Player?: ComponentType<{ entities: ModuleEntities; options: ModuleOptions; host: Host; t: T; lang: Lang; mode: 'tile' | 'stage'; /** the camera's HA still (entity_picture) as a fallback poster */ poster?: string | null }>;
   /** Entity whose state change should open this module's sheet on every device (a doorbell ring); the sheet closes itself after `autoCloseSeconds`. */

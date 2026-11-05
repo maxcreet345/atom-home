@@ -26,7 +26,8 @@ test('feeder command: one dosed MIOT action, dose limits enforced', () => {
 test('feeder detected in the Traian snapshot with its siblings; absent in Criuleni', { skip: !traian || !criuleni }, () => {
   const m = petFeederSpec.detect(traian!); assert.ok(m);
   assert.equal(m!.label, 'xiaomi.feeder.iv2001');
-  assert.deepEqual(m!.entities, { feed: 'button.xiaomi_iv2001_318f_pet_food_out', info: 'button.xiaomi_iv2001_318f_info', plan: 'switch.xiaomi_iv2001_318f_schedule_state', stock: 'sensor.xiaomi_iv2001_318f_pet_food_left_level', bowl: 'sensor.xiaomi_iv2001_318f_eaten_food_measure_3', outStatus: 'sensor.xiaomi_iv2001_318f_food_out_status', desiccant: 'sensor.xiaomi_iv2001_318f_desiccant_left_level' });
+  const { device, ...roles } = m!.entities; assert.ok(device);
+  assert.deepEqual(roles, { feed: 'button.xiaomi_iv2001_318f_pet_food_out', info: 'button.xiaomi_iv2001_318f_info', plan: 'switch.xiaomi_iv2001_318f_schedule_state', stock: 'sensor.xiaomi_iv2001_318f_pet_food_left_level', bowl: 'sensor.xiaomi_iv2001_318f_eaten_food_measure_3', outStatus: 'sensor.xiaomi_iv2001_318f_food_out_status', desiccant: 'sensor.xiaomi_iv2001_318f_desiccant_left_level' });
   assert.equal(parseFeederSchedule(traian!.states['button.xiaomi_iv2001_318f_info'].attributes['feeder_schedule-5-1'])!.meals.length, 3);
   assert.ok(activeSpecs(traian!, defaultConfig()).some(a => a.spec.id === 'pet_feeder'));
   assert.equal(petFeederSpec.detect(criuleni!), null);

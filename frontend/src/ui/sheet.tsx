@@ -76,7 +76,7 @@ function Facts({ device, t, lang }: { device: HomeDevice; t: T; lang: Lang }) {
   const LIMIT = 6;
   return <div className="ah-facts-wrap">{caption && <small className="ah-facts-caption">{caption.charAt(0).toUpperCase() + caption.slice(1)}</small>}<div className="hm-facts">{list.slice(0, LIMIT).map(cell)}</div>{list.length > LIMIT && <Fold title={`${t('ui.readings')} (${list.length - LIMIT})`}><div className="hm-facts">{list.slice(LIMIT).map((m, i) => cell(m, i + LIMIT))}</div></Fold>}</div>;
 }
-function Fold({ title, children, open }: { title: string; children: ComponentChildren; open?: boolean }) {
+export function Fold({ title, children, open }: { title: string; children: ComponentChildren; open?: boolean }) {
   return <details className="hm-fold" open={open}><summary><span>{title}</span><Icon name="next" size={18} /></summary><div className="hm-fold-body">{children}</div></details>;
 }
 /** Settings rows for the device's secondary entities: switches, numbers, selects and buttons become controls; button entities are grouped as chips. */
@@ -146,7 +146,7 @@ function whenRan(iso: string | null, lang: Lang, t: T): string {
   const y = new Date(now); y.setDate(now.getDate() - 1); if (d.toDateString() === y.toDateString()) return `${t('auto.yesterday')}, ${time}`;
   return new Intl.DateTimeFormat(locales[lang], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(d);
 }
-function Automations({ rows, t, lang }: { rows: SheetAutomation[]; t: T; lang: Lang }) {
+export function Automations({ rows, t, lang }: { rows: SheetAutomation[]; t: T; lang: Lang }) {
   if (!rows.length) return null;
   return <Fold title={`${t('auto.title')} (${rows.length})`}>{rows.map(a => <div className={`ah-row hm-setting at-auto-row ${a.enabled ? '' : 'is-off'}`}><span className="ah-row-icon at-auto-icon"><Icon name="settings" size={18} /></span><span className="ah-row-text"><strong>{a.name}</strong><small>{[familyDescription(a.description), a.byRoom ? t('auto.byRoom') : ''].filter(Boolean).join(' · ')}</small></span><small className="at-auto-when">{a.enabled ? whenRan(a.lastTriggered, lang, t) : t('auto.off')}<i className="at-auto-dot" aria-hidden="true" /></small></div>)}</Fold>;
 }

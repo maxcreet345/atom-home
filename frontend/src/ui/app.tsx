@@ -9,6 +9,7 @@ import { actionsFor, serviceCall, customAction, type Action } from '../runtime/a
 import { translator, type Key } from '../i18n/index.ts';
 import { RoomTile, AccessoryTile, ThermostatTile, ClockTile as PlainClockTile, SceneTile, ValueTile, Pill, Section as Block, artOf } from './cards.tsx';
 import { ClockTile, ClockSheet, beep, armBeep } from '../modules/clock.tsx';
+import { FeederSheet } from '../modules/pet-feeder.tsx';
 import type { Alarm } from '../model/config.ts';
 import { DeviceSheet, heatOn, type Runner } from './sheet.tsx';
 import { stateText, isOn, num, co2Level, withRoom } from './format.ts';
@@ -138,6 +139,7 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
   const tabNav = useNavIndicator<HTMLElement>([view.section, wide, viewport.width]);
   const device = view.device ? enabled.find(d => d.key === view.device) : undefined;
   const clockOpen = view.device === 'clock' && !!clockMod;
+  const feederMod = modules.find(m => m.def.sheetKey === 'feeder'), feederOpen = view.device === 'feeder' && !!feederMod;
   // H9 of the audit: a room is shown when it has a photo or something to look at or switch; «no room» only for the admin
   const LIVING: Kind[] = ['light', 'climate', 'media', 'vacuum', 'camera', 'environment', 'switch', 'socket', 'fan', 'cover', 'lock', 'opening', 'leak', 'motion'];
   const rooms = home.rooms.filter(r => !r.hidden && (r.id === NO_ROOM ? host.admin : (!!r.photo || enabled.some(d => d.roomId === r.id && LIVING.includes(d.kind)))));
@@ -145,14 +147,14 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
   const title = view.section === 'setup' ? t('setup.title') : view.section === 'rooms' && view.room ? roomName(view.room) : view.section === 'home' ? home.name : inSystems ? t('section.systems') : t(`section.${view.section}` as Key);
   const subtitle = view.section === 'home' ? `${greeting(now, t)} · ${date}` : view.section === 'rooms' && !view.room ? t('rooms.count', { n: rooms.length }) : '';
   const pageKey = `${view.section}/${view.room ?? ''}`;
-  const modal = !!device || clockOpen || !!confirm;
+  const modal = !!device || clockOpen || feederOpen || !!confirm;
   const navItems = [...NAV.filter(n => n.id !== 'lights' || (present('lights') && !config.sections.lights?.hidden)), ...(host.admin ? [{ id: 'setup' as const, icon: 'gear' }] : [])];
   const navLabel = (id: Section | 'setup') => id === 'setup' ? t('section.settings') : t(`section.${id}` as Key);
   // F8 of the audit (WCAG 2.4.3): focus moves into an opened sheet or confirmation and comes back to the opener when it closes
   const mainRef = useRef<HTMLElement>(null), sheetRef = useRef<HTMLElement>(null), confirmRef = useRef<HTMLDivElement>(null), sheetOpener = useRef<HTMLElement | null>(null), confirmOpener = useRef<HTMLElement | null>(null);
   const activeIn = (el: HTMLElement | null) => ((el?.getRootNode() as Document | ShadowRoot | undefined)?.activeElement as HTMLElement | null) ?? null;
   const focusFirst = (el: HTMLElement | null) => el?.querySelector<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])')?.focus({ preventScroll: true });
-  const sheetOpen = !!device || clockOpen;
+  const sheetOpen = !!device || clockOpen || feederOpen;
   const lastInMain = useRef<HTMLElement | null>(null); // `main` is already inert when the effect runs, so the opener is remembered as focus moves, not read afterwards
   useEffect(() => { if (sheetOpen) { sheetOpener.current ??= lastInMain.current; const raf = requestAnimationFrame(() => focusFirst(sheetRef.current)); return () => cancelAnimationFrame(raf); } const back = sheetOpener.current; sheetOpener.current = null; if (back?.isConnected) back.focus({ preventScroll: true }); }, [sheetOpen, view.device]);
   useEffect(() => { if (confirm) { confirmOpener.current ??= activeIn(mainRef.current); const raf = requestAnimationFrame(() => focusFirst(confirmRef.current)); return () => cancelAnimationFrame(raf); } const back = confirmOpener.current; confirmOpener.current = null; back?.focus?.({ preventScroll: true }); }, [!!confirm]);
@@ -183,7 +185,7 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
         {view.section === 'cleaning' && <KindList devices={enabled.filter(d => d.section === 'cleaning')} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} admin={host.admin} />}
         {view.section === 'energy' && <EnergyPage devices={energyDevices} go={go} t={t} lang={lang} roomName={roomName} admin={host.admin} boilers={boilers} />}
         {view.section === 'setup' && <Setup registry={registry} config={config} onChange={applyConfig} admin={host.admin} t={t} lang={lang} storeLabel={store?.label ?? 'memory'} warnings={configWarnings} photos={store?.photos} />}
-        {view.section === 'systems' && <>{modules.filter(m => m.def.placement.includes('systems')).map(m => <m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} />)}</>}
+        {view.section === 'systems' && <>{modules.filter(m => m.def.placement.includes('systems')).map(m => m.def.sheetKey ? <div className="ah-grid at-module-row"><m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} compact onOpen={() => go({ section: 'systems', device: m.def.sheetKey })} /></div> : <m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} />)}</>}
         {view.section === 'systems' && <SystemsPage devices={enabled.filter(d => d.section === 'systems' || d.section === 'camera' || d.section === 'weather')} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} rooms={home.rooms} admin={host.admin} filter={view.filter} onFilter={f => go({ section: 'systems', filter: f })} />}
       </div>
     </main>
@@ -191,6 +193,9 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
     {clockOpen && clockMod && (() => { const close = () => go({ section: view.section, room: view.room }); const sheetWide = wide && landscape && viewport.width >= 800;
       return <div className="hm-scrim" onClick={e => { if (e.target === e.currentTarget) close(); }}><section className={`hm-sheet ${sheetWide ? 'is-split' : ''}`} role="dialog" aria-modal="true" aria-label={t('clock.title')} ref={sheetRef} {...swipeToClose(close)}>
         <ClockSheet registry={registry} entities={clockMod.entities} host={host} t={t} lang={lang} runner={runner} onClose={close} wide={sheetWide} rooms={home.rooms.filter(r => !r.hidden).map(r => ({ id: r.id, name: r.name || t('room.none') }))} room={view.room} alarms={config.alarms} onAlarms={applyAlarms} /></section></div>; })()}
+    {feederOpen && feederMod && (() => { const close = () => go({ section: view.section, room: view.room }), dev = feederMod.entities.device ?? '', devRoom = registry.devices.find(d => d.id === dev)?.area_id, roomLabel = home.rooms.find(r => r.id === devRoom)?.name, feederWide = wide && landscape && viewport.width >= 800;
+      return <div className="hm-scrim" onClick={e => { if (e.target === e.currentTarget) close(); }}><section className={`hm-sheet ${feederWide ? 'is-split' : ''}`} role="dialog" aria-modal="true" aria-label={t('module.pet_feeder')} ref={sheetRef} {...swipeToClose(close)}>
+        <FeederSheet registry={registry} entities={feederMod.entities} options={feederMod.options} host={host} t={t} lang={lang} room={roomLabel} wide={feederWide} onClose={close} automations={automations.filter(a => a.devices.includes(dev) || a.entities.some(id => Object.values(feederMod.entities).includes(id))).map(a => ({ ...a, byRoom: false }))} /></section></div>; })()}
     {device && (() => {
       const close = () => go({ section: view.section, room: view.room }), roomName_ = home.rooms.find(r => r.id === device.roomId)?.name;
       const mod = device.kind === 'camera' ? modules.find(m => m.def.Sheet && m.entities.camera === device.primary.id) : undefined, st = device.kind === 'camera' ? tileState(device) : null;
@@ -268,7 +273,7 @@ function Overview({ home, registry, config, modules, player, tileState, host, ru
     {modules.some(m => m.def.id === 'clock') ? <ClockTile now={now} lang={lang} t={t} registry={registry} entities={modules.find(m => m.def.id === 'clock')!.entities} onOpen={() => go({ section: 'home', device: 'clock' })} /> : <PlainClockTile now={now} lang={lang} />}
     {climate && <ThermostatTile device={climate} name={inRoomName(climate, roomOf(climate))} sub={roomOf(climate)} target={temp} current={cur} onStep={tempAction ? step : undefined} onOpen={() => go({ section: 'home', device: climate.key })} t={t} lang={lang} disabled={runner.busy.has(climate.key)} />}
     {cameras.slice(0, 1).map(c => { const st = tileState(c); return <CameraTile device={c} state={st} player={st?.closed ? null : player(c, 'tile')} onOpen={() => go({ section: 'home', device: c.key })} t={t} lang={lang} large />; })}
-    {modules.filter(m => m.def.placement.includes('overview')).map(m => { const target = (m.def.placement.find(p => p !== 'overview') ?? 'systems') as Section, name = t(`module.${m.def.id}` as Key); return <div className="ah-tile ah-module"><button type="button" className="ah-tile-hit at-module-hit" aria-label={`${t('ui.open')}: ${name === `module.${m.def.id}` ? t(`section.${target}` as Key) : name}`} onClick={() => go({ section: target })} /><div className="at-module-body"><m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} compact /></div></div>; })}
+    {modules.filter(m => m.def.placement.includes('overview')).map(m => { if (m.def.sheetKey) return <m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} compact onOpen={() => go({ section: 'home', device: m.def.sheetKey })} />; const target = (m.def.placement.find(p => p !== 'overview') ?? 'systems') as Section, name = t(`module.${m.def.id}` as Key); return <div className="ah-tile ah-module"><button type="button" className="ah-tile-hit at-module-hit" aria-label={`${t('ui.open')}: ${name === `module.${m.def.id}` ? t(`section.${target}` as Key) : name}`} onClick={() => go({ section: target })} /><div className="at-module-body"><m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} compact /></div></div>; })}
     {config.buttons.slice(0, 6).map(b => { const a = customAction(b); return <SceneTile icon={b.icon ?? 'more'} label={b.label} t={t} onClick={() => void runner.run({ key: `button:${b.id}`, name: b.label, primary: { available: true } } as HomeDevice, a)} />; })}
     {weather && <ValueTile icon="air" value={wtemp === null ? '—' : num(wtemp, lang, 0)} unit={wtemp === null ? undefined : '°'} label={weather.name} sub={stateText(weather.primary, t, lang)} color="#32ade6" onClick={() => go({ section: 'systems', device: weather.key })} className="at-weather" />}
     {co2 && <ValueTile icon="air" value={num(co2v!, lang, 0)} unit="ppm" label={t('overview.air')} sub={air.label} color={air.tone === 'danger' ? '#ff3b30' : air.tone === 'warning' ? '#ff9f0a' : '#30d158'} onClick={() => go({ section: 'systems', device: co2Dev?.key ?? null })} className={`hm-status tone-${air.tone}`} />}

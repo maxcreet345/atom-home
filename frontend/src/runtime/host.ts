@@ -1,4 +1,5 @@
 import type { Registry, StateRow, AreaRow, DeviceRow, EntityRow } from '../model/registry.ts';
+import type { FeederLog } from '../modules/feeder-log.ts';
 /** The slice of the HA frontend `hass` object the panel uses. Authentication stays with HA. */
 export interface Hass {
   states: Record<string, { state: string; attributes: Record<string, unknown>; last_changed: string; last_updated: string }>;
@@ -21,6 +22,8 @@ export interface Host {
   subscribe?<T = unknown>(message: Record<string, unknown>, callback: (message: T) => void): Promise<() => void>;
   /** Automations referencing entities, devices or areas (read-only, `atom_home/automations`); an older backend yields []. */
   automations?(): Promise<AutomationRow[]>;
+  /** The feeder's journal, eaten grams and desiccant from Xiaomi's cloud (read-only, `atom_home/feeder/log`); null when the backend or the cloud has none. */
+  feederLog?(entityId: string): Promise<FeederLog | null>;
   readonly admin: boolean; readonly online: boolean;
 }
 const toRow = (e: Record<string, unknown>): EntityRow => ({
@@ -45,6 +48,7 @@ export function liveHost(current: () => Hass): Host {
     async call(domain, service, data) { await current().callService(domain, service, data); },
     ws: <T,>(message: Record<string, unknown>) => current().callWS<T>(message),
     async automations() { try { const rows = await current().callWS<AutomationRow[]>({ type: 'atom_home/automations' }); return Array.isArray(rows) ? rows : []; } catch { return []; } },
+    async feederLog(entityId) { try { return await current().callWS<FeederLog | null>({ type: 'atom_home/feeder/log', entity_id: entityId }); } catch { return null; } },
     subscribe: <T,>(message: Record<string, unknown>, callback: (m: T) => void) => { const conn = current().connection; if (!conn?.subscribeMessage) return Promise.reject(new Error('no subscription API')); return conn.subscribeMessage<T>(callback, message); },
     async history(entityIds, hours) {
       const end = new Date(), start = new Date(end.getTime() - hours * 3600000);
@@ -56,7 +60,7 @@ export function liveHost(current: () => Hass): Host {
   };
 }
 /** Isolated host for previews and QA: a frozen snapshot, every command recorded and rejected. */
-export function previewHost(snapshot: Registry, log: Array<{ domain: string; service: string; data: Record<string, unknown> }> = []): Host & { log: typeof log; setOnline(v: boolean): void; setDelay(ms: number): void; setAutomations(rows: AutomationRow[]): void } {
-  let online = true, delay = 0, automations: AutomationRow[] = []; // ST-4 / ST-3 of the audit: QA flips the connection and slows the answer to see the banner, the veil, the pending state and the refused command
-  return { admin: true, get online() { return online; }, setOnline(v: boolean) { online = v; }, setDelay(ms: number) { delay = ms; }, setAutomations(rows: AutomationRow[]) { automations = rows; }, async automations() { return automations; }, log, states: () => snapshot.states, registry: async () => ({ areas: snapshot.areas, devices: snapshot.devices, entities: snapshot.entities }), async call(domain, service, data) { log.push({ domain, service, data }); if (delay) await new Promise(r => setTimeout(r, delay)); throw new Error('preview: commands are rejected'); }, async ws(message) { log.push({ domain: 'ws', service: String(message.type), data: message }); throw new Error('preview: commands are rejected'); }, async history() { return {}; } };
+export function previewHost(snapshot: Registry, log: Array<{ domain: string; service: string; data: Record<string, unknown> }> = []): Host & { log: typeof log; setOnline(v: boolean): void; setDelay(ms: number): void; setAutomations(rows: AutomationRow[]): void; setFeederLog(log: FeederLog | null): void } {
+  let online = true, delay = 0, automations: AutomationRow[] = [], feeder: FeederLog | null = null; // ST-4 / ST-3 of the audit: QA flips the connection and slows the answer to see the banner, the veil, the pending state and the refused command
+  return { admin: true, get online() { return online; }, setOnline(v: boolean) { online = v; }, setDelay(ms: number) { delay = ms; }, setAutomations(rows: AutomationRow[]) { automations = rows; }, setFeederLog(log: FeederLog | null) { feeder = log; }, async feederLog() { return feeder; }, async automations() { return automations; }, log, states: () => snapshot.states, registry: async () => ({ areas: snapshot.areas, devices: snapshot.devices, entities: snapshot.entities }), async call(domain, service, data) { log.push({ domain, service, data }); if (delay) await new Promise(r => setTimeout(r, delay)); throw new Error('preview: commands are rejected'); }, async ws(message) { log.push({ domain: 'ws', service: String(message.type), data: message }); throw new Error('preview: commands are rejected'); }, async history() { return {}; } };
 }
