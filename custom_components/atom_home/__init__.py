@@ -352,3 +352,4 @@ def _register_ws(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_light_sleep)
     websocket_api.async_register_command(hass, ws_light_sleep_state)
     websocket_api.async_register_command(hass, ws_automations)
+    websocket_api.async_register_command(hass, ws_feeder_log)

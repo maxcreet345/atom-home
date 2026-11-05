@@ -467,4 +467,9 @@
 .hm-shell .at-fd-tile{background:linear-gradient(160deg,var(--at-fd-peach),var(--at-fd-peach2))}.hm-shell .at-fd-tile .ah-tile-hit{position:relative}.hm-shell .at-fd-tile-cat{position:absolute;right:6px;top:6px;width:64px;pointer-events:none}.hm-shell .at-fd-tile-cat .at-cat{width:100%}.hm-shell .at-fd-tile .ah-value-num{margin-top:auto}
 .hm-shell .at-module-row{margin-bottom:16px}
 /* the real width of a OnePlus 13R at its display scale is 360: the round head stays round and the two lines stay inside the tile */
+/* big enough for a finger on every page of the feeder */
+.hm-shell .at-feeder-sheet .hm-icon-btn{width:44px;height:44px;flex:none}.hm-shell .at-feeder-sheet .hm-range-tabs button{min-height:44px}.hm-shell .at-fd-days{gap:0}.hm-shell .at-fd-days button{min-width:44px}
+.hm-shell .at-feeder-sheet .hm-switch{position:relative;min-height:31px}.hm-shell .at-feeder-sheet .hm-switch::after{content:"";position:absolute;inset:-7px -2px}
+.hm-shell .at-feeder-sheet .ah-row-text strong{white-space:normal;overflow:visible;text-overflow:clip}.hm-shell .at-feeder-sheet .hm-setting select{max-width:52%;min-height:44px;flex:none}
+@media (max-height:460px){.hm-shell .at-fd-tile-cat{width:40px}}
 @media (max-width:379px){.hm-shell .ah-value .ah-value-head{width:22px;height:22px}.hm-shell .ah-value .ah-value-head svg{width:13px;height:13px}.hm-shell .ah-value .ah-tile-hit{gap:2px}.hm-shell .at-fd-tile-cat{width:52px}}

@@ -43,5 +43,15 @@ class ParseDesiccant(unittest.TestCase):
         self.assertIsNone(feeder.parse_desiccant(None))
 
 
+class Registration(unittest.TestCase):
+    def test_every_websocket_command_is_registered(self):
+        """A handler that is defined but never registered answers «Unknown command» only on the live house (found on 05.11.2026)."""
+        import re
+        source = (pathlib.Path(__file__).parents[3] / "custom_components/atom_home/__init__.py").read_text(encoding="utf-8")
+        defined = set(re.findall(r"def (ws_\w+)\(", source))
+        registered = set(re.findall(r"async_register_command\(hass, (ws_\w+)\)", source))
+        self.assertEqual(defined - registered, set())
+
+
 if __name__ == "__main__":
     unittest.main()
