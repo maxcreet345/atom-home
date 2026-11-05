@@ -11,7 +11,9 @@ export interface AirSummary { rooms: AirRoom[]; temperature: Span; humidity: Spa
 export interface AirOptions { average: string[]; excluded: string[]; bath: string[]; /** what can be done in which room, by its vent; any other room gets numbers and words only (owner, 05.11.2026) */ actions: Record<string, AirActionKind[]> }
 export const AIR_DEFAULTS: AirOptions = { average: ['gostinaia', 'detskaia', 'spalnia', 'kompiuternaia', 'kukhnia', 'vannaia'], excluded: ['sklad'], bath: ['vannaia'], actions: { kukhnia: ['dehumidify', 'purify'], sklad: ['dehumidify', 'purify'], vannaia: ['dehumidify'], kompiuternaia: ['dehumidify'] } };
 const CLASS: Record<string, keyof Pick<AirRoom, 'temperature' | 'humidity' | 'co2' | 'pm25' | 'voc'>> = { temperature: 'temperature', humidity: 'humidity', carbon_dioxide: 'co2', pm25: 'pm25', volatile_organic_compounds: 'voc', volatile_organic_compounds_parts: 'voc', aqi: 'voc' };
-const APPLIANCE = /kettle|boiler|trv|chip|humidifier|fridge|oven|air_?fryer|water_heater|thermostat|ups|nas|router|printer/i;
+/** A relay that drives a vent says so as a whole word: «prevent» on a feeder or a dryer is not a vent (found on the live house, 05.11.2026). */
+export const VENT_SWITCH = /^switch\.(?:[a-z0-9]+_)*(?:vent|ventilation|exhaust|hood|vytiazhka|vytiazh)(?:_[a-z0-9]+)*$/;
+const APPLIANCE = /kettle|boiler|trv|chip|humidifier|fridge|oven|air_?fryer|water_heater|thermostat|ups|nas|router|printer|feeder|dryer|washer/i;
 export const toneOf = (metric: Metric, v: number | null, bath = false): Tone => {
   if (v === null) return 'ok';
   if (metric === 'co2') return v < 1200 ? 'ok' : v < 2000 ? 'warn' : 'bad';
@@ -36,7 +38,7 @@ export function airRooms(reg: Registry, rooms: Array<{ id: string; name: string 
     const pick = (slot: string) => { const c = own.filter(e => e.entity_id.startsWith('sensor.') && CLASS[dc(e.entity_id, e) ?? ''] === slot && !appliance(e)).sort((a, b) => rank(a) - rank(b)); if (!c.length) return null; const alive = c.find(e => toValue(reg.states[e.entity_id].state) !== null) ?? c[0]; const s = reg.states[alive.entity_id]; return { entity: alive.entity_id, value: toValue(s.state), unit: (s.attributes.unit_of_measurement as string | undefined) ?? alive.unit ?? null }; };
     const windows = own.filter(e => e.entity_id.startsWith('binary_sensor.') && ['window', 'opening'].includes(dc(e.entity_id, e) ?? '')).map(e => e.entity_id);
     const purifier = own.find(e => e.entity_id.startsWith('fan.') && /purifier/i.test(e.entity_id))?.entity_id ?? null, humidifier = own.find(e => e.entity_id.startsWith('humidifier.'))?.entity_id ?? null;
-    const vents = own.filter(e => (e.entity_id.startsWith('fan.') && e.entity_id !== purifier) || (e.entity_id.startsWith('switch.') && /(vent|exhaust|hood|vytiazh)/i.test(e.entity_id))).map(e => e.entity_id);
+    const vents = own.filter(e => (e.entity_id.startsWith('fan.') && e.entity_id !== purifier) || (e.entity_id.startsWith('switch.') && !appliance(e) && VENT_SWITCH.test(e.entity_id))).map(e => e.entity_id);
     return { id: r.id, name: r.name, excluded: opts.excluded.includes(r.id), bath: opts.bath.includes(r.id), allowed: opts.actions[r.id] ?? [], temperature: pick('temperature'), humidity: pick('humidity'), co2: pick('co2'), pm25: pick('pm25'), voc: pick('voc'), windows, windowOpen: windows.some(w => reg.states[w]?.state === 'on'), purifier, purifierOn: !!purifier && reg.states[purifier]?.state === 'on', humidifier, vents, ventOn: vents.some(v => reg.states[v]?.state === 'on') };
   }).filter(r => r.excluded ? !!(r.temperature || r.humidity || r.vents.length || r.pm25 || r.voc) : averageKnown ? opts.average.includes(r.id) || !!(r.co2 || r.pm25 || r.purifier || r.humidifier || r.vents.length) : !!(r.temperature || r.humidity || r.co2 || r.pm25 || r.purifier || r.humidifier || r.vents.length));
 }
@@ -49,7 +51,7 @@ export function airSummary(reg: Registry, rooms: Array<{ id: string; name: strin
   const order: Metric[] = ['co2', 'pm25', 'humidity', 'temperature'], spread = (p: AirProblem) => p.metric === 'humidity' ? Math.abs(p.value - (p.room.bath ? 60 : 50)) : p.metric === 'temperature' ? Math.abs(p.value - 22) : p.value;
   problems.sort((a, b) => order.indexOf(a.metric) - order.indexOf(b.metric) || (a.tone === b.tone ? spread(b) - spread(a) : a.tone === 'bad' ? -1 : 1));
   const problem = problems[0] ?? null;
-  return { rooms: list, temperature: mean(counted, 'temperature'), humidity: mean(counted, 'humidity'), co2: worst(counted, 'co2'), pm25: worst(counted, 'pm25'), problem, tone: problems.some(p => p.tone === 'bad') ? 'bad' : problem ? 'warn' : 'ok' };
+  return { rooms: list, temperature: mean(counted, 'temperature'), humidity: mean(counted, 'humidity'), co2: worst(counted, 'co2'), pm25: worst(counted, 'pm25'), problem, tone: problem?.tone ?? 'ok' }; // the look follows the sentence it stands behind
 }
 /** «в Детской», «на Кухне». Other languages name the room as it is. */
 export function inRoomRu(name: string): string { const n = name.trim(); if (/кухн/i.test(n)) return `на ${n.replace(/я$/, 'е')}`; if (/ая$/.test(n)) return `в ${n.replace(/ая$/, 'ой')}`; if (/ня$/.test(n)) return `в ${n.replace(/я$/, 'е')}`; if (/[бвгджзклмнпрстфхцчшщ]$/i.test(n)) return `в ${n}е`; return `в ${n}`; }

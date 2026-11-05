@@ -64,3 +64,6 @@ test('the owner\'s table: where something can be done', () => {
   const stuffy = withVent('kukhnia', 'fan.kitchen_vent', ['sensor.kids_co2', '2500']); assert.deepEqual(kinds(stuffy, 'detskaia'), []);
 });
 test('a vent offline: the button says so', () => { const r = reg(pick([...house(), ['fan.bath_vent', 'vannaia:v', null, 'unavailable']], 'sensor.bath_climate_humidity', '80')); assert.equal(airActions(roomOf(r, 'vannaia'), r)[0].blocked, 'offline'); });
+
+test('a switch is a vent only by the whole word', () => { const r = reg([...house(), ['switch.kitchen_cat_feeder_prevent_accumulation', 'kukhnia:feeder', null, 'off'], ['switch.bath_dryer_wrinkle_prevent', 'vannaia:dryer', null, 'off'], ['switch.bath_vent', 'vannaia:relay', null, 'off'], ['switch.adventure', 'vannaia:x', null, 'off']]); assert.deepEqual(roomOf(r, 'kukhnia').vents, []); assert.deepEqual(roomOf(r, 'vannaia').vents, ['switch.bath_vent']); });
+test('the look follows the sentence', () => { const s = airSummary(reg(pick(pick(house(), 'sensor.kitchen_climate_humidity', '65'), 'sensor.bedroom_climate_temperature', '27')), ROOMS); assert.equal(s.problem!.metric, 'humidity'); assert.equal(s.tone, 'warn'); });

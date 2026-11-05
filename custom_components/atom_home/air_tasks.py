@@ -17,7 +17,8 @@ STORAGE_KEY = "atom_home.air_tasks"
 STORAGE_VERSION = 1
 MAX_SECONDS = 3600
 TARGETS = {"dehumidify": 60, "purify": 15}
-DEVICE_RE = re.compile(r"^(fan|switch)\.[a-z0-9_]+$")  # the room's vent
+# the room's vent: any fan but a purifier, or a relay that says so as a whole word («prevent» on a feeder is not a vent)
+DEVICE_RE = re.compile(r"^(?:fan\.(?!.*purifier)[a-z0-9_]+|switch\.(?:[a-z0-9]+_)*(?:vent|ventilation|exhaust|hood|vytiazhka|vytiazh)(?:_[a-z0-9]+)*)$")
 SENSOR_RE = re.compile(r"^sensor\.[a-z0-9_]+$")
 ROOM_RE = re.compile(r"^[a-z0-9_]{1,64}$")
 

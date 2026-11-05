@@ -136,7 +136,7 @@ class Jobs(unittest.TestCase):
             t = f.make()
             with self.assertRaises(ValueError):
                 await t.start("dehumidify", "vannaia", VENT, HUM)
-            for bad in (("melt", "r", VENT, HUM), ("dehumidify", "r", "light.x", HUM), ("dehumidify", "r", "lock.door", HUM), ("dehumidify", "r", VENT, "light.x"), ("humidify", "r", VENT, HUM), ("purify", "r", "humidifier.x", HUM), ("dehumidify", "../x", VENT, HUM)):
+            for bad in (("melt", "r", VENT, HUM), ("dehumidify", "r", "light.x", HUM), ("dehumidify", "r", "lock.door", HUM), ("dehumidify", "r", VENT, "light.x"), ("humidify", "r", VENT, HUM), ("dehumidify", "r", "switch.kitchen_cat_feeder_prevent_accumulation", HUM), ("dehumidify", "r", "switch.bath_dryer_wrinkle_prevent", HUM), ("purify", "r", "fan.living_air_purifier", HUM), ("purify", "r", "humidifier.x", HUM), ("dehumidify", "../x", VENT, HUM)):
                 with self.assertRaises(ValueError):
                     await t.start(*bad)
             self.assertEqual(f.calls, [])
@@ -159,6 +159,11 @@ class Jobs(unittest.TestCase):
                 await t.start("dehumidify", "vannaia", VENT, HUM)
             self.assertEqual(t.summary(), [])
         run(go())
+
+    def test_a_relay_vent_is_accepted(self):
+        air.check("dehumidify", "switch.bath_vent", HUM, "vannaia")
+        air.check("purify", "switch.kitchen_vent_relay", HUM, "kukhnia")
+        air.check("dehumidify", "fan.office_fan", HUM, "kompiuternaia")
 
     def test_a_dead_sensor_does_not_end_the_job(self):
         self.assertFalse(air.reached("dehumidify", "unavailable", 60))
