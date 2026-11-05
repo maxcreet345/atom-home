@@ -332,9 +332,11 @@ def _register_ws(hass: HomeAssistant) -> None:
         air: AirTasks | None = (_entry_data(hass) or {}).get("air_tasks")
         if not connection.user.permissions.check_entity(msg["device"], "control"):
             raise Unauthorized()
-        if air:
-            await air.stop(msg["device"])
-        connection.send_result(msg["id"], air.summary() if air else [])
+        if not air:
+            connection.send_error(msg["id"], "not_ready", "Atom Home is starting")
+            return
+        await air.stop(msg["device"])
+        connection.send_result(msg["id"], air.summary())
 
     @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/alarms/state"})
     @callback

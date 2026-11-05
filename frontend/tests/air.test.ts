@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { airActions, airRooms, airSummary, inRoomRu, toneOf } from '../src/model/air.ts';
+import { airActions, airRooms, airTarget, airSummary, inRoomRu, toneOf } from '../src/model/air.ts';
 import type { Registry } from '../src/model/registry.ts';
 const row = (entity_id: string, device_id: string | null, device_class: string | null) => ({ entity_id, device_id, area_id: null, name: null, original_name: null, platform: 'x', entity_category: null, disabled_by: null, hidden_by: null, icon: null, original_icon: null, device_class, unit: null, has_entity_name: false });
 function reg(sensors: Array<[string, string, string | null, string]>, extra: Record<string, string> = {}): Registry {
@@ -39,19 +39,19 @@ test('a dead sensor drops out and the span says so; no old value survives', () =
 });
 test('a new CO₂ sensor joins by itself', () => { const s = airSummary(reg([...house(), ['sensor.bed_co2', 'spalnia:new', 'carbon_dioxide', '1500']]), ROOMS); assert.deepEqual([s.co2.total, s.co2.value, s.co2.room], [3, 1500, 'Спальня']); assert.equal(s.problem!.metric, 'co2'); });
 test('priority: CO₂, PM, humidity, temperature; the storeroom never raises a problem', () => {
-  let s = airSummary(reg(pick(pick(house(), 'sensor.kids_co2', '1300'), 'sensor.bath_climate_humidity', '90')), ROOMS); assert.equal(s.problem!.metric, 'co2'); assert.equal(s.problem!.room.id, 'detskaia'); assert.equal(s.tone, 'bad');
+  let s = airSummary(reg(pick(pick(house(), 'sensor.kids_co2', '1300'), 'sensor.bath_climate_humidity', '90')), ROOMS); assert.equal(s.problem!.metric, 'co2'); assert.equal(s.problem!.room.id, 'detskaia'); assert.equal(s.tone, 'warn');
   s = airSummary(reg(pick(house(), 'sensor.bath_climate_humidity', '90')), ROOMS); assert.deepEqual([s.problem!.metric, s.problem!.room.id, s.problem!.tone, s.problem!.high], ['humidity', 'vannaia', 'bad', true]);
 });
-test('a bathroom has its own humidity scale', () => { assert.equal(toneOf('humidity', 70, true), 'ok'); assert.equal(toneOf('humidity', 70, false), 'warn'); assert.equal(toneOf('humidity', 25, false), 'bad'); assert.equal(toneOf('temperature', 18.5), 'warn'); assert.equal(toneOf('co2', 1200), 'warn'); assert.equal(toneOf('pm25', 15), 'ok'); });
+test('humidity scales: room, kitchen, bathroom', () => { assert.equal(toneOf('humidity', 65), 'ok'); assert.equal(toneOf('humidity', 66), 'warn'); assert.equal(toneOf('humidity', 70), 'warn'); assert.equal(toneOf('humidity', 71), 'bad'); assert.equal(toneOf('humidity', 25), 'bad'); assert.equal(toneOf('humidity', 35), 'warn'); assert.equal(toneOf('humidity', 70, 'kitchen'), 'ok'); assert.equal(toneOf('humidity', 75, 'kitchen'), 'warn'); assert.equal(toneOf('humidity', 81, 'kitchen'), 'bad'); assert.equal(toneOf('humidity', 75, 'bath'), 'ok'); assert.equal(toneOf('humidity', 80, 'bath'), 'warn'); assert.equal(toneOf('humidity', 86, 'bath'), 'bad'); assert.equal(toneOf('humidity', 20, 'bath'), 'ok'); assert.equal(toneOf('temperature', 18.5), 'warn'); assert.equal(toneOf('co2', 1200), 'warn'); assert.equal(toneOf('pm25', 15), 'ok'); });
 test('a vent found by itself, a purifier told apart', () => { const r = airRooms(reg(house(), {}), ROOMS); assert.deepEqual(r.find(x => x.id === 'kompiuternaia')!.vents, ['fan.office_fan']); const l = r.find(x => x.id === 'gostinaia')!; assert.equal(l.purifier, 'fan.living_air_purifier'); assert.deepEqual(l.vents, []); assert.equal(l.humidifier, 'humidifier.living_humidifier'); });
 test('Russian room forms', () => { assert.equal(inRoomRu('Детская'), 'в Детской'); assert.equal(inRoomRu('Кухня'), 'на Кухне'); assert.equal(inRoomRu('Спальня'), 'в Спальне'); assert.equal(inRoomRu('Гостиная'), 'в Гостиной'); assert.equal(inRoomRu('Ванная'), 'в Ванной'); });
 
 const roomOf = (r: Registry, id: string) => airRooms(r, ROOMS).find(x => x.id === id)!;
-const kinds = (r: Registry, id: string) => airActions(roomOf(r, id), r).map(a => a.kind);
+const NOVEMBER = new Date(2026, 10, 5), kinds = (r: Registry, id: string) => airActions(roomOf(r, id), r, NOVEMBER).map(a => a.kind);
 const withVent = (room: string, id: string, ...over: Array<[string, string]>) => { let s = house(); for (const [e, v] of over) s = pick(s, e, v); return reg([...s, [id, `${room}:v`, null, 'off']]); };
 test('a button only with the problem and only with a vent', () => {
   assert.deepEqual(kinds(withVent('vannaia', 'fan.bath_vent'), 'vannaia'), [], 'normal: no button');
-  const wet = withVent('vannaia', 'fan.bath_vent', ['sensor.bath_climate_humidity', '78']), a = airActions(roomOf(wet, 'vannaia'), wet); assert.deepEqual([a[0].kind, a[0].device, a[0].target, a[0].blocked], ['dehumidify', 'fan.bath_vent', 60, null]);
+  const wet = withVent('vannaia', 'fan.bath_vent', ['sensor.bath_climate_humidity', '78']), a = airActions(roomOf(wet, 'vannaia'), wet, NOVEMBER); assert.deepEqual([a[0].kind, a[0].device, a[0].target, a[0].blocked], ['dehumidify', 'fan.bath_vent', 60, null]);
   const noVent = reg(pick(house(), 'sensor.bath_climate_humidity', '78')); assert.deepEqual(kinds(noVent, 'vannaia'), []);
 });
 test('the owner\'s table: where something can be done', () => {
@@ -66,4 +66,10 @@ test('the owner\'s table: where something can be done', () => {
 test('a vent offline: the button says so', () => { const r = reg(pick([...house(), ['fan.bath_vent', 'vannaia:v', null, 'unavailable']], 'sensor.bath_climate_humidity', '80')); assert.equal(airActions(roomOf(r, 'vannaia'), r)[0].blocked, 'offline'); });
 
 test('a switch is a vent only by the whole word', () => { const r = reg([...house(), ['switch.kitchen_cat_feeder_prevent_accumulation', 'kukhnia:feeder', null, 'off'], ['switch.bath_dryer_wrinkle_prevent', 'vannaia:dryer', null, 'off'], ['switch.bath_vent', 'vannaia:relay', null, 'off'], ['switch.adventure', 'vannaia:x', null, 'off']]); assert.deepEqual(roomOf(r, 'kukhnia').vents, []); assert.deepEqual(roomOf(r, 'vannaia').vents, ['switch.bath_vent']); });
-test('the look follows the sentence', () => { const s = airSummary(reg(pick(pick(house(), 'sensor.kitchen_climate_humidity', '65'), 'sensor.bedroom_climate_temperature', '27')), ROOMS); assert.equal(s.problem!.metric, 'humidity'); assert.equal(s.tone, 'warn'); });
+test('the look follows the sentence', () => { const s = airSummary(reg(pick(pick(house(), 'sensor.kitchen_climate_humidity', '75'), 'sensor.bedroom_climate_temperature', '27')), ROOMS); assert.equal(s.problem!.metric, 'humidity'); assert.equal(s.tone, 'warn'); });
+
+test('the vent stops at 60 % in the heating season and 65 % in summer', () => { assert.equal(airTarget('dehumidify', new Date(2026, 10, 5)), 60); assert.equal(airTarget('dehumidify', new Date(2026, 3, 30)), 60); assert.equal(airTarget('dehumidify', new Date(2026, 4, 1)), 65); assert.equal(airTarget('dehumidify', new Date(2026, 8, 30)), 65); assert.equal(airTarget('purify', new Date(2026, 6, 1)), 15); });
+
+test('a button shows the summer target in summer', () => { const wet = withVent('vannaia', 'fan.bath_vent', ['sensor.bath_climate_humidity', '78']); assert.equal(airActions(roomOf(wet, 'vannaia'), wet, new Date(2026, 6, 1))[0].target, 65); });
+test('a vent\'s own settings and a purifier by another name are not vents', () => { const r = reg([...house(), ['switch.bath_vent_child_lock', 'vannaia:v', null, 'off'], ['switch.kitchen_hood_light', 'kukhnia:h', null, 'off'], ['fan.zhimi_airp_mb5', 'detskaia:p', null, 'on'], ['fan.kitchen_oven_fan', 'kukhnia:o', null, 'off']]); assert.deepEqual(roomOf(r, 'vannaia').vents, []); assert.deepEqual(roomOf(r, 'kukhnia').vents, []); assert.deepEqual(roomOf(r, 'detskaia').vents, []); assert.equal(roomOf(r, 'detskaia').purifier, 'fan.zhimi_airp_mb5'); });
+test('a CO₂ sensor in the hall does not move the mean of the six rooms', () => { const before = airSummary(reg(house()), ROOMS).temperature; const rooms = [...ROOMS, { id: 'prikhozhaia', name: 'Прихожая' }], after = airSummary(reg([...house(), ['sensor.hall_co2', 'prikhozhaia:c', 'carbon_dioxide', '800'], ['sensor.hall_temperature', 'prikhozhaia:c', 'temperature', '10']]), rooms); assert.equal(after.temperature.value, before.value); assert.equal(after.temperature.total, before.total); assert.ok(after.rooms.some(x => x.id === 'prikhozhaia'), 'it stays in the rooms'); assert.equal(after.co2.total, airSummary(reg(house()), ROOMS).co2.total + 1, 'and its CO₂ counts for the worst'); });
