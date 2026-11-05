@@ -63,6 +63,12 @@ def parse_desiccant(rows: list[dict[str, Any]] | None) -> dict[str, int] | None:
     return {"level": level, "days": days} if isinstance(level, int) and isinstance(days, int) else None
 
 
+def device_did(attributes: dict[str, Any]) -> str | None:
+    """Xiaomi's id of the device: `did` on current xiaomi_miot, `miot_did` on older ones."""
+    did = attributes.get("did") or attributes.get("miot_did")
+    return str(did) if did else None
+
+
 async def feeder_log(hass: HomeAssistant, entity_id: str) -> dict[str, Any] | None:
     """The journal of a feeder's entity, cached a minute; None when it is not a feeder or the cloud does not answer."""
     from homeassistant.helpers import device_registry as dr, entity_registry as er
@@ -75,7 +81,7 @@ async def feeder_log(hass: HomeAssistant, entity_id: str) -> dict[str, Any] | No
     if cached and time.monotonic() - cached[0] < CACHE_SECONDS:
         return cached[1]
     state = hass.states.get(entity_id)
-    did = state.attributes.get("miot_did") if state else None
+    did = device_did(state.attributes) if state else None
     if not did or not hass.services.has_service("xiaomi_miot", "request_xiaomi_api"):
         return None
 

@@ -43,6 +43,13 @@ class ParseDesiccant(unittest.TestCase):
         self.assertIsNone(feeder.parse_desiccant(None))
 
 
+class DeviceId(unittest.TestCase):
+    def test_both_spellings(self):
+        self.assertEqual(feeder.device_did({"did": "1"}), "1")
+        self.assertEqual(feeder.device_did({"miot_did": 2}), "2")
+        self.assertIsNone(feeder.device_did({}))
+
+
 class Registration(unittest.TestCase):
     def test_every_websocket_command_is_registered(self):
         """A handler that is defined but never registered answers «Unknown command» only on the live house (found on 05.11.2026)."""

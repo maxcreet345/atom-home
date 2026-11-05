@@ -75,15 +75,16 @@ export function FeederSheet(props: Props & { room?: string; onClose: () => void;
   const grams = optionInt(options.portionGrams, 10, 1, 200), max = optionInt(options.maxPortions, 15, 1, 50);
   const [view, setView] = useState<View>('main'), [day, setDay] = useState(today), [range, setRange] = useState<'day' | 'week'>('day');
   const [feedOpen, setFeedOpen] = useState(false), [dose, setDose] = useState(1), [confirm, setConfirm] = useState<'plan' | 'save' | 'reset' | 'calibrate' | null>(null), [busy, setBusy] = useState(false), [note, setNote] = useState('');
+  const running = useRef(false);
   const [draft, setDraft] = useState<{ original: string; meals: FeederMeal[] } | null>(null);
   const stale = !!draft && !!schedule && draft.original !== schedule.raw;
   const draftValue = () => { try { return draft ? editFeederSchedule(draft.original, draft.meals.map(m => ({ ...m, time: shiftTime(m.time, shift) }))) : null; } catch { return null; } };
   const portions = (n: number) => t('module.feeder.portions', { n }), approx = (n: number) => t('module.feeder.approx', { g: n * grams });
   const run = async (call: { domain: string; service: string; data: Record<string, unknown> }, okText = t('module.feeder.sent')) => {
-    if (busy) return; setBusy(true); setNote('');
+    if (running.current) return; running.current = true; setBusy(true); setNote(''); // a ref, not the state: three taps in one frame must feed the cat once
     try { await host.call(call.domain, call.service, call.data); setNote(okText); setFeedOpen(false); }
     catch (e) { setNote(`${t('module.feeder.fail')}: ${e instanceof Error ? e.message : String(e)}`); }
-    finally { setBusy(false); setConfirm(null); }
+    finally { running.current = false; setBusy(false); setConfirm(null); }
   };
   const bodyRef = useRef<HTMLDivElement>(null), firstView = useRef(true);
   // a new page of the sheet starts at its top, and keyboard and screen-reader focus lands on it instead of falling out of the dialog
