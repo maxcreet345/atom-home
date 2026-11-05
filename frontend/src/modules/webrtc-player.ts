@@ -14,7 +14,7 @@ export function mountWebrtcPlayer(container: HTMLElement, opts: WebrtcOptions): 
   const capture = () => { try { const w = 480, h = Math.max(1, Math.round(w * video.videoHeight / video.videoWidth)); const c = document.createElement('canvas'); c.width = w; c.height = h; const ctx = c.getContext('2d'); if (!ctx) return; ctx.drawImage(video, 0, 0, w, h); opts.onFrame?.(c.toDataURL('image/jpeg', 0.6)); } catch { /* tainted */ } };
   const stop = () => {
     epoch++; if (timer) clearInterval(timer); timer = undefined; if (retry) clearTimeout(retry); retry = undefined;
-    const u = unsub; unsub = null; try { u?.(); } catch { /* closed */ }
+    const u = unsub; unsub = null; try { void Promise.resolve(u?.()).catch(() => { /* HA forgot the subscription on reconnect: «Subscription not found» is not an error here */ }); } catch { /* closed */ }
     const p = pc; pc = null; try { p?.close(); } catch { /* closed */ }
     session = null; lastTime = 0; liveSince = 0; video.pause(); video.srcObject = null;
   };

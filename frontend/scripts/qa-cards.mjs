@@ -59,7 +59,7 @@ try {
   await page.goto(origin); await page.waitForFunction(() => window.ready);
   await page.evaluate(async fx => { localStorage.clear(); await window.mountPreview(document.getElementById('root'), JSON.parse(fx)); }, traian); await page.waitForSelector('.at-shell'); await page.waitForTimeout(800);
   await page.evaluate(() => { location.hash = '#systems'; }); await page.waitForTimeout(600);
-  const f = resolve(out, 'light-feeder-card.png'); await page.locator('.at-feeder').screenshot({ path: f }); shots.push({ name: 'feeder-card', theme: 'light', f });
+  const f = resolve(out, 'light-feeder-card.png'); await page.locator('.at-fd-tile').screenshot({ path: f }); shots.push({ name: 'feeder-card', theme: 'light', f });
   await page.evaluate(() => { location.hash = '#home'; }); await page.waitForTimeout(600); const f2 = resolve(out, 'light-feeder-compact.png'); await page.locator('[data-module-card="pet_feeder"]').first().screenshot({ path: f2 }); shots.push({ name: 'feeder-compact', theme: 'light', f: f2 });
   await page.close();
 } finally { await browser.close(); server.close(); }

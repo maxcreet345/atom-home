@@ -29,6 +29,11 @@ class ParseEvents(unittest.TestCase):
         events, _ = feeder.parse_events(ate, None)
         self.assertEqual([e["at"] for e in events], [100, 200])
 
+    def test_the_newest_event_gives_the_zone(self):
+        ate = [row((18, 4), (25, 300), (28, 0), (27, 7200)), row((18, 4), (25, 100), (28, 0), (27, 10800))]
+        self.assertEqual(feeder.parse_events(ate, [])[1], 7200)
+        self.assertEqual(feeder.parse_events(list(reversed(ate)), [])[1], 7200)
+
     def test_garbage_is_skipped(self):
         events, tz = feeder.parse_events([{"value": "not json"}, {"value": None}, row((18, "x"), (25, 1), (28, 0))], [{"value": "[1]"}])
         self.assertEqual((events, tz), ([], None))

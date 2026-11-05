@@ -14,3 +14,5 @@ export function shiftTime(hhmm: string, minutes: number): string { const [h, m] 
 export function weekOf(log: FeederLog | null, now = new Date(), n = 7) { return Array.from({ length: n }, (_, i) => { const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (n - 1 - i)); return { date: d, key: dayKey(d), grams: eatenOn(log, dayKey(d)) }; }); }
 /** Grams per hour of a day. */
 export function hoursOf(log: FeederLog | null, day: string) { const h = Array.from({ length: 24 }, () => 0); for (const e of eventsOf(log, day)) if (e.kind === 'ate') h[new Date(e.at * 1000).getHours()] += e.grams; return h; }
+/** Meals shown in real time to what the feeder stores: its own clock, sorted, as Mi Home writes them. */
+export function mealsForFeeder<T extends { time: string }>(meals: T[], shift: number): T[] { return meals.map(m => ({ ...m, time: shiftTime(m.time, shift) })).sort((a, b) => a.time.localeCompare(b.time)); }

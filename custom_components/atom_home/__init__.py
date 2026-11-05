@@ -285,6 +285,9 @@ def _register_ws(hass: HomeAssistant) -> None:
     async def ws_feeder_log(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
         """The pet feeder's journal, eaten grams and desiccant from Xiaomi's cloud, read-only; null when there are none."""
         try:
+            if not connection.user.permissions.check_entity(msg["entity_id"], "read"):
+                connection.send_result(msg["id"], None)
+                return
             connection.send_result(msg["id"], await feeder_log(hass, msg["entity_id"]))
         except Exception as err:  # never break the panel over a journal
             _LOGGER.warning("feeder journal failed: %s", err)
