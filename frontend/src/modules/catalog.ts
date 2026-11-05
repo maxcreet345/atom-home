@@ -136,7 +136,12 @@ export const clockSpec: ModuleSpec = {
     return { label: 'clock', entities: { sun: 'sun.sun', weather, timer1: has('timer.atom_1'), timer2: has('timer.atom_2'), timer3: has('timer.atom_3'), labels: has('input_text.atom_timer_labels'), done: has('input_boolean.timer_done'), announce: has('input_boolean.timer_announce'), push: has('input_boolean.timer_push'), alarmFlag: has('input_boolean.alarm_ringing'), alarmText: has('input_text.alarm_ringing') } };
   },
 };
-export const MODULE_SPECS: ModuleSpec[] = [boilerEbusSpec, cameraGo2rtcSpec, doorbellSpec, petFeederSpec, clockSpec];
+/** The house's air: found as soon as a room has a CO₂ or PM2.5 sensor. It reads every room by class; the one role only says that such a sensor exists. */
+export const airSpec: ModuleSpec = {
+  id: 'air', titleKey: 'module.air', placement: ['overview'], roles: [{ role: 'sensor', labelKey: 'module.air.role.sensor', required: true }],
+  detect(reg) { const e = reg.entities.find(x => !x.disabled_by && reg.states[x.entity_id] && x.entity_id.startsWith('sensor.') && ['carbon_dioxide', 'pm25'].includes(String(reg.states[x.entity_id]?.attributes.device_class ?? x.device_class ?? ''))); return e ? { label: 'CO₂', entities: { sensor: e.entity_id } } : null; },
+};
+export const MODULE_SPECS: ModuleSpec[] = [boilerEbusSpec, cameraGo2rtcSpec, doorbellSpec, petFeederSpec, airSpec, clockSpec];
 export interface ActiveSpec { spec: ModuleSpec; entities: ModuleEntities; label: string; options: ModuleOptions }
 /** Modules whose hardware is present (or that the owner configured by hand) and that are not disabled. */
 export function activeSpecs(registry: Registry, config: HouseConfig, specs: ModuleSpec[] = MODULE_SPECS): ActiveSpec[] {

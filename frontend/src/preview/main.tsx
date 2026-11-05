@@ -10,6 +10,7 @@ import atom from '../styles/atom.css?inline';
 export async function mountPreview(root: HTMLElement, snapshot: Registry, config: unknown, viewport?: { width: number; height: number }) {
   const style = document.createElement('style'); style.textContent = base + home + atom; document.head.append(style);
   const host = previewHost(snapshot);
+  host.setAirTasks((window as unknown as { __airTasks?: never }).__airTasks ?? []);
   host.setFeederLog((window as unknown as { __feederLog?: never }).__feederLog ?? null); // QA and the preview server set it before the first draw
   const store = config === undefined ? localStore() : memoryStore(config);
   const loaded = await store.load(); let cfg = loaded.config; const warnings = loaded.warnings;

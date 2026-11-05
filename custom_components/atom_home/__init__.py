@@ -19,12 +19,14 @@ from homeassistant.components import panel_custom, websocket_api
 from homeassistant.components.http import HomeAssistantView, StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import Unauthorized
 from homeassistant.helpers.storage import Store
 from aiohttp import web
 
 from .light_sleep import LightSleep
 from .automations import automation_rows
 from .feeder import feeder_log
+from .air_tasks import AirTasks
 from .alarms import AlarmScheduler, normalise_alarms
 from .config_state import ConfigState, ConfigWriteError
 from .const import (
@@ -124,7 +126,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await scheduler.resume()  # a ringing flag restored across the restart is stale
     sleep = LightSleep(hass)
     await sleep.async_load()
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"store": store, "state": ConfigState(data.get("config"), data.get("revision", 0), store.async_save), "alarms": scheduler, "light_sleep": sleep}
+    air_tasks = AirTasks(hass)
+    await air_tasks.async_load()
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"air_tasks": air_tasks, "store": store, "state": ConfigState(data.get("config"), data.get("revision", 0), store.async_save), "alarms": scheduler, "light_sleep": sleep}
     hass.data[DOMAIN]["_version"] = version
 
     photos_dir = Path(hass.config.path(PHOTOS_DIR))
@@ -159,6 +163,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     bucket = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None) or {}
     if (sched := bucket.get("alarms")):
         sched.shutdown()
+    if (air := bucket.get("air_tasks")):
+        air.unload()
     if (sleep := bucket.get("light_sleep")):
         sleep.shutdown()
     return True
@@ -185,7 +191,7 @@ def _register_ws(hass: HomeAssistant) -> None:
     @callback
     def ws_capabilities(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
         """What this backend supports; a panel that gets `unknown_command` here is talking to an older integration."""
-        connection.send_result(msg["id"], {"configRevision": 1, "composition": 1, "assist": 0, "alarms": 1, "lightSleep": 1, "automations": 1, "feederLog": 1})
+        connection.send_result(msg["id"], {"configRevision": 1, "composition": 1, "assist": 0, "alarms": 1, "lightSleep": 1, "automations": 1, "feederLog": 1, "airTasks": 1})
 
     @websocket_api.websocket_command({
         vol.Required("type"): f"{DOMAIN}/config/set",
@@ -293,6 +299,43 @@ def _register_ws(hass: HomeAssistant) -> None:
             _LOGGER.warning("feeder journal failed: %s", err)
             connection.send_result(msg["id"], None)
 
+    @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/air/tasks"})
+    @callback
+    def ws_air_tasks(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+        """The «fix it» jobs of the Air card now running."""
+        air: AirTasks | None = (_entry_data(hass) or {}).get("air_tasks")
+        connection.send_result(msg["id"], air.summary() if air else [])
+
+    @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/air/start", vol.Required("kind"): str, vol.Required("roomId"): str, vol.Required("device"): str, vol.Required("sensor"): str, vol.Optional("target"): vol.Coerce(float)})
+    @websocket_api.async_response
+    async def ws_air_start(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+        """Run a device until the reading is normal. The target is the server's; the one the panel shows is only for display."""
+        air: AirTasks | None = (_entry_data(hass) or {}).get("air_tasks")
+        if not air:
+            connection.send_error(msg["id"], "not_ready", "Atom Home is starting")
+            return
+        if not connection.user.permissions.check_entity(msg["device"], "control"):
+            raise Unauthorized()
+        try:
+            await air.start(msg["kind"], msg["roomId"], msg["device"], msg["sensor"])
+        except ValueError as err:
+            connection.send_error(msg["id"], "invalid", str(err))
+            return
+        except Exception as err:  # the device refused: say so in the panel
+            connection.send_error(msg["id"], "failed", str(err))
+            return
+        connection.send_result(msg["id"], air.summary())
+
+    @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/air/stop", vol.Required("device"): str})
+    @websocket_api.async_response
+    async def ws_air_stop(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+        air: AirTasks | None = (_entry_data(hass) or {}).get("air_tasks")
+        if not connection.user.permissions.check_entity(msg["device"], "control"):
+            raise Unauthorized()
+        if air:
+            await air.stop(msg["device"])
+        connection.send_result(msg["id"], air.summary() if air else [])
+
     @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/alarms/state"})
     @callback
     def ws_alarms_state(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
@@ -356,3 +399,6 @@ def _register_ws(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_light_sleep_state)
     websocket_api.async_register_command(hass, ws_automations)
     websocket_api.async_register_command(hass, ws_feeder_log)
+    websocket_api.async_register_command(hass, ws_air_tasks)
+    websocket_api.async_register_command(hass, ws_air_start)
+    websocket_api.async_register_command(hass, ws_air_stop)

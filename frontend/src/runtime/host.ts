@@ -1,5 +1,6 @@
 import type { Registry, StateRow, AreaRow, DeviceRow, EntityRow } from '../model/registry.ts';
 import type { FeederLog } from '../modules/feeder-log.ts';
+import type { AirTask } from '../model/air.ts';
 /** The slice of the HA frontend `hass` object the panel uses. Authentication stays with HA. */
 export interface Hass {
   states: Record<string, { state: string; attributes: Record<string, unknown>; last_changed: string; last_updated: string }>;
@@ -24,6 +25,10 @@ export interface Host {
   automations?(): Promise<AutomationRow[]>;
   /** The feeder's journal, eaten grams and desiccant from Xiaomi's cloud (read-only, `atom_home/feeder/log`); null when the backend or the cloud has none. */
   feederLog?(entityId: string, fresh?: boolean): Promise<FeederLog | null>;
+  /** «Fix it» jobs of the Air card, run by the integration so they finish with the panel closed: on until the reading is back to normal. */
+  airTasks?(): Promise<AirTask[]>;
+  airStart?(task: Omit<AirTask, 'startedAt'>): Promise<void>;
+  airStop?(device: string): Promise<void>;
   readonly admin: boolean; readonly online: boolean;
 }
 const toRow = (e: Record<string, unknown>): EntityRow => ({
@@ -49,6 +54,9 @@ export function liveHost(current: () => Hass): Host {
     ws: <T,>(message: Record<string, unknown>) => current().callWS<T>(message),
     async automations() { try { const rows = await current().callWS<AutomationRow[]>({ type: 'atom_home/automations' }); return Array.isArray(rows) ? rows : []; } catch { return []; } },
     async feederLog(entityId, fresh = false) { try { return await current().callWS<FeederLog | null>({ type: 'atom_home/feeder/log', entity_id: entityId, fresh }); } catch { return null; } },
+    async airTasks() { try { const r = await current().callWS<AirTask[]>({ type: 'atom_home/air/tasks' }); return Array.isArray(r) ? r : []; } catch { return []; } },
+    async airStart(task) { await current().callWS({ type: 'atom_home/air/start', ...task }); },
+    async airStop(device) { await current().callWS({ type: 'atom_home/air/stop', device }); },
     subscribe: <T,>(message: Record<string, unknown>, callback: (m: T) => void) => { const conn = current().connection; if (!conn?.subscribeMessage) return Promise.reject(new Error('no subscription API')); return conn.subscribeMessage<T>(callback, message); },
     async history(entityIds, hours) {
       const end = new Date(), start = new Date(end.getTime() - hours * 3600000);
@@ -60,7 +68,7 @@ export function liveHost(current: () => Hass): Host {
   };
 }
 /** Isolated host for previews and QA: a frozen snapshot, every command recorded and rejected. */
-export function previewHost(snapshot: Registry, log: Array<{ domain: string; service: string; data: Record<string, unknown> }> = []): Host & { log: typeof log; setOnline(v: boolean): void; setDelay(ms: number): void; setAutomations(rows: AutomationRow[]): void; setFeederLog(log: FeederLog | null): void; setAccept(v: boolean): void } {
-  let online = true, delay = 0, automations: AutomationRow[] = [], feeder: FeederLog | null = null, accept = false; // ST-4 / ST-3 of the audit: QA flips the connection and slows the answer to see the banner, the veil, the pending state and the refused command
-  return { admin: true, get online() { return online; }, setOnline(v: boolean) { online = v; }, setDelay(ms: number) { delay = ms; }, setAutomations(rows: AutomationRow[]) { automations = rows; }, setFeederLog(log: FeederLog | null) { feeder = log; }, setAccept(v: boolean) { accept = v; }, async feederLog() { return feeder; }, async automations() { return automations; }, log, states: () => snapshot.states, registry: async () => ({ areas: snapshot.areas, devices: snapshot.devices, entities: snapshot.entities }), async call(domain, service, data) { log.push({ domain, service, data }); if (delay) await new Promise(r => setTimeout(r, delay)); if (accept) return; throw new Error('preview: commands are rejected'); }, async ws(message) { log.push({ domain: 'ws', service: String(message.type), data: message }); throw new Error('preview: commands are rejected'); }, async history() { return {}; } };
+export function previewHost(snapshot: Registry, log: Array<{ domain: string; service: string; data: Record<string, unknown> }> = []): Host & { log: typeof log; setOnline(v: boolean): void; setDelay(ms: number): void; setAutomations(rows: AutomationRow[]): void; setFeederLog(log: FeederLog | null): void; setAccept(v: boolean): void; setAirTasks(t: AirTask[]): void } {
+  let online = true, delay = 0, automations: AutomationRow[] = [], feeder: FeederLog | null = null, accept = false, airTasks: AirTask[] = []; // ST-4 / ST-3 of the audit: QA flips the connection and slows the answer to see the banner, the veil, the pending state and the refused command
+  return { admin: true, get online() { return online; }, setOnline(v: boolean) { online = v; }, setDelay(ms: number) { delay = ms; }, setAutomations(rows: AutomationRow[]) { automations = rows; }, setFeederLog(log: FeederLog | null) { feeder = log; }, setAccept(v: boolean) { accept = v; }, setAirTasks(t: AirTask[]) { airTasks = t; }, async airTasks() { return airTasks; }, async airStart(task) { log.push({ domain: 'air', service: 'start', data: task }); if (!accept) throw new Error('preview: commands are rejected'); airTasks = [...airTasks, { ...task, startedAt: Date.now() }]; }, async airStop(device) { log.push({ domain: 'air', service: 'stop', data: { device } }); if (!accept) throw new Error('preview: commands are rejected'); airTasks = airTasks.filter(x => x.device !== device); }, async feederLog() { return feeder; }, async automations() { return automations; }, log, states: () => snapshot.states, registry: async () => ({ areas: snapshot.areas, devices: snapshot.devices, entities: snapshot.entities }), async call(domain, service, data) { log.push({ domain, service, data }); if (delay) await new Promise(r => setTimeout(r, delay)); if (accept) return; throw new Error('preview: commands are rejected'); }, async ws(message) { log.push({ domain: 'ws', service: String(message.type), data: message }); throw new Error('preview: commands are rejected'); }, async history() { return {}; } };
 }
