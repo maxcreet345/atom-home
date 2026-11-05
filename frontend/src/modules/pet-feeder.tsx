@@ -134,7 +134,7 @@ export function FeederSheet(props: Props & { room?: string; onClose: () => void;
     const done = events.map(e => ({ time: clock(e.at), past: true, next: false, missed: false, text: e.kind === 'ate' ? tk(t, 'ate', { g: e.grams }) : tk(t, e.kind === 'plan' ? 'fedPlan' : 'fedManual', { n: portions(Math.max(1, Math.round(e.grams / grams))) }) }));
     // a plan meal that passed a quarter of an hour ago with no dispense on record: the owner should see it, not lose it
     const fedAt = events.filter(e => e.kind === 'plan').map(e => minutes(clock(e.at)));
-    const changed = Date.parse(planS?.last_changed ?? '') || 0, stood = Math.max(planStamp.current?.at ?? 0, changed), planFrom = stood && dayKey(new Date(stood)) === today ? minutes(clock(Math.floor(stood / 1000))) : -1, journalFresh = Date.now() - fetchedAt < 600000;
+    const stood = planStamp.current?.at ?? 0, planFrom = stood && dayKey(new Date(stood)) === today ? minutes(clock(Math.floor(stood / 1000))) : -1, journalFresh = Date.now() - fetchedAt < 600000;
     const missed = key === today && planOn && log && journalFresh ? meals.filter(m => minutes(m.time) > planFrom && minutes(hhmm) - minutes(m.time) > 15 && !fedAt.some(f => Math.abs(f - minutes(m.time)) <= 15)).map(m => ({ time: m.time, past: true, next: false, missed: true, text: tk(t, 'notFed', { n: portions(m.portions) }) })) : [];
     const planned = key === today && planOn ? meals.filter(m => m.time > hhmm).map(m => ({ time: m.time, past: false, next: next?.time === m.time, missed: false, text: `${portions(m.portions)} · ${approx(m.portions)}` })) : [];
     const rows = [...done, ...missed, ...planned].sort((a, b) => a.time.localeCompare(b.time)), shown = limit ? rows.filter((r, i) => r.missed || i >= rows.length - limit) : rows;

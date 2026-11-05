@@ -1,6 +1,6 @@
 # Кормушка — карточка по образцу Mi Home
 
-Статус: v1.16.6, 05.11.2026. Эталон заказчика: карточка кормушки в приложении Mi Home на OnePlus Open («сделай что-то похожее в нашем стиле, но даже красивее»). Код: `frontend/src/modules/pet-feeder.tsx`, `feeder-log.ts`, `feeder-protocol.ts`; сервер: `custom_components/atom_home/feeder.py`, команда `atom_home/feeder/log`. Проверка: `node frontend/scripts/qa-feeder.mjs`.
+Статус: v1.16.8, 05.11.2026. Эталон заказчика: карточка кормушки в приложении Mi Home на OnePlus Open («сделай что-то похожее в нашем стиле, но даже красивее»). Код: `frontend/src/modules/pet-feeder.tsx`, `feeder-log.ts`, `feeder-protocol.ts`; сервер: `custom_components/atom_home/feeder.py`, команда `atom_home/feeder/log`. Проверка: `node frontend/scripts/qa-feeder.mjs`.
 
 ## Что где
 | Экран | Содержимое |
