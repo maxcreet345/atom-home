@@ -4,12 +4,12 @@ import type { Registry } from './registry.ts';
 export type Tone = 'ok' | 'warn' | 'bad';
 export type Metric = 'co2' | 'pm25' | 'humidity' | 'temperature';
 export interface Reading { entity: string; value: number | null; unit: string | null }
-export interface AirRoom { id: string; name: string; excluded: boolean; bath: boolean; noActions: boolean; temperature: Reading | null; humidity: Reading | null; co2: Reading | null; pm25: Reading | null; voc: Reading | null; windows: string[]; windowOpen: boolean; purifier: string | null; purifierOn: boolean; humidifier: string | null; vents: string[]; ventOn: boolean }
+export interface AirRoom { id: string; name: string; excluded: boolean; bath: boolean; allowed: AirActionKind[]; temperature: Reading | null; humidity: Reading | null; co2: Reading | null; pm25: Reading | null; voc: Reading | null; windows: string[]; windowOpen: boolean; purifier: string | null; purifierOn: boolean; humidifier: string | null; vents: string[]; ventOn: boolean }
 export interface Span { value: number | null; used: number; total: number; room: string | null }
 export interface AirProblem { metric: Metric; tone: Tone; room: AirRoom; high: boolean; value: number }
 export interface AirSummary { rooms: AirRoom[]; temperature: Span; humidity: Span; co2: Span; pm25: Span; problem: AirProblem | null; tone: Tone }
-export interface AirOptions { average: string[]; excluded: string[]; bath: string[]; /** rooms where nothing can be done about the air: numbers and words, no buttons (owner, 05.11.2026) */ noActions: string[] }
-export const AIR_DEFAULTS: AirOptions = { average: ['gostinaia', 'detskaia', 'spalnia', 'kompiuternaia', 'kukhnia', 'vannaia'], excluded: ['sklad'], bath: ['vannaia'], noActions: ['gostinaia'] };
+export interface AirOptions { average: string[]; excluded: string[]; bath: string[]; /** what can be done in which room, by its vent; any other room gets numbers and words only (owner, 05.11.2026) */ actions: Record<string, AirActionKind[]> }
+export const AIR_DEFAULTS: AirOptions = { average: ['gostinaia', 'detskaia', 'spalnia', 'kompiuternaia', 'kukhnia', 'vannaia'], excluded: ['sklad'], bath: ['vannaia'], actions: { kukhnia: ['dehumidify', 'purify'], sklad: ['dehumidify', 'purify'], vannaia: ['dehumidify'], kompiuternaia: ['dehumidify'] } };
 const CLASS: Record<string, keyof Pick<AirRoom, 'temperature' | 'humidity' | 'co2' | 'pm25' | 'voc'>> = { temperature: 'temperature', humidity: 'humidity', carbon_dioxide: 'co2', pm25: 'pm25', volatile_organic_compounds: 'voc', volatile_organic_compounds_parts: 'voc', aqi: 'voc' };
 const APPLIANCE = /kettle|boiler|trv|chip|humidifier|fridge|oven|air_?fryer|water_heater|thermostat|ups|nas|router|printer/i;
 export const toneOf = (metric: Metric, v: number | null, bath = false): Tone => {
@@ -37,7 +37,7 @@ export function airRooms(reg: Registry, rooms: Array<{ id: string; name: string 
     const windows = own.filter(e => e.entity_id.startsWith('binary_sensor.') && ['window', 'opening'].includes(dc(e.entity_id, e) ?? '')).map(e => e.entity_id);
     const purifier = own.find(e => e.entity_id.startsWith('fan.') && /purifier/i.test(e.entity_id))?.entity_id ?? null, humidifier = own.find(e => e.entity_id.startsWith('humidifier.'))?.entity_id ?? null;
     const vents = own.filter(e => (e.entity_id.startsWith('fan.') && e.entity_id !== purifier) || (e.entity_id.startsWith('switch.') && /(vent|exhaust|hood|vytiazh)/i.test(e.entity_id))).map(e => e.entity_id);
-    return { id: r.id, name: r.name, excluded: opts.excluded.includes(r.id), bath: opts.bath.includes(r.id), noActions: opts.noActions.includes(r.id), temperature: pick('temperature'), humidity: pick('humidity'), co2: pick('co2'), pm25: pick('pm25'), voc: pick('voc'), windows, windowOpen: windows.some(w => reg.states[w]?.state === 'on'), purifier, purifierOn: !!purifier && reg.states[purifier]?.state === 'on', humidifier, vents, ventOn: vents.some(v => reg.states[v]?.state === 'on') };
+    return { id: r.id, name: r.name, excluded: opts.excluded.includes(r.id), bath: opts.bath.includes(r.id), allowed: opts.actions[r.id] ?? [], temperature: pick('temperature'), humidity: pick('humidity'), co2: pick('co2'), pm25: pick('pm25'), voc: pick('voc'), windows, windowOpen: windows.some(w => reg.states[w]?.state === 'on'), purifier, purifierOn: !!purifier && reg.states[purifier]?.state === 'on', humidifier, vents, ventOn: vents.some(v => reg.states[v]?.state === 'on') };
   }).filter(r => r.excluded ? !!(r.temperature || r.humidity || r.vents.length || r.pm25 || r.voc) : averageKnown ? opts.average.includes(r.id) || !!(r.co2 || r.pm25 || r.purifier || r.humidifier || r.vents.length) : !!(r.temperature || r.humidity || r.co2 || r.pm25 || r.purifier || r.humidifier || r.vents.length));
 }
 const mean = (rooms: AirRoom[], key: 'temperature' | 'humidity'): Span => { const all = rooms.filter(r => r[key]), used = all.filter(r => r[key]!.value !== null); return { value: used.length ? used.reduce((s, r) => s + r[key]!.value!, 0) / used.length : null, used: used.length, total: all.length, room: null }; };
@@ -54,18 +54,15 @@ export function airSummary(reg: Registry, rooms: Array<{ id: string; name: strin
 /** «в Детской», «на Кухне». Other languages name the room as it is. */
 export function inRoomRu(name: string): string { const n = name.trim(); if (/кухн/i.test(n)) return `на ${n.replace(/я$/, 'е')}`; if (/ая$/.test(n)) return `в ${n.replace(/ая$/, 'ой')}`; if (/ня$/.test(n)) return `в ${n.replace(/я$/, 'е')}`; if (/[бвгджзклмнпрстфхцчшщ]$/i.test(n)) return `в ${n}е`; return `в ${n}`; }
 
-/** A button that fixes the problem and stops by itself once the reading is back to normal. Only when the room has the device for it. */
-export type AirActionKind = 'dehumidify' | 'humidify' | 'purify' | 'ventilate';
-export interface AirAction { kind: AirActionKind; roomId: string; device: string; sensor: string; target: number; blocked: 'no_water' | 'offline' | null; value: number }
-export const AIR_TARGET: Record<AirActionKind, number> = { dehumidify: 60, humidify: 45, purify: 15, ventilate: 1000 };
+/** A button that fixes the problem and stops by itself once the reading is back to normal: always the room's vent, and only where the owner said it helps. */
+export type AirActionKind = 'dehumidify' | 'purify';
+export interface AirAction { kind: AirActionKind; roomId: string; device: string; sensor: string; target: number; blocked: 'offline' | null; value: number }
+export const AIR_TARGET: Record<AirActionKind, number> = { dehumidify: 60, purify: 15 };
 export interface AirTask { kind: AirActionKind; roomId: string; device: string; sensor: string; target: number; startedAt: number }
 export function airActions(room: AirRoom, reg: Registry): AirAction[] {
-  if (room.excluded || room.noActions) return [];
-  const out: AirAction[] = [], hum = room.humidity?.value ?? null, pm = room.pm25?.value ?? null, co2 = room.co2?.value ?? null, offline = (id: string) => { const s = reg.states[id]?.state; return s === undefined || s === 'unavailable'; };
-  const vent = room.vents.find(v => !offline(v)) ?? room.vents[0];
-  if (hum !== null && toneOf('humidity', hum, room.bath) !== 'ok' && hum > (room.bath ? 75 : 60) && vent) out.push({ kind: 'dehumidify', roomId: room.id, device: vent, sensor: room.humidity!.entity, target: AIR_TARGET.dehumidify, blocked: offline(vent) ? 'offline' : null, value: hum });
-  if (hum !== null && toneOf('humidity', hum, room.bath) !== 'ok' && hum < 40 && room.humidifier) { const base = room.humidifier.replace(/^humidifier\./, ''); out.push({ kind: 'humidify', roomId: room.id, device: room.humidifier, sensor: room.humidity!.entity, target: AIR_TARGET.humidify, blocked: offline(room.humidifier) ? 'offline' : reg.states[`binary_sensor.${base}_water_shortage`]?.state === 'on' ? 'no_water' : null, value: hum }); }
-  if (pm !== null && toneOf('pm25', pm) !== 'ok' && room.purifier) out.push({ kind: 'purify', roomId: room.id, device: room.purifier, sensor: room.pm25!.entity, target: AIR_TARGET.purify, blocked: offline(room.purifier) ? 'offline' : null, value: pm });
-  if (co2 !== null && toneOf('co2', co2) !== 'ok' && vent) out.push({ kind: 'ventilate', roomId: room.id, device: vent, sensor: room.co2!.entity, target: AIR_TARGET.ventilate, blocked: offline(vent) ? 'offline' : null, value: co2 });
+  if (!room.allowed.length || !room.vents.length) return [];
+  const offline = (id: string) => { const s = reg.states[id]?.state; return s === undefined || s === 'unavailable'; }, vent = room.vents.find(v => !offline(v)) ?? room.vents[0], out: AirAction[] = [], hum = room.humidity?.value ?? null, pm = room.pm25?.value ?? null, blocked = offline(vent) ? 'offline' as const : null;
+  if (room.allowed.includes('dehumidify') && hum !== null && hum > (room.bath ? 75 : 60)) out.push({ kind: 'dehumidify', roomId: room.id, device: vent, sensor: room.humidity!.entity, target: AIR_TARGET.dehumidify, blocked, value: hum });
+  if (room.allowed.includes('purify') && pm !== null && toneOf('pm25', pm) !== 'ok') out.push({ kind: 'purify', roomId: room.id, device: vent, sensor: room.pm25!.entity, target: AIR_TARGET.purify, blocked, value: pm });
   return out;
 }

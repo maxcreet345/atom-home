@@ -16,12 +16,8 @@ _LOGGER = logging.getLogger(__name__)
 STORAGE_KEY = "atom_home.air_tasks"
 STORAGE_VERSION = 1
 MAX_SECONDS = 3600
-TARGETS = {"dehumidify": 60, "humidify": 45, "purify": 15, "ventilate": 1000}
-RISING = {"humidify"}
-DEVICE_RE = {
-    "dehumidify": re.compile(r"^(fan|switch)\.[a-z0-9_]+$"), "ventilate": re.compile(r"^(fan|switch)\.[a-z0-9_]+$"),
-    "purify": re.compile(r"^fan\.[a-z0-9_]+$"), "humidify": re.compile(r"^humidifier\.[a-z0-9_]+$"),
-}
+TARGETS = {"dehumidify": 60, "purify": 15}
+DEVICE_RE = re.compile(r"^(fan|switch)\.[a-z0-9_]+$")  # the room's vent
 SENSOR_RE = re.compile(r"^sensor\.[a-z0-9_]+$")
 ROOM_RE = re.compile(r"^[a-z0-9_]{1,64}$")
 
@@ -34,14 +30,14 @@ def reached(kind: str, value: Any, target: float) -> bool:
         return False
     if number != number or number in (float("inf"), float("-inf")):
         return False
-    return number >= target if kind in RISING else number <= target
+    return number <= target
 
 
 def check(kind: Any, device: Any, sensor: Any, room: Any) -> None:
     """Refuse anything the panel has no business asking for."""
     if kind not in TARGETS:
         raise ValueError("unknown kind")
-    if not isinstance(device, str) or not DEVICE_RE[kind].match(device):
+    if not isinstance(device, str) or not DEVICE_RE.match(device):
         raise ValueError("bad device")
     if not isinstance(sensor, str) or not SENSOR_RE.match(sensor):
         raise ValueError("bad sensor")

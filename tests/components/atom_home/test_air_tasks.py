@@ -136,7 +136,7 @@ class Jobs(unittest.TestCase):
             t = f.make()
             with self.assertRaises(ValueError):
                 await t.start("dehumidify", "vannaia", VENT, HUM)
-            for bad in (("melt", "r", VENT, HUM), ("dehumidify", "r", "light.x", HUM), ("dehumidify", "r", "lock.door", HUM), ("dehumidify", "r", VENT, "light.x"), ("purify", "r", "switch.x", HUM), ("humidify", "r", VENT, HUM), ("dehumidify", "../x", VENT, HUM)):
+            for bad in (("melt", "r", VENT, HUM), ("dehumidify", "r", "light.x", HUM), ("dehumidify", "r", "lock.door", HUM), ("dehumidify", "r", VENT, "light.x"), ("humidify", "r", VENT, HUM), ("purify", "r", "humidifier.x", HUM), ("dehumidify", "../x", VENT, HUM)):
                 with self.assertRaises(ValueError):
                     await t.start(*bad)
             self.assertEqual(f.calls, [])
@@ -162,9 +162,9 @@ class Jobs(unittest.TestCase):
 
     def test_a_dead_sensor_does_not_end_the_job(self):
         self.assertFalse(air.reached("dehumidify", "unavailable", 60))
-        self.assertFalse(air.reached("humidify", "nan", 45))
-        self.assertTrue(air.reached("humidify", "45", 45))
-        self.assertFalse(air.reached("humidify", "44", 45))
+        self.assertFalse(air.reached("purify", "nan", 15))
+        self.assertTrue(air.reached("purify", "15", 15))
+        self.assertFalse(air.reached("purify", "16", 15))
 
     def test_survives_a_restart(self):
         async def go():

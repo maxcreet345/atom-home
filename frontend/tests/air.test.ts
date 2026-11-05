@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { AIR_DEFAULTS, airActions, airRooms, airSummary, inRoomRu, toneOf } from '../src/model/air.ts';
+import { airActions, airRooms, airSummary, inRoomRu, toneOf } from '../src/model/air.ts';
 import type { Registry } from '../src/model/registry.ts';
 const row = (entity_id: string, device_id: string | null, device_class: string | null) => ({ entity_id, device_id, area_id: null, name: null, original_name: null, platform: 'x', entity_category: null, disabled_by: null, hidden_by: null, icon: null, original_icon: null, device_class, unit: null, has_entity_name: false });
 function reg(sensors: Array<[string, string, string | null, string]>, extra: Record<string, string> = {}): Registry {
@@ -47,12 +47,20 @@ test('a vent found by itself, a purifier told apart', () => { const r = airRooms
 test('Russian room forms', () => { assert.equal(inRoomRu('Детская'), 'в Детской'); assert.equal(inRoomRu('Кухня'), 'на Кухне'); assert.equal(inRoomRu('Спальня'), 'в Спальне'); assert.equal(inRoomRu('Гостиная'), 'в Гостиной'); assert.equal(inRoomRu('Ванная'), 'в Ванной'); });
 
 const roomOf = (r: Registry, id: string) => airRooms(r, ROOMS).find(x => x.id === id)!;
-test('a button appears only with the problem and only with a device for it', () => {
-  const vent: [string, string, string | null, string] = ['fan.bath_vent', 'vannaia:v', null, 'off'];
-  assert.deepEqual(airActions(roomOf(reg([...house(), vent]), 'vannaia'), reg([...house(), vent])), [], 'normal: no button');
-  const wet = reg(pick([...house(), vent], 'sensor.bath_climate_humidity', '78')); const a = airActions(roomOf(wet, 'vannaia'), wet); assert.equal(a.length, 1); assert.deepEqual([a[0].kind, a[0].device, a[0].target, a[0].blocked], ['dehumidify', 'fan.bath_vent', 60, null]);
-  const noVent = reg(pick(house(), 'sensor.bath_climate_humidity', '78')); assert.deepEqual(airActions(roomOf(noVent, 'vannaia'), noVent), [], 'no vent: no button');
-  const dusty = reg(pick(house(), 'sensor.living_air_purifier_pm25', '41')); assert.deepEqual(airActions(roomOf(dusty, 'gostinaia'), dusty), [], 'the living room has no buttons'); const free = airRooms(dusty, ROOMS, { ...AIR_DEFAULTS, noActions: [] }).find(x => x.id === 'gostinaia')!; assert.equal(airActions(free, dusty)[0].kind, 'purify');
+const kinds = (r: Registry, id: string) => airActions(roomOf(r, id), r).map(a => a.kind);
+const withVent = (room: string, id: string, ...over: Array<[string, string]>) => { let s = house(); for (const [e, v] of over) s = pick(s, e, v); return reg([...s, [id, `${room}:v`, null, 'off']]); };
+test('a button only with the problem and only with a vent', () => {
+  assert.deepEqual(kinds(withVent('vannaia', 'fan.bath_vent'), 'vannaia'), [], 'normal: no button');
+  const wet = withVent('vannaia', 'fan.bath_vent', ['sensor.bath_climate_humidity', '78']), a = airActions(roomOf(wet, 'vannaia'), wet); assert.deepEqual([a[0].kind, a[0].device, a[0].target, a[0].blocked], ['dehumidify', 'fan.bath_vent', 60, null]);
+  const noVent = reg(pick(house(), 'sensor.bath_climate_humidity', '78')); assert.deepEqual(kinds(noVent, 'vannaia'), []);
 });
-test('no water blocks the humidifier button and says why', () => { const dry = reg([...pick(pick(house(), 'sensor.living_co2_humidity', '30'), 'sensor.living_air_purifier_humidity', '30'), ['binary_sensor.living_humidifier_water_shortage', 'gostinaia:hum', null, 'on']]); const a = airActions(airRooms(dry, ROOMS, { ...AIR_DEFAULTS, noActions: [] }).find(x => x.id === 'gostinaia')!, dry).find(x => x.kind === 'humidify')!; assert.equal(a.blocked, 'no_water'); });
-test('the storeroom never gets a button', () => { const s = reg([...pick(house(), 'sensor.storage_climate_humidity', '95'), ['fan.storage_vent', 'sklad:v', null, 'off']]); assert.deepEqual(airActions(roomOf(s, 'sklad'), s), []); });
+test('the owner\'s table: where something can be done', () => {
+  const wetAll = (room: string, id: string, hum: string, pm?: string) => { const s = pick(house(), hum, '80'); return reg([...s, [id, `${room}:v`, null, 'off'], ...(pm ? [[pm, `${room}:p`, 'pm25', '40'] as [string, string, string | null, string]] : [])]); };
+  assert.deepEqual(kinds(wetAll('kukhnia', 'fan.kitchen_vent', 'sensor.kitchen_climate_humidity', 'sensor.kitchen_pm25'), 'kukhnia'), ['dehumidify', 'purify'], 'kitchen: both');
+  assert.deepEqual(kinds(wetAll('sklad', 'fan.storage_vent', 'sensor.storage_climate_humidity'), 'sklad'), ['dehumidify', 'purify'], 'storeroom: humidity and PM');
+  assert.deepEqual(kinds(wetAll('vannaia', 'fan.bath_vent', 'sensor.bath_climate_humidity', 'sensor.bath_pm25'), 'vannaia'), ['dehumidify'], 'bathroom: humidity only');
+  for (const [room, id, hum] of [['spalnia', 'fan.bed_vent', 'sensor.bedroom_climate_humidity'], ['detskaia', 'fan.kids_vent', 'sensor.kids_co2_humidity'], ['gostinaia', 'fan.living_vent', 'sensor.living_co2_humidity']] as const) assert.deepEqual(kinds(wetAll(room, id, hum), room), [], `${room}: nothing even with a vent`);
+  const dusty = reg(pick(house(), 'sensor.living_air_purifier_pm25', '41')); assert.deepEqual(kinds(dusty, 'gostinaia'), [], 'the living room purifier gets no button');
+  const stuffy = withVent('kukhnia', 'fan.kitchen_vent', ['sensor.kids_co2', '2500']); assert.deepEqual(kinds(stuffy, 'detskaia'), []);
+});
+test('a vent offline: the button says so', () => { const r = reg(pick([...house(), ['fan.bath_vent', 'vannaia:v', null, 'unavailable']], 'sensor.bath_climate_humidity', '80')); assert.equal(airActions(roomOf(r, 'vannaia'), r)[0].blocked, 'offline'); });
