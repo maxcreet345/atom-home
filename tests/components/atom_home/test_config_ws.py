@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.atom_home import async_setup_entry
+from custom_components.atom_home import async_setup_entry, async_unload_entry
 from custom_components.atom_home.config_state import ConfigState, ConfigWriteError, has_wizard_fields
 from custom_components.atom_home.const import CLIENT_FEATURE_COMPOSITION, DOMAIN, STORAGE_KEY
 
@@ -107,7 +107,7 @@ async def test_ws_get_reports_revision_and_set_returns_the_next_one(hass, hass_w
 
     await ws.send_json({"id": 2, "type": f"{DOMAIN}/capabilities/get"})
     caps = await ws.receive_json()
-    assert caps["result"] == {"configRevision": 1, "composition": 1, "assist": 0}
+    assert caps["result"] == {"configRevision": 1, "composition": 1, "assist": 0, "alarms": 1, "lightSleep": 1, "automations": 1, "feederLog": 1, "airTasks": 1}
 
     await ws.send_json({"id": 3, "type": f"{DOMAIN}/config/set", "config": BASE, "expected_revision": 7})
     saved = await ws.receive_json()
@@ -150,3 +150,41 @@ async def test_non_admin_cannot_write(hass, hass_ws_client, hass_storage, hass_r
     assert not denied["success"] and denied["error"]["code"] == "unauthorized"
     await ws.send_json({"id": 2, "type": f"{DOMAIN}/config/get"})
     assert (await ws.receive_json())["result"]["revision"] == 1
+
+
+async def test_air_commands_over_the_real_socket(hass, hass_ws_client, hass_storage) -> None:
+    """The Air card's commands through HA's own wrapper: no job, a refused start with its message, nothing to stop."""
+    await _setup(hass, hass_storage, {"config": BASE, "revision": 1})
+    ws = await hass_ws_client(hass)
+    await ws.send_json({"id": 1, "type": f"{DOMAIN}/air/tasks"})
+    assert (await ws.receive_json())["result"] == []
+    await ws.send_json({"id": 2, "type": f"{DOMAIN}/air/start", "kind": "dehumidify", "roomId": "vannaia", "device": "fan.bath_vent", "sensor": "sensor.bath_humidity", "target": 60})  # what host.ts really sends, against the real schema
+    refused = await ws.receive_json()
+    assert not refused["success"] and refused["error"] == {"code": "invalid", "message": "device offline"}
+    await ws.send_json({"id": 3, "type": f"{DOMAIN}/air/stop", "device": "fan.bath_vent"})
+    assert (await ws.receive_json())["result"] == []
+
+
+async def test_air_commands_need_control_of_the_device(hass, hass_ws_client, hass_storage, hass_read_only_access_token) -> None:
+    await _setup(hass, hass_storage, {"config": BASE, "revision": 1})
+    ws = await hass_ws_client(hass, hass_read_only_access_token)
+    await ws.send_json({"id": 1, "type": f"{DOMAIN}/air/start", "kind": "dehumidify", "roomId": "vannaia", "device": "fan.bath_vent", "sensor": "sensor.bath_humidity"})
+    denied = await ws.receive_json()
+    assert not denied["success"] and denied["error"]["code"] == "unauthorized"
+    await ws.send_json({"id": 2, "type": f"{DOMAIN}/air/stop", "device": "fan.bath_vent"})
+    denied = await ws.receive_json()
+    assert not denied["success"] and denied["error"]["code"] == "unauthorized"
+
+
+async def test_unload_through_the_real_entry_and_setup_again(hass, hass_storage) -> None:
+    """panel_custom has no async_remove_panel in real HA: the real frontend's function is called here, and a second setup must not register the server twice."""
+    entry = await _setup(hass, hass_storage, {"config": BASE, "revision": 1})
+    http = hass.http
+    assert await async_unload_entry(hass, entry) is True
+    assert entry.entry_id not in hass.data[DOMAIN]
+    with patch("custom_components.atom_home.panel_custom.async_register_panel", AsyncMock()) as panel:
+        assert await async_setup_entry(hass, entry)
+    panel.assert_awaited_once()
+    assert http.async_register_static_paths.await_count == 1
+    assert http.register_view.call_count == 3
+    assert await async_unload_entry(hass, entry) is True

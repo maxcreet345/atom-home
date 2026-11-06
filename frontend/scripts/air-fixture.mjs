@@ -20,14 +20,20 @@ const SENSORS = [
   ['vannaia', 'bath_climate', [['sensor.bath_climate_temperature', 'temperature', '19.89', '°C'], ['sensor.bath_climate_humidity', 'humidity', '64.85', '%']]],
   ['sklad', 'storage_climate', [['sensor.storage_climate_temperature', 'temperature', '19.2', '°C'], ['sensor.storage_climate_humidity', 'humidity', '70.4', '%']]],
 ];
+/** What is linked on each area in HA («Температура» and «Влажность» of the area): the only source of a room's two readings. */
+const LINKS = { gostinaia: ['sensor.living_co2_temperature', 'sensor.living_co2_humidity'], detskaia: ['sensor.kids_co2_temperature', 'sensor.kids_co2_humidity'], spalnia: ['sensor.bedroom_climate_temperature', 'sensor.bedroom_climate_humidity'], kompiuternaia: ['sensor.office_climate_temperature', 'sensor.office_climate_humidity'], kukhnia: ['sensor.kitchen_climate_temperature', 'sensor.kitchen_climate_humidity'], vannaia: ['sensor.bath_climate_temperature', 'sensor.bath_climate_humidity'], sklad: ['sensor.storage_climate_temperature', 'sensor.storage_climate_humidity'] };
 const ENV = new Set(['temperature', 'humidity', 'carbon_dioxide', 'pm25', 'pm10']);
-/** @param over state of an entity, or { state, attributes } */
-export function addAir(base, over = {}) {
+/** Every reading of the card silent, as after a Zigbee network going down. */
+export const deadSensors = () => Object.fromEntries(SENSORS.flatMap(([, , list]) => list).filter(([, dc]) => ENV.has(dc)).map(([id]) => [id, 'unavailable']));
+/** @param over state of an entity, or { state, attributes }
+ * @param links a room's link instead of the usual one: { spalnia: { temperature: null, humidity: 'sensor.x' } }, null for no link */
+export function addAir(base, over = {}, links = {}) {
   const fx = JSON.parse(renameAreas(JSON.stringify(base)));
   const area = new Set(['gostinaia', 'detskaia', 'spalnia', 'kompiuternaia', 'kukhnia', 'vannaia', 'sklad']); const devArea = new Map(fx.devices.map(d => [d.id, d.area_id]));
   for (const e of fx.entities) { const a = e.area_id ?? devArea.get(e.device_id), dc = fx.states[e.entity_id]?.attributes?.device_class ?? e.device_class; if (area.has(a) && e.entity_id.startsWith('sensor.') && ENV.has(dc)) e.disabled_by = 'user'; if (area.has(a) && /^(fan|humidifier)\./.test(e.entity_id)) e.disabled_by = 'user'; if (area.has(a) && e.entity_id.startsWith('binary_sensor.') && ['window', 'opening'].includes(dc)) e.disabled_by = 'user'; }
   fx.states['weather.forecast_home'] = { state: 'partlycloudy', attributes: { temperature: 7.4, humidity: 51, friendly_name: 'Дом' }, last_changed: '', last_updated: '' };
   for (const [room, dev, list] of SENSORS) { const id = `air-${dev}`; fx.devices.push({ id, name: dev, model: dev, manufacturer: null, area_id: room, entry_type: null }); for (const [entity_id, device_class, state, unit, attributes = {}] of list) { fx.entities.push({ entity_id, device_id: id, area_id: null, name: null, original_name: entity_id, platform: 'mock', entity_category: null, disabled_by: null, hidden_by: null, icon: null, original_icon: null, device_class, unit: unit ?? null, has_entity_name: false }); fx.states[entity_id] = { state, attributes: { friendly_name: entity_id, ...(device_class ? { device_class } : {}), ...(unit ? { unit_of_measurement: unit } : {}), ...attributes }, last_changed: new Date(Date.now() - 360000).toISOString(), last_updated: '' }; } }
   for (const [id, v] of Object.entries(over)) { if (v === null) { delete fx.states[id]; continue; } const value = typeof v === 'string' ? { state: v } : v; if (!fx.states[id]) { const dev = value.device ?? null; fx.entities.push({ entity_id: id, device_id: dev, area_id: value.area ?? null, name: null, original_name: id, platform: 'mock', entity_category: null, disabled_by: null, hidden_by: null, icon: null, original_icon: null, device_class: null, unit: null, has_entity_name: false }); fx.states[id] = { state: '', attributes: { friendly_name: id }, last_changed: new Date(Date.now() - 360000).toISOString(), last_updated: '' }; } fx.states[id] = { ...fx.states[id], state: value.state ?? fx.states[id].state, attributes: { ...fx.states[id].attributes, ...(value.attributes ?? {}) } }; }
+  for (const a of fx.areas) { const [temperature, humidity] = LINKS[a.area_id] ?? [a.temperature_entity_id, a.humidity_entity_id], own = links[a.area_id] ?? {}; a.temperature_entity_id = 'temperature' in own ? own.temperature : temperature; a.humidity_entity_id = 'humidity' in own ? own.humidity : humidity; }
   return fx;
 }

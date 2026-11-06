@@ -15,7 +15,7 @@ import secrets
 from pathlib import Path
 
 import voluptuous as vol
-from homeassistant.components import panel_custom, websocket_api
+from homeassistant.components import frontend, panel_custom, websocket_api
 from homeassistant.components.http import HomeAssistantView, StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -134,13 +134,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     photos_dir = Path(hass.config.path(PHOTOS_DIR))
     await hass.async_add_executor_job(lambda: photos_dir.mkdir(parents=True, exist_ok=True))
     hass.data[DOMAIN]["_photos_dir"] = photos_dir
-    await hass.http.async_register_static_paths([
-        StaticPathConfig(STATIC_URL, str(FRONTEND_DIR), cache_headers=False),
-        StaticPathConfig(PHOTOS_URL, str(photos_dir), cache_headers=True),
-    ])
-    hass.http.register_view(BundleView())
-    hass.http.register_view(LoaderView())
-    hass.http.register_view(MetaView())
+    if not hass.data[DOMAIN].get("_http_registered"):  # the server takes a path or a view once per run, and a reload comes back here
+        await hass.http.async_register_static_paths([
+            StaticPathConfig(STATIC_URL, str(FRONTEND_DIR), cache_headers=False),
+            StaticPathConfig(PHOTOS_URL, str(photos_dir), cache_headers=True),
+        ])
+        hass.http.register_view(BundleView())
+        hass.http.register_view(LoaderView())
+        hass.http.register_view(MetaView())
+        hass.data[DOMAIN]["_http_registered"] = True
     await panel_custom.async_register_panel(
         hass,
         webcomponent_name="atom-home-panel",
@@ -159,15 +161,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    panel_custom.async_remove_panel(hass, PANEL_URL_PATH)
+    frontend.async_remove_panel(hass, PANEL_URL_PATH)
     bucket = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None) or {}
     if (sched := bucket.get("alarms")):
         sched.shutdown()
     if (air := bucket.get("air_tasks")):
         air.unload()
+        if entry.disabled_by:  # nothing will load the jobs again to stop them; a reload keeps them. After unload, so its own listeners do not write the file back
+            await air.async_remove()
     if (sleep := bucket.get("light_sleep")):
         sleep.shutdown()
     return True
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Unload keeps the air jobs for the next load; removal is final."""
+    await AirTasks(hass).async_remove()
 
 
 def _entry_data(hass: HomeAssistant) -> dict | None:
@@ -317,7 +326,7 @@ def _register_ws(hass: HomeAssistant) -> None:
         if not connection.user.permissions.check_entity(msg["device"], "control"):
             raise Unauthorized()
         try:
-            await air.start(msg["kind"], msg["roomId"], msg["device"], msg["sensor"])
+            await air.start(msg["kind"], msg["roomId"], msg["device"], msg["sensor"], context=connection.context(msg))
         except ValueError as err:
             connection.send_error(msg["id"], "invalid", str(err))
             return
@@ -335,7 +344,14 @@ def _register_ws(hass: HomeAssistant) -> None:
         if not air:
             connection.send_error(msg["id"], "not_ready", "Atom Home is starting")
             return
-        await air.stop(msg["device"])
+        try:
+            await air.stop(msg["device"], context=connection.context(msg))
+        except ValueError as err:
+            connection.send_error(msg["id"], "invalid", str(err))
+            return
+        except Exception as err:  # the device refused: the job stays and keeps trying, and the panel says so
+            connection.send_error(msg["id"], "failed", str(err))
+            return
         connection.send_result(msg["id"], air.summary())
 
     @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/alarms/state"})

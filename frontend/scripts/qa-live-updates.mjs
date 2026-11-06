@@ -25,14 +25,17 @@ const r = await page.evaluate(async () => {
   // on the home screen, no sheet open
   const before = { ...calls }; for (let n = 0; n < 25; n++) { tick(n); await sleep(200); }
   const idle = (calls['atom_home/automations'] ?? 0) - (before['atom_home/automations'] ?? 0);
-  // a sensor sheet open, with the chart
-  const air = [...root.querySelectorAll('.ah-tile-hit')].find(x => /ppm/.test(x.textContent)); air.click(); await sleep(500);
+  const tileValue = /524/.test(root.querySelector('.at-air-tile')?.textContent ?? ''); // the CO₂ on the home screen, after the 25 updates above
+  // a sensor sheet open, with the chart. Since 1.17 the home screen has the Air tile instead of a CO₂ tile with a chart, so the sensor is found in Systems and opened over the home screen.
+  location.hash = '#systems'; await sleep(500);
+  const sensorKey = [...root.querySelectorAll('[data-device-key]')].find(x => /°C/.test(x.textContent))?.dataset.deviceKey; location.hash = `#home?device=${encodeURIComponent(sensorKey)}`; await sleep(800);
   const open = { ...calls }; let flips = 0, last = null; const heights = new Set(); const iv = setInterval(() => { const on = !!root.querySelector('.ah-history svg path'); if (on !== last) { flips++; last = on; } const s = root.querySelector('.hm-sheet,[role=dialog]'); if (s) heights.add(Math.round(s.getBoundingClientRect().height)); }, 20);
   for (let n = 0; n < 25; n++) { tick(100 + n); await sleep(200); } clearInterval(iv);
   const sheet = root.querySelector('.hm-sheet,[role=dialog]');
-  return { idle, history: (calls['history/history_during_period'] ?? 0) - (open['history/history_during_period'] ?? 0), autoOpen: (calls['atom_home/automations'] ?? 0) - (open['atom_home/automations'] ?? 0), flips, heights: [...heights], chart: !!root.querySelector('.ah-history svg path'), sheet: sheet ? sheet.innerText.split('\n').slice(0, 3).join(' / ') : null, value: /624/.test(root.querySelector('.at-shell').textContent) };
+  return { tileValue, idle, history: (calls['history/history_during_period'] ?? 0) - (open['history/history_during_period'] ?? 0), autoOpen: (calls['atom_home/automations'] ?? 0) - (open['atom_home/automations'] ?? 0), flips, heights: [...heights], chart: !!root.querySelector('.ah-history svg path'), sheet: sheet ? sheet.innerText.split('\n').slice(0, 3).join(' / ') : null, value: /624/.test(root.querySelector('.at-shell').textContent) };
 });
 check('home screen: no automations re-query during 25 updates', r.idle === 0, { queries: r.idle });
+check('home screen: the Air tile shows the fresh CO₂', r.tileValue, { sought: 524 });
 check('open sheet: no history re-query during 25 updates', r.history === 0, { queries: r.history });
 check('open sheet: no automations re-query during 25 updates', r.autoOpen === 0, { queries: r.autoOpen });
 check('open sheet: the chart stays on screen, no blinking', r.chart && r.flips <= 1, { flips: r.flips, chart: r.chart });
