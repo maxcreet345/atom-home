@@ -416,6 +416,15 @@ test('live check 08.11: meter names say what the plug feeds, not that it is a me
 });
 test('live check 08.11: with HA\'s Energy list the panel takes exactly its counters (the dryer and its socket are not both counted)', () => {
   const dryer = dev('dryer', [ref('sensor.bath_dryer_energy', 'energy')]), socket = dev('socket', [ref('sensor.bath_dryer_socket_energy_total', 'energy'), ref('sensor.bath_dryer_socket_energy_today', 'energy')]), feeder = dev('feeder', [ref('sensor.kitchen_cat_feeder_energy_est', 'energy')]);
-  const m = meters([SPM, dryer, socket, feeder], new Set(), { name: d => d.key, room: () => 'r', feed: () => null, listed: new Set(['sensor.bath_dryer_socket_energy_total', 'sensor.kitchen_cat_feeder_energy_est', 'sensor.entrance_spm_ev_energy_total']) });
-  assert.deepEqual(m.map(x => x.id), ['sensor.bath_dryer_socket_energy_total']);
+  const office = dev('pc', [ref('sensor.office_pc_plug_energy', 'energy')], { roomId: 'office' });
+  const m = meters([SPM, dryer, socket, feeder, office], new Set(), { name: d => d.key, room: d => d.roomId, feed: () => null, listed: new Set(['sensor.bath_dryer_socket_energy_total', 'sensor.kitchen_cat_feeder_energy_est', 'sensor.entrance_spm_ev_energy_total']) });
+  assert.deepEqual(m.map(x => x.id), ['sensor.bath_dryer_socket_energy_total', 'sensor.office_pc_plug_energy'], 'a room the list does not name still counts its plugs');
+});
+test('live check 08.11: the spare channel with power, energy and voltage but nothing on it is hidden, network row included', async () => {
+  const spm = dev('spm4', [...SPM.metrics, ...spmMetrics('ch4', 'Канал 4 (пусто)', '0')], { model: 'Sonoff SPM' }), now = new Date(2026, 10, 8, 12).getTime(), day = range('day', 0, now);
+  const h = (hr: number, change: number): StatRow => ({ start: day.start + hr * 3600000, end: day.start + (hr + 1) * 3600000, change });
+  const rows = { 'sensor.entrance_spm_apt9_energy_total@hour': [h(1, 1)], 'sensor.entrance_spm_apt8_energy_total@hour': [h(1, 1)], 'sensor.entrance_spm_ch4_energy_total@hour': [h(1, 0)] };
+  const r = await loadReport(fakeHost(rows), { channels: channels([spm], new Set()), meters: [], period: 'day', offset: 0, now, tariff: null, grouped: false });
+  assert.ok(!r.feeds.some(f => /Канал 4/.test(f.name)), 'spare channel hidden'); assert.ok(r.feeds.some(f => f.charger), 'the charger stays even at zero');
+  assert.ok(r.network.every(n => r.feeds.some(f => f.key === n.feed)), 'no network row for a hidden channel');
 });
