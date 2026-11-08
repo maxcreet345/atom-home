@@ -28,7 +28,8 @@ export function feedToday(devices: HomeDevice[]): number | null {
   const values = today.map(m => m.available ? Number(m.state) * (m.unit === 'Wh' ? 0.001 : 1) : NaN);
   return values.every(Number.isFinite) ? values.reduce((a, v) => a + v, 0) : null;
 }
-export const feedTotalIds = (devices: HomeDevice[]): string[] => feedEnergy(devices, /_energy_total$/).map(m => m.id).sort();
+/** The counters the month is read from: the daily ones, whose statistics a first day or a meter restart cannot blow up (live check 09.11.2026). */
+export const feedTotalIds = (devices: HomeDevice[]): string[] => { const daily = feedEnergy(devices, /_energy_today$/); return (daily.length ? daily : feedEnergy(devices, /_energy_total$/)).map(m => m.id).sort(); };
 /** «7,3 kWh», «123 kWh», «1 234 kWh»: one decimal while it is small, whole numbers after. */
 export const energyText = (kwh: number, fmt: (v: number, digits: number) => string): { value: string; unit: string } => ({ value: fmt(kwh, kwh < 10 ? 1 : 0), unit: 'kWh' });
 /** «380 W», «2,4 kW»: watts up to a thousand, then kilowatts with one decimal (owner, 06.11.2026). */

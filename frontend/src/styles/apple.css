@@ -620,6 +620,7 @@
 .hm-shell .at-ep-feed-head{display:flex;align-items:center;gap:7px;font-size:15px;font-weight:700}.hm-shell .at-ep-feed-head i{width:10px;height:10px;border-radius:3px;background:var(--c)}
 .hm-shell .at-ep-feed-head small{margin-left:auto;font-size:12.5px;font-weight:600;color:var(--ah-muted)}
 .hm-shell .at-ep-feed-num{font-size:15px;color:var(--ah-muted)}.hm-shell .at-ep-feed-num b{font-size:30px;font-weight:400;color:var(--ah-ink);font-variant-numeric:tabular-nums}
+.hm-shell .at-ep-feed-part{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;font-size:13.5px;color:var(--ah-muted)}.hm-shell .at-ep-feed-part i{width:9px;height:9px;border-radius:3px;background:var(--c);align-self:center}.hm-shell .at-ep-feed-part b{color:var(--ah-ink);font-weight:600;font-variant-numeric:tabular-nums}
 .hm-shell .at-ep-spark{width:100%;height:38px;margin-top:6px}.hm-shell .at-ep-spark path{fill:none;stroke:var(--c);stroke-width:1.6;vector-effect:non-scaling-stroke}.hm-shell .at-ep-spark .is-fill{fill:var(--c);fill-opacity:.16;stroke:none}
 .hm-shell .at-ep-rooms{grid-column:span 7}.hm-shell .at-ep-side{grid-column:span 5;display:grid;gap:12px;align-content:start}
 .hm-shell .at-ep-rooms-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}

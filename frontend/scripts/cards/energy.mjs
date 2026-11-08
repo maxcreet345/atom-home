@@ -16,6 +16,7 @@ export const card = {
     longSilent: { power: { apt8: '13.7', ev: '0.0', apt9: 'unavailable', ch4: '0.0' }, silentNow: [30, ['apt9']] },
     // the panel's own states: statistics only since the SPM came (01.11.2026), rooms not assigned to apartments, HA not answering, no recorder
     fresh: { power: { apt8: '153.4', ev: '0.0', apt9: '1126.0', ch4: '0.0' }, today: true, month: true, from: '2026-11-01T00:00:00' },
+    separate: { power: { apt8: '153.4', ev: '3497.6', apt9: '1126.0', ch4: '0.0' }, month: 131.0, billed: false },
     noRooms: { power: { apt8: '153.4', ev: '0.0', apt9: '1126.0', ch4: '0.0' }, today: true, month: true, rooms: false },
     // apartments split, but the children's room left without a feed: its devices go to «Не распределено»
     partRooms: { power: { apt8: '153.4', ev: '0.0', apt9: '1126.0', ch4: '0.0' }, today: true, month: true, rooms: 'part' },
@@ -36,5 +37,5 @@ export const card = {
   build: (base, scenario, now) => { const y = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1), at = h => new Date(y.getFullYear(), y.getMonth(), y.getDate(), h).getTime();
     const stats = energyStats(now.getTime(), { from: scenario.from ? new Date(scenario.from).getTime() : undefined, gapDays: scenario.gap ? [now.getTime() - 86400000] : undefined, silent: [...(scenario.silent ?? []).map(([a, b, feeds]) => ({ from: at(a), to: at(b), feeds })), ...(scenario.silentNow ? [{ from: new Date(now.getTime() - scenario.silentNow[0] * 3600000).setMinutes(0, 0, 0), to: Infinity, feeds: scenario.silentNow[1] }] : [])] }), fig = feedFigures(stats, now.getTime());
     return { snapshot: addFeeder(addAir(addMeters(addEnergy(base, scenario.power, scenario.today ? { ...fig.today, ch4: '0.0' } : undefined)))), feederLog: feederLog(now), airTasks: [], energyMonth: scenario.month ? fig.month : null, energyPrefs: scenario.prefs ?? null, energyStats: scenario.stats === 'none' ? null : scenario.stats === 'fail' ? 'fail' : stats }; },
-  config: (text, scenario = {}) => { const c = JSON.parse(renameAreas(text)); if (scenario.rooms === false) return c; roomFeeds(c); if (scenario.rooms === 'part') delete c.rooms.detskaia.feed; if (scenario.rooms === 'stale') c.rooms.detskaia.feed = 'sonoff_spm_apt8_power_2'; return c; },
+  config: (text, scenario = {}) => { const c = JSON.parse(renameAreas(text)); if (scenario.billed !== false) c.modules = { ...(c.modules ?? {}), energy: { options: { chargerOf: 'entrance_spm_apt8' } } }; /* the owner's house: the car is on apartment 8's bill */ if (scenario.rooms === false) return c; roomFeeds(c); if (scenario.rooms === 'part') delete c.rooms.detskaia.feed; if (scenario.rooms === 'stale') c.rooms.detskaia.feed = 'sonoff_spm_apt8_power_2'; return c; },
 };

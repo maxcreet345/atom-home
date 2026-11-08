@@ -23,14 +23,14 @@ test('the SPM channels: one per power with a running total, the charger last, th
   const c = channels([SPM], new Set());
   assert.deepEqual(c.map(x => x.name), ['Квартира 9', 'Квартира 8', 'Зарядка авто']);
   assert.deepEqual(c.map(x => x.charger), [false, false, true]);
-  assert.equal(c[0].energy, 'sensor.entrance_spm_apt9_energy_total'); assert.equal(c[0].voltage?.id, 'sensor.entrance_spm_apt9_voltage'); assert.equal(c[0].pf?.id, 'sensor.entrance_spm_apt9_power_factor');
+  assert.equal(c[0].energy, 'sensor.entrance_spm_apt9_energy_today'); assert.equal(c[0].voltage?.id, 'sensor.entrance_spm_apt9_voltage'); assert.equal(c[0].pf?.id, 'sensor.entrance_spm_apt9_power_factor');
   assert.deepEqual(channels([dev('plug', [ref('sensor.p_power', 'power', '5', 'W')])], new Set()), [], 'no SPM, no channels');
 });
 test('meters: one counter per device, the total before today, never an estimate, a parent plug or the SPM', () => {
   const tv = dev('tv', [ref('sensor.tv_energy_today', 'energy'), ref('sensor.tv_total_energy', 'energy')], { roomId: 'gostinaia' });
   const feeder = dev('feeder', [ref('sensor.cat_feeder_energy_est', 'energy')]), parent = dev('pow', [ref('sensor.kitchen_appliances_energy_total', 'energy')]), today = dev('appletv', [ref('sensor.appletv_energy_today', 'energy'), ref('sensor.appletv_energy_yesterday', 'energy')]);
   const m = meters([SPM, tv, feeder, parent, today], new Set(), { name: d => d.key, room: d => d.roomId, feed: d => d.roomId === 'gostinaia' ? 'apt9' : null, parents: new Set(['sensor.kitchen_appliances_energy_total']) });
-  assert.deepEqual(m.map(x => x.id), ['sensor.tv_total_energy', 'sensor.appletv_energy_today']);
+  assert.deepEqual(m.map(x => x.id), ['sensor.tv_energy_today', 'sensor.appletv_energy_today'], 'the daily counter first');
   assert.equal(m[0].feed, 'apt9'); assert.equal(m[1].feed, null);
 });
 test('periods by the local calendar: the week from Monday, halves of the year, bars for each', () => {
@@ -65,7 +65,7 @@ test('the report: bars from the statistics, the same stretch before, devices and
   const now = new Date(2026, 10, 8, 12, 17).getTime(), chs = channels([SPM], new Set()) as Channel[], day = range('day', 0, now), prev = range('day', -1, now);
   const h = (hr: number, change: number): StatRow => ({ start: day.start + hr * 3600000, end: day.start + (hr + 1) * 3600000, change });
   const cover = (): StatRow => ({ start: prev.start - HR, end: prev.start, change: 0.1 }); // the statistics ran before yesterday began
-  const rows = { 'sensor.entrance_spm_apt9_energy_total@hour': [cover(), h(0, 0.3), h(7, 1.8), h(11, 0.4)], 'sensor.entrance_spm_apt8_energy_total@hour': [cover(), h(0, 0.1), h(9, 0.4)], 'sensor.entrance_spm_ev_energy_total@hour': [cover(), h(1, 3.5), h(2, 3.5)], 'sensor.tv_total_energy@hour': [h(7, 0.5)] };
+  const rows = { 'sensor.entrance_spm_apt9_energy_today@hour': [cover(), h(0, 0.3), h(7, 1.8), h(11, 0.4)], 'sensor.entrance_spm_apt8_energy_today@hour': [cover(), h(0, 0.1), h(9, 0.4)], 'sensor.entrance_spm_ev_energy_today@hour': [cover(), h(1, 3.5), h(2, 3.5)], 'sensor.tv_total_energy@hour': [h(7, 0.5)] };
   const statistic = (id: string, start: number, end: number) => start < day.start ? 4 : Object.entries(rows).filter(([k]) => k.startsWith(id)).flatMap(([, r]) => r).filter(r => r.start >= start && r.end <= end).reduce((a, r) => a + (r.change ?? 0), 0);
   const r = await loadReport(fakeHost(rows, { statistic, month: 120 }), { channels: chs, meters: [{ key: 'tv', id: 'sensor.tv_total_energy', name: 'Телевизор', room: 'Гостиная', feed: 'entrance_spm_apt9' }], period: 'day', offset: 0, now, tariff: null, grouped: true });
   const t = totals(r);
@@ -79,7 +79,7 @@ test('the report: bars from the statistics, the same stretch before, devices and
 });
 test('a year whose statistics begin in November: the average and the day count start there, not in January', async () => {
   const now = new Date(2026, 10, 8, 12).getTime(), chs = channels([SPM], new Set()), nov = new Date(2026, 10, 1).getTime();
-  const rows = { 'sensor.entrance_spm_apt9_energy_total@month': [{ start: nov, end: new Date(2026, 11, 1).getTime(), change: 80 }] };
+  const rows = { 'sensor.entrance_spm_apt9_energy_today@month': [{ start: nov, end: new Date(2026, 11, 1).getTime(), change: 80 }] };
   const r = await loadReport(fakeHost(rows, { statistic: () => null }), { channels: chs, meters: [], period: 'year', offset: 0, now, tariff: null, grouped: false });
   assert.equal(r.dataFrom, nov); assert.equal(counted(r).length, 1); assert.ok(daysElapsed(r) < 8); assert.equal(r.previous, null);
 });
@@ -145,7 +145,7 @@ test('every read starts at once; half a year reads days and the network by month
   const r = await loadReport(fakeHost({}, { calls }), { channels: chs, meters: [], period: 'half', offset: 0, now, tariff: null, grouped: false, sessions: [] });
   assert.equal(calls.find(c => c.ids.some(i => i.endsWith('_voltage')))?.period, 'month');
   assert.deepEqual(calls.filter(c => c.period === 'week'), [], 'HA moves a week query back to a Monday: half a year reads no week rows');
-  assert.equal(calls.find(c => c.ids.includes('sensor.entrance_spm_apt9_energy_total') && c.end === range('half', 0, now).end)?.period, 'day');
+  assert.equal(calls.find(c => c.ids.includes('sensor.entrance_spm_apt9_energy_today') && c.end === range('half', 0, now).end)?.period, 'day');
   assert.equal(calls.filter(c => c.ids.includes('sensor.entrance_spm_ev_power')).length, 0, 'the charger\'s hours are not read again'); assert.deepEqual(r.sessions, []);
   const y: typeof calls = []; await loadReport(fakeHost({}, { calls: y }), { channels: chs, meters: [], period: 'year', offset: 0, now, tariff: null, grouped: false });
   assert.equal(y.find(c => c.ids.some(i => i.endsWith('_voltage')))?.period, 'month');
@@ -186,7 +186,7 @@ test('a number never parts from its unit at a line break: no-break spaces in the
 const D = (y: number, m: number, d: number, h = 0) => new Date(y, m, d, h).getTime();
 const dayRows = (ids: string[], from: number, to: number, kwh: number): PreviewStats => { const day: Record<string, Array<[number, number]>> = {}; for (const id of ids) for (let t = from; t < to; t = new Date(new Date(t).setDate(new Date(t).getDate() + 1)).getTime()) (day[id] ??= []).push([t, kwh]); return { hour: {}, day, five: {}, hourMean: {}, dayMinMax: {} }; };
 test('HA moves a day, week or month query to its boundaries: the preview does as HA, the hosts ask a millisecond before the end and keep [start, end)', async () => {
-  const id = 'sensor.entrance_spm_apt9_energy_total', s = dayRows([id], D(2026, 5, 1), D(2026, 10, 9), 19), mon = D(2026, 9, 26), next = D(2026, 10, 2);
+  const id = 'sensor.entrance_spm_apt9_energy_today', s = dayRows([id], D(2026, 5, 1), D(2026, 10, 9), 19), mon = D(2026, 9, 26), next = D(2026, 10, 2);
   // HA itself (recorder/statistics.py): the end 2.11 00:00 becomes 3.11, so the week of 26.10 gets Monday 2.11 as well
   assert.equal(previewStatistics(s, [id], mon, next, 'day', ['change'])[id].length, 8, 'the preview gives the extra day HA gives');
   assert.equal(new Date(previewStatistics(s, [id], D(2026, 6, 1), D(2027, 0, 1), 'week', ['change'])[id][0].start).getDate(), 29, 'a week query from 1 July starts on Monday 29 June');
@@ -210,7 +210,7 @@ test('half a year from day rows: the statistics began on Sunday 1.11, not on Mon
   const t = totals(r), all = Object.values(t).reduce((a, v) => a + v, 0); assert.ok(all / daysElapsed(r) > 19, `per day over 7,5 days, not 12,5 from Monday 26.10 (${all / daysElapsed(r)})`);
   const avg = barAverage(r, b => Object.values(b.v).reduce((a, v) => a + v, 0)); assert.ok(Math.abs(avg - 19 * 7) < 1e-6, `the week of 26.10 held one day: counted for its whole length (${avg})`);
   // a month's row starts on the 1st: the first moment of the statistics holds the year's start back to the real day
-  const y = await loadReport(fakeHost({ 'sensor.entrance_spm_apt9_energy_total@month': [{ start: nov1, end: D(2026, 11, 1), change: 80 }] }, { statistic: () => null }), { channels: chs, meters: [], period: 'year', offset: 0, now, tariff: null, grouped: false, first: D(2026, 10, 3) });
+  const y = await loadReport(fakeHost({ 'sensor.entrance_spm_apt9_energy_today@month': [{ start: nov1, end: D(2026, 11, 1), change: 80 }] }, { statistic: () => null }), { channels: chs, meters: [], period: 'year', offset: 0, now, tariff: null, grouped: false, first: D(2026, 10, 3) });
   assert.equal(y.dataFrom, D(2026, 10, 3));
 });
 test('a finished bar without a row of any channel is missing, not 0 kWh; today, the future and the bars before the statistics are not', async () => {
@@ -417,14 +417,25 @@ test('live check 08.11: meter names say what the plug feeds, not that it is a me
 test('live check 08.11: with HA\'s Energy list the panel takes exactly its counters (the dryer and its socket are not both counted)', () => {
   const dryer = dev('dryer', [ref('sensor.bath_dryer_energy', 'energy')]), socket = dev('socket', [ref('sensor.bath_dryer_socket_energy_total', 'energy'), ref('sensor.bath_dryer_socket_energy_today', 'energy')]), feeder = dev('feeder', [ref('sensor.kitchen_cat_feeder_energy_est', 'energy')]);
   const office = dev('pc', [ref('sensor.office_pc_plug_energy', 'energy')], { roomId: 'office' });
-  const m = meters([SPM, dryer, socket, feeder, office], new Set(), { name: d => d.key, room: d => d.roomId, feed: () => null, listed: new Set(['sensor.bath_dryer_socket_energy_total', 'sensor.kitchen_cat_feeder_energy_est', 'sensor.entrance_spm_ev_energy_total']) });
-  assert.deepEqual(m.map(x => x.id), ['sensor.bath_dryer_socket_energy_total', 'sensor.office_pc_plug_energy'], 'a room the list does not name still counts its plugs');
+  const m = meters([SPM, dryer, socket, feeder, office], new Set(), { name: d => d.key, room: d => d.roomId, feed: () => null, listed: new Set(['sensor.bath_dryer_socket_energy_total', 'sensor.kitchen_cat_feeder_energy_est', 'sensor.entrance_spm_ev_energy_today']) });
+  assert.deepEqual(m.map(x => x.id), ['sensor.bath_dryer_socket_energy_today', 'sensor.office_pc_plug_energy'], 'a room the list does not name still counts its plugs');
 });
 test('live check 08.11: the spare channel with power, energy and voltage but nothing on it is hidden, network row included', async () => {
   const spm = dev('spm4', [...SPM.metrics, ...spmMetrics('ch4', 'Канал 4 (пусто)', '0')], { model: 'Sonoff SPM' }), now = new Date(2026, 10, 8, 12).getTime(), day = range('day', 0, now);
   const h = (hr: number, change: number): StatRow => ({ start: day.start + hr * 3600000, end: day.start + (hr + 1) * 3600000, change });
-  const rows = { 'sensor.entrance_spm_apt9_energy_total@hour': [h(1, 1)], 'sensor.entrance_spm_apt8_energy_total@hour': [h(1, 1)], 'sensor.entrance_spm_ch4_energy_total@hour': [h(1, 0)] };
+  const rows = { 'sensor.entrance_spm_apt9_energy_today@hour': [h(1, 1)], 'sensor.entrance_spm_apt8_energy_today@hour': [h(1, 1)], 'sensor.entrance_spm_ch4_energy_today@hour': [h(1, 0)] };
   const r = await loadReport(fakeHost(rows), { channels: channels([spm], new Set()), meters: [], period: 'day', offset: 0, now, tariff: null, grouped: false });
   assert.ok(!r.feeds.some(f => /Канал 4/.test(f.name)), 'spare channel hidden'); assert.ok(r.feeds.some(f => f.charger), 'the charger stays even at zero');
   assert.ok(r.network.every(n => r.feeds.some(f => f.key === n.feed)), 'no network row for a hidden channel');
+});
+test('HA\'s Energy settings pick the channels and the tariff; the car is billed with apartment 8 when the config says so', async () => {
+  const { prefChannels, prefTariff } = await import('../src/model/energy-load.ts');
+  const spm = dev('spm4', [...SPM.metrics, ...spmMetrics('ch4', 'Канал 4 (пусто)', '0')], { model: 'Sonoff SPM' }), all = channels([spm], new Set());
+  const prefs = { energy_sources: [{ type: 'grid', stat_energy_from: 'sensor.entrance_spm_apt8_energy_total' }, { type: 'grid', stat_energy_from: 'sensor.entrance_spm_apt9_energy_total', number_energy_price: 2.95 }, { type: 'grid', stat_energy_from: 'sensor.entrance_spm_ev_energy_total' }] };
+  assert.deepEqual(prefChannels(all, prefs).map(c => c.name), ['Квартира 9', 'Квартира 8', 'Зарядка авто'], 'the spare channel is not a connection');
+  assert.equal(prefChannels(all, null).length, all.length, 'no settings: every channel');
+  assert.equal(prefTariff(prefs, () => undefined), 2.95); assert.equal(prefTariff({ energy_sources: [{ type: 'grid', entity_energy_price: 'input_number.tariff' }] }, id => id === 'input_number.tariff' ? '3.1' : undefined), 3.1); assert.equal(prefTariff(null, () => undefined), null);
+  const now = new Date(2026, 10, 8, 12).getTime(), day = range('day', 0, now), h = (hr: number, change: number): StatRow => ({ start: day.start + hr * 3600000, end: day.start + (hr + 1) * 3600000, change });
+  const r = await loadReport(fakeHost({ 'sensor.entrance_spm_apt8_energy_today@hour': [h(1, 1)], 'sensor.entrance_spm_ev_energy_today@hour': [h(2, 3)] }), { channels: prefChannels(all, prefs), meters: [], period: 'day', offset: 0, now, tariff: 2.95, chargerOf: 'entrance_spm_apt8', grouped: false });
+  assert.equal(r.feeds.find(f => f.charger)?.partOf, 'entrance_spm_apt8'); assert.equal(r.tariff.lei, 2.95); assert.equal(r.tariff.assumed, false);
 });

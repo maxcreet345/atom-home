@@ -72,6 +72,8 @@ export function energyStats(now, opts = {}) {
     METERS.forEach(([, , id], i) => push(st.day, id, [t, devDay[i]]));
     if (!gap) for (const f of ['apt9', 'apt8']) { push(st.dayMinMax, `sensor.${FEED_IDS[f]}_voltage`, [t, vmin[f], vmax[f]]); push(st.dayMinMax, `sensor.${FEED_IDS[f]}_current`, [t, 0.3, amax[f]]); }
   }
+  // the panel reads the channels' daily counters; the preview answers for them with the same rows
+  for (const o of [st.hour, st.day, st.fiveE, st.hourEdge].filter(Boolean)) for (const k of Object.keys(o)) if (k.endsWith('_energy_total')) o[k.replace(/_energy_total$/, '_energy_today')] = o[k];
   return st;
 }
 /** The metered plugs in the registry, in their rooms (ids as in the book; the 28.10 snapshot predates them). */

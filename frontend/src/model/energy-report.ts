@@ -4,7 +4,7 @@
 export type Period = 'day' | 'week' | 'month' | 'half' | 'year';
 export const PERIODS: Period[] = ['day', 'week', 'month', 'half', 'year'];
 /** One channel of the house feed: its name as HA calls it without the device and the reading, a short one for a phone, its colour. */
-export interface FeedInfo { key: string; name: string; short: string; color: string; charger: boolean }
+export interface FeedInfo { key: string; name: string; short: string; color: string; charger: boolean; /** the feed whose bill it is on (owner, 09.11.2026: the car charges from apartment 8's input, Premier Energy bills them together) */ partOf?: string }
 export type Split = Record<string, number>;
 /** `missing`: a finished bar after the statistics began without a row of any channel (the meter was silent): not a 0 kWh to draw or read out.
  * `carried`: the bar the meter came back in after such a silence (the one before it, in the period or just before it, had no row): its figure

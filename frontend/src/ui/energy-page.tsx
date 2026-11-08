@@ -7,7 +7,7 @@ import { locales, numFixed, type Lang } from './format.ts';
 import { Icon } from './primitives.tsx';
 import { Tick } from './motion.tsx';
 import { energyText, powerText } from '../model/energy.ts';
-import { channels as findChannels, firstStatistics, keptSessions, loadReport, meters as findMeters, range } from '../model/energy-load.ts';
+import { channels as findChannels, prefChannels, prefTariff, type EnergyPrefs, firstStatistics, keptSessions, loadReport, meters as findMeters, range } from '../model/energy-load.ts';
 import { PERIODS, UNASSIGNED, failedLoad, type LoadState, axis, barAverage, byRoom, change, counted, daysElapsed, forecast, lei, pick as pickSum, sum, totals, type Bucket, type EnergyReport, type FeedInfo, type Period, type Split } from '../model/energy-report.ts';
 /** The Energy panel (owner, 08.11.2026, approved from the mock): the period and its lei on top, one big animated chart of the house feed split
  * by the SPM's channels, the channels side by side, each apartment by room and device, the comparison and the month's forecast, the network
@@ -20,21 +20,21 @@ function useWidth<E extends HTMLElement>() {
   useLayoutEffect(() => { const el = ref.current; if (!el) return; const read = () => setW(el.clientWidth); read(); const ro = new ResizeObserver(read); ro.observe(el); return () => ro.disconnect(); }, []);
   return [ref, w] as const;
 }
-export interface EnergyPanelProps { host: Host; devices: HomeDevice[]; boilers: Set<string>; feedOfRoom: (roomId: string) => string | null; /** the feeds the rooms are assigned to in the config (rooms.<area>.feed) */ roomFeeds: string[]; roomName: (id: string) => string; nameOf: (d: HomeDevice) => string; onDevice: (key: string) => void; t: T; lang: Lang; fallback: ComponentChildren }
-export function EnergyPanel({ host, devices, boilers, feedOfRoom, roomFeeds, roomName, nameOf, onDevice, t, lang, fallback }: EnergyPanelProps) {
+export interface EnergyPanelProps { /** the feed the car's charger is billed with (config modules.energy.options.chargerOf) */ chargerOf?: string | null; host: Host; devices: HomeDevice[]; boilers: Set<string>; feedOfRoom: (roomId: string) => string | null; /** the feeds the rooms are assigned to in the config (rooms.<area>.feed) */ roomFeeds: string[]; roomName: (id: string) => string; nameOf: (d: HomeDevice) => string; onDevice: (key: string) => void; t: T; lang: Lang; fallback: ComponentChildren }
+export function EnergyPanel({ chargerOf = null, host, devices, boilers, feedOfRoom, roomFeeds, roomName, nameOf, onDevice, t, lang, fallback }: EnergyPanelProps) {
   const [period, setPeriod] = useState<Period>('day'), [offset, setOffset] = useState(0), [state, setState] = useState<LoadState | null>(null);
   // first: undefined until firstStatistics answers (the report waits for it: a month's row starts on the 1st whatever day the statistics began);
   // a failed read gives the report null (nothing limited) and is asked again with every refresh, «Повторить» and after the next good report
-  const [hidden, setHidden] = useState<string[]>([]), [pick, setPick] = useState<number | null>(null), [group, setGroup] = useState<string | null>(null), [prefs, setPrefs] = useState<{ parents: Set<string>; listed: Set<string>; ok: boolean } | null>(null), [tick, setTick] = useState(0), [firstState, setFirst] = useState<{ key: string; v: number | null; failed: boolean } | null>(null), [firstAgain, setFirstAgain] = useState(0);
+  const [hidden, setHidden] = useState<string[]>([]), [pick, setPick] = useState<number | null>(null), [group, setGroup] = useState<string | null>(null), [prefs, setPrefs] = useState<{ parents: Set<string>; listed: Set<string>; ok: boolean; raw?: EnergyPrefs | null } | null>(null), [tick, setTick] = useState(0), [firstState, setFirst] = useState<{ key: string; v: number | null; failed: boolean } | null>(null), [firstAgain, setFirstAgain] = useState(0);
   const h2 = useRef<HTMLHeadingElement>(null), focusHead = useRef(false), attempts = useRef(0), last = useRef<EnergyReport | null>(null), firstFailed = useRef(false);
-  const chs = useMemo(() => findChannels(devices, boilers), [devices, boilers]);
+  const chs = useMemo(() => prefChannels(findChannels(devices, boilers), prefs?.raw ?? null), [devices, boilers, prefs?.raw]);
   const chKey = chs.map(c => c.energy).join(' '), firstRead = firstState?.key === chKey ? firstState.v : undefined, first = firstRead ?? null;
   firstFailed.current = firstState?.key === chKey && firstState.failed;
   // HA's Energy settings say which plug holds others (the kitchen's appliance plug held the fridge, the kettle and the air fryer): left out, or they
   // count twice. Read again with every refresh; a failed read keeps what was known and says so, it is never taken for «no parents». An HA whose
   // Energy dashboard was never set up answers not_found («No prefs», energy/websocket_api.py): that is no parents, not a failure
   useEffect(() => { let alive = true; if (!host.ws) { setPrefs({ parents: new Set(), listed: new Set(), ok: true }); return; }
-    host.ws<{ device_consumption?: Array<{ stat_consumption?: string; included_in_stat?: string }> }>({ type: 'energy/get_prefs' }).then(p => { if (alive) setPrefs({ parents: new Set((p?.device_consumption ?? []).map(x => x.included_in_stat).filter((x): x is string => !!x)), listed: new Set((p?.device_consumption ?? []).map(x => x.stat_consumption).filter((x): x is string => !!x)), ok: true }); }, e => { if (!alive) return; if ((e as { code?: string } | null)?.code === 'not_found') setPrefs({ parents: new Set(), listed: new Set(), ok: true }); else setPrefs(s => ({ parents: s?.parents ?? new Set(), listed: s?.listed ?? new Set(), ok: false })); });
+    host.ws<EnergyPrefs & { device_consumption?: Array<{ stat_consumption?: string; included_in_stat?: string }> }>({ type: 'energy/get_prefs' }).then(p => { if (alive) setPrefs({ raw: p, parents: new Set((p?.device_consumption ?? []).map(x => x.included_in_stat).filter((x): x is string => !!x)), listed: new Set((p?.device_consumption ?? []).map(x => x.stat_consumption).filter((x): x is string => !!x)), ok: true }); }, e => { if (!alive) return; if ((e as { code?: string } | null)?.code === 'not_found') setPrefs({ parents: new Set(), listed: new Set(), ok: true }); else setPrefs(s => ({ raw: s?.raw ?? null, parents: s?.parents ?? new Set(), listed: s?.listed ?? new Set(), ok: false })); });
     return () => { alive = false; }; }, [host, tick]);
   const parentsKey = prefs ? [...prefs.parents].sort().join(' ') + '|' + [...prefs.listed].sort().join(' ') : null;
   // a room's saved feed counts only while it is one of the SPM's apartment channels (their ids changed once, eWeLink → Tasmota): a stale one is
@@ -49,7 +49,7 @@ export function EnergyPanel({ host, devices, boilers, feedOfRoom, roomFeeds, roo
   useEffect(() => { if (!host.statistics || !chs.length || parentsKey === null || firstRead === undefined) return; let alive = true;
     // a period still starting where it did keeps its sessions; offset 0 after 1 January (1 July) is another year (half): read again
     const at = Date.now(), sessions = keptSessions(last.current, period, offset, at);
-    loadReport(host, { channels: chs, meters, period, offset, now: at, tariff: null, grouped, sessions, first: firstRead }).then(report => { if (alive) { last.current = report; setState({ key, report }); if (firstFailed.current) setFirstAgain(n => n + 1); } },
+    loadReport(host, { channels: chs, meters, period, offset, now: at, tariff: prefTariff(prefs?.raw ?? null, id => host.states()[id]?.state), chargerOf, grouped, sessions, first: firstRead }).then(report => { if (alive) { last.current = report; setState({ key, report }); if (firstFailed.current) setFirstAgain(n => n + 1); } },
       () => { if (!alive) return; const attempt = ++attempts.current, at = Date.now(); setState(s => failedLoad(s, key, attempt, at)); });
     return () => { alive = false; }; }, [host, chKey, meterKey, period, offset, parentsKey, tick, grouped, firstRead]);
   // every 5 minutes while shown; a kiosk screen that comes back after the night (no tick while hidden) reads at once if the figures are older than
@@ -118,11 +118,13 @@ export function EnergyPanel({ host, devices, boilers, feedOfRoom, roomFeeds, roo
         {period === 'day' && report.curve ? <Curve key={key} report={report} hidden={hidden} pick={pk} setPick={setPick} t={t} fmt={fmt} /> : <Bars key={key} report={report} hidden={hidden} pick={pk} setPick={setPick} t={t} loc={loc} fmt={fmt} />}
       </>}
     </section>
-    <div className={`at-ep-feeds is-${Math.min(feeds.length, 4)}`}>{feeds.map(f => <section className="at-ep-card at-ep-feed" style={`--c:${f.color}`} key={`${f.key}${key}`}>
-      <span className="at-ep-feed-head"><i /><span className="at-ep-feed-name">{f.name}</span><small>{all ? t('ep.share', { n: fmt(tot[f.key] / all * 100, 0) }) : ''}</small></span>
-      <span className="at-ep-feed-num"><b>{energyText(tot[f.key], fmt).value}</b>{'\u00a0'}kWh</span><span className="at-ep-money">≈&nbsp;{money(lei(tot[f.key], report))}</span>
-      <Spark values={(report.curve && period === 'day' ? report.curve : report.buckets).filter(b => !b.future).map(b => b.v[f.key] ?? 0)} />
-    </section>)}</div>
+    {/* a feed billed with another (the car with apartment 8) is inside its block, not beside it: the block is the bill */}
+    <div className={`at-ep-feeds is-${Math.min(feeds.filter(f => !f.partOf).length, 4)}`}>{feeds.filter(f => !f.partOf).map(f => { const kids = feeds.filter(k => k.partOf === f.key), keys = [f.key, ...kids.map(k => k.key)], v = keys.reduce((a, k) => a + (tot[k] ?? 0), 0); return <section className="at-ep-card at-ep-feed" style={`--c:${f.color}`} key={`${f.key}${key}`}>
+      <span className="at-ep-feed-head"><i /><span className="at-ep-feed-name">{f.name}</span><small>{all ? t('ep.share', { n: fmt(v / all * 100, 0) }) : ''}</small></span>
+      <span className="at-ep-feed-num"><b>{energyText(v, fmt).value}</b>{'\u00a0'}kWh</span><span className="at-ep-money">≈&nbsp;{money(lei(v, report))}</span>
+      {kids.map(k => <span className="at-ep-feed-part" style={`--c:${k.color}`}><i />{t('ep.including', { name: k.name })}<b>{kwh(tot[k.key] ?? 0)}</b><small>≈&nbsp;{money(lei(tot[k.key] ?? 0, report))}</small></span>)}
+      <Spark values={(report.curve && period === 'day' ? report.curve : report.buckets).filter(b => !b.future).map(b => keys.reduce((a, k) => a + (b.v[k] ?? 0), 0))} />
+    </section>; })}</div>
     <Rooms report={report} group={g} groups={groups} setGroup={k => { setGroup(k); setPick(null); }} prefsOk={prefs?.ok !== false} carried={carried} t={t} fmt={fmt} kwh={kwh} money={money} onDevice={onDevice} />
     <div className="at-ep-side">
       <section className="at-ep-card at-ep-compare"><h3>{t('ep.compare')}</h3>

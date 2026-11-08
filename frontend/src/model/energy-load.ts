@@ -23,7 +23,9 @@ export function channels(devices: HomeDevice[], boilers: Set<string>): Channel[]
   for (const d of mains) for (const p of d.metrics.filter(m => isElectric(m, d, boilers))) {
     const m = p.id.match(/^(.*)_power(_\d+)?$/); if (!m) continue;
     const stem = m[1], idx = m[2] ?? '', find = (cls: string, ends: string[]) => every.find(x => x.deviceClass === cls && ends.some(e => x.id === stem + e + idx || x.id === stem + e)) ?? null;
-    const energy = find('energy', ['_energy_total', '_energy']); if (!energy) continue;
+    // the daily counter first (live check 09.11.2026): HA's statistics put a meter's whole running total into its first day (apartment 9:
+    // 699,5 kWh on 01.11) and count a meter that restarts from zero as fresh use; a counter that resets every midnight bounds both by one day
+    const energy = find('energy', ['_energy_today']) ?? find('energy', ['_energy_total', '_energy']); if (!energy) continue;
     const name = channelName(p.name);
     out.push({ key: stem.replace(/^sensor\./, '') + idx, name, short: shortName(name), charger: CHARGER.test(`${name} ${p.id}`), power: p, energy: energy.id, voltage: find('voltage', ['_voltage']), current: find('current', ['_current']), pf: find('power_factor', ['_power_factor']) });
   }
@@ -37,15 +39,16 @@ export function meters(devices: HomeDevice[], boilers: Set<string>, opts: { name
   const out: Meter[] = [];
   // the list decides only in a room where it names a device: the owner's list (08.11.2026) leaves the office plugs out, and they still count
   const listedRooms = new Set(opts.listed?.size ? devices.filter(d => d.metrics.some(m => opts.listed!.has(m.id) && !/_est(_\d+)?$/i.test(m.id)) && !isMains(d)).map(d => d.roomId) : []);
+  const daily = (d: HomeDevice) => d.metrics.find(m => m.deviceClass === 'energy' && /_energy_today$|_today_energy$/i.test(m.id) && !/output/i.test(m.id) && (m.attributes.state_class === 'total_increasing' || m.attributes.state_class === undefined));
   for (const d of devices) {
     if (isMains(d) || (d.haDeviceId !== null && boilers.has(d.haDeviceId))) continue;
     // a parent plug is left out whole: dropping only the counter HA names would let its other one (`energy_period`, `energy_today`) in
     if (opts.parents && d.metrics.some(m => opts.parents!.has(m.id))) continue;
     // live check 08.11.2026: the dryer reports its own energy and its socket does too. When HA's Energy settings list the devices (the owner
     // keeps that list: the bedroom TV went in the day its meter came), the panel takes exactly those counters; otherwise every counter it finds
-    if (opts.listed?.size && listedRooms.has(d.roomId)) { const e = d.metrics.find(m => opts.listed!.has(m.id) && !/_est(_\d+)?$/i.test(m.id)); if (e && !out.some(x => x.id === e.id)) out.push({ key: d.key, id: e.id, name: opts.name(d), room: opts.room(d), feed: opts.feed(d) }); continue; }
+    if (opts.listed?.size && listedRooms.has(d.roomId)) { const named = d.metrics.find(m => opts.listed!.has(m.id) && !/_est(_\d+)?$/i.test(m.id)), e = named && (daily(d) ?? named); if (e && !out.some(x => x.id === e.id)) out.push({ key: d.key, id: e.id, name: opts.name(d), room: opts.room(d), feed: opts.feed(d) }); continue; }
     const list = d.metrics.filter(m => m.deviceClass === 'energy' && !/(_est|yesterday|month|week)(_\d+)?$/i.test(m.id));
-    const e = list.find(m => /total/i.test(m.id)) ?? list.find(m => !/today/i.test(m.id)) ?? list[0];
+    const e = daily(d) ?? list.find(m => /total/i.test(m.id)) ?? list[0];
     if (e && !out.some(x => x.id === e.id)) out.push({ key: d.key, id: e.id, name: opts.name(d), room: opts.room(d), feed: opts.feed(d) });
   }
   return out;
@@ -57,6 +60,23 @@ export function meterName(raw: string): string {
   const n = (raw.includes(' · ') ? raw.split(' · ').at(-1)! : raw).trim(), m = n.match(/^(.*?)\s*\(([^)]+)\)\s*$/), base = (m ? m[1] : n).trim(), inner = m?.[2].trim();
   if (inner && /^(сч[её]тчик( энергии)?|розетка( xiaomi| tuya| tapo| sonoff)?|реле|smart plug|plug|socket|meter|energy meter)$/i.test(base)) return inner.charAt(0).toUpperCase() + inner.slice(1);
   return base || n;
+}
+/** HA's Energy settings (owner, 09.11.2026: «it should take them automatically»): the grid connections pick the SPM channels the panel
+ * shows (a connection's counter names its channel: `sensor.<channel>_energy_total`), and a static or entity price is the tariff. */
+export interface EnergyPrefs { energy_sources?: Array<{ type?: string; stat_energy_from?: string | null; number_energy_price?: number | null; entity_energy_price?: string | null }>; device_consumption?: Array<{ stat_consumption?: string; included_in_stat?: string }> }
+export function prefChannels(chs: Channel[], prefs: EnergyPrefs | null): Channel[] {
+  const grid = (prefs?.energy_sources ?? []).filter(s => s.type === 'grid' && s.stat_energy_from).map(s => s.stat_energy_from!);
+  if (!grid.length) return chs;
+  const picked = chs.filter(c => grid.some(id => id === c.energy || id.startsWith(`sensor.${c.key}_`)));
+  return picked.length ? picked : chs;
+}
+export function prefTariff(prefs: EnergyPrefs | null, state: (id: string) => string | undefined): number | null {
+  for (const s of prefs?.energy_sources ?? []) {
+    if (s.type !== 'grid') continue;
+    if (typeof s.number_energy_price === 'number' && s.number_energy_price > 0) return s.number_energy_price;
+    const v = s.entity_energy_price ? Number(state(s.entity_energy_price)) : NaN; if (Number.isFinite(v) && v > 0) return v;
+  }
+  return null;
 }
 /** The stretch a period covers, by the local calendar: offset 0 is the current one, −1 the one before. Halves are January–June and July–December. */
 export function range(period: Period, offset: number, now: number): { start: number; end: number } {
@@ -96,7 +116,7 @@ export function sessionsOf(rows: StatRow[], step: number): Session[] {
   if (cur) out.push(cur); void step;
   return out.filter(s => s.kwh >= 0.3).reverse();
 }
-export interface LoadInput { channels: Channel[]; meters: Meter[]; period: Period; offset: number; now: number; tariff: number | null; grouped: boolean; /** the last charging sessions of this period: half and year read the charger's hours once, not on every refresh */ sessions?: Session[] | null; /** the first moment of the statistics (firstStatistics): a month's or a week's row starts before it */ first?: number | null }
+export interface LoadInput { /** the charger's parent feed (config modules.energy.options.chargerOf) */ chargerOf?: string | null; channels: Channel[]; meters: Meter[]; period: Period; offset: number; now: number; tariff: number | null; grouped: boolean; /** the last charging sessions of this period: half and year read the charger's hours once, not on every refresh */ sessions?: Session[] | null; /** the first moment of the statistics (firstStatistics): a month's or a week's row starts before it */ first?: number | null }
 /** Network min/max per day for the short periods; a month per row for the long ones (only the lowest and highest count; half a year of days,
  * re-read every 5 minutes, was 0,5 MB, and a week's row began on the Monday before the half). */
 const NET: Record<Period, StatPeriod> = { day: 'day', week: 'day', month: 'day', half: 'month', year: 'month' };
@@ -107,7 +127,7 @@ const NET: Record<Period, StatPeriod> = { day: 'day', week: 'day', month: 'day',
 export async function loadReport(host: Host, x: LoadInput): Promise<EnergyReport> {
   if (!host.statistics) throw new Error('no statistics');
   const stats = host.statistics.bind(host), { start, end } = range(x.period, x.offset, x.now), until = Math.min(x.now, end), e = edges(x.period, start, end), chs = x.channels, colors = feedColors(chs);
-  const feeds = chs.map((c, i) => ({ key: c.key, name: c.name, short: c.short, color: colors[i], charger: c.charger }));
+  const feeds = chs.map((c, i) => ({ key: c.key, name: c.name, short: c.short, color: colors[i], charger: c.charger, ...(c.charger && x.chargerOf && x.chargerOf !== c.key && chs.some(o => o.key === x.chargerOf) ? { partOf: x.chargerOf } : {}) }));
   const zero = (): Split => Object.fromEntries(chs.map(c => [c.key, 0]));
   const stat = (id: string, a: number, b: number): Promise<number | null> => b <= a ? Promise.resolve(0) : host.statistic ? host.statistic(id, a, b, ['change']).then(r => typeof r.change === 'number' ? r.change : null, () => null) : Promise.resolve(null);
   const energyIds = chs.map(c => c.energy), powerIds = chs.map(c => c.power.id), prev = range(x.period, x.offset - 1, x.now), running = until < end;
