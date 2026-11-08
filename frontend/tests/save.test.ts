@@ -48,7 +48,17 @@ test('haStore sends the revision it read and advances it after each confirmed sa
   assert.equal((await s.load()).revision, 4);
   await s.save(named('one')); await s.save(named('two'));
   assert.deepEqual(f.calls.filter(c => c.type === 'atom_home/config/set').map(c => c.expected_revision), [4, 5]);
-  assert.ok(f.calls.every(c => c.client_features === undefined), 'release 0 does not claim to keep wizard fields');
+  const features = f.calls.filter(c => c.type === 'atom_home/config/set').map(c => c.client_features);
+  assert.deepEqual(features, [['room_feed_v1'], ['room_feed_v1']], 'it keeps rooms.<area>.feed and says so, or a server holding a feed refuses it as outdated');
+  assert.ok(features.every(list => !(list as string[]).includes('device_composition_v1')), 'release 0 does not claim to keep wizard fields');
+});
+
+test('a room\'s apartment feed survives a load → save round trip through haStore', async () => {
+  const f = fakeHass(), s = haStore(() => f.hass);
+  const withFeed = { ...defaultConfig('Feeds'), rooms: { kukhnia: { feed: 'entrance_spm_apt9' } } };
+  await s.save(withFeed);
+  const set = f.calls.find(c => c.type === 'atom_home/config/set')!;
+  assert.equal((set.config as { rooms: Record<string, { feed?: string }> }).rooms.kukhnia.feed, 'entrance_spm_apt9', 'the field the room_feed_v1 promise is about');
 });
 
 test('two quick edits are queued, not raced: both reach HA in order with their own revision', async () => {

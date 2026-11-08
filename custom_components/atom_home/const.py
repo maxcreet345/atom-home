@@ -13,4 +13,6 @@ PHOTOS_DIR = "atom_home/photos"
 MAX_PHOTO_BYTES = 1536 * 1024
 # A panel that preserves per-device setup fields (composition, layout, module binding, type) declares this on config/set.
 CLIENT_FEATURE_COMPOSITION = "device_composition_v1"
+# A panel that keeps rooms.<area>.feed (the Energy panel's apartment split) declares this; 1.18.0 and older drop the field on save.
+CLIENT_FEATURE_ROOM_FEED = "room_feed_v1"
 WIZARD_DEVICE_FIELDS = ("type", "composition", "layout", "module")

@@ -8,7 +8,7 @@ import asyncio
 import json
 from typing import Any, Awaitable, Callable, Optional
 
-from .const import CLIENT_FEATURE_COMPOSITION, MAX_CONFIG_BYTES, WIZARD_DEVICE_FIELDS
+from .const import CLIENT_FEATURE_COMPOSITION, CLIENT_FEATURE_ROOM_FEED, MAX_CONFIG_BYTES, WIZARD_DEVICE_FIELDS
 
 
 class ConfigWriteError(Exception):
@@ -26,6 +26,14 @@ def has_wizard_fields(config: Optional[dict]) -> bool:
     if not isinstance(devices, dict):
         return False
     return any(isinstance(d, dict) and any(f in d for f in WIZARD_DEVICE_FIELDS) for d in devices.values())
+
+
+def has_room_feeds(config: Optional[dict]) -> bool:
+    """True when a stored config maps a room to a house feed (`rooms.<area>.feed`), which a panel before room_feed_v1 drops on save."""
+    rooms = (config or {}).get("rooms")
+    if not isinstance(rooms, dict):
+        return False
+    return any(isinstance(r, dict) and "feed" in r for r in rooms.values())
 
 
 class ConfigState:
@@ -51,6 +59,8 @@ class ConfigState:
             # Checked against what is stored, not what arrives: an old panel never sends the fields it would drop.
             if has_wizard_fields(self.config) and (expected_revision is None or CLIENT_FEATURE_COMPOSITION not in (client_features or [])):
                 raise ConfigWriteError("client_outdated", "This panel version cannot keep the saved device setup; reload the page")
+            if has_room_feeds(self.config) and CLIENT_FEATURE_ROOM_FEED not in (client_features or []):
+                raise ConfigWriteError("client_outdated", "This panel version cannot keep the rooms' apartment feeds; reload the page")
             revision = self.revision + 1
             try:
                 await self._save({"config": config, "revision": revision})

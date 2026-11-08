@@ -10,12 +10,12 @@ const TYPES = { '.js': 'text/javascript', '.css': 'text/css', '.webp': 'image/we
 const PAGE = `<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Atom Home preview</title><style>html,body{margin:0;height:100%;overflow:hidden;background:#000}#root{height:100%;position:relative}</style><div id="root"></div><script type="module">
 import "/atom-preview.js";
 const q = new URLSearchParams(location.search), d = await (await fetch('/__state' + location.search)).json();
-localStorage.clear(); d.config.home.theme = q.get('theme') ?? 'light'; d.config.home.language = q.get('lang') ?? 'ru'; window.__feederLog = d.feederLog; window.__airTasks = d.airTasks;
+localStorage.clear(); d.config.home.theme = q.get('theme') ?? 'light'; d.config.home.language = q.get('lang') ?? 'ru'; window.__feederLog = d.feederLog; window.__airTasks = d.airTasks; window.__energyMonth = d.energyMonth; window.__energyStats = d.energyStats; window.__energyPrefs = d.energyPrefs;
 await window.mountPreview(document.getElementById('root'), d.snapshot, d.config); window.ready = true;
 </script>`;
 const server = createServer(async (req, res) => { const u = new URL(req.url, 'http://l'); try {
   if (u.pathname === '/') { res.setHeader('content-type', 'text/html; charset=utf-8'); res.setHeader('cache-control', 'no-store'); res.end(PAGE); return; }
-  if (u.pathname === '/__state') { const name = u.searchParams.get('card') ?? 'air'; if (!/^[a-z0-9-]+$/.test(name)) throw new Error('bad card'); const { card } = await import(`./cards/${name}.mjs`), s = card.scenarios[u.searchParams.get('scenario') ?? Object.keys(card.scenarios)[0]]; if (!s) throw new Error('no such scenario'); res.setHeader('content-type', 'application/json'); res.setHeader('cache-control', 'no-store'); res.end(JSON.stringify({ ...card.build(base, s, new Date()), config: card.config(configText) })); return; }
+  if (u.pathname === '/__state') { const name = u.searchParams.get('card') ?? 'air'; if (!/^[a-z0-9-]+$/.test(name)) throw new Error('bad card'); const { card } = await import(`./cards/${name}.mjs`), s = card.scenarios[u.searchParams.get('scenario') ?? Object.keys(card.scenarios)[0]]; if (!s) throw new Error('no such scenario'); res.setHeader('content-type', 'application/json'); res.setHeader('cache-control', 'no-store'); res.end(JSON.stringify({ ...card.build(base, s, new Date()), config: card.config(configText, s) })); return; }
   const p = resolve(dist, '.' + decodeURIComponent(u.pathname)); if (!p.startsWith(dist)) throw new Error('outside'); res.setHeader('content-type', TYPES[extname(p)] ?? 'application/octet-stream'); res.setHeader('cache-control', 'no-store'); res.end(await readFile(p));
 } catch { res.statusCode = 404; res.end(); } });
 server.listen(port, '127.0.0.1', () => console.log(`card preview ready on http://127.0.0.1:${port}`));

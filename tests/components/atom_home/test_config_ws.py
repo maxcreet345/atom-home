@@ -8,10 +8,12 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.atom_home import async_setup_entry, async_unload_entry
-from custom_components.atom_home.config_state import ConfigState, ConfigWriteError, has_wizard_fields
-from custom_components.atom_home.const import CLIENT_FEATURE_COMPOSITION, DOMAIN, STORAGE_KEY
+from custom_components.atom_home.config_state import ConfigState, ConfigWriteError, has_room_feeds, has_wizard_fields
+from custom_components.atom_home.const import CLIENT_FEATURE_COMPOSITION, CLIENT_FEATURE_ROOM_FEED, DOMAIN, STORAGE_KEY
 
 BASE = {"schemaVersion": 1, "home": {"name": "Test"}, "devices": {"e:light.a": {"enabled": False}}}
+FEEDS = {**BASE, "rooms": {"kukhnia": {"name": "Кухня", "feed": "entrance_spm_apt9"}, "detskaia": {"feed": "entrance_spm_apt8"}}}
+FEEDS_DROPPED = {**BASE, "rooms": {"kukhnia": {"name": "Кухня"}, "detskaia": {}}}  # what a 1.18.0 panel saves back: its normaliser has no `feed`
 WIZARD = {"schemaVersion": 1, "devices": {"w:1": {"composition": {"version": 1, "sourceDeviceIds": [], "primaryEntityId": "sensor.a", "entities": {}}}}}
 
 
@@ -87,6 +89,26 @@ async def test_old_panels_keep_saving_until_a_device_setup_is_stored() -> None:
     assert await s.write(BASE, expected_revision=3, client_features=[CLIENT_FEATURE_COMPOSITION]) == 4  # explicit reset by a new panel
 
 
+def test_room_feeds_are_detected() -> None:
+    assert not has_room_feeds(None)
+    assert not has_room_feeds(BASE)
+    assert not has_room_feeds(FEEDS_DROPPED)
+    assert has_room_feeds(FEEDS)
+
+
+async def test_an_old_panel_cannot_wipe_the_rooms_apartment_feeds() -> None:
+    """1.18.0 normalises rooms to {name, photo, hidden, order} and saves the whole object: every rooms.*.feed would go."""
+    s = state(BASE, 1)
+    assert await s.write(FEEDS_DROPPED) == 2  # no feed stored yet: an old panel still saves
+    assert await s.write(FEEDS, expected_revision=2, client_features=[CLIENT_FEATURE_ROOM_FEED]) == 3
+    for kwargs in ({}, {"expected_revision": 3}, {"expected_revision": 3, "client_features": [CLIENT_FEATURE_COMPOSITION]}):
+        with pytest.raises(ConfigWriteError) as err:
+            await s.write(FEEDS_DROPPED, **kwargs)
+        assert err.value.code == "client_outdated"
+    assert s.config == FEEDS and s.revision == 3
+    assert await s.write(FEEDS_DROPPED, expected_revision=3, client_features=[CLIENT_FEATURE_ROOM_FEED]) == 4  # cleared on purpose by a new panel
+
+
 async def _setup(hass, hass_storage, stored=None):
     if stored is not None:
         hass_storage[STORAGE_KEY] = {"version": 1, "minor_version": 1, "key": STORAGE_KEY, "data": stored}
@@ -116,6 +138,25 @@ async def test_ws_get_reports_revision_and_set_returns_the_next_one(hass, hass_w
     await ws.send_json({"id": 4, "type": f"{DOMAIN}/config/set", "config": BASE, "expected_revision": 7})
     stale = await ws.receive_json()
     assert not stale["success"] and stale["error"]["code"] == "conflict"
+
+
+async def test_old_panel_save_over_the_socket_keeps_the_stored_feeds(hass, hass_ws_client, hass_storage) -> None:
+    await _setup(hass, hass_storage, {"config": FEEDS, "revision": 5})
+    ws = await hass_ws_client(hass)
+    await ws.send_json({"id": 1, "type": f"{DOMAIN}/config/set", "config": FEEDS_DROPPED, "expected_revision": 5})  # exactly what 1.18.0 sends
+    refused = await ws.receive_json()
+    assert not refused["success"] and refused["error"]["code"] == "client_outdated"
+    await ws.send_json({"id": 2, "type": f"{DOMAIN}/config/get"})
+    got = (await ws.receive_json())["result"]
+    assert got["config"] == FEEDS and got["revision"] == 5
+
+    await ws.send_json({"id": 3, "type": f"{DOMAIN}/config/set", "config": FEEDS, "expected_revision": 5, "client_features": [CLIENT_FEATURE_ROOM_FEED]})  # what this build's haStore sends
+    assert (await ws.receive_json())["result"] == {"saved": True, "revision": 6}
+    await ws.send_json({"id": 4, "type": f"{DOMAIN}/alarms/set", "alarms": [], "expected_revision": 6})  # the server-side alarm write keeps the feeds
+    alarms = await ws.receive_json()
+    assert alarms["success"], alarms
+    await ws.send_json({"id": 5, "type": f"{DOMAIN}/config/get"})
+    assert (await ws.receive_json())["result"]["config"]["rooms"] == FEEDS["rooms"]
 
 
 async def test_legacy_storage_without_revision_starts_at_zero(hass, hass_ws_client, hass_storage) -> None:

@@ -11,6 +11,7 @@ import { stockRoomArt } from './art.ts';
 import { artOf } from './cards.tsx';
 import { DeviceArt, DEVICE_ART_TYPES } from './device-art.tsx';
 import { iconOfKind, stateText, type Lang } from './format.ts';
+import { channels } from '../model/energy-load.ts';
 
 type Tab = 'devices' | 'rooms' | 'sections' | 'buttons' | 'modules' | 'home';
 const KINDS: Kind[] = ['light', 'switch', 'socket', 'climate', 'fan', 'cover', 'lock', 'vacuum', 'media', 'camera', 'weather', 'environment', 'energy', 'leak', 'opening', 'motion', 'alarm', 'valve', 'alarm_panel', 'person', 'measurement'];
@@ -75,10 +76,13 @@ function DevicesTab({ home, config, patch, t, lang, photos }: { home: Home; conf
 }
 function RoomsTab({ home, config, patch, t, photos }: { home: Home; config: HouseConfig; patch: (fn: (c: HouseConfig) => void) => void; t: T; photos?: PhotoStore }) {
   const rooms = [...home.rooms, ...(home.rooms.some(r => r.id === NO_ROOM) ? [] : [{ id: NO_ROOM, name: '', hidden: false, photo: null, order: 999, areaTemperature: null, areaHumidity: null }])];
+  // the house feed each room hangs on (an SPM channel, the charger aside): the Energy panel splits the rooms by apartment with it
+  const feeds = useMemo(() => channels(home.devices, new Set()).filter(c => !c.charger), [home.devices]);
   return <div className="hm-rows">{rooms.map(r => { const o = config.rooms[r.id] ?? {}; const count = home.devices.filter(d => d.enabled && d.roomId === r.id).length; return <div className="hm-row at-setup-row" data-room-id={r.id}>
     <div className="at-setup-main"><Toggle on={!r.hidden} label={`${t('setup.show')}: ${r.name || t('room.none')}`} onToggle={() => patch(c => { c.rooms[r.id] = { ...(c.rooms[r.id] ?? {}), hidden: !r.hidden }; })} /><span className="hm-row-text"><strong>{r.name || t('room.none')}</strong><small>{r.id} · {count}</small></span></div>
     <div className="at-setup-form"><label className="at-field"><span>{t('setup.name')}</span><input type="text" value={o.name ?? ''} placeholder={r.name || t('room.none')} maxLength={80} onChange={e => patch(c => { const v = (e.target as HTMLInputElement).value.trim(); c.rooms[r.id] = { ...(c.rooms[r.id] ?? {}), name: v || undefined }; })} /></label>
       <label className="at-field"><span>{t('setup.order')}</span><input type="number" value={o.order ?? r.order} onChange={e => patch(c => { c.rooms[r.id] = { ...(c.rooms[r.id] ?? {}), order: Number((e.target as HTMLInputElement).value) || 0 }; })} /></label>
+      {(feeds.length > 0 || o.feed) && <label className="at-field"><span>{t('setup.feed')}</span><select value={o.feed ?? ''} onChange={e => patch(c => { const v = (e.target as HTMLSelectElement).value; c.rooms[r.id] = { ...(c.rooms[r.id] ?? {}), feed: v || undefined }; })}><option value="">{t('setup.feed.none')}</option>{feeds.map(f => <option value={f.key}>{f.name}</option>)}{o.feed && !feeds.some(f => f.key === o.feed) && <option value={o.feed}>{o.feed}</option>}</select></label>}
       <PhotoField label={t('setup.photo')} value={o.photo ?? null} fallback={stockRoomArt(r.name)} photos={photos} t={t} onChange={url => patch(c => { c.rooms[r.id] = { ...(c.rooms[r.id] ?? {}), photo: url }; })} /></div>
   </div>; })}</div>;
 }

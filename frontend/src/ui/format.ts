@@ -1,7 +1,9 @@
 import type { EntityRef } from '../model/discover.ts';
 import type { T, Key } from '../i18n/index.ts';
-const locales = { ru: 'ru-RU', ro: 'ro-RO', en: 'en-GB' } as const;
+export const locales = { ru: 'ru-RU', ro: 'ro-RO', en: 'en-GB' } as const;
 export type Lang = keyof typeof locales;
+/** Always this many decimals, «4,0 kW»: a figure that changes keeps its width and does not jump. */
+export const numFixed = (v: number, lang: Lang, digits: number) => (Number(v.toFixed(digits)) || 0).toLocaleString(locales[lang], { maximumFractionDigits: digits, minimumFractionDigits: digits });
 export const num = (v: number | null | undefined, lang: Lang, digits = 1) => v === null || v === undefined || !Number.isFinite(v) ? '—' : (Number(v.toFixed(digits)) || 0).toLocaleString(locales[lang], { maximumFractionDigits: digits, minimumFractionDigits: 0 }); // rounded first: −0.3 at no decimals is 0, not «-0»
 /** Human state of an entity: translated for known states, raw otherwise; never invents a value. */
 export function stateText(e: EntityRef, t: T, lang: Lang): string {

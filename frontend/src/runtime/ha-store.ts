@@ -1,6 +1,8 @@
 import { SaveError, type ConfigStore, type SaveErrorCode } from './store.ts';
 import { normaliseAlarms, normaliseConfig, type HouseConfig } from '../model/config.ts';
 import type { Hass } from './host.ts';
+/** Declared on every config/set: the server refuses a panel without it once a room has a feed (custom_components/atom_home/const.py). */
+export const ROOM_FEED_FEATURE = 'room_feed_v1';
 const CODES: SaveErrorCode[] = ['conflict', 'client_outdated', 'too_large', 'bad_schema', 'unauthorized'];
 const saveError = (e: unknown) => {
   const code = (e as { code?: unknown } | null)?.code, message = (e as { message?: unknown } | null)?.message;
@@ -23,7 +25,9 @@ export function haStore(hass: () => Hass): ConfigStore {
       const run = async () => {
         const msg: Record<string, unknown> = { type: 'atom_home/config/set', config: normaliseConfig(config).config };
         if (revision !== undefined) msg.expected_revision = revision;
-        if (options.clientFeatures?.length) msg.client_features = options.clientFeatures;
+        // normaliseConfig keeps rooms.<area>.feed, so this panel always says so; an integration older than 1.2 (no revision) has no client_features and would refuse the key.
+        const features = revision !== undefined ? [...new Set([ROOM_FEED_FEATURE, ...(options.clientFeatures ?? [])])] : options.clientFeatures ?? [];
+        if (features.length) msg.client_features = features;
         let r: { revision?: number } | null;
         try { r = await hass().callWS<{ saved: boolean; revision?: number }>(msg); } catch (e) { throw saveError(e); }
         if (typeof r?.revision === 'number') revision = r.revision;
