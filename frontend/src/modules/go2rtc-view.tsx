@@ -7,7 +7,7 @@ import { mountGo2rtcPlayer, mseAvailable, type Player, type PlayerStatus } from 
 import { readFrame, writeFrame, posterEnabled } from './doorbell-state.ts';
 import { mountWebrtcPlayer, webrtcAvailable, type WebrtcPlayer } from './webrtc-player.ts';
 /** Live MSE video from the go2rtc add-on shared by the camera modules: the last frame as a poster until the stream is up, HD/SD switch when a second stream exists, sound toggle on the stage when the stream carries audio. */
-export function Go2rtcView({ options, host, t, mode, poster, live = true, webrtcEntity }: { options: ModuleOptions; host: Host; t: T; mode: 'tile' | 'stage'; poster?: string | null; /** false: no stream, only the poster (a battery doorbell is not watched all day from every tile) */ live?: boolean; /** HA camera with a stream: WebRTC through HA's own go2rtc for users who cannot use the add-on ingress (not admins), and as the fallback when the ingress stream fails */ webrtcEntity?: string }) {
+function Go2rtcLive({ options, host, t, mode, poster, live = true, webrtcEntity }: { options: ModuleOptions; host: Host; t: T; mode: 'tile' | 'stage'; poster?: string | null; /** false: no stream, only the poster (a battery doorbell is not watched all day from every tile) */ live?: boolean; /** HA camera with a stream: WebRTC through HA's own go2rtc for users who cannot use the add-on ingress (not admins), and as the fallback when the ingress stream fails */ webrtcEntity?: string }) {
   const mount = useRef<HTMLDivElement>(null), hostRef = useRef(host), playerRef = useRef<Player | null>(null); hostRef.current = host;
   const [status, setStatus] = useState<PlayerStatus>('connecting'), [hd, setHd] = useState(false), [hdBroken, setHdBroken] = useState(false), [audio, setAudio] = useState(false), [sound, setSound] = useState(false);
   // C2 of the audit: eight seconds without a picture is «no connection» with a retry, not an endless spinner
@@ -51,4 +51,13 @@ export function Go2rtcView({ options, host, t, mode, poster, live = true, webrtc
     {mode === 'stage' && options.streamHd && <button type="button" className="hm-camera-q at-camera-q" aria-pressed={hd} disabled={hdBroken} title={hdBroken ? t('module.camera.hdUnsupported') : undefined} onClick={e => { e.stopPropagation(); setHd(!hd); }}>{hd ? 'HD' : 'SD'}</button>}
     {mode === 'stage' && live && audio && status === 'live' && <button type="button" className={`hm-camera-q at-cam-sound ${sound ? 'is-on' : ''}`} aria-pressed={sound} aria-label={t('module.camera.sound')} onClick={toggleSound}><Icon name={sound ? 'speaker' : 'media'} size={16} /></button>}
   </>;
+}
+
+type ViewProps = Parameters<typeof Go2rtcLive>[0];
+export function Go2rtcView(props: ViewProps) {
+  const { options, host, mode, webrtcEntity, live = true } = props;
+  // the preview has no go2rtc: a recorded frame of the camera stands in for the stream, drawn the way a live picture is
+  const fake = host.previewFrame?.(options.stream ?? webrtcEntity ?? '') ?? (webrtcEntity ? host.previewFrame?.(webrtcEntity) : null) ?? null;
+  if (fake && live) return <><img className="at-cam-poster at-cam-fake" src={fake} alt="" /><div className="hm-camera-mount at-go2rtc is-live" data-player-status="live" data-stream={options.stream ?? 'auto'} data-path="preview" /><span className="hm-live is-live"><i />LIVE</span>{mode === 'stage' && options.streamHd && <button type="button" className="hm-camera-q at-camera-q" aria-pressed={false}>SD</button>}</>;
+  return <Go2rtcLive {...props} />;
 }

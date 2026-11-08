@@ -8,7 +8,8 @@ import { petFeeder } from './pet-feeder.tsx';
 import { air } from './air.tsx';
 import { doorbell } from './doorbell.tsx';
 import { clock } from './clock.tsx';
-export const MODULES: ModuleDef[] = [boilerEbus, cameraGo2rtc, doorbell, petFeeder, air, clock];
+import { cameraOnvif } from './camera-onvif.tsx';
+export const MODULES: ModuleDef[] = [boilerEbus, cameraGo2rtc, doorbell, cameraOnvif, petFeeder, air, clock];
 export interface ActiveModule { def: ModuleDef; entities: ModuleEntities; label: string; options: ModuleOptions }
 export function activeModules(registry: Registry, config: HouseConfig): ActiveModule[] {
   return activeSpecs(registry, config, MODULES).map(a => ({ def: MODULES.find(m => m.id === a.spec.id)!, entities: a.entities, label: a.label, options: a.options }));

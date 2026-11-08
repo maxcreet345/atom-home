@@ -21,8 +21,9 @@ try {
     await page.waitForSelector('.at-shell'); await page.waitForTimeout(700);
     const shot = async name => { await page.waitForTimeout(450); await page.screenshot({ path: resolve(out, `${label}-${name}.png`) }); };
     await shot('home');
-    const tile = await page.evaluate(() => { const t = [...document.querySelectorAll('.hm-camera-tile')].find(x => x.textContent.includes('звонка') || x.textContent.includes('Звонок')); return t ? { line: t.querySelector('.hm-camera-caption small')?.textContent, status: t.querySelector('.at-go2rtc')?.dataset.playerStatus ?? 'none', live: t.querySelector('.hm-live')?.textContent } : null; });
-    check(`${label}: doorbell tile quiet, no stream on the tile`, !!tile && /^Тихо/.test(tile.line ?? '') && tile.status === 'idle', JSON.stringify(tile));
+    // the G4 runs on mains since 08.11.2026: on the Cameras card it is a frame under the C700, in the Cameras panel it streams like the others
+    const tile = await page.evaluate(async () => { const th = [...document.querySelectorAll('.at-cams-thumb')].find(x => x.textContent.includes('звонка')); location.hash = '#camera'; await new Promise(x => setTimeout(x, 400)); const c = document.querySelector('.at-cams-cell[data-device-key="e:camera.entrance_doorbell"]'); const r = { thumb: !!th, line: c?.querySelector('.at-cams-cap small')?.textContent, status: c?.querySelector('.at-go2rtc')?.dataset.playerStatus ?? 'none' }; location.hash = '#home'; await new Promise(x => setTimeout(x, 300)); return r; });
+    check(`${label}: doorbell on the Cameras card, quiet, streaming in the panel`, tile.thumb && /^Тихо/.test(tile.line ?? '') && tile.status !== 'idle' && tile.status !== 'none', JSON.stringify(tile));
     const systems = await page.evaluate(() => { location.hash = '#systems'; return new Promise(r => setTimeout(() => r([...document.querySelectorAll('.hm-card')].map(c => c.textContent).filter(x => /Без звука мелодии|Микрофон выключен|Динамик выключен|Опознать/.test(x)).length), 400)); });
     check(`${label}: no doorbell switches in Systems`, systems === 0, `${systems} leftover tiles`);
     await page.evaluate(() => { location.hash = '#home?device=e%3Acamera.entrance_doorbell'; }); await page.waitForSelector('.at-door'); await shot('sheet');

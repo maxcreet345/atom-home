@@ -119,7 +119,7 @@ function DoorbellSheet({ device, registry, entities, options, host, t, lang, run
   return <div className="hm-sheet-body ah-sheet at-cam at-door" data-kind="camera" data-page={page}>{head}{page === 'main' ? <>{video}{main}</> : settings}</div>;
 }
 
-/** Video doorbell (Aqara G4 over HomeKit): live video + sound through go2rtc in the sheet only (a battery device is not streamed from every tile), the tile shows the last frame; rings open the sheet on every device. */
+/** Video doorbell (Aqara G4: RTSP from the repeater through go2rtc, events over HomeKit): live video + sound, rings open the sheet on every device. */
 export const doorbell: ModuleDef = {
   ...doorbellSpec,
   Card: () => null,
@@ -127,6 +127,7 @@ export const doorbell: ModuleDef = {
   tileState: (registry, entities, t, lang) => doorbellTileState(registry.states, entities, (k, p) => t(k as Key, p), lang),
   alarm: (entities, options) => entities.ring ? { entityId: entities.ring, seconds: autoOpenSeconds(options) } : null,
   Sheet: DoorbellSheet,
-  tileStreams: false,
-  Player: ({ entities, options, host, t, mode, poster }) => <Go2rtcView options={options} host={host} t={t} mode={mode} poster={poster} live={mode === 'stage'} webrtcEntity={entities.video} />,
+  // the G4 runs on mains since 08.11.2026: the tile and the Cameras panel stream it like any camera (it no longer drains a battery)
+  sensors: e => [e.ring, e.motion].filter((x): x is string => !!x),
+  Player: ({ entities, options, host, t, mode, poster }) => <Go2rtcView options={options} host={host} t={t} mode={mode} poster={poster} webrtcEntity={entities.video} />,
 };

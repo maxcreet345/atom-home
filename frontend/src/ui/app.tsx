@@ -25,11 +25,13 @@ import { boilerDeviceIds, isElectric } from '../model/energy.ts';
 import { EnergyTile } from './energy-tile.tsx';
 import { EnergyPanel } from './energy-page.tsx';
 import { meterName } from '../model/energy-load.ts';
+import { CamerasTile, CamerasPanel, type CamView } from './cameras.tsx';
+import { currentEvents, focusCamera, sensorsOf } from '../model/cameras.ts';
 
 type View = { section: Section | 'setup'; room: string | null; device: string | null; filter: string | null };
 /** Apple Home-style navigation: Home · Rooms · Systems (+ Settings for admins). The former per-kind screens live under Systems as segments. */
 const NAV: Array<{ id: Section; icon: string }> = [{ id: 'home', icon: 'home' }, { id: 'rooms', icon: 'rooms' }, { id: 'lights', icon: 'light' }, { id: 'systems', icon: 'systems' }]; // «Свет» is its own entry under Rooms (owner's wish, 04.11.2026)
-const SYSTEM_TABS: Section[] = ['climate', 'cleaning', 'energy', 'systems'];
+const SYSTEM_TABS: Section[] = ['climate', 'cleaning', 'energy', 'camera', 'systems']; // «Камеры» is the panel of every camera (owner, 09.11.2026)
 const decode = (hash: string): View => { const [s, q = ''] = hash.replace(/^#/, '').split('?'); const p = new URLSearchParams(q); return { section: s === 'setup' ? 'setup' : (SECTIONS as readonly string[]).includes(s) ? s as Section : 'home', room: p.get('room'), device: p.get('device'), filter: p.get('filter') }; };
 const encode = (v: View) => { const p = new URLSearchParams(); if (v.room) p.set('room', v.room); if (v.device) p.set('device', v.device); if (v.filter) p.set('filter', v.filter); return `#${v.section}${p.size ? '?' + p : ''}`; };
 function useNavIndicator<T extends HTMLElement>(deps: unknown[]) {
@@ -68,9 +70,12 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
   const claimed = useMemo(() => claimedEntities(registry, config, modules), [registry, config, modules]);
   const home = useMemo(() => discover(registry, config, claimed), [registry, config, claimed]);
   const [view, setView] = useState<View>(() => decode(navigationWindow.location.hash));
-  const player = (dev: HomeDevice, mode: 'tile' | 'stage') => { if (mode === 'tile' && view.device) return null; /* one stream at a time: the sheet's stage replaces the tile player */ const m = modules.find(x => x.def.Player && x.entities.camera === dev.primary.id); const P = m?.def.Player; const poster = typeof dev.primary.attributes.entity_picture === 'string' ? dev.primary.attributes.entity_picture : null; return m && P ? <P key={`${m.def.id}:${dev.key}:${mode}`} entities={m.entities} options={m.options} host={host} t={t} lang={lang} mode={mode} poster={poster} /> : null; };
+  /** The module that plays a camera: its own `camera`, or one of its `cameras` (a two-lens camera). */
+  const camerasOf = (m: ActiveModule) => m.def.cameras?.(m.entities) ?? (m.entities.camera ? [m.entities.camera] : []);
+  const modFor = (dev: HomeDevice) => modules.find(m => (m.def.Player || m.def.Sheet || m.def.tileState) && camerasOf(m).includes(dev.primary.id));
+  const player = (dev: HomeDevice, mode: 'tile' | 'stage') => { if (mode === 'tile' && view.device) return null; /* one stream at a time: the sheet's stage replaces the tile player */ const m = modFor(dev); const P = m?.def.Player; const poster = typeof dev.primary.attributes.entity_picture === 'string' ? dev.primary.attributes.entity_picture : null; return m && P ? <P key={`${m.def.id}:${dev.key}:${mode}`} entities={m.entities} options={m.options} host={host} t={t} lang={lang} mode={mode} poster={poster} camera={dev.primary.id} /> : null; };
   /** What the camera's module says about it for the tile (closed lens, second line). */
-  const tileState = (dev: HomeDevice): TileState | null => { const m = modules.find(x => x.def.tileState && x.entities.camera === dev.primary.id); return m?.def.tileState ? m.def.tileState(registry, m.entities, t, lang) : null; };
+  const tileState = (dev: HomeDevice): TileState | null => { const m = modFor(dev); return m?.def.tileState ? m.def.tileState(registry, m.entities, t, lang) : null; };
   useEffect(() => { const pop = () => setView(decode(navigationWindow.location.hash)); navigationWindow.addEventListener('popstate', pop); navigationWindow.addEventListener('hashchange', pop); return () => { navigationWindow.removeEventListener('popstate', pop); navigationWindow.removeEventListener('hashchange', pop); }; }, [navigationWindow]);
   const go = (next: Partial<View>) => { const v = { section: view.section, room: null, device: null, filter: null, ...next } as View; navigationWindow.history.pushState(null, '', encode(v)); setView(v); };
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set()), [toast, setToast] = useState(''), [confirm, setConfirm] = useState<{ device: HomeDevice; action: Action; value?: unknown } | null>(null);
@@ -99,6 +104,9 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
   const time = new Intl.DateTimeFormat(lang === 'ru' ? 'ru-RU' : lang === 'ro' ? 'ro-RO' : 'en-GB', { hour: '2-digit', minute: '2-digit' }).format(now);
   const date = new Intl.DateTimeFormat(lang === 'ru' ? 'ru-RU' : lang === 'ro' ? 'ro-RO' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).format(now);
   const enabled = home.devices.filter(d => d.enabled);
+  // Every camera of the house in the modules' order (the main one first: C700, then the doorbell, then the rest), with what it reports now.
+  const camViews: CamView[] = (() => { const rank = (d: HomeDevice) => { const m = modFor(d); return m ? modules.indexOf(m) * 10 + camerasOf(m).indexOf(d.primary.id) : 1e6; };
+    return enabled.filter(d => d.kind === 'camera' && (d.primary.available || !!modFor(d)?.def.Player)).sort((a, b) => rank(a) - rank(b)).map(d => { const m = modFor(d), sensors = sensorsOf(registry, m?.def.sensors?.(m.entities, d.primary.id) ?? []), room = home.rooms.find(r => r.id === d.roomId)?.name ?? ''; return { device: d, name: inRoomName(d, room), state: tileState(d), sensors, events: currentEvents(registry.states, d.key, sensors), online: d.primary.available }; }); })();
   // A ring opens the doorbell sheet on every device and closes it again after the module's seconds; any touch of the sheet keeps it. With another sheet open, a banner offers to switch instead.
   const alarms = modules.map(m => ({ m, a: m.def.alarm?.(m.entities, m.options) ?? null })).filter(x => x.a && x.a.seconds > 0) as Array<{ m: ActiveModule; a: { entityId: string; seconds: number } }>;
   const alarmStates = alarms.map(x => registry.states[x.a.entityId]?.state ?? '').join('|');
@@ -133,7 +141,7 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
   const boilers = useMemo(() => boilerDeviceIds(modules, registry), [modules, registry]); // the boiler's thermal kW is not electricity
   const hasPower = (d: HomeDevice) => d.metrics.some(m => isElectric(m, d, boilers) || m.deviceClass === 'energy');
   const energyDevices = enabled.filter(d => d.kind === 'energy' || hasPower(d));
-  const present = (s: Section) => s === 'home' || s === 'rooms' || s === 'systems' || (s === 'energy' ? energyDevices.length > 0 : enabled.some(d => d.section === s));
+  const present = (s: Section) => s === 'home' || s === 'rooms' || s === 'systems' || (s === 'energy' ? energyDevices.length > 0 : s === 'camera' ? camViews.length > 1 : enabled.some(d => d.section === s));
   const systemTabs = SYSTEM_TABS.filter(s => present(s) && !config.sections[s]?.hidden);
   const inSystems = (SYSTEM_TABS as string[]).includes(view.section);
   const navActive = (id: Section | 'setup') => id === 'systems' ? inSystems : view.section === id;
@@ -182,16 +190,17 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
       </header>
       {inSystems && systemTabs.length > 1 && <div className="ah-segments hm-range-tabs" role="tablist">{systemTabs.map(s => <button type="button" role="tab" aria-selected={view.section === s} className={view.section === s ? 'is-active' : ''} onClick={() => go({ section: s })}>{t(`section.${s}` as Key)}</button>)}</div>}
       <div className="hm-page" key={pageKey}>
-        {view.section === 'home' && <Overview home={home} registry={registry} config={config} modules={modules} player={player} tileState={tileState} host={host} runner={runner} toggle={toggle} go={go} t={t} lang={lang} now={now} />}
+        {view.section === 'home' && <Overview home={home} registry={registry} config={config} modules={modules} player={player} tileState={tileState} host={host} runner={runner} toggle={toggle} go={go} t={t} lang={lang} now={now} camViews={camViews} />}
         {view.section === 'rooms' && !view.room && <div className="hm-room-grid is-page">{rooms.map(r => { const c = roomClimate(home, registry, r.id); return <RoomTile room={r} temperature={c.temperature} humidity={c.humidity} co2={c.co2} lightsOn={c.lights.filter(l => isOn(l.primary)).length} onClick={() => go({ section: 'rooms', room: r.id })} t={t} lang={lang} label={r.name || t('room.none')} />; })}</div>}
         {view.section === 'rooms' && view.room && <RoomPage home={home} registry={registry} roomId={view.room} runner={runner} toggle={toggle} go={go} t={t} lang={lang} alarms={clockMod && registry.entities.some(e => e.entity_id.startsWith('media_player.') && e.platform === 'yandex_station' && !e.disabled_by && (e.area_id ?? registry.devices.find(d => d.id === e.device_id)?.area_id) === view.room) ? config.alarms.filter(a => a.room === view.room) : null} />}
         {view.section === 'lights' && <LightsPage devices={enabled.filter(d => d.kind === 'light')} rooms={home.rooms} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} admin={host.admin} />}
         {view.section === 'climate' && <>{modules.filter(m => m.def.placement.includes('climate')).map(m => <m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} />)}<ClimatePage devices={enabled.filter(d => d.section === 'climate')} runner={runner} go={go} t={t} lang={lang} roomName={roomName} admin={host.admin} /></>}
         {view.section === 'cleaning' && <KindList devices={enabled.filter(d => d.section === 'cleaning')} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} admin={host.admin} />}
         {view.section === 'energy' && <EnergyPanel host={host} devices={energyDevices} boilers={boilers} feedOfRoom={id => config.rooms[id]?.feed ?? null} roomFeeds={Object.values(config.rooms).map(r => r.feed).filter((f): f is string => !!f)} roomName={roomName} nameOf={d => meterName(d.name)} onDevice={key => go({ section: 'energy', device: key })} t={t} lang={lang} fallback={<EnergyPage devices={energyDevices} go={go} t={t} lang={lang} roomName={roomName} admin={host.admin} boilers={boilers} />} />}
+        {view.section === 'camera' && <CamerasPanel views={camViews} player={player} host={host} now={now.getTime()} t={t} lang={lang} wide={wide} onCamera={key => go({ section: 'camera', device: key })} />}
         {view.section === 'setup' && <Setup registry={registry} config={config} onChange={applyConfig} admin={host.admin} t={t} lang={lang} storeLabel={store?.label ?? 'memory'} warnings={configWarnings} photos={store?.photos} />}
         {view.section === 'systems' && <>{modules.filter(m => m.def.placement.includes('systems')).map(m => m.def.sheetKey ? <div className="ah-grid at-module-row"><m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} compact onOpen={() => go({ section: 'systems', device: m.def.sheetKey })} /></div> : <m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} />)}</>}
-        {view.section === 'systems' && <SystemsPage devices={enabled.filter(d => d.section === 'systems' || d.section === 'camera' || d.section === 'weather')} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} rooms={home.rooms} admin={host.admin} filter={view.filter} onFilter={f => go({ section: 'systems', filter: f })} />}
+        {view.section === 'systems' && <SystemsPage devices={enabled.filter(d => d.section === 'systems' || (d.section === 'camera' && camViews.length < 2) || d.section === 'weather')} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} rooms={home.rooms} admin={host.admin} filter={view.filter} onFilter={f => go({ section: 'systems', filter: f })} />}
       </div>
     </main>
     {!wide && <nav className="hm-tabbar" aria-label={t('section.more')} inert={modal || undefined} ref={tabNav}><i className="hm-nav-ind" aria-hidden="true" />{navItems.map(n => <button type="button" className={navActive(n.id) ? 'is-active' : ''} onClick={() => go({ section: navTarget(n.id) })}><Icon name={n.icon} size={24} /><span>{navLabel(n.id)}</span></button>)}</nav>}
@@ -206,7 +215,7 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
         <FeederSheet registry={registry} entities={feederMod.entities} options={feederMod.options} host={host} t={t} lang={lang} room={roomLabel} wide={feederWide} onClose={close} automations={automations.filter(a => a.devices.includes(dev) || a.entities.some(id => Object.values(feederMod.entities).includes(id))).map(a => ({ ...a, byRoom: false }))} /></section></div>; })()}
     {device && (() => {
       const close = () => go({ section: view.section, room: view.room }), roomName_ = home.rooms.find(r => r.id === device.roomId)?.name;
-      const mod = device.kind === 'camera' ? modules.find(m => m.def.Sheet && m.entities.camera === device.primary.id) : undefined, st = device.kind === 'camera' ? tileState(device) : null;
+      const mod = device.kind === 'camera' ? (m => m?.def.Sheet ? m : undefined)(modFor(device)) : undefined, st = device.kind === 'camera' ? tileState(device) : null;
       const stage = device.kind === 'camera' ? (st?.closed ? <div className="at-cam-stage-closed"><Icon name="camera" size={32} /><span>{t('module.camera.closed')}</span></div> : player(device, 'stage')) : undefined;
       const roomy = device.kind === 'light' && wide && landscape && viewport.width >= 800; // a dimmable lamp's sheet: slider left, temperature and ambient light right
       const sheetWide = !!mod && wide && landscape && viewport.width >= 800; // a phone on its side (874×402) splits too: video left, controls right, instead of a video that fills the whole height
@@ -247,18 +256,18 @@ const shortLabel = (name: string) => { const s = name.replace(/\s*\([^)]*\)/g, '
 function Tiles({ devices, section, room, runner, toggle, go, t, lang, nameOf, roomOf }: Common & { devices: HomeDevice[]; section: Section; room?: string | null; toggle: (d: HomeDevice) => void; nameOf?: (d: HomeDevice) => string; roomOf?: (d: HomeDevice) => string }) {
   return <Cascade className="ah-grid hm-light-grid">{devices.map(d => <AccessoryTile device={d} name={nameOf?.(d)} room={roomOf?.(d)} pending={runner.busy.has(d.key)} onToggle={canToggle(d) ? () => toggle(d) : undefined} onOpen={() => go({ section, room: room ?? null, device: d.key })} t={t} lang={lang} />)}</Cascade>;
 }
-function Overview({ home, registry, config, modules, player, tileState, host, runner, toggle, go, t, lang, now }: Common & { home: Home; registry: Registry; config: HouseConfig; modules: ActiveModule[]; player: (dev: HomeDevice, mode: 'tile' | 'stage') => JSX.Element | null; tileState: (dev: HomeDevice) => TileState | null; host: Host; toggle: (d: HomeDevice) => void; now: Date }) {
+function Overview({ home, registry, config, modules, player, tileState, host, runner, toggle, go, t, lang, now, camViews }: Common & { home: Home; registry: Registry; config: HouseConfig; modules: ActiveModule[]; player: (dev: HomeDevice, mode: 'tile' | 'stage') => JSX.Element | null; tileState: (dev: HomeDevice) => TileState | null; host: Host; toggle: (d: HomeDevice) => void; now: Date; camViews: CamView[] }) {
   const d = home.devices.filter(x => x.enabled);
   const roomOf = (x: HomeDevice) => home.rooms.find(r => r.id === x.roomId)?.name || t('room.none');
   const leaks = d.filter(x => x.kind === 'leak'), wet = leaks.filter(x => x.primary.state === 'on'), leaksMute = leaks.length > 0 && leaks.every(x => !x.primary.available || x.primary.state === 'unknown');
   const co2 = d.flatMap(x => x.metrics).find(m => m.deviceClass === 'carbon_dioxide' && m.available && Number.isFinite(Number(m.state)));
   const co2v = co2 ? Number(co2.state) : null, air = co2Level(co2v, t), co2Dev = co2 ? d.find(x => x.metrics.includes(co2)) : undefined;
   const boilers = boilerDeviceIds(modules, registry);
-  const hasPlayer = (x: HomeDevice) => modules.some(m => m.def.Player && m.entities.camera === x.primary.id);
-  const tileLive = (x: HomeDevice) => modules.some(m => m.def.Player && m.def.tileStreams !== false && m.entities.camera === x.primary.id);
+  // Two cameras or more are one card (owner, 09.11.2026): the main one live, the others as frames, the panel behind it. One camera keeps its own tile.
+  const camFocus = camViews.length > 1 ? camViews.find(v => v.device.key === focusCamera(camViews[0].device.key, camViews.flatMap(x => x.events), now.getTime())) ?? camViews[0] : null;
   // the owner's wish (04.11.2026): the home face shows the house thermostat (the boiler's), never a room's radiator head
   const isTrv = (x: HomeDevice) => artOf(x) === 'radiator';
-  const climate = d.filter(x => x.kind === 'climate').sort((a, b) => Number(isTrv(a)) - Number(isTrv(b)))[0], cameras = d.filter(x => x.kind === 'camera' && (x.primary.available || hasPlayer(x))).sort((a, b) => Number(tileLive(b)) - Number(tileLive(a)) || Number(hasPlayer(b)) - Number(hasPlayer(a)) || Number(typeof b.primary.attributes.entity_picture === 'string') - Number(typeof a.primary.attributes.entity_picture === 'string')), weather = d.find(x => x.kind === 'weather');
+  const climate = d.filter(x => x.kind === 'climate').sort((a, b) => Number(isTrv(a)) - Number(isTrv(b)))[0], cameras = camFocus ? [] : camViews.map(v => v.device), weather = d.find(x => x.kind === 'weather');
   const wtemp = weather && typeof weather.primary.attributes.temperature === 'number' ? weather.primary.attributes.temperature : null;
   // Home face = favourites + one summary module per group (Xiaomi Home «Освещение · всё выключено»), rooms underneath; everything else lives in Rooms and Systems.
   const favourites = d.filter(x => x.favorite && x !== climate && x.kind !== 'camera' && x.kind !== 'weather');
@@ -278,6 +287,7 @@ function Overview({ home, registry, config, modules, player, tileState, host, ru
   return <Cascade className="hm-home ah-home ah-grid ah-face" data-face="home-modular">
     {modules.some(m => m.def.id === 'clock') ? <ClockTile now={now} lang={lang} t={t} registry={registry} entities={modules.find(m => m.def.id === 'clock')!.entities} onOpen={() => go({ section: 'home', device: 'clock' })} /> : <PlainClockTile now={now} lang={lang} />}
     {climate && <ThermostatTile device={climate} name={inRoomName(climate, roomOf(climate))} sub={roomOf(climate)} target={temp} current={cur} onStep={tempAction ? step : undefined} onOpen={() => go({ section: 'home', device: climate.key })} t={t} lang={lang} disabled={runner.busy.has(climate.key)} />}
+    {camFocus && <CamerasTile views={camViews} focus={camFocus} player={player} host={host} now={now.getTime()} t={t} lang={lang} onPanel={() => go({ section: 'camera' })} onCamera={key => go({ section: 'home', device: key })} />}
     {cameras.slice(0, 1).map(c => { const st = tileState(c); return <CameraTile device={c} state={st} player={st?.closed ? null : player(c, 'tile')} onOpen={() => go({ section: 'home', device: c.key })} t={t} lang={lang} large />; })}
     {modules.filter(m => m.def.placement.includes('overview')).map(m => { if (m.def.sheetKey) return <m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} compact rooms={home.rooms} onOpen={() => go({ section: 'home', device: m.def.sheetKey })} />; const target = (m.def.placement.find(p => p !== 'overview') ?? 'systems') as Section, name = t(`module.${m.def.id}` as Key); return <div className="ah-tile ah-module"><button type="button" className="ah-tile-hit at-module-hit" aria-label={`${t('ui.open')}: ${name === `module.${m.def.id}` ? t(`section.${target}` as Key) : name}`} onClick={() => go({ section: target })} /><div className="at-module-body"><m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} compact /></div></div>; })}
     {config.buttons.slice(0, 6).map(b => { const a = customAction(b); return <SceneTile icon={b.icon ?? 'more'} label={b.label} t={t} onClick={() => void runner.run({ key: `button:${b.id}`, name: b.label, primary: { available: true } } as HomeDevice, a)} />; })}

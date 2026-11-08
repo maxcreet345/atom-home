@@ -141,7 +141,34 @@ export const airSpec: ModuleSpec = {
   id: 'air', titleKey: 'module.air', placement: ['overview'], roles: [{ role: 'sensor', labelKey: 'module.air.role.sensor', required: true }],
   detect(reg) { const e = reg.entities.find(x => !x.disabled_by && reg.states[x.entity_id] && x.entity_id.startsWith('sensor.') && ['carbon_dioxide', 'pm25'].includes(String(reg.states[x.entity_id]?.attributes.device_class ?? x.device_class ?? ''))); return e ? { label: 'CO₂', entities: { sensor: e.entity_id } } : null; },
 };
-export const MODULE_SPECS: ModuleSpec[] = [boilerEbusSpec, cameraGo2rtcSpec, doorbellSpec, petFeederSpec, airSpec, clockSpec];
+/** An ONVIF camera (Sonoff CAM-C44HE: two lenses, person / pet / vehicle / motion events, pan and tilt): the ONVIF device's low-resolution H.264 profiles play on tiles,
+ * the HD generic cameras of the same name (camera.<prefix>_*_hd, H.265) are the cards. Lens 1 = the turning one (ptz). */
+export const cameraOnvifSpec: ModuleSpec = {
+  id: 'camera_onvif', titleKey: 'module.camera_onvif', placement: [],
+  roles: [
+    { role: 'camera', labelKey: 'module.onvif.role.camera', required: true }, { role: 'camera2', labelKey: 'module.onvif.role.camera2', required: false },
+    { role: 'sd', labelKey: 'module.onvif.role.sd', required: false }, { role: 'sd2', labelKey: 'module.onvif.role.sd2', required: false },
+    { role: 'person', labelKey: 'module.onvif.role.person', required: false }, { role: 'pet', labelKey: 'module.onvif.role.pet', required: false }, { role: 'vehicle', labelKey: 'module.onvif.role.vehicle', required: false },
+    { role: 'motion', labelKey: 'module.onvif.role.motion', required: false }, { role: 'motionCell', labelKey: 'module.onvif.role.motionCell', required: false }, { role: 'reboot', labelKey: 'module.onvif.role.reboot', required: false }, { role: 'setTime', labelKey: 'module.onvif.role.setTime', required: false },
+  ],
+  detect(reg) {
+    const live = (id: string) => reg.entities.some(e => e.entity_id === id && !e.disabled_by) && !!reg.states[id];
+    const onvifCam = reg.entities.find(e => e.platform === 'onvif' && e.entity_id.startsWith('camera.') && live(e.entity_id) && e.device_id);
+    if (!onvifCam) return null;
+    const own = reg.entities.filter(e => e.device_id === onvifCam.device_id && live(e.entity_id)).map(e => e.entity_id);
+    const sds = own.filter(id => id.startsWith('camera.')).sort();
+    const prefix = sds[0].slice('camera.'.length).replace(/_profile_?\d+$/, '');
+    const hds = reg.entities.filter(e => e.entity_id.startsWith(`camera.${prefix}_`) && e.platform !== 'onvif' && live(e.entity_id)).map(e => e.entity_id).sort((a, b) => Number(/ptz|pan|turn/.test(b)) - Number(/ptz|pan|turn/.test(a)) || a.localeCompare(b));
+    const pick = (re: RegExp) => own.find(id => id.startsWith('binary_sensor.') && re.test(id));
+    const dev = reg.devices.find(d => d.id === onvifCam.device_id);
+    return { label: dev?.name ?? 'ONVIF', entities: {
+      camera: hds[0] ?? sds[0], camera2: hds[1] ?? (hds.length ? undefined : sds[1]), sd: sds[0], sd2: sds[1],
+      person: pick(/person|human/), pet: pick(/_pet_/), vehicle: pick(/vehicle/), motion: pick(/motion_alarm|_motion$/), motionCell: pick(/cell_motion/),
+      reboot: own.find(id => id.startsWith('button.') && /reboot|restart/.test(id)), setTime: own.find(id => id.startsWith('button.') && /date|time/.test(id)),
+    } };
+  },
+};
+export const MODULE_SPECS: ModuleSpec[] = [boilerEbusSpec, cameraGo2rtcSpec, doorbellSpec, cameraOnvifSpec, petFeederSpec, airSpec, clockSpec];
 export interface ActiveSpec { spec: ModuleSpec; entities: ModuleEntities; label: string; options: ModuleOptions }
 /** Modules whose hardware is present (or that the owner configured by hand) and that are not disabled. */
 export function activeSpecs(registry: Registry, config: HouseConfig, specs: ModuleSpec[] = MODULE_SPECS): ActiveSpec[] {

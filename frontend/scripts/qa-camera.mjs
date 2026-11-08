@@ -21,8 +21,9 @@ try {
     await page.waitForSelector('.at-shell'); await page.waitForTimeout(700);
     const shot = async name => { await page.waitForTimeout(450); await page.screenshot({ path: resolve(out, `${label}-${name}.png`) }); };
     await shot('home');
-    const tile = await page.evaluate(() => { const t = document.querySelector('.hm-camera-tile.is-large'); return t ? { line: t.querySelector('.hm-camera-caption small')?.textContent, badge: !!t.querySelector('.at-cam-badge'), closed: t.classList.contains('is-closed') } : null; });
-    check(`${label}: home tile second line`, tile?.line === 'Слежение за человеком' && tile.badge === true, JSON.stringify(tile));
+    // two cameras or more are one Cameras card (09.11.2026): C700 is its big live picture, its own line is on its cell in the Cameras panel
+    const tile = await page.evaluate(async () => { const t = document.querySelector('.at-cams-tile'); const r = t ? { focus: t.dataset.focus, live: t.querySelector('.at-cams-main .at-go2rtc') ? 'player' : 'none' } : null; location.hash = '#camera'; await new Promise(x => setTimeout(x, 400)); const c = document.querySelector('.at-cams-cell[data-device-key="e:camera.entrance_camera"]'); const out = { ...r, line: c?.querySelector('.at-cams-cap small')?.textContent }; location.hash = '#home'; await new Promise(x => setTimeout(x, 300)); return out; });
+    check(`${label}: home tile second line`, tile?.focus === 'e:camera.entrance_camera' && tile.live === 'player' && tile.line === 'Слежение за человеком', JSON.stringify(tile));
     const systems = await page.evaluate(() => { location.hash = '#systems'; return new Promise(r => setTimeout(() => r([...document.querySelectorAll('.hm-card')].map(c => c.textContent).filter(x => /ИИ|Патрул|Слежен|Время на картинке|Детекция/.test(x)).length), 400)); });
     check(`${label}: no camera switches in Systems`, systems === 0, `${systems} leftover tiles`);
     await page.evaluate(() => { location.hash = '#home?device=e%3Acamera.entrance_camera'; }); await page.waitForSelector('.at-cam'); await shot('sheet');
@@ -46,8 +47,8 @@ try {
     // closed lens: swap the snapshot and remount
     served = JSON.stringify({ ...fixture, states: { ...fixture.states, 'switch.entrance_camera_power': { ...fixture.states['switch.entrance_camera_power'], state: 'off' } } });
     await page.evaluate(async cfg => { location.hash = '#home'; const fx = await (await fetch('/fixture.json')).json(); await window.mountPreview(document.getElementById('root'), fx, cfg); }, config); await page.waitForTimeout(600); await shot('home-closed');
-    const closedTile = await page.evaluate(() => { const t = document.querySelector('.hm-camera-tile.is-large'); return t ? { closed: t.classList.contains('is-closed'), line: t.querySelector('.hm-camera-caption small')?.textContent, wait: t.querySelector('.hm-camera-wait span')?.textContent } : null; });
-    check(`${label}: closed lens tile`, closedTile?.closed === true && closedTile.line === 'Объектив закрыт', JSON.stringify(closedTile));
+    const closedTile = await page.evaluate(() => { const t = document.querySelector('.at-cams-tile'); return t ? { focus: t.dataset.focus, wait: t.querySelector('.at-cams-main .hm-camera-wait span')?.textContent, player: !!t.querySelector('.at-cams-main .at-go2rtc') } : null; });
+    check(`${label}: closed lens tile`, closedTile?.focus === 'e:camera.entrance_camera' && closedTile.wait === 'Объектив закрыт' && !closedTile.player, JSON.stringify(closedTile));
     await page.evaluate(() => { location.hash = '#home?device=e%3Acamera.entrance_camera'; }); await page.waitForSelector('.at-cam'); await shot('sheet-closed');
     const closedSheet = await page.evaluate(() => { const s = document.querySelector('.at-cam'); return { power: s.querySelector('.at-cam-lens')?.textContent, stage: s.querySelector('.at-cam-stage-closed span')?.textContent, snapshotOff: s.querySelector('.at-cam-snapshot')?.disabled }; });
     check(`${label}: closed lens sheet`, closedSheet.power === 'Открыть объектив' && closedSheet.stage === 'Объектив закрыт' && closedSheet.snapshotOff === true, JSON.stringify(closedSheet));
