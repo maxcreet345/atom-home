@@ -26,7 +26,7 @@ import { EnergyTile } from './energy-tile.tsx';
 import { EnergyPanel } from './energy-page.tsx';
 import { meterName } from '../model/energy-load.ts';
 import { CamerasTile, CamerasPanel, type CamView } from './cameras.tsx';
-import { currentEvents, focusCamera, sensorsOf } from '../model/cameras.ts';
+import { currentEvents, focusCamera, holdEnded, sensorsOf, type CamEvent } from '../model/cameras.ts';
 
 type View = { section: Section | 'setup'; room: string | null; device: string | null; filter: string | null };
 /** Apple Home-style navigation: Home · Rooms · Systems (+ Settings for admins). The former per-kind screens live under Systems as segments. */
@@ -104,9 +104,12 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
   const time = new Intl.DateTimeFormat(lang === 'ru' ? 'ru-RU' : lang === 'ro' ? 'ro-RO' : 'en-GB', { hour: '2-digit', minute: '2-digit' }).format(now);
   const date = new Intl.DateTimeFormat(lang === 'ru' ? 'ru-RU' : lang === 'ro' ? 'ro-RO' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).format(now);
   const enabled = home.devices.filter(d => d.enabled);
+  const seenCamEvents = useRef(new Map<string, CamEvent>()); // detections this screen saw on (see holdEnded)
   // Every camera of the house in the modules' order (the main one first: C700, then the doorbell, then the rest), with what it reports now.
   const camViews: CamView[] = (() => { const rank = (d: HomeDevice) => { const m = modFor(d); return m ? modules.indexOf(m) * 10 + camerasOf(m).indexOf(d.primary.id) : 1e6; };
-    return enabled.filter(d => d.kind === 'camera' && (d.primary.available || !!modFor(d)?.def.Player)).sort((a, b) => rank(a) - rank(b)).map(d => { const m = modFor(d), sensors = sensorsOf(registry, m?.def.sensors?.(m.entities, d.primary.id) ?? []), room = home.rooms.find(r => r.id === d.roomId)?.name ?? ''; return { device: d, name: inRoomName(d, room), state: tileState(d), sensors, events: currentEvents(registry.states, d.key, sensors), online: d.primary.available }; }); })();
+    const list = enabled.filter(d => d.kind === 'camera' && (d.primary.available || !!modFor(d)?.def.Player)).sort((a, b) => rank(a) - rank(b)).map(d => { const m = modFor(d), sensors = sensorsOf(registry, m?.def.sensors?.(m.entities, d.primary.id) ?? []), room = home.rooms.find(r => r.id === d.roomId)?.name ?? ''; const own = inRoomName(d, room); return { device: d, name: /^(камера|camera|cameră)$/i.test(own) && room ? room : own /* «Компьютерная · Камера» is the office's camera */, state: tileState(d), sensors, events: currentEvents(registry.states, d.key, sensors), online: d.primary.available }; });
+    const held = holdEnded(seenCamEvents.current, list.flatMap(v => v.events), Date.now());
+    return list.map(v => ({ ...v, events: held.filter(e => e.camera === v.device.key) })); })();
   // A ring opens the doorbell sheet on every device and closes it again after the module's seconds; any touch of the sheet keeps it. With another sheet open, a banner offers to switch instead.
   const alarms = modules.map(m => ({ m, a: m.def.alarm?.(m.entities, m.options) ?? null })).filter(x => x.a && x.a.seconds > 0) as Array<{ m: ActiveModule; a: { entityId: string; seconds: number } }>;
   const alarmStates = alarms.map(x => registry.states[x.a.entityId]?.state ?? '').join('|');

@@ -24,16 +24,29 @@ export function sensorsOf(registry: Registry, ids: Array<string | undefined>): C
   return ids.filter((id): id is string => !!id && !!registry.states[id]).map(id => ({ id, kind: sensorKind(id, registry.states[id].attributes.device_class) })).filter((s): s is CamSensor => s.kind !== null);
 }
 const ms = (iso: string | undefined) => { const v = iso ? Date.parse(iso) : NaN; return Number.isFinite(v) ? v : NaN; };
-/** The last thing each sensor says now: a ring's time is its state; a detection is active while on, and ended at its last change. */
+/** The last thing each sensor says now: a ring's time is its state; a detection counts only while it is on.
+ * An «off» with a fresh last change is not an event: HA resets every last change when it restarts (09.11.2026: «Человек · только что» right after a restart). A detection that just ended is kept by `holdEnded`, which saw it on. */
 export function currentEvents(states: Record<string, StateRow>, camera: string, sensors: CamSensor[]): CamEvent[] {
   const out: CamEvent[] = [];
   for (const s of sensors) {
     const row = states[s.id]; if (!row || row.state === 'unavailable' || row.state === 'unknown') continue;
     if (s.kind === 'ring') { const at = ms(row.state); if (Number.isFinite(at)) out.push({ camera, kind: 'ring', at, active: false }); continue; }
-    const at = ms(row.last_changed); if (!Number.isFinite(at)) continue;
-    out.push({ camera, kind: s.kind, at, active: row.state === 'on' });
+    const at = ms(row.last_changed); if (!Number.isFinite(at) || row.state !== 'on') continue;
+    out.push({ camera, kind: s.kind, at, active: true });
   }
   return out;
+}
+/** Detections this screen saw on and that have since ended stay for two minutes, timed from when they ended (the tile keeps the camera and the colour a moment longer).
+ * `seen` lives as long as the screen; it is updated in place. */
+export function holdEnded(seen: Map<string, CamEvent>, events: CamEvent[], now: number): CamEvent[] {
+  const key = (e: CamEvent) => `${e.camera}|${e.kind}`, live = new Set(events.filter(e => e.active).map(key));
+  for (const e of events) if (e.active) seen.set(key(e), e);
+  for (const [k, e] of [...seen]) {
+    if (live.has(k)) continue;
+    if (e.active) seen.set(k, { ...e, active: false, at: now });
+    else if (now - e.at > RECENT_MS) seen.delete(k);
+  }
+  return [...events, ...[...seen.entries()].filter(([k, e]) => !live.has(k) && !e.active).map(([, e]) => e)];
 }
 /** Worst of what is happening or just happened: an active detection or one that ended under two minutes ago, a ring under two minutes ago. */
 export function topEvent(events: CamEvent[], now: number): CamEvent | null {

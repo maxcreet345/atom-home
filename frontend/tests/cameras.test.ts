@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sensorKind, currentEvents, topEvent, focusCamera, historyEvents, ago, RECENT_MS } from '../src/model/cameras.ts';
+import { sensorKind, currentEvents, topEvent, focusCamera, historyEvents, ago, holdEnded, RECENT_MS, type CamEvent } from '../src/model/cameras.ts';
 const now = Date.parse('2026-11-09T12:00:00Z'), iso = (ms: number) => new Date(ms).toISOString();
 test('sensor kinds: ring, ONVIF detections, motion', () => {
   assert.equal(sensorKind('event.entrance_doorbell_ring', 'doorbell'), 'ring');
@@ -28,3 +28,15 @@ test('history: one event per turn-on, twin ONVIF motion sensors merged, ring by 
   assert.deepEqual(ev.map(e => `${e.camera}:${e.kind}`), ['a:motion', 'd:ring']);
 });
 test('ago', () => { assert.deepEqual(ago(now - 20_000, now), { n: 0, unit: 'now' }); assert.deepEqual(ago(now - 5 * 60_000, now), { n: 5, unit: 'min' }); assert.deepEqual(ago(now - 3 * 3600_000, now), { n: 3, unit: 'h' }); });
+test('a restart is not an event: «off» with a fresh last change counts for nothing', () => {
+  const states = { 'binary_sensor.p_person': { state: 'off', attributes: {}, last_changed: iso(now - 5000), last_updated: iso(now - 5000) } };
+  assert.deepEqual(currentEvents(states, 'stairs', [{ id: 'binary_sensor.p_person', kind: 'person' }]), []);
+});
+test('holdEnded keeps a detection this screen saw for two minutes after it ended', () => {
+  const seen = new Map<string, CamEvent>(), on: CamEvent = { camera: 's', kind: 'person', at: now - 10_000, active: true };
+  assert.equal(holdEnded(seen, [on], now).length, 1);
+  const after = holdEnded(seen, [], now + 1000); assert.deepEqual(after.map(e => [e.kind, e.active, e.at]), [['person', false, now + 1000]]);
+  assert.equal(topEvent(after, now + 60_000)?.kind, 'person');
+  assert.equal(holdEnded(seen, [], now + 1000 + RECENT_MS + 1).length, 0);
+  assert.equal(seen.size, 0);
+});

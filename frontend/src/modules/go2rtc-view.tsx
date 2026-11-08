@@ -7,7 +7,7 @@ import { mountGo2rtcPlayer, mseAvailable, type Player, type PlayerStatus } from 
 import { readFrame, writeFrame, posterEnabled } from './doorbell-state.ts';
 import { mountWebrtcPlayer, webrtcAvailable, type WebrtcPlayer } from './webrtc-player.ts';
 /** Live MSE video from the go2rtc add-on shared by the camera modules: the last frame as a poster until the stream is up, HD/SD switch when a second stream exists, sound toggle on the stage when the stream carries audio. */
-function Go2rtcLive({ options, host, t, mode, poster, live = true, webrtcEntity }: { options: ModuleOptions; host: Host; t: T; mode: 'tile' | 'stage'; poster?: string | null; /** false: no stream, only the poster (a battery doorbell is not watched all day from every tile) */ live?: boolean; /** HA camera with a stream: WebRTC through HA's own go2rtc for users who cannot use the add-on ingress (not admins), and as the fallback when the ingress stream fails */ webrtcEntity?: string }) {
+function Go2rtcLive({ options, host, t, mode, poster, live = true, webrtcEntity, onLive }: { /** the first live frame arrived (the stage swaps from the light stream to this one) */ onLive?: () => void; options: ModuleOptions; host: Host; t: T; mode: 'tile' | 'stage'; poster?: string | null; /** false: no stream, only the poster (a battery doorbell is not watched all day from every tile) */ live?: boolean; /** HA camera with a stream: WebRTC through HA's own go2rtc for users who cannot use the add-on ingress (not admins), and as the fallback when the ingress stream fails */ webrtcEntity?: string }) {
   const mount = useRef<HTMLDivElement>(null), hostRef = useRef(host), playerRef = useRef<Player | null>(null); hostRef.current = host;
   const [status, setStatus] = useState<PlayerStatus>('connecting'), [hd, setHd] = useState(false), [hdBroken, setHdBroken] = useState(false), [audio, setAudio] = useState(false), [sound, setSound] = useState(false);
   // C2 of the audit: eight seconds without a picture is «no connection» with a retry, not an endless spinner
@@ -41,6 +41,8 @@ function Go2rtcLive({ options, host, t, mode, poster, live = true, webrtcEntity 
     } catch { setStatus('error'); return; }
     return () => { player.dispose(); playerRef.current = null; };
   }, [addon, stream, live, path, retry]);
+  const liveRef = useRef(onLive); liveRef.current = onLive;
+  useEffect(() => { if (live && status === 'live') liveRef.current?.(); }, [status, live]);
   const showPoster = status !== 'live' || !live, posterSrc = stored?.data ?? (poster && !picBroken ? poster : null);
   const toggleSound = (e: Event) => { e.stopPropagation(); const v = playerRef.current?.video; if (!v) return; v.muted = !v.muted; setSound(!v.muted); if (!v.muted) void v.play().catch(() => undefined); };
   return <>
@@ -55,9 +57,18 @@ function Go2rtcLive({ options, host, t, mode, poster, live = true, webrtcEntity 
 
 type ViewProps = Parameters<typeof Go2rtcLive>[0];
 export function Go2rtcView(props: ViewProps) {
-  const { options, host, mode, webrtcEntity, live = true } = props;
+  const { options, host, mode, webrtcEntity, live = true, onLive } = props;
   // the preview has no go2rtc: a recorded frame of the camera stands in for the stream, drawn the way a live picture is
   const fake = host.previewFrame?.(options.stream ?? webrtcEntity ?? '') ?? (webrtcEntity ? host.previewFrame?.(webrtcEntity) : null) ?? null;
-  if (fake && live) return <><img className="at-cam-poster at-cam-fake" src={fake} alt="" /><div className="hm-camera-mount at-go2rtc is-live" data-player-status="live" data-stream={options.stream ?? 'auto'} data-path="preview" /><span className="hm-live is-live"><i />LIVE</span>{mode === 'stage' && options.streamHd && <button type="button" className="hm-camera-q at-camera-q" aria-pressed={false}>SD</button>}</>;
+  if (fake && live) { if (onLive) queueMicrotask(onLive); return <><img className="at-cam-poster at-cam-fake" src={fake} alt="" /><div className="hm-camera-mount at-go2rtc is-live" data-player-status="live" data-stream={options.stream ?? 'auto'} data-path="preview" /><span className="hm-live is-live"><i />LIVE</span>{mode === 'stage' && options.streamHd && <button type="button" className="hm-camera-q at-camera-q" aria-pressed={false}>SD</button>}</>; }
   return <Go2rtcLive {...props} />;
+}
+/** A stage that opens at once on the light stream (frequent keyframes) and moves to the full-quality one as soon as its first frame is in (owner, 09.11.2026: «в карточке слабое качество, в отдельной карточке камеры максимальное»). If the full stream never comes (H.265 a phone cannot play), the light one stays. */
+export function DualView({ low, high }: { low: ViewProps; high: ViewProps | null }) {
+  const [hi, setHi] = useState(false);
+  if (!high) return <Go2rtcView {...low} />;
+  return <>
+    {!hi && <div className="at-cam-layer"><Go2rtcView {...low} /></div>}
+    <div className={`at-cam-layer ${hi ? '' : 'is-pending'}`} data-quality="high"><Go2rtcView {...high} onLive={() => setHi(true)} /></div>
+  </>;
 }

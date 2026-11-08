@@ -5,7 +5,7 @@ import { doorbellSpec } from './catalog.ts';
 import { doorbellClaims, doorbellTileState, autoOpenSeconds, posterEnabled, when, clock, readFrame, AUTO_OPEN_CHOICES } from './doorbell-state.ts';
 import { useEventFeed, ClipStage, FeedList, ArchiveGrid, ArchiveHead } from './event-feed.tsx';
 import { SettingRow } from '../ui/sheet.tsx';
-import { Go2rtcView } from './go2rtc-view.tsx';
+import { Go2rtcView, DualView } from './go2rtc-view.tsx';
 import { Icon } from '../ui/primitives.tsx';
 import { Switch } from '../ui/cards.tsx';
 import { entityActions, type Action } from '../runtime/actions.ts';
@@ -129,5 +129,7 @@ export const doorbell: ModuleDef = {
   Sheet: DoorbellSheet,
   // the G4 runs on mains since 08.11.2026: the tile and the Cameras panel stream it like any camera (it no longer drains a battery)
   sensors: e => [e.ring, e.motion].filter((x): x is string => !!x),
-  Player: ({ entities, options, host, t, mode, poster }) => <Go2rtcView options={options} host={host} t={t} mode={mode} poster={poster} webrtcEntity={entities.video} />,
+  // tiles: the repeater's 720p (a keyframe every 2 s, held open by go2rtc); the sheet starts on it and moves to 1080p (a keyframe every 7–8 s) once that has a frame
+  Player: ({ entities, options, host, t, mode, poster }) => { const light = { ...options, streamHd: undefined }; const low = { options: light, host, t, mode, poster, webrtcEntity: entities.fast ?? entities.video };
+    return mode === 'tile' || !options.streamHd ? <Go2rtcView {...low} /> : <DualView low={low} high={{ options: { ...light, stream: options.streamHd }, host, t, mode, poster, webrtcEntity: entities.video }} />; },
 };

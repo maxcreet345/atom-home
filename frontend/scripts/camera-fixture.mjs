@@ -19,11 +19,17 @@ export function addCameras(base, s = {}, off = []) {
   for (const e of camFx.entities) if (!fx.entities.some(x => x.entity_id === e.entity_id)) fx.entities.push(e);
   Object.assign(fx.states, JSON.parse(JSON.stringify(camFx.states)));
   if (!fx.areas.some(a => a.area_id === 'podezd')) fx.areas.push(camFx.areas[0]);
+  // the C700 moved to the office on 09.11.2026 (owner): «Компьютерная · Камера», its events are no longer the doorbell's
+  for (const d of fx.devices) if (d.id === '9ae05aa213396d73fa792869ef13ffbc') Object.assign(d, { name: 'Компьютерная · Камера (Xiaomi C700)', area_id: 'kompiuternaia' }); else if (d.id === '06b10d1c8f21dd69f1f6359052142260') Object.assign(d, { name: 'Компьютерная · Камера', area_id: 'kompiuternaia' });
+  fx.states['camera.entrance_camera'] = { ...fx.states['camera.entrance_camera'], attributes: { ...fx.states['camera.entrance_camera'].attributes, friendly_name: 'Компьютерная · Камера (C700)' } };
   const dev = (id, name, model, manufacturer) => fx.devices.push({ id, name, model, manufacturer, area_id: 'podezd', entry_type: null, disabled_by: null, via_device_id: null });
   // G4: the generic camera on the go2rtc stream (stage 2 of the doorbell) and the mains power: no battery card
   dev('g4-video', 'Подъезд · Звонок (видео)', null, 'Generic');
   fx.entities.push(ent('camera.entrance_doorbell_video', 'g4-video', 'generic'));
   fx.states['camera.entrance_doorbell_video'] = st('idle', { friendly_name: 'Звонок (видео)', entity_picture: '/api/camera_proxy/camera.entrance_doorbell_video?token=x' });
+  dev('g4-fast', 'Подъезд · Звонок, быстрый поток', null, 'Generic');
+  fx.entities.push(ent('camera.entrance_doorbell_fast', 'g4-fast', 'generic'));
+  fx.states['camera.entrance_doorbell_fast'] = st('idle', { friendly_name: 'Подъезд · Звонок, быстрый поток (720p)', entity_picture: '/api/camera_proxy/camera.entrance_doorbell_fast?token=x' });
   const bat = fx.entities.find(e => e.entity_id === 'sensor.entrance_doorbell_battery'); if (bat) bat.hidden_by = 'user';
   // Sonoff: names as proposed for the owner (the HA names are the model's for now, book/03-devices/sonoff-cam-c44he.md)
   dev('c44he-onvif', 'Подъезд · Sonoff CAM-C44HE (ONVIF)', 'CAM-C44HE', 'SONOFF');
@@ -43,7 +49,7 @@ export function addCameras(base, s = {}, off = []) {
 }
 /** Recorded frames by the names the players ask for (go2rtc stream or HA entity). The G4 gave none on 09.11 (its RTSP lacks SPS/PPS). */
 export function frames() {
-  const map = { entrance_camera_h264: 'entrance_camera_hd.jpg', 'camera.entrance_camera': 'entrance_camera_hd.jpg', [SONOFF.sd0]: 'camera.cam_c44he_ptz_hd.jpg', [SONOFF.ptz]: 'camera.cam_c44he_ptz_hd.jpg', [SONOFF.sd1]: 'camera.cam_c44he_fixed_hd.jpg', [SONOFF.fixed]: 'camera.cam_c44he_fixed_hd.jpg', entrance_doorbell: 'entrance_doorbell.jpg', 'camera.entrance_doorbell': 'entrance_doorbell.jpg', 'camera.entrance_doorbell_video': 'entrance_doorbell.jpg' };
+  const map = { entrance_camera_h264: 'entrance_camera_hd.jpg', 'camera.entrance_camera': 'entrance_camera_hd.jpg', [SONOFF.sd0]: 'camera.cam_c44he_ptz_hd.jpg', [SONOFF.ptz]: 'camera.cam_c44he_ptz_hd.jpg', [SONOFF.sd1]: 'camera.cam_c44he_fixed_hd.jpg', [SONOFF.fixed]: 'camera.cam_c44he_fixed_hd.jpg', entrance_doorbell: 'entrance_doorbell.jpg', entrance_doorbell_720: 'entrance_doorbell.jpg', 'camera.entrance_doorbell_fast': 'entrance_doorbell.jpg', 'camera.entrance_doorbell': 'entrance_doorbell.jpg', 'camera.entrance_doorbell_video': 'entrance_doorbell.jpg' };
   return Object.fromEntries(Object.entries(map).filter(([, f]) => existsSync(resolve(FRAMES, f))).map(([k, f]) => [k, `/frames/${f}`]));
 }
 /** A day of rings and detections in HA's minimal history format, so the panel's list has something to read. */

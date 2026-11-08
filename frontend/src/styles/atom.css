@@ -412,3 +412,16 @@
 .hm-shell .at-cams-events,.hm-shell .at-cams-tile{container-type:inline-size}
 @container (max-width:440px){.hm-shell .at-cams-filter b{display:none}}
 @container (max-width:330px){.hm-shell .at-cams-thumb small{display:none}.hm-shell .at-cams-name i{font-size:0;gap:0;padding:4px 6px}}
+
+/* 09.11.2026 after the first QA: live thumbnails, 44 px targets, the line wraps instead of losing its end, AA contrast on the event pills */
+.hm-shell .at-cams-thumb{min-height:44px}
+.hm-shell .at-cams-thumb .hm-camera-frame{position:absolute;inset:0}
+.hm-shell .at-cams-thumb :is(.hm-live,.hm-camera-q,.hm-camera-wait span,.at-cam-retry){display:none}
+.hm-shell .at-cams-thumb .hm-camera-wait{padding:0}
+.hm-shell .at-cams-thumb :is(.at-cam-poster,.at-cam-fake){position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.hm-shell .at-cams-filter button{min-height:44px}
+.hm-shell .at-cams-caption small{white-space:normal;overflow:visible;text-overflow:clip}
+.hm-shell :is(.at-cams-name i,.at-cams-flag).tone-danger,.hm-shell .at-cams-thumb.tone-danger .at-cams-dot{background:#d70015}
+.hm-shell :is(.at-cams-name i,.at-cams-flag).tone-warning,.hm-shell .at-cams-thumb.tone-warning .at-cams-dot{background:#9a4f00}
+.hm-shell .at-cams-summary.is-danger .at-cams-state{color:#b0000d}.hm-shell .at-cams-summary.is-warning .at-cams-state{color:#8a4600}
+.hm-shell .at-cam-layer{position:absolute;inset:0}.hm-shell .at-cam-layer.is-pending{opacity:0;pointer-events:none}

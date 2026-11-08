@@ -46,8 +46,10 @@ export const cameraGo2rtcSpec: ModuleSpec = {
       for (const r of CAMERA_CONTROL_ROLES) { const hit = own.find(e => e.entity_id.startsWith(r.domain + '.') && r.suffix.test(e.entity_id)); if (hit) entities[r.role] = hit.entity_id; }
     }
     // The entrance has one doorbell: its ring and motion events also time the camera's recordings (no motion events of its own in HA).
+    const areaOf = (e: { area_id?: string | null; device_id?: string | null } | undefined) => e ? e.area_id ?? reg.devices.find(d => d.id === e.device_id)?.area_id ?? null : null;
     const ringEnt = reg.entities.find(e => e.entity_id.startsWith('event.') && !e.disabled_by && reg.states[e.entity_id]?.attributes.device_class === 'doorbell');
-    if (ringEnt) { entities.ring = ringEnt.entity_id; const mot = reg.entities.find(e => e.device_id === ringEnt.device_id && e.entity_id.startsWith('binary_sensor.') && /_motion$/.test(e.entity_id) && !e.disabled_by && reg.states[e.entity_id]); if (mot) entities.motionEvent = mot.entity_id; }
+    // only a camera in the doorbell's own room (the C700 moved to the office on 09.11.2026: a ring at the door is not its event)
+    if (ringEnt && (!cam || areaOf(cam) === areaOf(ringEnt))) { entities.ring = ringEnt.entity_id; const mot = reg.entities.find(e => e.device_id === ringEnt.device_id && e.entity_id.startsWith('binary_sensor.') && /_motion$/.test(e.entity_id) && !e.disabled_by && reg.states[e.entity_id]); if (mot) entities.motionEvent = mot.entity_id; }
     const dev = cam ? reg.devices.find(d => d.id === cam.device_id) : funcDev;
     const friendly = cam ? reg.states[cam.entity_id]?.attributes.friendly_name : undefined;
     return { label: dev?.name ?? (typeof friendly === 'string' ? friendly : 'go2rtc'), entities, options: cam ? { addon: addonFromEntity(cam.entity_id)! } : {} };
@@ -97,7 +99,7 @@ export const DOORBELL_ROLES: ReadonlyArray<{ role: string; domain: string; suffi
 ];
 /** Stage 2 helpers that live outside the doorbell's HA device: the recording camera (generic camera on the go2rtc stream) and the automation switches, matched by entity id anywhere in the registry. */
 export const DOORBELL_HOUSE_ROLES: ReadonlyArray<{ role: string; pattern: RegExp }> = [
-  { role: 'video', pattern: /^camera\.[a-z0-9_]*doorbell[a-z0-9_]*_video$/ }, { role: 'recordMotion', pattern: /^input_boolean\.doorbell_record_motion$/ },
+  { role: 'video', pattern: /^camera\.[a-z0-9_]*doorbell[a-z0-9_]*_video$/ }, { role: 'fast', pattern: /^camera\.[a-z0-9_]*doorbell[a-z0-9_]*_fast$/ }, { role: 'recordMotion', pattern: /^input_boolean\.doorbell_record_motion$/ },
   { role: 'notifyPhones', pattern: /^input_boolean\.doorbell_notify_phones$/ }, { role: 'notifyStation', pattern: /^input_boolean\.doorbell_notify_station$/ }, { role: 'hallLight', pattern: /^input_boolean\.doorbell_hall_light$/ },
 ];
 /** Video doorbell: the `event.*` doorbell entity names the device, its camera is the card; live video comes from the go2rtc add-on (`hass:` source over HA's own HomeKit pairing), stream named after the camera unless configured. */
@@ -105,7 +107,7 @@ export const doorbellSpec: ModuleSpec = {
   id: 'doorbell', titleKey: 'module.doorbell', placement: [],
   roles: [{ role: 'camera', labelKey: 'module.camera.entity', required: true }, ...DOORBELL_ROLES.map(r => ({ role: r.role, labelKey: `module.doorbell.role.${r.role}`, required: false })), ...DOORBELL_HOUSE_ROLES.map(r => ({ role: r.role, labelKey: `module.doorbell.role.${r.role}`, required: false }))],
   options: [
-    { key: 'addon', labelKey: 'module.camera.addon', required: true, placeholder: 'a1b2c3d4_go2rtc' }, { key: 'stream', labelKey: 'module.camera.stream', required: false, placeholder: 'auto' },
+    { key: 'addon', labelKey: 'module.camera.addon', required: true, placeholder: 'a1b2c3d4_go2rtc' }, { key: 'stream', labelKey: 'module.camera.stream', required: false, placeholder: 'auto' }, { key: 'streamHd', labelKey: 'module.camera.streamHd', required: false },
     { key: 'mediaDir', labelKey: 'module.doorbell.mediaDir', required: false, placeholder: 'doorbell' },
     { key: 'autoOpen', labelKey: 'module.doorbell.autoOpen', required: false, placeholder: 'on' }, { key: 'autoOpenSec', labelKey: 'module.doorbell.autoOpenSec', required: false, placeholder: '60' }, { key: 'poster', labelKey: 'module.doorbell.poster', required: false, placeholder: 'on' },
   ],
@@ -168,7 +170,7 @@ export const cameraOnvifSpec: ModuleSpec = {
     } };
   },
 };
-export const MODULE_SPECS: ModuleSpec[] = [boilerEbusSpec, cameraGo2rtcSpec, doorbellSpec, cameraOnvifSpec, petFeederSpec, airSpec, clockSpec];
+export const MODULE_SPECS: ModuleSpec[] = [boilerEbusSpec, doorbellSpec, cameraGo2rtcSpec, cameraOnvifSpec, petFeederSpec, airSpec, clockSpec];
 export interface ActiveSpec { spec: ModuleSpec; entities: ModuleEntities; label: string; options: ModuleOptions }
 /** Modules whose hardware is present (or that the owner configured by hand) and that are not disabled. */
 export function activeSpecs(registry: Registry, config: HouseConfig, specs: ModuleSpec[] = MODULE_SPECS): ActiveSpec[] {

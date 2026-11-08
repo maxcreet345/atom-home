@@ -36,19 +36,19 @@ function Still({ device, host }: { device: HomeDevice; host: Host }) {
   const src = fake ?? (pic ? pic + (n ? `${pic.includes('?') ? '&' : '?'}r=${n}` : '') : null);
   return src && !broken ? <img className="at-cams-still" src={src} alt="" loading="lazy" onError={() => setBroken(true)} /> : <span className="at-cams-none"><Icon name="camera" size={18} /></span>;
 }
-/** Home card (owner, 09.11.2026: «карточка и панель камеры»): one camera live and big — the one where something is happening, else the main one — the others as frames underneath, the worst event in words. */
+/** Home card (owner, 09.11.2026: «карточка и панель камеры»): one camera big — the one where something is happening, else the doorbell — the others small, every one live on its light stream; the worst event in words. */
 export function CamerasTile({ views, focus, player, host, now, t, lang, onPanel, onCamera }: { views: CamView[]; focus: CamView; player: Player; host: Host; now: number; t: T; lang: Lang; onPanel: () => void; onCamera: (key: string) => void }) {
   const line = camerasLine(views, now, t, lang), others = views.filter(v => v !== focus);
   const hot = (v: CamView) => topEvent(v.events, now);
   const closed = focus.state?.closed === true;
   return <div className={`ah-tile hm-card at-cams-tile ${line.tone ? `is-${line.tone}` : ''}`} data-focus={focus.device.key}>
-    <button type="button" className="at-cams-main" aria-label={`${t('ui.open')}: ${focus.name}`} onClick={() => onCamera(focus.device.key)}>
+    <button type="button" className="at-cams-main" onClick={() => onCamera(focus.device.key)}>
       <span className="hm-camera-frame">{closed ? <span className="hm-camera-wait"><Icon name="camera" size={28} /><span>{t('module.camera.closed')}</span></span> : player(focus.device, 'tile') ?? <Still device={focus.device} host={host} />}</span>
       <span className="at-cams-name"><b>{focus.name}</b>{hot(focus) && <i className={`tone-${TONE[hot(focus)!.kind]}`}><Icon name={ICON[hot(focus)!.kind]} size={14} />{kindText(hot(focus)!.kind, t)}</i>}</span>
     </button>
-    {others.length > 0 && <div className="at-cams-strip" style={`--n:${others.length}`}>{others.map(v => { const e = hot(v); return <button type="button" className={`at-cams-thumb ${v.online ? '' : 'is-off'} ${e ? `tone-${TONE[e.kind]}` : ''}`} aria-label={`${t('ui.open')}: ${v.name}${e ? ` · ${kindText(e.kind, t)}` : ''}`} onClick={() => onCamera(v.device.key)}>
-      <Still device={v.device} host={host} />{e && <i className="at-cams-dot"><Icon name={ICON[e.kind]} size={12} /></i>}<small>{v.name}</small></button>; })}</div>}
-    <button type="button" className="at-cams-caption" onClick={onPanel} aria-label={`${t('cams.title')}: ${line.text}. ${t('cams.openPanel')}`}><Icon name="camera" size={18} /><span><strong>{t('cams.title')}</strong><small>{line.text}</small></span><Icon name="next" size={18} /></button>
+    {others.length > 0 && <div className="at-cams-strip" style={`--n:${others.length}`}>{others.map(v => { const e = hot(v); return <button type="button" className={`at-cams-thumb ${v.online ? '' : 'is-off'} ${e ? `tone-${TONE[e.kind]}` : ''}`} aria-label={`${v.name}${e ? ` · ${kindText(e.kind, t)}` : ''}`} onClick={() => onCamera(v.device.key)}>
+      <span className="hm-camera-frame">{v.state?.closed ? <span className="at-cams-none"><Icon name="camera" size={18} /></span> : player(v.device, 'tile') ?? <Still device={v.device} host={host} />}</span>{e && <i className="at-cams-dot"><Icon name={ICON[e.kind]} size={12} /></i>}<small>{v.name}</small></button>; })}</div>}
+    <button type="button" className="at-cams-caption" onClick={onPanel}><Icon name="camera" size={18} /><span><strong>{t('cams.title')}</strong><small>{line.text}</small></span><Icon name="next" size={18} /></button>
   </div>;
 }
 type Filter = 'all' | 'ring' | 'person' | 'motion';
