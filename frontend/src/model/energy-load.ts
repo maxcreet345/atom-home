@@ -33,17 +33,28 @@ export function channels(devices: HomeDevice[], boilers: Set<string>): Channel[]
 export interface Meter { key: string; id: string; name: string; room: string; feed: string | null }
 /** The devices with their own energy counter, picked one counter each (the running total if there is one, never «yesterday» or an estimate),
  * leaving out the SPM, the gas boiler and a plug that HA's Energy settings list as holding other plugs (it would count them twice). */
-export function meters(devices: HomeDevice[], boilers: Set<string>, opts: { name: (d: HomeDevice) => string; room: (d: HomeDevice) => string; feed: (d: HomeDevice) => string | null; parents?: Set<string> }): Meter[] {
+export function meters(devices: HomeDevice[], boilers: Set<string>, opts: { name: (d: HomeDevice) => string; room: (d: HomeDevice) => string; feed: (d: HomeDevice) => string | null; parents?: Set<string>; listed?: Set<string> }): Meter[] {
   const out: Meter[] = [];
   for (const d of devices) {
     if (isMains(d) || (d.haDeviceId !== null && boilers.has(d.haDeviceId))) continue;
     // a parent plug is left out whole: dropping only the counter HA names would let its other one (`energy_period`, `energy_today`) in
     if (opts.parents && d.metrics.some(m => opts.parents!.has(m.id))) continue;
+    // live check 08.11.2026: the dryer reports its own energy and its socket does too. When HA's Energy settings list the devices (the owner
+    // keeps that list: the bedroom TV went in the day its meter came), the panel takes exactly those counters; otherwise every counter it finds
+    if (opts.listed?.size) { const e = d.metrics.find(m => opts.listed!.has(m.id) && !/_est(_\d+)?$/i.test(m.id)); if (e && !out.some(x => x.id === e.id)) out.push({ key: d.key, id: e.id, name: opts.name(d), room: opts.room(d), feed: opts.feed(d) }); continue; }
     const list = d.metrics.filter(m => m.deviceClass === 'energy' && !/(_est|yesterday|month|week)(_\d+)?$/i.test(m.id));
     const e = list.find(m => /total/i.test(m.id)) ?? list.find(m => !/today/i.test(m.id)) ?? list[0];
     if (e && !out.some(x => x.id === e.id)) out.push({ key: d.key, id: e.id, name: opts.name(d), room: opts.room(d), feed: opts.feed(d) });
   }
   return out;
+}
+/** A metered device's name in the list (live check 08.11.2026): the part after the place («Ванная · Розетка сушильной машины» →
+ * «Розетка сушильной машины», also when HA repeats it), and what the brackets say when the name outside them is only the meter
+ * («Счётчик энергии (телевизор)» → «Телевизор», «Розетка Xiaomi (Apple TV)» → «Apple TV»); a model in brackets is dropped. */
+export function meterName(raw: string): string {
+  const n = (raw.includes(' · ') ? raw.split(' · ').at(-1)! : raw).trim(), m = n.match(/^(.*?)\s*\(([^)]+)\)\s*$/), base = (m ? m[1] : n).trim(), inner = m?.[2].trim();
+  if (inner && /^(сч[её]тчик( энергии)?|розетка( xiaomi| tuya| tapo| sonoff)?|реле|smart plug|plug|socket|meter|energy meter)$/i.test(base)) return inner.charAt(0).toUpperCase() + inner.slice(1);
+  return base || n;
 }
 /** The stretch a period covers, by the local calendar: offset 0 is the current one, −1 the one before. Halves are January–June and July–December. */
 export function range(period: Period, offset: number, now: number): { start: number; end: number } {
@@ -188,7 +199,9 @@ export async function loadReport(host: Host, x: LoadInput): Promise<EnergyReport
   const sessions: Session[] | null = !charger ? null : x.sessions !== undefined ? x.sessions : chargerRows ? sessionsOf(chargerRows[charger.power.id] ?? [], fine ? 300000 : HOUR) : null;
   let month: EnergyReport['month'];
   if (typeof monthKwh === 'number') { const m = range('month', 0, x.now); month = { start: m.start, end: m.end, kwh: monthKwh }; }
-  return { period: x.period, offset: x.offset, start, end, now: x.now, feeds, tariff: { lei: x.tariff ?? 3, assumed: x.tariff === null }, power: null, buckets, curve, previous, devices, grouped: x.grouped, network, sessions, month, dataFrom, silentSince };
+  // the spare SPM channel (live check 08.11.2026: «Канал 4», nothing on it) is left out while it counts nothing and no room hangs on it; a charger stays
+  const counted = (k: string) => buckets.reduce((a, b) => a + (b.v[k] ?? 0), 0), shownFeeds = feeds.filter(f => f.charger || counted(f.key) >= 0.005 || x.meters.some(m => m.feed === f.key));
+  return { period: x.period, offset: x.offset, start, end, now: x.now, feeds: shownFeeds, tariff: { lei: x.tariff ?? 3, assumed: x.tariff === null }, power: null, buckets, curve, previous, devices, grouped: x.grouped, network, sessions, month, dataFrom, silentSince };
 }
 /** The charging sessions a refresh of half a year or a year keeps instead of reading the charger's hours again: only the same period that still
  * starts where it did (offset 0 is another year after 1 January, another half after 1 July: last year's sessions stood under «2027»). */

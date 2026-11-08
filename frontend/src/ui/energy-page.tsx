@@ -25,7 +25,7 @@ export function EnergyPanel({ host, devices, boilers, feedOfRoom, roomFeeds, roo
   const [period, setPeriod] = useState<Period>('day'), [offset, setOffset] = useState(0), [state, setState] = useState<LoadState | null>(null);
   // first: undefined until firstStatistics answers (the report waits for it: a month's row starts on the 1st whatever day the statistics began);
   // a failed read gives the report null (nothing limited) and is asked again with every refresh, «Повторить» and after the next good report
-  const [hidden, setHidden] = useState<string[]>([]), [pick, setPick] = useState<number | null>(null), [group, setGroup] = useState<string | null>(null), [prefs, setPrefs] = useState<{ parents: Set<string>; ok: boolean } | null>(null), [tick, setTick] = useState(0), [firstState, setFirst] = useState<{ key: string; v: number | null; failed: boolean } | null>(null), [firstAgain, setFirstAgain] = useState(0);
+  const [hidden, setHidden] = useState<string[]>([]), [pick, setPick] = useState<number | null>(null), [group, setGroup] = useState<string | null>(null), [prefs, setPrefs] = useState<{ parents: Set<string>; listed: Set<string>; ok: boolean } | null>(null), [tick, setTick] = useState(0), [firstState, setFirst] = useState<{ key: string; v: number | null; failed: boolean } | null>(null), [firstAgain, setFirstAgain] = useState(0);
   const h2 = useRef<HTMLHeadingElement>(null), focusHead = useRef(false), attempts = useRef(0), last = useRef<EnergyReport | null>(null), firstFailed = useRef(false);
   const chs = useMemo(() => findChannels(devices, boilers), [devices, boilers]);
   const chKey = chs.map(c => c.energy).join(' '), firstRead = firstState?.key === chKey ? firstState.v : undefined, first = firstRead ?? null;
@@ -33,14 +33,14 @@ export function EnergyPanel({ host, devices, boilers, feedOfRoom, roomFeeds, roo
   // HA's Energy settings say which plug holds others (the kitchen's appliance plug held the fridge, the kettle and the air fryer): left out, or they
   // count twice. Read again with every refresh; a failed read keeps what was known and says so, it is never taken for «no parents». An HA whose
   // Energy dashboard was never set up answers not_found («No prefs», energy/websocket_api.py): that is no parents, not a failure
-  useEffect(() => { let alive = true; if (!host.ws) { setPrefs({ parents: new Set(), ok: true }); return; }
-    host.ws<{ device_consumption?: Array<{ included_in_stat?: string }> }>({ type: 'energy/get_prefs' }).then(p => { if (alive) setPrefs({ parents: new Set((p?.device_consumption ?? []).map(x => x.included_in_stat).filter((x): x is string => !!x)), ok: true }); }, e => { if (!alive) return; if ((e as { code?: string } | null)?.code === 'not_found') setPrefs({ parents: new Set(), ok: true }); else setPrefs(s => ({ parents: s?.parents ?? new Set(), ok: false })); });
+  useEffect(() => { let alive = true; if (!host.ws) { setPrefs({ parents: new Set(), listed: new Set(), ok: true }); return; }
+    host.ws<{ device_consumption?: Array<{ stat_consumption?: string; included_in_stat?: string }> }>({ type: 'energy/get_prefs' }).then(p => { if (alive) setPrefs({ parents: new Set((p?.device_consumption ?? []).map(x => x.included_in_stat).filter((x): x is string => !!x)), listed: new Set((p?.device_consumption ?? []).map(x => x.stat_consumption).filter((x): x is string => !!x)), ok: true }); }, e => { if (!alive) return; if ((e as { code?: string } | null)?.code === 'not_found') setPrefs({ parents: new Set(), listed: new Set(), ok: true }); else setPrefs(s => ({ parents: s?.parents ?? new Set(), listed: s?.listed ?? new Set(), ok: false })); });
     return () => { alive = false; }; }, [host, tick]);
-  const parentsKey = prefs ? [...prefs.parents].sort().join(' ') : null;
+  const parentsKey = prefs ? [...prefs.parents].sort().join(' ') + '|' + [...prefs.listed].sort().join(' ') : null;
   // a room's saved feed counts only while it is one of the SPM's apartment channels (their ids changed once, eWeLink → Tasmota): a stale one is
   // «not assigned», not a group of its own that no button opens
   const feedKeys = useMemo(() => new Set(chs.filter(c => !c.charger).map(c => c.key)), [chKey]);
-  const meters = useMemo(() => prefs ? findMeters(devices, boilers, { name: nameOf, room: d => roomName(d.roomId), feed: d => { const f = feedOfRoom(d.roomId); return f && feedKeys.has(f) ? f : null; }, parents: prefs.parents }) : [], [devices, boilers, parentsKey, nameOf, roomName, feedOfRoom, feedKeys]);
+  const meters = useMemo(() => prefs ? findMeters(devices, boilers, { name: nameOf, room: d => roomName(d.roomId), feed: d => { const f = feedOfRoom(d.roomId); return f && feedKeys.has(f) ? f : null; }, parents: prefs.parents, listed: prefs.listed }) : [], [devices, boilers, parentsKey, nameOf, roomName, feedOfRoom, feedKeys]);
   const feedSet = new Set(roomFeeds.filter(f => feedKeys.has(f))), grouped = feedSet.size > 0, meterKey = meters.map(m => `${m.id}:${m.feed ?? ''}:${m.room}`).join(' ');
   const key = `${period}${offset}`;
   useEffect(() => { if (firstState?.key === chKey && !firstState.failed) return; let alive = true;
@@ -80,7 +80,7 @@ export function EnergyPanel({ host, devices, boilers, feedOfRoom, roomFeeds, roo
   if (report.dataFrom === null) return <div className="at-ep" data-period={period}>{head}<section className="at-ep-card at-ep-nostats"><p>{t('ep.noStats')}</p>{first !== null && <small>{range(period, offset, now).end <= first ? t('ep.since', { d: dateLong(first, loc) }) : t('ep.gap')}</small>}</section></div>;
   // a channel silent now for more than 15 minutes: no badge (today stopped at 15:00 read «▼ 25 %» against yesterday up to now)
   const feeds = report.feeds, tot = totals(report), all = sum(tot), before = report.previous ? sum(report.previous) : null, delta = typeof report.silentSince === 'number' ? null : change(all, before), fc = forecast(report), empty = all < 0.005, past = offset < 0;
-  const live: Split | null = offset === 0 ? Object.fromEntries(chs.map(c => [c.key, c.power.available && Number.isFinite(Number(c.power.state)) ? Number(c.power.state) * (c.power.unit === 'kW' ? 1000 : 1) : NaN])) : null;
+  const live: Split | null = offset === 0 ? Object.fromEntries(chs.filter(c => report.feeds.some(f => f.key === c.key)).map(c => [c.key, c.power.available && Number.isFinite(Number(c.power.state)) ? Number(c.power.state) * (c.power.unit === 'kW' ? 1000 : 1) : NaN])) : null;
   const liveOk = live && Object.values(live).every(Number.isFinite);
   const toggle = (k: string) => setHidden(h => h.includes(k) ? h.filter(x => x !== k) : h.length < feeds.length - 1 ? [...h, k] : h);
   const vs = (long: boolean) => t(`ep.vs.${long ? 'long.' : ''}${past ? 'past.' : ''}${period}` as Key);

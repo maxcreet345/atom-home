@@ -406,3 +406,16 @@ test('half a year or a year left open across 1 January or 1 July reads its charg
   }
   assert.equal(keptSessions(null, 'year', 0, Date.now()), undefined); assert.equal(keptSessions({ period: 'day', offset: 0, start: range('day', 0, D(2026, 10, 8)).start, sessions: s }, 'day', 0, D(2026, 10, 8)), undefined, 'a day reads them every time');
 });
+test('live check 08.11: meter names say what the plug feeds, not that it is a meter', async () => {
+  const { meterName } = await import('../src/model/energy-load.ts');
+  assert.equal(meterName('Детская · Счётчик энергии (телевизор)'), 'Телевизор');
+  assert.equal(meterName('Гостиная · Розетка Xiaomi (Apple TV)'), 'Apple TV');
+  assert.equal(meterName('Кухня · Розетка котла (ttec Prizi)'), 'Розетка котла');
+  assert.equal(meterName('Розетка сушильной машины Ванная · Розетка сушильной машины'), 'Розетка сушильной машины');
+  assert.equal(meterName('Компьютерная · Розетка компьютера (реле TS0001 с измерением)'), 'Розетка компьютера');
+});
+test('live check 08.11: with HA\'s Energy list the panel takes exactly its counters (the dryer and its socket are not both counted)', () => {
+  const dryer = dev('dryer', [ref('sensor.bath_dryer_energy', 'energy')]), socket = dev('socket', [ref('sensor.bath_dryer_socket_energy_total', 'energy'), ref('sensor.bath_dryer_socket_energy_today', 'energy')]), feeder = dev('feeder', [ref('sensor.kitchen_cat_feeder_energy_est', 'energy')]);
+  const m = meters([SPM, dryer, socket, feeder], new Set(), { name: d => d.key, room: () => 'r', feed: () => null, listed: new Set(['sensor.bath_dryer_socket_energy_total', 'sensor.kitchen_cat_feeder_energy_est', 'sensor.entrance_spm_ev_energy_total']) });
+  assert.deepEqual(m.map(x => x.id), ['sensor.bath_dryer_socket_energy_total']);
+});
