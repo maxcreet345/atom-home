@@ -36,6 +36,7 @@ import { readOfficeSecurity } from '../model/office-security.ts';
 import { OfficeSecurityTile, OfficeSecurityPanel } from './office-security.tsx';
 import { VacuumTile, VacuumPanel, VacuumSettings } from './vacuum.tsx';
 import { readVacuum } from '../model/vacuum.ts';
+import { RoomView, type RoomLayout } from './room.tsx';
 import { OfficeClimateTile, OfficeClimatePanel } from './office-climate.tsx';
 import { readOfficeClimate } from '../model/office-climate.ts';
 import { currentEvents, focusCamera, holdEnded, sensorsOf, type CamEvent } from '../model/cameras.ts';
@@ -225,7 +226,7 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
       <div className="hm-page" key={pageKey}>
         {view.section === 'home' && <Overview vacPics={vacPics} vacuum={vacuum} security={security} officeSec={officeSec} heating={heating} office={office} grid={grid} home={home} registry={registry} config={config} modules={modules} player={player} tileState={tileState} host={host} runner={runner} toggle={toggle} go={go} t={t} lang={lang} now={now} camViews={camViews} />}
         {view.section === 'rooms' && !view.room && <div className="hm-room-grid is-page">{rooms.map(r => { const c = roomClimate(home, registry, r.id); return <RoomTile room={r} temperature={c.temperature} humidity={c.humidity} co2={c.co2} lightsOn={c.lights.filter(l => isOn(l.primary)).length} onClick={() => go({ section: 'rooms', room: r.id })} t={t} lang={lang} label={r.name || t('room.none')} />; })}</div>}
-        {view.section === 'rooms' && view.room && <RoomPage home={home} registry={registry} roomId={view.room} runner={runner} toggle={toggle} go={go} t={t} lang={lang} alarms={clockMod && registry.entities.some(e => e.entity_id.startsWith('media_player.') && e.platform === 'yandex_station' && !e.disabled_by && (e.area_id ?? registry.devices.find(d => d.id === e.device_id)?.area_id) === view.room) ? config.alarms.filter(a => a.room === view.room) : null} />}
+        {view.section === 'rooms' && view.room && <RoomPage heating={heating} vacuum={vacuum} host={host} now={now.getTime()} wide={viewport.width >= 760} home={home} registry={registry} roomId={view.room} runner={runner} toggle={toggle} go={go} t={t} lang={lang} alarms={clockMod && registry.entities.some(e => e.entity_id.startsWith('media_player.') && e.platform === 'yandex_station' && !e.disabled_by && (e.area_id ?? registry.devices.find(d => d.id === e.device_id)?.area_id) === view.room) ? config.alarms.filter(a => a.room === view.room) : null} />}
         {view.section === 'lights' && <LightsPage devices={enabled.filter(d => d.kind === 'light')} rooms={home.rooms} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} admin={host.admin} />}
         {view.section === 'security' && officeSec && <OfficeSecurityPanel s={officeSec} host={host} t={t} lang={lang} now={now.getTime()} admin={!!host.admin} title={config.home.name} />}
         {view.section === 'security' && security && <SecurityPanel s={security} registry={registry} config={config} host={host} t={t} lang={lang} now={now.getTime()} admin={!!host.admin} />}
@@ -357,7 +358,12 @@ function CameraTile({ device, player, state, onOpen, t, lang, large }: { device:
       <div className="hm-camera-caption"><strong>{device.name}</strong><small>{state?.line ?? device.model ?? ''}</small><Icon name="next" size={18} /></div></div>
   </div>;
 }
-function RoomPage({ home, registry, roomId, runner, toggle, go, t, lang, alarms }: Common & { home: Home; registry: Registry; roomId: string; toggle: (d: HomeDevice) => void; alarms: Alarm[] | null }) {
+function RoomPage({ home, registry, roomId, runner, toggle, go, t, lang, alarms, heating, vacuum, host, now, wide }: Common & { home: Home; registry: Registry; roomId: string; toggle: (d: HomeDevice) => void; alarms: Alarm[] | null; heating: ReturnType<typeof readHeating>; vacuum: ReturnType<typeof readVacuum>; host: Host; now: number; wide: boolean }) {
+  // the room page mock (09.11.2026): ?layout=a|b|c draws one of the three proposals instead of today's page
+  const layout = new URLSearchParams(location.search).get('layout') as RoomLayout | null;
+  if (layout === 'a' || layout === 'b' || layout === 'c') { const byMain = (id: string) => home.devices.find(d => d.enabled && d.primary.id === id);
+    return <RoomView layout={layout} reg={registry} roomId={roomId} roomName={home.rooms.find(r => r.id === roomId)?.name ?? ''} heating={heating} vacuum={vacuum} host={host} t={t} lang={lang} now={now} wide={wide}
+      deviceOf={byMain} toggle={toggle} open={d => go({ section: 'rooms', room: roomId, device: d.key })} busy={d => runner.busy.has(d.key)} onHeating={() => go({ section: 'climate' })} onVacuum={() => go({ section: 'cleaning' })} />; }
   const c = roomClimate(home, registry, roomId), inRoom = home.devices.filter(d => d.enabled && d.roomId === roomId);
   const groups: Array<[Kind[], string]> = [[['light'], t('section.lights')], [['climate'], t('section.climate')], [['environment', 'leak', 'opening', 'motion', 'alarm', 'measurement'], t('group.sensors')], [['switch', 'socket', 'fan', 'cover', 'lock', 'valve', 'vacuum', 'media', 'camera', 'alarm_panel', 'energy', 'weather', 'person'], t('section.systems')]];
   return <div className="hm-room-page">

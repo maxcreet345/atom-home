@@ -6,9 +6,10 @@ import type { Registry } from '../model/registry.ts';
 import base from '../styles/base.css?inline';
 import home from '../styles/apple.css?inline';
 import atom from '../styles/atom.css?inline';
+import room from '../styles/room.css?inline';
 /** Isolated preview: a frozen registry + states snapshot, commands rejected and recorded. Used by QA and screenshots. */
 export async function mountPreview(root: HTMLElement, snapshot: Registry, config: unknown, viewport?: { width: number; height: number }) {
-  const style = document.createElement('style'); style.textContent = base + home + atom; document.head.append(style);
+  const style = document.createElement('style'); style.textContent = base + home + atom + room; document.head.append(style);
   const host = previewHost(snapshot);
   host.setAirTasks((window as unknown as { __airTasks?: never }).__airTasks ?? []);
   host.setFeederLog((window as unknown as { __feederLog?: never }).__feederLog ?? null); // QA and the preview server set it before the first draw

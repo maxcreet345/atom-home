@@ -247,3 +247,11 @@ export function HeatingPanel({ h, host, t, lang, now }: { h: Heating; host: Host
     {h.hyst && <Hysteresis h={h} act={act} t={t} lang={lang} ui={ui} />}
   </div>;
 }
+/** One room's head as the panel draws it, for that room's own page (room page mock, 09.11.2026). */
+export function HeatRoomCard({ h, room, host, t, lang, now }: { h: Heating; room: HeatRoom; host: Host; t: T; lang: Lang; now: number }) {
+  const act = heatingActions(h, host), ui = useAct(t);
+  return <RoomCard r={room} h={h} act={act} t={t} lang={lang} now={now} ui={ui} />;
+}
+/** The room's line of the head, in the panel's own words: «Греет до 20,5°», «Окно открыто — ждёт». */
+export function heatRoomWord(r: HeatRoom, t: T, now: number): string { return roomWord(r, t, now); }
+export { setT as heatSetText };
