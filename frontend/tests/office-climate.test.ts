@@ -33,6 +33,12 @@ test('a lost air conditioner turns the card to a warning', () => {
   const { reg, now } = at('lost'), c = readOfficeClimate(reg, now)!;
   assert.equal(c.zones.find(z => z.key === 'servis')!.ac.online, false); assert.equal(officeTone(c), 'warn');
 });
+test('a real thermostat named «termostat_…» (the showcase\'s Moes) is not a zone', () => {
+  const { reg, now } = at('work'), r = structuredClone(reg);
+  r.entities.push({ entity_id: 'climate.termostat_moes_riad_4_mesto_3', device_id: null, area_id: 'spalnia', name: null, original_name: null, platform: 'mqtt', entity_category: null, disabled_by: null, hidden_by: null } as never);
+  r.states['climate.termostat_moes_riad_4_mesto_3'] = { state: 'heat', attributes: { current_temperature: 15, temperature: 20 }, last_changed: '', last_updated: '' } as never;
+  assert.deepEqual(readOfficeClimate(r, now)!.zones.map(z => z.key), ['servis', 'shourum']);
+});
 test('no «Климат · режим» helper or no virtual thermostat: no card', () => {
   const { reg, now } = at('work');
   const noMode = structuredClone(reg); delete noMode.states['input_select.klimat_rezhim'];

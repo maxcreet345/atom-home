@@ -34,7 +34,9 @@ export function readOfficeClimate(reg: Registry, now = Date.now()): OfficeClimat
   const S = reg.states, s = (id: string) => S[id];
   const modeRaw = s('input_select.klimat_rezhim')?.state;
   if (modeRaw === undefined) return null;
-  const thermostats = Object.keys(S).filter(id => /^climate\.termostat_[a-z0-9_]+$/.test(id)).sort();
+  // only the virtual thermostats (Generic Thermostat helpers): a real thermostat may be called «termostat_…» too (the showcase's Moes heads, 09.11.2026)
+  const virtual = new Set(reg.entities.filter(e => e.platform === 'generic_thermostat' && !e.disabled_by).map(e => e.entity_id));
+  const thermostats = Object.keys(S).filter(id => /^climate\.termostat_[a-z0-9_]+$/.test(id) && virtual.has(id)).sort();
   if (!thermostats.length) return null;
   const areaOf = (id: string) => { const e = reg.entities.find(x => x.entity_id === id); return e?.area_id ?? reg.devices.find(d => d.id === e?.device_id)?.area_id ?? null; };
   const areaName = (a: string | null) => reg.areas.find(x => x.area_id === a)?.name ?? null;
