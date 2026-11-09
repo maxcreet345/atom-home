@@ -895,3 +895,13 @@
 .at-oc-seg.is-now>*{padding:0 6px;border-radius:6px;background:rgba(255,255,255,.72)}.hm-shell.ah-shell[data-theme="dark"] .at-oc-seg.is-now>*{background:rgba(0,0,0,.38)}
 .at-oc-seg.is-now>*{opacity:1}.at-oc-seg.is-now.is-work>*{background:#ffe3c7}.at-oc-seg.is-now.is-duty>*{background:#e6e5ff}.at-oc-seg.is-now.is-dayoff>*{background:#eceff4}
 .hm-shell.ah-shell[data-theme="dark"] .at-oc-seg.is-now.is-work>*{background:#6a3f17}.hm-shell.ah-shell[data-theme="dark"] .at-oc-seg.is-now.is-duty>*{background:#33325f}.hm-shell.ah-shell[data-theme="dark"] .at-oc-seg.is-now.is-dayoff>*{background:#363a41}
+/* ---------- Energy: the buildings (Atom + Okapi, 09.11.2026) ---------- */
+.at-ep-buildings h3{margin:0 0 10px;font-size:17px;font-weight:600}
+.at-ep-bld-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.at-ep-bld{display:grid;gap:6px;align-content:start;padding:12px 14px;border-radius:16px;background:#7676800f}
+.at-ep-bld.is-none{opacity:.75}
+.at-ep-bld-name{display:flex;align-items:center;gap:8px;min-width:0}.at-ep-bld-name b{font-size:15px;font-weight:600}.at-ep-bld-name small{margin-left:auto;font-size:12.5px;color:var(--ah-muted);white-space:nowrap}
+.at-ep-bld-num{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;font-size:15px;color:var(--ah-muted)}.at-ep-bld-num b{font-size:26px;font-weight:500;letter-spacing:-.5px;color:var(--ah-ink);font-variant-numeric:tabular-nums}.at-ep-bld-num small{flex-basis:100%;font-size:13px}
+.at-ep-bld-num.is-none{font-size:22px}
+.at-ep-bld-now{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;color:var(--ah-muted);font-variant-numeric:tabular-nums}
+.hm-shell.ah-shell[data-theme="dark"] .at-ep-bld{background:rgba(255,255,255,.06)}

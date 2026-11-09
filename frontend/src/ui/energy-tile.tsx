@@ -8,8 +8,8 @@ import { locales, numFixed, type Lang } from './format.ts';
 /** The owner's tile (08.11.2026): the house now, then today, then this month, rolling over every few seconds and round again.
  * Silent feed: «нет связи» and nothing rolls. A pointer or keyboard focus on it holds the figure still; with reduced motion it never rolls. */
 const EVERY = 4000, MONTH_EVERY = 10 * 60000;
-export function EnergyTile({ devices, boilers, host, t, lang, onClick }: { devices: HomeDevice[]; boilers: Set<string>; host: Host; t: T; lang: Lang; onClick?: () => void }) {
-  const feed = feedPower(devices, boilers), today = feedToday(devices), totals = feedTotalIds(devices), key = totals.join(' ');
+export function EnergyTile({ devices, boilers, host, t, lang, onClick, grid }: { devices: HomeDevice[]; boilers: Set<string>; host: Host; t: T; lang: Lang; onClick?: () => void; /** HA's grid connections (isMains) */ grid?: ReadonlySet<string> }) {
+  const feed = feedPower(devices, boilers, grid), today = feedToday(devices, grid), totals = feedTotalIds(devices, grid), key = totals.join(' ');
   const [month, setMonth] = useState<number | null>(null), [at, setAt] = useState(0), held = useRef(false);
   // the month every 10 minutes while shown; a screen that comes back (no read while hidden) reads at once when that is older or from another day
   useEffect(() => { let alive = true, at = 0; const load = () => { at = Date.now(); void host.energyMonth?.(totals).then(v => { if (alive) setMonth(v); }); }; load();

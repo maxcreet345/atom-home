@@ -1,4 +1,4 @@
-import type { Registry, StateRow, AreaRow, DeviceRow, EntityRow } from '../model/registry.ts';
+import type { Registry, StateRow, AreaRow, DeviceRow, EntityRow, FloorRow } from '../model/registry.ts';
 import type { FeederLog } from '../modules/feeder-log.ts';
 import type { AirTask } from '../model/air.ts';
 import { previewStatistic, previewStatistics, type PreviewStats } from './preview-stats.ts';
@@ -31,7 +31,7 @@ export async function withinPeriod(read: StatRead, ids: string[], start: number,
   return out;
 }
 export interface Host {
-  registry(): Promise<Pick<Registry, 'areas' | 'devices' | 'entities'>>;
+  registry(): Promise<Pick<Registry, 'areas' | 'devices' | 'entities' | 'floors'>>;
   states(): Record<string, StateRow>;
   call(domain: string, service: string, data: Record<string, unknown>): Promise<void>;
   history?(entityIds: string[], hours: number): Promise<Record<string, Array<[number, number]>>>;
@@ -70,10 +70,12 @@ export function liveHost(current: () => Hass): Host {
     get online() { return current().connected !== false; },
     states: () => current().states,
     async registry() {
-      const [areas, devices, entities] = await Promise.all([
+      const [areas, devices, entities, floors] = await Promise.all([
         current().callWS<AreaRow[]>({ type: 'config/area_registry/list' }), current().callWS<Array<Record<string, unknown>>>({ type: 'config/device_registry/list' }), current().callWS<Array<Record<string, unknown>>>({ type: 'config/entity_registry/list' }),
+        // the floors only name the buildings of the Energy panel: an HA that will not say (older, no floors) is one building, never a failed load
+        current().callWS<FloorRow[]>({ type: 'config/floor_registry/list' }).catch(() => [] as FloorRow[]),
       ]);
-      return { areas, devices: devices.map(d => ({ id: String(d.id), name: ((d.name_by_user ?? d.name) as string | null) ?? null, model: (d.model as string | null) ?? null, manufacturer: (d.manufacturer as string | null) ?? null, area_id: (d.area_id as string | null) ?? null, entry_type: (d.entry_type as string | null) ?? null, disabled_by: (d.disabled_by as string | null) ?? null, via_device_id: (d.via_device_id as string | null) ?? null } satisfies DeviceRow)), entities: entities.map(toRow) };
+      return { areas, devices: devices.map(d => ({ id: String(d.id), name: ((d.name_by_user ?? d.name) as string | null) ?? null, model: (d.model as string | null) ?? null, manufacturer: (d.manufacturer as string | null) ?? null, area_id: (d.area_id as string | null) ?? null, entry_type: (d.entry_type as string | null) ?? null, disabled_by: (d.disabled_by as string | null) ?? null, via_device_id: (d.via_device_id as string | null) ?? null } satisfies DeviceRow)), entities: entities.map(toRow), floors };
     },
     async call(domain, service, data) { await current().callService(domain, service, data); },
     ws: <T,>(message: Record<string, unknown>) => current().callWS<T>(message),

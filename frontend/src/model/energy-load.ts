@@ -7,7 +7,7 @@ const HOUR = 3600000, DAY = 24 * HOUR, FIVE = 300000;
 /** The start of the statistics row of `period` just before `t` (an hour, a day, a month). */
 const unitBefore = (period: StatPeriod, t: number): number => { if (period === 'hour') return t - HOUR; if (period === '5minute') return t - FIVE; const d = new Date(t); if (period === 'month') d.setMonth(d.getMonth() - 1); else d.setDate(d.getDate() - (period === 'week' ? 7 : 1)); return d.getTime(); };
 /** One SPM channel: its power now, the running total the statistics count, and the network readings of the same input. */
-export interface Channel { key: string; name: string; short: string; charger: boolean; power: EntityRef; energy: string; voltage: EntityRef | null; current: EntityRef | null; pf: EntityRef | null }
+export interface Channel { key: string; name: string; short: string; charger: boolean; power: EntityRef; energy: string; /** the running total HA's Energy settings name */ total: string | null; /** the room of the meter: its floor is the building */ areaId: string | null; voltage: EntityRef | null; current: EntityRef | null; pf: EntityRef | null }
 const METRIC_WORD = /^(мощность|power|putere|energy|энергия|energie)$/i;
 /** «Подъезд · Квартира 8 (ввод) · мощность» → «Квартира 8»: the last part that is neither the place nor the reading, without the remark in brackets. */
 export function channelName(raw: string): string {
@@ -18,30 +18,34 @@ export const shortName = (name: string): string => { const m = name.match(/^(к�
 const CHARGER = /заряд|charg|încărc|wallbox|\bev\b|_ev(_|$)/i;
 /** The house feed's channels: every electric power reading of the SPM that has its running total beside it (Tasmota: `<stem>_power` and
  * `<stem>_energy_total`; the old eWeLink one: `…_power_N` and `…_energy_N`). A channel switched off in HA has no readings and is not here. */
-export function channels(devices: HomeDevice[], boilers: Set<string>): Channel[] {
-  const mains = devices.filter(isMains), every = mains.flatMap(d => [...d.metrics, ...d.parameters, ...d.diagnostics]), out: Channel[] = [];
-  for (const d of mains) for (const p of d.metrics.filter(m => isElectric(m, d, boilers))) {
+export function channels(devices: HomeDevice[], boilers: Set<string>, grid?: ReadonlySet<string>): Channel[] {
+  const mains = devices.filter(d => isMains(d, grid)), every = mains.flatMap(d => [...d.metrics, ...d.parameters, ...d.diagnostics]), out: Channel[] = [];
+  // each device's own readings: five POWs share one naming, and `tasmota_energy_today` of the first must not answer for the others
+  for (const d of mains) { const powers = d.metrics.filter(m => isElectric(m, d, boilers)), own = [...d.metrics, ...d.parameters, ...d.diagnostics]; for (const p of powers) {
     const m = p.id.match(/^(.*)_power(_\d+)?$/); if (!m) continue;
-    const stem = m[1], idx = m[2] ?? '', find = (cls: string, ends: string[]) => every.find(x => x.deviceClass === cls && ends.some(e => x.id === stem + e + idx || x.id === stem + e)) ?? null;
+    // Tasmota POW names its readings `<dev>_energy_power`, `<dev>_energy_today`, `<dev>_energy_total`: the stem without its `_energy` is tried too
+    const stem = m[1], idx = m[2] ?? '', stems = [stem, ...(/_energy$/.test(stem) ? [stem.replace(/_energy$/, '')] : [])];
+    const find = (cls: string, ends: string[]) => own.find(x => x.deviceClass === cls && stems.some(st => ends.some(e => x.id === st + e + idx || x.id === st + e))) ?? every.find(x => x.deviceClass === cls && stems.some(st => ends.some(e => x.id === st + e + idx))) ?? null;
     // the daily counter first (live check 09.11.2026): HA's statistics put a meter's whole running total into its first day (apartment 9:
     // 699,5 kWh on 01.11) and count a meter that restarts from zero as fresh use; a counter that resets every midnight bounds both by one day
-    const energy = find('energy', ['_energy_today']) ?? find('energy', ['_energy_total', '_energy']); if (!energy) continue;
-    const name = channelName(p.name);
-    out.push({ key: stem.replace(/^sensor\./, '') + idx, name, short: shortName(name), charger: CHARGER.test(`${name} ${p.id}`), power: p, energy: energy.id, voltage: find('voltage', ['_voltage']), current: find('current', ['_current']), pf: find('power_factor', ['_power_factor']) });
-  }
+    const energy = find('energy', ['_energy_today', '_energy_day']) ?? find('energy', ['_energy_total', '_energy']); if (!energy) continue;
+    // a meter with one input is named as a device (a Tasmota POW, «Пайка»); the SPM's channels keep their own names
+    const name = channelName(powers.length === 1 ? d.name : p.name), total = find('energy', ['_energy_total', '_energy', '_energy_year']);
+    out.push({ key: stem.replace(/^sensor\./, '') + idx, name, short: shortName(name), charger: CHARGER.test(`${name} ${p.id}`), power: p, energy: energy.id, total: total?.id ?? null, areaId: d.roomId ?? null, voltage: find('voltage', ['_voltage']), current: find('current', ['_current']), pf: find('power_factor', ['_power_factor']) });
+  } }
   // the charger on top, the apartments below it with the higher number first: the order the owner saw on the mock and keeps the colours fixed
   return out.sort((a, b) => Number(a.charger) - Number(b.charger) || b.name.localeCompare(a.name, undefined, { numeric: true }));
 }
 export interface Meter { key: string; id: string; name: string; room: string; feed: string | null }
 /** The devices with their own energy counter, picked one counter each (the running total if there is one, never «yesterday» or an estimate),
  * leaving out the SPM, the gas boiler and a plug that HA's Energy settings list as holding other plugs (it would count them twice). */
-export function meters(devices: HomeDevice[], boilers: Set<string>, opts: { name: (d: HomeDevice) => string; room: (d: HomeDevice) => string; feed: (d: HomeDevice) => string | null; parents?: Set<string>; listed?: Set<string> }): Meter[] {
+export function meters(devices: HomeDevice[], boilers: Set<string>, opts: { name: (d: HomeDevice) => string; room: (d: HomeDevice) => string; feed: (d: HomeDevice) => string | null; parents?: Set<string>; listed?: Set<string>; grid?: ReadonlySet<string> }): Meter[] {
   const out: Meter[] = [];
   // the list decides only in a room where it names a device: the owner's list (08.11.2026) leaves the office plugs out, and they still count
-  const listedRooms = new Set(opts.listed?.size ? devices.filter(d => d.metrics.some(m => opts.listed!.has(m.id) && !/_est(_\d+)?$/i.test(m.id)) && !isMains(d)).map(d => d.roomId) : []);
+  const listedRooms = new Set(opts.listed?.size ? devices.filter(d => d.metrics.some(m => opts.listed!.has(m.id) && !/_est(_\d+)?$/i.test(m.id)) && !isMains(d, opts.grid)).map(d => d.roomId) : []);
   const daily = (d: HomeDevice) => d.metrics.find(m => m.deviceClass === 'energy' && /_energy_today$|_today_energy$/i.test(m.id) && !/output/i.test(m.id) && (m.attributes.state_class === 'total_increasing' || m.attributes.state_class === undefined));
   for (const d of devices) {
-    if (isMains(d) || (d.haDeviceId !== null && boilers.has(d.haDeviceId))) continue;
+    if (isMains(d, opts.grid) || (d.haDeviceId !== null && boilers.has(d.haDeviceId))) continue;
     // a parent plug is left out whole: dropping only the counter HA names would let its other one (`energy_period`, `energy_today`) in
     if (opts.parents && d.metrics.some(m => opts.parents!.has(m.id))) continue;
     // live check 08.11.2026: the dryer reports its own energy and its socket does too. When HA's Energy settings list the devices (the owner
@@ -63,11 +67,21 @@ export function meterName(raw: string): string {
 }
 /** HA's Energy settings (owner, 09.11.2026: «it should take them automatically»): the grid connections pick the SPM channels the panel
  * shows (a connection's counter names its channel: `sensor.<channel>_energy_total`), and a static or entity price is the tariff. */
-export interface EnergyPrefs { energy_sources?: Array<{ type?: string; stat_energy_from?: string | null; number_energy_price?: number | null; entity_energy_price?: string | null }>; device_consumption?: Array<{ stat_consumption?: string; included_in_stat?: string }> }
+/** HA's grid connections: the counters that make a device a feed (isMains). */
+export const gridIds = (prefs: EnergyPrefs | null | undefined): Set<string> => new Set((prefs?.energy_sources ?? []).filter(s => s.type === 'grid' && s.stat_energy_from).map(s => s.stat_energy_from!));
+/** The feed a metered device is inside, as HA's Energy settings nest it («upstream device»): the channel whose counter it is included in. */
+export function feedOfStat(chs: Channel[], prefs: EnergyPrefs | null | undefined, ids: string[]): string | null {
+  const e = (prefs?.device_consumption ?? []).find(x => x.included_in_stat && x.stat_consumption && ids.includes(x.stat_consumption)); if (!e) return null;
+  return chs.find(c => c.total === e.included_in_stat || c.energy === e.included_in_stat)?.key ?? null;
+}
+/** The name HA's Energy settings give a metered device (the owner names them there), if any. */
+export const prefName = (prefs: EnergyPrefs | null | undefined, ids: string[]): string | null => (prefs?.device_consumption ?? []).find(x => x.stat_consumption && ids.includes(x.stat_consumption) && (x as { name?: string }).name)?.name ?? null;
+export interface EnergyPrefs { energy_sources?: Array<{ type?: string; stat_energy_from?: string | null; number_energy_price?: number | null; entity_energy_price?: string | null }>; device_consumption?: Array<{ stat_consumption?: string; included_in_stat?: string; name?: string }> }
 export function prefChannels(chs: Channel[], prefs: EnergyPrefs | null): Channel[] {
   const grid = (prefs?.energy_sources ?? []).filter(s => s.type === 'grid' && s.stat_energy_from).map(s => s.stat_energy_from!);
   if (!grid.length) return chs;
-  const picked = chs.filter(c => grid.some(id => id === c.energy || id.startsWith(`sensor.${c.key}_`)));
+  // the counter itself (a POW's running total) first: `tasmota_energy` would otherwise prefix every `tasmota_energy_total_N`
+  const picked = chs.filter(c => grid.some(id => id === c.energy || id === c.total)).length ? chs.filter(c => grid.some(id => id === c.energy || id === c.total)) : chs.filter(c => grid.some(id => id.startsWith(`sensor.${c.key}_`)));
   return picked.length ? picked : chs;
 }
 export function prefTariff(prefs: EnergyPrefs | null, state: (id: string) => string | undefined): number | null {
@@ -215,7 +229,8 @@ export async function loadReport(host: Host, x: LoadInput): Promise<EnergyReport
   const silentSince = silentNow && upTo - covered > 15 * 60000 ? covered : null;
   const whole0 = !!cover && Object.values(cover).some(rows => rows.some(r => r.start <= prev.start));
   const previous = whole0 && before.every(b => typeof b === 'number') ? Object.fromEntries(chs.map((c, i) => [c.key, Math.max(0, before[i] as number)])) : null;
-  const lo = (id?: string) => { const v = (id ? mm[id] ?? [] : []).map(r => r.min).filter((n): n is number => typeof n === 'number'); return v.length ? Math.min(...v) : null; }, hi = (id?: string) => { const v = (id ? mm[id] ?? [] : []).map(r => r.max).filter((n): n is number => typeof n === 'number'); return v.length ? Math.max(...v) : null; };
+  // a meter that lost power reads 0 V (a POW behind a tripped breaker, Atom + Okapi 09.11.2026): that is no reading, not a mains dip to zero
+  const lo = (id?: string) => { const v = (id ? mm[id] ?? [] : []).map(r => r.min).filter((n): n is number => typeof n === 'number' && n >= 50); return v.length ? Math.min(...v) : null; }, hi = (id?: string) => { const v = (id ? mm[id] ?? [] : []).map(r => r.max).filter((n): n is number => typeof n === 'number'); return v.length ? Math.max(...v) : null; };
   const now = (m: EntityRef | null) => m && m.available && Number.isFinite(Number(m.state)) ? Number(m.state) : null;
   const network: FeedNetwork[] = net.map(c => ({ feed: c.key, volts: x.offset === 0 ? now(c.voltage) : null, voltsMin: lo(c.voltage!.id), voltsMax: hi(c.voltage!.id), amps: x.offset === 0 ? now(c.current) : null, ampsMax: hi(c.current?.id), pf: x.offset === 0 ? now(c.pf) : null }));
   const sessions: Session[] | null = !charger ? null : x.sessions !== undefined ? x.sessions : chargerRows ? sessionsOf(chargerRows[charger.power.id] ?? [], fine ? 300000 : HOUR) : null;
