@@ -49,11 +49,12 @@ for (const theme of ['light', 'dark']) for (const [w, h, dev] of [[360, 792, '13
   check(`errors ${tag}`, !errors.length, errors); await ctx.close();
 }
 // 2. every scenario, three languages: the words it must say
+// the feed reads HA's logbook (a WebSocket read), the device cards open in place
 const SAY = { triggered: /Тревога!/, leak: /Протечка!/, gas: /Утечка газа!/, vacation: /Отпуск/, arming: /Постановка/, pending: /Вход/, guard: /Охрана/, away: /Не дома/, disarmed: /Снято с охраны/ };
 for (const scenario of SCEN) for (const lang of ['ru', 'en', 'ro']) {
   const { page, ctx, errors } = await open({ lang, scenario }), tag = `${scenario}/${lang}`;
   const l = await layout(page, '.at-sec-panel'); check(`layout ${tag}`, !l.length, l); check(`errors ${tag}`, !errors.length, errors);
-  const text = await page.locator('.at-sec-hero').innerText();
+  const text = await page.locator('.at-osec-control').innerText();
   if (lang === 'ru' && SAY[scenario]) check(`says it ${tag}`, SAY[scenario].test(text), text.slice(0, 120));
   check(`no raw keys ${tag}`, !/\bsec\.[a-z]/.test(await page.locator('.at-sec-panel').innerText()));
   await ctx.close();
@@ -63,14 +64,15 @@ const tapSends = async (scenario, sel, want, label) => {
   const { page, ctx, errors } = await open({ scenario }); await page.evaluate(() => window.atomPreview.host.setAccept(true));
   await page.locator(sel).first().click(); await page.waitForTimeout(300);
   const l = await page.evaluate(() => window.atomPreview.host.log.filter(x => x.domain !== 'ws').map(x => ({ c: `${x.domain}.${x.service}`, id: x.data?.entity_id })));
-  check(`${label} sends ${want}`, l.length === 1 && l[0].c === want, l); check(`errors ${label}`, !errors.length, errors); await ctx.close();
+  check(`${label} sends ${want || 'nothing'}`, want ? l.length === 1 && l[0].c === want : l.length === 0, l); check(`errors ${label}`, !errors.length, errors); await ctx.close();
 };
-await tapSends('disarmed', '.at-sec-main', 'alarm_control_panel.alarm_arm_home', 'arm button');
-await tapSends('away', '.at-sec-main', 'alarm_control_panel.alarm_disarm', 'disarm button');
-await tapSends('disarmed', '.at-sec-mode.is-switch >> nth=0', 'input_boolean.turn_on', 'guests switch');
-await tapSends('disarmed', '.at-sec-mode.is-switch >> nth=1', 'alarm_control_panel.alarm_arm_vacation', 'vacation switch on');
-await tapSends('vacation', '.at-sec-mode.is-switch >> nth=1', 'alarm_control_panel.alarm_disarm', 'vacation switch off');
-await tapSends('leak', '.at-sec-valve .hm-pill', 'valve.open_valve', 'valve button');
+await tapSends('disarmed', '.at-osec-key >> nth=0', 'alarm_control_panel.alarm_arm_home', 'arm key');
+await tapSends('away', '.at-osec-key >> nth=1', 'alarm_control_panel.alarm_disarm', 'disarm key');
+await tapSends('disarmed', '.at-osec-group.is-btn >> nth=0', 'input_boolean.turn_on', 'guests switch');
+await tapSends('disarmed', '.at-osec-group.is-btn >> nth=1', 'alarm_control_panel.alarm_arm_vacation', 'vacation switch on');
+await tapSends('vacation', '.at-osec-group.is-btn >> nth=1', 'alarm_control_panel.alarm_disarm', 'vacation switch off');
+await tapSends('leak', '.at-sec-valve-btn', 'valve.open_valve', 'valve button');
+await tapSends('disarmed', '.at-osec-dev-hit >> nth=1', '', 'device card opens without a command');
 await tapSends('disarmed', '.at-sec-set .at-sec-sw-btn >> nth=0', 'input_boolean.turn_off', 'exercise switch');
 // 4. the settings: the vacation list edits the label in the registry; a refusal shows, the switch stays as it was
 { const { page, ctx } = await open({ scenario: 'disarmed' });

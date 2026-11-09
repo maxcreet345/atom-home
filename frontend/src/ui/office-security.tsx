@@ -24,7 +24,7 @@ export function Ring({ kind, size = 120, progress = 0, tone }: { kind: RingKind;
   </svg>;
 }
 /** The devices drawn plainly, like Ajax's product pictures: a door contact, a motion sensor, a smoke disc, a presence dome, the hub. */
-function Art({ kind, maker }: { kind: OsecItem['kind'] | 'hub'; maker: OsecItem['maker'] }) {
+export function Art({ kind, maker }: { kind: OsecItem['kind'] | 'hub'; maker: OsecItem['maker'] }) {
   const led = maker === 'ajax' ? <rect x="21" y="16" width="6" height="1.6" rx=".8" className="is-led" /> : null;
   return <svg className="at-osec-art" viewBox="0 0 64 64" aria-hidden="true">
     {kind === 'door' || kind === 'window' ? <>
@@ -36,10 +36,10 @@ function Art({ kind, maker }: { kind: OsecItem['kind'] | 'hub'; maker: OsecItem[
             : <><rect x="11" y="11" width="42" height="42" rx="12" className="is-body" /><rect x="25" y="31" width="14" height="1.6" rx=".8" className="is-inner" /></>}
   </svg>;
 }
-const Bars = ({ v }: { v: OsecItem['signal'] }) => { const n = v === 'strong' ? 3 : v === 'normal' ? 2 : v === 'weak' ? 1 : 0; return <svg width="18" height="16" viewBox="0 0 18 16" aria-hidden="true" className={`at-osec-bars ${n === 1 ? 'is-weak' : ''}`}>{[0, 1, 2].map(i => <rect x={2 + i * 6} y={11 - i * 4} width="3" height={4 + i * 4} rx="1" className={i < n ? 'is-on' : ''} />)}</svg>; };
-const Battery = ({ v }: { v: number | null }) => <svg width="12" height="18" viewBox="0 0 12 18" aria-hidden="true" className={`at-osec-batt ${v !== null && v <= 20 ? 'is-low' : ''}`}><rect x="1" y="3" width="10" height="14" rx="2" className="is-case" /><rect x="4" y="1" width="4" height="2" rx=".5" className="is-cap" /><rect x="3" y={5 + 10 * (1 - (v ?? 0) / 100)} width="6" height={10 * (v ?? 0) / 100} rx="1" className="is-level" /></svg>;
-const Chevron = () => <svg className="at-osec-chev" width="14" height="22" viewBox="0 0 14 22" aria-hidden="true"><path d="m3 3 8 8-8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>;
-const Case = () => <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" className="at-osec-case"><path d="M4 3h6M4 3v12h10V8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>;
+export const Bars = ({ v }: { v: OsecItem['signal'] }) => { const n = v === 'strong' ? 3 : v === 'normal' ? 2 : v === 'weak' ? 1 : 0; return <svg width="18" height="16" viewBox="0 0 18 16" aria-hidden="true" className={`at-osec-bars ${n === 1 ? 'is-weak' : ''}`}>{[0, 1, 2].map(i => <rect x={2 + i * 6} y={11 - i * 4} width="3" height={4 + i * 4} rx="1" className={i < n ? 'is-on' : ''} />)}</svg>; };
+export const Battery = ({ v }: { v: number | null }) => <svg width="12" height="18" viewBox="0 0 12 18" aria-hidden="true" className={`at-osec-batt ${v !== null && v <= 20 ? 'is-low' : ''}`}><rect x="1" y="3" width="10" height="14" rx="2" className="is-case" /><rect x="4" y="1" width="4" height="2" rx=".5" className="is-cap" /><rect x="3" y={5 + 10 * (1 - (v ?? 0) / 100)} width="6" height={10 * (v ?? 0) / 100} rx="1" className="is-level" /></svg>;
+export const Chevron = () => <svg className="at-osec-chev" width="14" height="22" viewBox="0 0 14 22" aria-hidden="true"><path d="m3 3 8 8-8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>;
+export const Case = () => <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" className="at-osec-case"><path d="M4 3h6M4 3v12h10V8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>;
 function stateWord(s: OfficeSecurity, t: T): string { return smokeNow(s) ? ok(t, 'st.smoke') : ok(t, `st.${s.alarm.state}`); }
 /** One sentence under the state: the worst thing first. */
 function sentence(s: OfficeSecurity, t: T): string {
@@ -57,7 +57,7 @@ function sentence(s: OfficeSecurity, t: T): string {
   if (open.length) return open.length === 1 ? ok(t, open[0].kind === 'window' ? 'say.open1w' : 'say.open1', { what: open[0].name }) : ok(t, 'say.openN', { n: open.length });
   return s.alarm.state === 'armed' ? ok(t, 'say.armed') : ok(t, 'say.closed');
 }
-function useBusy() {
+export function useBusy() {
   const [busy, setBusy] = useState<string | null>(null), [err, setErr] = useState('');
   const run = async (k: string, f: () => Promise<unknown>) => { setBusy(k); setErr(''); try { await f(); } catch (e) { setErr(e instanceof Error ? e.message : String(e)); } finally { setBusy(null); } };
   return { busy, err, run };
@@ -130,7 +130,7 @@ export function OfficeSecurityPanel({ s, host, t, lang, now, admin, title }: { s
     {admin && <StaffSettings s={s} host={host} t={t} />}
   </div></div>;
 }
-function Row({ k, v, bad }: { k: string; v: string; bad?: boolean | 'warn' }) { return <div className="at-osec-row"><small>{k}</small><b className={bad === 'warn' ? 'is-warn' : bad ? 'is-bad' : ''}>{v}</b></div>; }
+export function Row({ k, v, bad }: { k: string; v: string; bad?: boolean | 'warn' }) { return <div className="at-osec-row"><small>{k}</small><b className={bad === 'warn' ? 'is-warn' : bad ? 'is-bad' : ''}>{v}</b></div>; }
 /** Ajax's device screen: a row per reading. */
 function DevRows({ i, t, lang }: { i: OsecItem; t: T; lang: Lang }) {
   const sensor = i.kind === 'door' || i.kind === 'window' ? ok(t, 'row.contact') : i.kind === 'motion' ? ok(t, 'row.motion') : i.kind === 'presence' ? ok(t, 'row.presence') : ok(t, 'row.smoke');
@@ -169,11 +169,13 @@ function HubCard({ s, t, open, onToggle }: { s: OfficeSecurity; t: T; open: bool
   </div>;
 }
 /** The feed of the last week from HA's logbook (Ajax's «Уведомления»): by day, a ring and the time, who did it. */
-function Feed({ s, host, t, lang }: { s: OfficeSecurity; host: Host; t: T; lang: Lang }) {
+function Feed({ s, host, t, lang }: { s: OfficeSecurity; host: Host; t: T; lang: Lang }) { return <SecurityFeed alarmId={s.alarm.id} alarmState={s.alarm.state} people={s.people} host={host} t={t} lang={lang} />; }
+/** The feed of any Alarmo panel (the office's master, the house's own); `armed` names the mode («Не дома», «Отпуск») where the house has several. */
+export function SecurityFeed({ alarmId, alarmState, people, host, t, lang, armed }: { alarmId: string; alarmState: string; people: Array<{ user: string | null; name: string }>; host: Host; t: T; lang: Lang; armed?: (mode: string | undefined) => string }) {
   const [rows, setRows] = useState<OsecEvent[] | null>(null), [kind, setKind] = useState<'all' | 'alarm' | 'mode'>('all');
   useEffect(() => { let alive = true; const start = new Date(Date.now() - 7 * 864e5).toISOString();
-    host.ws?.<LogRow[]>({ type: 'logbook/get_events', start_time: start, entity_ids: [s.alarm.id] }).then(r => { if (alive) setRows(readOsecEvents(Array.isArray(r) ? r : [], s.alarm.id, s.people)); }, () => { if (alive) setRows([]); });
-    return () => { alive = false; }; }, [host, s.alarm.id, s.alarm.state]);
+    host.ws?.<LogRow[]>({ type: 'logbook/get_events', start_time: start, entity_ids: [alarmId] }).then(r => { if (alive) setRows(readOsecEvents(Array.isArray(r) ? r : [], alarmId, people)); }, () => { if (alive) setRows([]); });
+    return () => { alive = false; }; }, [host, alarmId, alarmState]);
   const list = (rows ?? []).filter(e => kind === 'all' || (kind === 'alarm' ? e.kind === 'triggered' || e.kind === 'pending' : e.kind === 'armed' || e.kind === 'disarmed')).slice(0, 12);
   const day = (ms: number) => { const d = new Date(ms), today = new Date(); const y = new Date(today); y.setDate(today.getDate() - 1); return d.toDateString() === today.toDateString() ? ok(t, 'today') : d.toDateString() === y.toDateString() ? ok(t, 'yesterday') : d.toLocaleDateString(locales[lang], { day: 'numeric', month: 'long' }); };
   let last = '';
@@ -185,7 +187,7 @@ function Feed({ s, host, t, lang }: { s: OfficeSecurity; host: Host; t: T; lang:
         {head && <h3>{d}</h3>}
         <div className={`at-osec-ev is-${e.kind}`}>
           <span className="at-osec-ev-top"><Ring kind={e.kind === 'armed' ? 'closed' : e.kind === 'disarmed' ? 'open' : 'alert'} size={22} tone={e.kind === 'triggered' ? 'alarm' : e.kind === 'pending' ? 'warn' : 'off'} /><small>{hm(e.when, lang)}</small></span>
-          <b>{ok(t, `ev.${e.kind}`)}{e.via === 'user' && e.by ? ` · ${e.by}` : e.via === 'ajax' ? ` · ${ok(t, 'ev.ajax')}` : e.via === 'automation' ? ` · ${ok(t, 'ev.auto')}` : ''}</b>
+          <b>{e.kind === 'armed' && armed ? armed(e.mode) : ok(t, `ev.${e.kind}`)}{e.via === 'user' && e.by ? ` · ${e.by}` : e.via === 'ajax' ? ` · ${ok(t, 'ev.ajax')}` : e.via === 'automation' ? ` · ${ok(t, 'ev.auto')}` : ''}</b>
           {e.via && <span className="at-osec-ev-who" aria-hidden="true">{e.via === 'user' && e.by ? e.by.split(/\s+/).map(w => w[0]).slice(0, 2).join('') : e.via === 'ajax' ? 'A' : '⚙'}</span>}
         </div></>; })}</div>}
   </section>;

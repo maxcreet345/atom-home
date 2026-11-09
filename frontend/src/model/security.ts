@@ -6,14 +6,16 @@ export type AlarmState = 'disarmed' | 'arming' | 'pending' | 'triggered' | 'away
 /** Alarmo's modes as the owner named them: «Не дома» is armed_away (set and cleared by presence), the manual «Охрана» is armed_home (no inside
  * sensors here, so the same door and windows; cleared only by hand), «Отпуск» armed_vacation. */
 const MODE: Record<string, AlarmState> = { disarmed: 'disarmed', arming: 'arming', pending: 'pending', triggered: 'triggered', armed_away: 'away', armed_home: 'guard', armed_night: 'guard', armed_custom_bypass: 'guard', armed_vacation: 'vacation' };
-export interface Guarded { id: string; name: string; room: string; kind: 'door' | 'window'; open: boolean | null; since: number | null; tamper: boolean | null; bypassed: boolean }
-export interface Hazard { id: string; name: string; room: string; /** where in the room, from the device's name: «котёл», «раковина» */ spot: string | null; kind: 'gas' | 'leak'; alarm: boolean | null; since: number | null }
+/** what the device itself says, for the Ajax-like device card: battery, radio, the maker for the picture */
+export interface DevInfo { level: number | null; low: boolean; signal: 'strong' | 'normal' | 'weak' | null; maker: 'ajax' | 'zigbee' | 'other'; model: string | null }
+export interface Guarded extends DevInfo { id: string; name: string; room: string; kind: 'door' | 'window'; open: boolean | null; since: number | null; tamper: boolean | null; bypassed: boolean }
+export interface Hazard extends DevInfo { id: string; name: string; room: string; /** where in the room, from the device's name: «котёл», «раковина» */ spot: string | null; kind: 'gas' | 'leak'; alarm: boolean | null; since: number | null }
 export interface Security {
   alarm: { id: string; state: AlarmState; since: number | null; arming: string | null; bypassed: string[]; changedBy: string | null; delayEnds: number | null };
   guests: { id: string; on: boolean } | null;
   vacation: { id: string; on: boolean; from: string | null; to: string | null; /** the return date's helper, set from the panel */ toId: string | null } | null;
   guarded: Guarded[]; hazards: Hazard[];
-  valve: { id: string; name: string; state: 'open' | 'closed' | 'moving' | 'unknown' } | null;
+  valve: { id: string; name: string; room: string; state: 'open' | 'closed' | 'moving' | 'unknown' } | null;
   /** the valve's weekly exercise: on/off, the time and every how many days (input_boolean/_time/_days, Настройка) */
   exercise: { id: string; on: boolean; time: string | null; timeId: string | null; days: number | null; daysId: string | null } | null;
   /** the house's sockets and what «Отпуск» turns off: the label «Отпуск: выключать» on the switch (owner: everything but the fridge, a list to keep) */
@@ -27,6 +29,16 @@ export function readSecurity(reg: Registry, config?: HouseConfig): Security | nu
   const S = reg.states, ents = reg.entities, devs = reg.devices, areas = reg.areas;
   const areaOf = (id: string) => { const e = ents.find(x => x.entity_id === id), d = e?.device_id ? devs.find(x => x.id === e.device_id) : null; return e?.area_id ?? d?.area_id ?? null; };
   const roomOf = (id: string) => areas.find(x => x.area_id === areaOf(id))?.name ?? '';
+  // the device's battery and radio: Zigbee2MQTT's linkquality (0–255) or Xiaomi's signal_strength (dBm)
+  const info = (id: string): DevInfo => {
+    const e = ents.find(x => x.entity_id === id), d = e?.device_id ? devs.find(x => x.id === e.device_id) : null;
+    const sibs = e?.device_id ? ents.filter(x => x.device_id === e.device_id && S[x.entity_id]).map(x => x.entity_id) : [];
+    const val = (re: RegExp) => { const k = sibs.find(x => re.test(x)); const v = k ? Number(S[k].state) : NaN; return k && Number.isFinite(v) ? v : null; };
+    const lq = val(/^sensor\..*_linkquality$/), dbm = val(/^sensor\..*_(signal_strength|rssi)$/);
+    const signal = lq !== null ? (lq >= 120 ? 'strong' : lq >= 60 ? 'normal' : 'weak') : dbm !== null ? (dbm >= -65 ? 'strong' : dbm >= -80 ? 'normal' : 'weak') : null;
+    const lowId = sibs.find(x => /^binary_sensor\..*_battery_low$/.test(x));
+    return { level: val(/^sensor\..*_battery$/), low: !!lowId && S[lowId].state === 'on', signal, maker: /ajax/i.test(d?.manufacturer ?? '') ? 'ajax' : e?.platform === 'mqtt' || /zigbee|xiaomi|sonoff|tuya|aqara/i.test(`${d?.manufacturer ?? ''} ${d?.model ?? ''}`) ? 'zigbee' : 'other', model: d?.model ?? null };
+  };
   // what the owner hid in HA or in the panel's own settings (a hidden room, a hidden device — Okapi's showroom exhibits) is not the house's security
   const live = (id: string) => { const e = ents.find(x => x.entity_id === id), area = areaOf(id); return !e?.disabled_by && !e?.hidden_by && !config?.entities[id]?.hidden && !(area && config?.rooms[area]?.hidden); };
   // Alarmo's own panel, never a hub's or an exhibit's; with several Alarmo areas, its master panel
@@ -39,9 +51,9 @@ export function readSecurity(reg: Registry, config?: HouseConfig): Security | nu
   const bypassed = Array.isArray(a.attributes.bypassed_sensors) ? (a.attributes.bypassed_sensors as string[]) : [];
   const guarded: Guarded[] = Object.keys(S).filter(id => id.startsWith('binary_sensor.') && live(id) && ['door', 'window', 'opening'].includes(String(S[id].attributes.device_class))).map(id => {
     const stem = id.replace(/_contact$/, ''), tamperId = `${stem}_tamper`;
-    return { id, name: tidy(id), room: roomOf(id), kind: (S[id].attributes.device_class === 'door' || /door/.test(id) ? 'door' : 'window') as Guarded['kind'], open: on(S[id].state), since: ts(S[id].last_changed), tamper: S[tamperId] ? on(S[tamperId].state) : null, bypassed: bypassed.includes(id) };
+    return { ...info(id), id, name: tidy(id), room: roomOf(id), kind: (S[id].attributes.device_class === 'door' || /door/.test(id) ? 'door' : 'window') as Guarded['kind'], open: on(S[id].state), since: ts(S[id].last_changed), tamper: S[tamperId] ? on(S[tamperId].state) : null, bypassed: bypassed.includes(id) };
   }).sort((x, y) => Number(y.kind === 'door') - Number(x.kind === 'door') || x.room.localeCompare(y.room) || x.name.localeCompare(y.name));
-  const hazards: Hazard[] = Object.keys(S).filter(id => id.startsWith('binary_sensor.') && live(id) && ['gas', 'moisture', 'smoke', 'carbon_monoxide'].includes(String(S[id].attributes.device_class))).map(id => ({ id, name: tidy(id), room: roomOf(id), spot: (String(S[id].attributes.friendly_name ?? '').match(/\(([^)]+)\)/)?.[1] ?? '').replace(/^(tuya|ts\d+|zigbee).*$/i, '') || null, kind: (S[id].attributes.device_class === 'moisture' ? 'leak' : 'gas') as Hazard['kind'], alarm: on(S[id].state), since: ts(S[id].last_changed) }));
+  const hazards: Hazard[] = Object.keys(S).filter(id => id.startsWith('binary_sensor.') && live(id) && ['gas', 'moisture', 'smoke', 'carbon_monoxide'].includes(String(S[id].attributes.device_class))).map(id => ({ ...info(id), id, name: tidy(id), room: roomOf(id), spot: (String(S[id].attributes.friendly_name ?? '').match(/\(([^)]+)\)/)?.[1] ?? '').replace(/^(tuya|ts\d+|zigbee).*$/i, '') || null, kind: (S[id].attributes.device_class === 'moisture' ? 'leak' : 'gas') as Hazard['kind'], alarm: on(S[id].state), since: ts(S[id].last_changed) }));
   const valveId = Object.keys(S).find(id => id.startsWith('valve.') && live(id));
   const vs = valveId ? S[valveId].state : '';
   const pick = (...names: string[]) => names.find(id => S[id]);
@@ -64,7 +76,7 @@ export function readSecurity(reg: Registry, config?: HouseConfig): Security | nu
     guests: g ? { id: g, on: S[g].state === 'on' } : null,
     vacation: { id: alarmId, on: vacationOn, from: null, to: back && back >= todayIso ? back : null, toId: backId ?? null },
     guarded, hazards,
-    valve: valveId ? { id: valveId, name: tidy(valveId), state: vs === 'open' ? 'open' : vs === 'closed' ? 'closed' : vs === 'opening' || vs === 'closing' ? 'moving' : 'unknown' } : null,
+    valve: valveId ? { id: valveId, name: tidy(valveId), room: roomOf(valveId), state: vs === 'open' ? 'open' : vs === 'closed' ? 'closed' : vs === 'opening' || vs === 'closing' ? 'moving' : 'unknown' } : null,
     exercise: ex ? { id: ex, on: S[ex].state === 'on', time: exTime && /^\d\d:\d\d/.test(S[exTime].state) ? S[exTime].state.slice(0, 5) : null, timeId: exTime ?? null, days: exDays && Number.isFinite(Number(S[exDays].state)) ? Math.round(Number(S[exDays].state)) : null, daysId: exDays ?? null } : null,
     loads,
   };

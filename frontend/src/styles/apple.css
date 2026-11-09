@@ -1053,3 +1053,31 @@
   .hm-shell .at-osec-key{min-height:92px;padding:12px 14px}.hm-shell .at-osec-key .at-osec-ring{width:40px;height:40px}
   .hm-shell .at-osec-groups,.hm-shell .at-osec-who,.hm-shell .at-osec-control .at-sec-err{grid-column:1/-1;justify-content:flex-start}
 }
+
+/* the house's security in the office's (Ajax) style (owner 09.11.2026): the mode chips are switches, the valve card has its own button */
+.hm-shell .at-sec-panel .at-osec-group.is-btn{position:relative;min-height:44px;padding:6px 14px 6px 8px;border:0;color:var(--ah-ink);cursor:pointer}
+.hm-shell .at-sec-panel .at-osec-group.is-btn .at-sec-sw{position:relative;right:auto;top:auto;flex:none;width:36px;height:22px;border-radius:11px}.hm-shell .at-sec-panel .at-osec-group.is-btn .at-sec-sw::after{width:16px;height:16px}
+.hm-shell .at-sec-panel .at-osec-group.is-btn.is-on .at-sec-sw{background:var(--sec-calm)}.hm-shell .at-sec-panel .at-osec-group.is-btn.is-on .at-sec-sw::after{transform:translateX(14px)}
+.hm-shell .at-sec-panel .at-osec-group.is-btn:disabled{opacity:.5}
+.hm-shell .at-sec-panel .at-osec-group.is-armed small{color:var(--os-armed);font-weight:600}
+.hm-shell .at-sec-panel .at-osec-dev-hit.is-static{grid-template-columns:76px minmax(0,1fr) auto;cursor:default}
+.hm-shell .at-sec-panel .at-sec-valve-btn{min-height:44px;padding:0 16px}
+.hm-shell .at-sec-panel .at-osec-dev.is-alarm{box-shadow:inset 0 0 0 2px #ff3b30}
+.hm-shell .at-sec-panel .at-osec-set{display:grid;gap:16px;min-width:0}
+.hm-shell .at-sec-panel .at-sec-how summary{cursor:pointer;list-style:none;min-height:44px;display:flex;align-items:center}.hm-shell .at-sec-panel .at-sec-how summary::-webkit-details-marker{display:none}
+.hm-shell .at-sec-panel .at-sec-how summary h2::after{content:' ›';color:var(--ah-muted)}.hm-shell .at-sec-panel .at-sec-how[open] summary h2::after{content:' ⌄'}
+.hm-shell .at-sec-panel .at-osec-now{display:block}.hm-shell .at-sec-panel .at-osec-now::first-letter{text-transform:uppercase}
+.hm-shell .at-sec-panel .at-osec-chips{flex-wrap:wrap;overflow:visible}
+/* the house's words in the Ajax colours, dark enough to read (WCAG AA 4.5:1 on white and on the grey tile) */
+.hm-shell .at-sec-panel{--os-teal:#0a7a57;--os-armed:#0062c9}
+.hm-shell.ah-shell[data-theme="dark"] .at-sec-panel{--os-teal:#2fd3a0;--os-armed:#5aaeff}
+.hm-shell .at-sec-panel .at-osec-control.is-st-arming .at-osec-state,.hm-shell .at-sec-panel .at-osec-control.is-st-pending .at-osec-state{color:#9a5200}.hm-shell .at-sec-panel .at-osec-control.is-alarm .at-osec-state{color:#c4271d}
+.hm-shell.ah-shell[data-theme="dark"] .at-sec-panel .at-osec-control.is-st-arming .at-osec-state,.hm-shell.ah-shell[data-theme="dark"] .at-sec-panel .at-osec-control.is-st-pending .at-osec-state{color:#ffc266}.hm-shell.ah-shell[data-theme="dark"] .at-sec-panel .at-osec-control.is-alarm .at-osec-state{color:#ff8a80}
+.hm-shell .at-sec-panel .at-osec-now.is-warn{color:#8f4c00}.hm-shell .at-sec-panel .at-osec-now.is-alarm{color:#c4271d}
+.hm-shell.ah-shell[data-theme="dark"] .at-sec-panel .at-osec-now.is-warn{color:#ffc266}.hm-shell.ah-shell[data-theme="dark"] .at-sec-panel .at-osec-now.is-alarm{color:#ff8a80}
+.hm-shell .at-house-tile .at-sec-tile-word{color:#0a6e4f}.hm-shell .at-house-tile.is-st-armed .at-sec-tile-word{color:#0058b5}.hm-shell .at-house-tile.is-warn .at-sec-tile-word{color:#8f4c00}.hm-shell .at-house-tile.is-alarm .at-sec-tile-word{color:#b3221a}
+.hm-shell.ah-shell[data-theme="dark"] .at-house-tile .at-sec-tile-word{color:#2fd3a0}.hm-shell.ah-shell[data-theme="dark"] .at-house-tile.is-st-armed .at-sec-tile-word{color:#7cbcff}.hm-shell.ah-shell[data-theme="dark"] .at-house-tile.is-warn .at-sec-tile-word{color:#ffc266}.hm-shell.ah-shell[data-theme="dark"] .at-house-tile.is-alarm .at-sec-tile-word{color:#ffb0a8}
+/* thumbs get 44 px; long names and the exercise line wrap instead of being cut */
+.hm-shell .at-sec-panel .at-osec-chips button{min-height:44px}
+.hm-shell .at-sec-panel .at-osec-dev-text b,.hm-shell .at-sec-panel .at-osec-dev-text small{white-space:normal;overflow:visible}
+@container (max-width:185px){.hm-shell .at-house-tile .ah-tile-hit{gap:4px}.hm-shell .at-house-tile .at-sec-tile-head{flex-direction:column;align-items:flex-start;gap:4px}.hm-shell .at-house-tile .at-sec-tile-head svg{width:28px;height:28px}.hm-shell .at-house-tile .at-sec-tile-head strong{font-size:14px;max-width:100%}}

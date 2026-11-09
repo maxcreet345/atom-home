@@ -137,7 +137,7 @@ export function osecTone(s: OfficeSecurity): OsecTone {
 export { openings as osecOpenings };
 
 /** One line of the Ajax-like feed: the building armed, disarmed, alarmed, and by whom (HA's logbook of the master panel). */
-export interface OsecEvent { when: number; kind: 'armed' | 'disarmed' | 'triggered' | 'pending'; by: string | null; via: 'user' | 'ajax' | 'automation' | null }
+export interface OsecEvent { when: number; kind: 'armed' | 'disarmed' | 'triggered' | 'pending'; by: string | null; via: 'user' | 'ajax' | 'automation' | null; /** Alarmo's armed mode («armed_away»…) */ mode?: string }
 export interface LogRow { when: number; entity_id: string; state?: string; context_user_id?: string | null; context_entity_id?: string | null; context_domain?: string | null; context_name?: string | null }
 /** The master's logbook → the feed, newest first: «arming» by a person, then «armed_away» a minute later, is one line «armed by …». */
 export function readOsecEvents(rows: LogRow[], master: string, people: Array<{ user: string | null; name: string }>): OsecEvent[] {
@@ -151,7 +151,7 @@ export function readOsecEvents(rows: LogRow[], master: string, people: Array<{ u
   for (const r of [...rows].filter(r => r.entity_id === master).sort((a, b) => a.when - b.when)) {
     const st = r.state ?? '';
     if (st === 'arming') { pendingBy = who(r); continue; }
-    if (st.startsWith('armed_')) { const w = who(r); out.push({ when: r.when * 1000, kind: 'armed', ...(w.via ? w : pendingBy ?? w) }); pendingBy = null; continue; }
+    if (st.startsWith('armed_')) { const w = who(r); out.push({ when: r.when * 1000, kind: 'armed', ...(w.via ? w : pendingBy ?? w), mode: st }); pendingBy = null; continue; }
     if (st === 'disarmed') { out.push({ when: r.when * 1000, kind: 'disarmed', ...who(r) }); continue; }
     if (st === 'triggered' || st === 'pending') out.push({ when: r.when * 1000, kind: st, ...who(r) });
   }

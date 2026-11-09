@@ -19,6 +19,19 @@ function apply(fx, now, sc) {
   add('binary_sensor.kitchen_leak_sink_water_leak', 'kukhnia', 'moisture', 'Кухня · Датчик протечки (раковина) Влага', 'off', 2000);
   add('binary_sensor.storage_leak_water_leak', 'sklad', 'moisture', 'Склад · Датчик протечки Влага', 'unknown', 2000);
   add('binary_sensor.bath_leak_water_leak', 'vannaia', 'moisture', 'Ванная · Датчик протечки Влага', 'off', 300);
+  // the devices' battery and radio as HA has them (09.11.2026): SONOFF windows and leaks on Zigbee2MQTT (linkquality), the Xiaomi door (signal_strength, dBm)
+  const DEV = { 'binary_sensor.hall_door_contact': ['Xiaomi', 'MCCGQ02HL', 'prikhozhaia', [['signal_strength', -51], ['battery', 100]]], 'binary_sensor.kitchen_gas': ['Tuya', 'Gas sensor', 'kukhnia', [['linkquality', 172]]],
+    'binary_sensor.kitchen_leak_boiler_water_leak': ['SONOFF', 'Zigbee water sensor', 'kukhnia', [['battery', 100], ['linkquality', 140]]], 'binary_sensor.kitchen_leak_sink_water_leak': ['SONOFF', 'Zigbee water sensor', 'kukhnia', [['battery', 100], ['linkquality', 92]]],
+    'binary_sensor.storage_leak_water_leak': ['SONOFF', 'Zigbee water sensor', 'sklad', [['battery', 100], ['linkquality', 112]]], 'binary_sensor.bath_leak_water_leak': ['SONOFF', 'Zigbee water sensor', 'vannaia', [['battery', 96], ['linkquality', 130]]] };
+  for (const w of ['kids_window', 'office_window', 'living_window_right', 'living_window_center', 'living_window_left', 'bedroom_window', 'kitchen_window_right', 'kitchen_window_center', 'kitchen_window_left']) DEV[`binary_sensor.${w}_contact`] = ['SONOFF', 'Contact sensor', null, [['battery', w === 'office_window' ? 18 : 100], ['linkquality', w === 'bedroom_window' ? 44 : 150 + w.length]]];
+  for (const [id, [maker, model, area, sens]] of Object.entries(DEV)) {
+    const e = fx.entities.find(x => x.entity_id === id); if (!e) continue; const dev = e.device_id ?? `dev_${id.split('.')[1]}`; e.device_id = dev;
+    if (!fx.devices.some(d => d.id === dev)) fx.devices.push({ id: dev, name: null, model, manufacturer: maker, area_id: area ?? e.area_id, entry_type: null, disabled_by: null, via_device_id: null, labels: [] });
+    else Object.assign(fx.devices.find(d => d.id === dev), { model, manufacturer: maker });
+    const stem = id.replace(/^binary_sensor\./, '').replace(/_(contact|water_leak)$/, '');
+    for (const [k, v] of sens) { const sid = `sensor.${stem}_${k}`; if (!fx.entities.some(x => x.entity_id === sid)) fx.entities.push({ entity_id: sid, device_id: dev, area_id: null, disabled_by: null, hidden_by: null, entity_category: 'diagnostic', platform: 'mqtt', device_class: k === 'battery' ? 'battery' : null, name: null, original_name: k }); set(sid, String(v), {}, 30); }
+    if (id === 'binary_sensor.office_window_contact') { const lid = 'binary_sensor.office_window_battery_low'; fx.entities.push({ entity_id: lid, device_id: dev, area_id: null, disabled_by: null, hidden_by: null, entity_category: 'diagnostic', platform: 'mqtt', device_class: 'battery', name: null, original_name: 'battery low' }); set(lid, 'on', {}, 300); }
+  }
   ENT(fx, 'valve.bath_water', 'vannaia', 'water', 'Ванная · Кран воды'); set('valve.bath_water', 'open', { friendly_name: 'Кран воды', device_class: 'water' }, 600);
   ENT(fx, 'alarm_control_panel.alarmo', null, null, 'Alarmo'); fx.entities.find(e => e.entity_id === 'alarm_control_panel.alarmo').platform = 'alarmo'; set('alarm_control_panel.alarmo', 'disarmed', { friendly_name: 'Alarmo', code_format: null, changed_by: null, arm_mode: null, bypassed_sensors: [] }, 95);
   // as applied in HA on 09.11: «Гости» is the heating's switch, «Отпуск» Alarmo's mode with the heating's return date, the exercise helpers
@@ -32,7 +45,7 @@ function apply(fx, now, sc) {
     Object.assign(e, { device_id: dev, area_id: area, entity_category: null, labels: off ? ['otpusk_vykliuchat'] : [] }); if (!S[id]) set(id, 'on', { friendly_name: name }, 900);
   }
   for (const id of Object.keys(S)) if (id.startsWith('person.')) { delete S[id]; fx.entities = fx.entities.filter(e => e.entity_id !== id); }
-  const person = (k, name, st, min) => add(`person.${k}`, null, null, name, st, min);
+  const person = (k, name, st, min) => { add(`person.${k}`, null, null, name, st, min); S[`person.${k}`].attributes.user_id = `u_${k}`; };
   const P = { all: ['home', 'home', 'home'], away: ['not_home', 'Atom Service', 'not_home'], one: ['not_home', 'home', 'Esperanza Sanitas'] }[sc.people ?? 'one'];
   person('ararat_melconean', 'Ararat Melconean', P[0], 40); person('gayane_grigorean', 'Gayane Grigorean', P[1], 300); person('daniela_melconean', 'Daniela Melconean', P[2], 200);
   const alarm = (state, attrs = {}, min = 20) => set('alarm_control_panel.alarmo', state, attrs, min);
@@ -40,6 +53,10 @@ function apply(fx, now, sc) {
   for (const [id, st, min] of sc.over ?? []) set(id, st, {}, min ?? 5);
   return fx;
 }
+// the panel's week from HA's logbook (logbook/get_events) in the shape HA answers: «Не дома» set by its automation, disarmed by a person, one alarm
+const logFor = now => { const at = (d, h, m) => { const x = new Date(now); x.setDate(x.getDate() - d); x.setHours(h, m, 0, 0); return x.getTime() / 1000; }, A = 'alarm_control_panel.alarmo', auto = { context_domain: 'automation', context_entity_id: 'automation.bezopasnost_ne_doma_avtopostanovka', context_name: 'Безопасность · Не дома: автопостановка' };
+  return [{ when: at(0, 8, 41), entity_id: A, state: 'arming', ...auto }, { when: at(0, 8, 42), entity_id: A, state: 'armed_away', ...auto }, { when: at(0, 10, 29), entity_id: A, state: 'disarmed', context_domain: 'automation', context_entity_id: 'automation.bezopasnost_ne_doma_avtosniatie', context_name: 'Безопасность · Не дома: автоснятие' },
+    { when: at(1, 22, 5), entity_id: A, state: 'arming', context_user_id: 'u_gayane_grigorean' }, { when: at(1, 22, 6), entity_id: A, state: 'armed_home', context_user_id: 'u_gayane_grigorean' }, { when: at(1, 23, 40), entity_id: A, state: 'pending' }, { when: at(1, 23, 40), entity_id: A, state: 'disarmed', context_user_id: 'u_ararat_melconean' }]; };
 export const card = {
   name: 'Безопасность', sheet: '#security', home: '#home', sheetRoot: '.at-sec-panel', tileRoot: '.at-sec-tile', actionButton: '.at-sec-main',
   scenarios: {
@@ -56,6 +73,6 @@ export const card = {
     gas: { people: 'all', over: [['binary_sensor.kitchen_gas', 'on', 1]] },
     tamper: { people: 'all', over: [['binary_sensor.living_window_left_tamper', 'on', 7]] },
   },
-  build: (base, s, now) => { const b = heating.build(base, heating.scenarios[Object.keys(heating.scenarios)[0]], now); return { ...b, snapshot: apply(b.snapshot, now, s) }; },
+  build: (base, s, now) => { const b = heating.build(base, heating.scenarios[Object.keys(heating.scenarios)[0]], now); return { ...b, snapshot: apply(b.snapshot, now, s), logbook: logFor(now) }; },
   config: (text, s) => heating.config(text, {}),
 };
