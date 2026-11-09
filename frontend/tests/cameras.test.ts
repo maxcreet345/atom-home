@@ -40,3 +40,10 @@ test('holdEnded keeps a detection this screen saw for two minutes after it ended
   assert.equal(holdEnded(seen, [], now + 1000 + RECENT_MS + 1).length, 0);
   assert.equal(seen.size, 0);
 });
+test('doorbell: a battery hidden in HA is not its battery (mains since 08.11.2026)', async () => {
+  const { doorbellSpec } = await import('../src/modules/catalog.ts');
+  const ent = (entity_id: string, extra = {}) => ({ entity_id, device_id: 'g4', area_id: null, platform: 'homekit_controller', disabled_by: null, hidden_by: null, entity_category: null, name: null, original_name: null, ...extra });
+  const st = (state: string, attributes = {}) => ({ state, attributes, last_changed: '', last_updated: '' });
+  const reg = { areas: [], devices: [{ id: 'g4', name: 'G4', area_id: 'podezd' }], entities: [ent('event.door_ring'), ent('camera.door'), ent('sensor.door_battery', { hidden_by: 'user' })], states: { 'event.door_ring': st('x', { device_class: 'doorbell' }), 'camera.door': st('idle'), 'sensor.door_battery': st('0') } } as never;
+  assert.equal(doorbellSpec.detect(reg)?.entities.battery, undefined);
+});

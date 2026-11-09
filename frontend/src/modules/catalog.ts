@@ -118,7 +118,8 @@ export const doorbellSpec: ModuleSpec = {
     const cam = own.find(e => e.entity_id.startsWith('camera.'));
     if (!cam) return null;
     const entities: ModuleEntities = { camera: cam.entity_id };
-    for (const r of DOORBELL_ROLES) { const hit = own.find(e => e.entity_id.startsWith(r.domain + '.') && r.suffix.test(e.entity_id)); if (hit) entities[r.role] = hit.entity_id; }
+    // a battery hidden in HA is not a battery (the G4 runs on mains since 08.11.2026 and reports 0 %): no «зарядить» on the card
+    for (const r of DOORBELL_ROLES) { const hit = own.find(e => e.entity_id.startsWith(r.domain + '.') && r.suffix.test(e.entity_id) && !(r.role === 'battery' && e.hidden_by)); if (hit) entities[r.role] = hit.entity_id; }
     for (const r of DOORBELL_HOUSE_ROLES) { const hit = reg.entities.find(e => r.pattern.test(e.entity_id) && !e.disabled_by && reg.states[e.entity_id]); if (hit) entities[r.role] = hit.entity_id; }
     const dev = reg.devices.find(d => d.id === ring.device_id);
     const addonCam = reg.entities.find(e => addonFromEntity(e.entity_id) && !e.disabled_by && reg.states[e.entity_id]);
