@@ -153,7 +153,7 @@ function Hero({ m, p }: { m: RoomModel; p: Props }) {
 function Quick({ m, p }: { m: RoomModel; p: Props }) {
   const picks = [...m.things.filter(t => t.kind === 'light'), ...m.air, ...m.things.filter(t => ['kettle', 'tv', 'fountain'].includes(t.kind))].filter(t => t.main && p.deviceOf(t.main)).slice(0, 4);
   if (!picks.length && !(p.vacuum && m.vacuum?.linked)) return null;
-  return <div className="rm-quick">{picks.map(th => { const d = p.deviceOf(th.main!)!; return <button type="button" className={`rm-q ${th.on ? 'is-on' : ''}`} style={`--rm-tint:${TINT[th.kind]}`} aria-pressed={!!th.on} disabled={!th.available || p.busy(d)} onClick={() => p.toggle(d)}><Icon name={GLYPH[th.kind]} size={22} /><strong>{['purifier', 'humidifier', 'vent'].includes(th.kind) ? th.name.split(' ')[0] : th.name}</strong><small>{th.on ? 'Вкл.' : 'Выкл.'}</small></button>; })}
+  return <div className="rm-quick">{picks.map(th => { const d = p.deviceOf(th.main!)!, x = detail(th, p), on = ['tv', 'player', 'speaker'].includes(th.kind) ? x.active : !!th.on; return <button type="button" className={`rm-q ${on ? 'is-on' : ''}`} style={`--rm-tint:${TINT[th.kind]}`} aria-pressed={on} disabled={!th.available || p.busy(d)} onClick={() => p.toggle(d)}><Icon name={GLYPH[th.kind]} size={22} /><strong>{['purifier', 'humidifier', 'vent'].includes(th.kind) ? th.name.split(' ')[0] : th.name}</strong><small>{on ? 'Вкл.' : th.available ? 'Выкл.' : 'Нет связи'}</small></button>; })}
     {p.vacuum && m.vacuum?.linked && <button type="button" className="rm-q is-vac" style="--rm-tint:#5e5ce6" onClick={() => void vacuumActions(p.vacuum!, p.host).rooms([m.id], 1)} disabled={!p.vacuum.available || p.vacuum.phase === 'cleaning'}><Icon name="vacuum" size={22} /><strong>Убрать</strong><small>{accus(p.roomName)}</small></button>}
   </div>;
 }
@@ -165,20 +165,60 @@ function HeatLine({ m, p }: { m: RoomModel; p: Props }) {
     <button type="button" className="rm-row-tx" onClick={p.onHeating}><strong>Батарея</strong><small>{heatSetText(r.current, p.lang)}° · {heatRoomWord(r, p.t, p.now).toLowerCase()}</small></button>
     {r.action === 'window' || r.action === 'off' ? <span className="rm-muted">Выкл</span> : <Stepper value={st.shown} text={heatSetText(st.shown, p.lang)} onStep={st.step} t={p.t} size="small" label={`${p.roomName}: задано`} atMin={st.atMin} atMax={st.atMax} pending={st.pending} />}</section>;
 }
+/* ---------- B: one card per device, in that device's own words ---------- */
+type Tone = 'ok' | 'warn' | 'muted' | 'on';
+interface Fact { text: string; tone?: 'warn' }
+interface Detail { status: string; tone: Tone; active: boolean; facts: Fact[]; action: { label: string; run: () => void } | null }
+/** What the device does now, the two facts the owner looks for, and the one thing to do with it. Honest: standby is not «on», a silent device is «Не в сети». */
+export function detail(th: Thing, p: Pick<Props, 'reg' | 'lang' | 'host' | 'deviceOf' | 'toggle'>): Detail {
+  const reg = p.reg, lang = p.lang, id = (re: RegExp) => th.ids.find(i => re.test(i)) ?? null, st = (re: RegExp) => { const i = id(re); return i ? reg.states[i]?.state ?? null : null; }, n = (re: RegExp) => { const v = Number(st(re)); return st(re) !== null && Number.isFinite(v) ? v : null; };
+  const main = th.main ? reg.states[th.main] : undefined, call = (d: string, s: string, e: string) => () => void p.host.call(d, s, { entity_id: e });
+  const tog = (on: string, off: string) => { const d = th.main ? p.deviceOf(th.main) : undefined; return d ? { label: th.on ? off : on, run: () => p.toggle(d) } : null; };
+  const pct = (v: number | null) => v === null ? '' : `${fmt(v, lang)} %`, standbyW = th.power !== null && th.power >= 0.5 ? watts(th.power, lang) : null;
+  const off = (why = 'Не в сети'): Detail => ({ status: why, tone: 'muted', active: false, facts: standbyW ? [{ text: `${standbyW} из розетки` }] : [], action: null });
+  switch (th.kind) {
+    case 'light': if (!th.available) return off(); return { status: th.on ? 'Горит' : 'Выключен', tone: th.on ? 'on' : 'ok', active: !!th.on, facts: typeof main?.attributes.brightness === 'number' ? [{ text: `Яркость ${Math.round(main.attributes.brightness / 2.55)} %` }] : [], action: tog('Включить', 'Выключить') };
+    case 'kettle': { const s = st(/kettle_status$/), c = n(/kettle_temperature$/), target = reg.states['water_heater.kitchen_kettle']?.attributes.temperature as number | undefined, warm = st(/auto_keep_warm$/) === 'on', heating = s === 'heating' || s === 'boiling', lifted = st(/kettle_lifted$/) === 'on';
+      const facts: Fact[] = [{ text: `Вода ${c !== null ? fmt(c, lang) : '—'}°` }]; if (target) facts.push({ text: `Кипятит до ${fmt(target, lang)}°` }); if (warm) facts.push({ text: 'Подогрев вкл.' });
+      return { status: lifted ? 'Снят с базы' : heating ? 'Греет воду' : s === 'keep_warm' || s === 'warming' ? 'Держит тепло' : c !== null && c < 40 ? 'Холодный' : 'Остывает', tone: heating ? 'on' : 'ok', active: heating, facts, action: th.main && !lifted ? { label: heating ? 'Выключить' : 'Вскипятить', run: call('switch', heating ? 'turn_off' : 'turn_on', th.main) } : null }; }
+    case 'feeder': { const bowl = n(/bowl_percent$/), food = st(/food_level$/), des = n(/desiccant_level$/), sched = st(/feeder_schedule$/) === 'on', stuck = st(/food_stuck$/);
+      const facts: Fact[] = [{ text: `В миске ${pct(bowl)}` }, food === 'normal' ? { text: 'Бункер полный' } : { text: 'Мало корма в бункере', tone: 'warn' }]; if (des !== null && des <= 10) facts.push({ text: 'Сменить осушитель', tone: 'warn' });
+      return { status: stuck && stuck !== 'normal' ? 'Корм застрял' : sched ? 'Кормит по расписанию' : 'Расписание выключено', tone: stuck && stuck !== 'normal' ? 'warn' : 'ok', active: false, facts, action: null }; }
+    case 'fountain': { const dry = st(/fountain_status$/) === 'waterless' || st(/water_low$/) === 'on', f = n(/filter_level$/), days = n(/filter_days$/);
+      return { status: dry ? 'Нет воды — долейте' : th.on ? 'Вода течёт' : 'Насос выключен', tone: dry ? 'warn' : th.on ? 'on' : 'ok', active: !dry && !!th.on, facts: [{ text: `Фильтр ${pct(f)}${days !== null ? ` · ${fmt(days, lang)} дн.` : ''}`, tone: f !== null && f <= 15 ? 'warn' : undefined }], action: tog('Включить насос', 'Выключить насос') }; }
+    case 'fridge': { const w = th.power ?? 0; return { status: !th.on ? 'Розетка выключена!' : w > 15 ? 'Компрессор работает' : 'Компрессор отдыхает', tone: th.on ? 'ok' : 'warn', active: false, facts: [{ text: th.today !== null ? `${fmt(th.today, lang, 2)} кВт·ч за сегодня` : 'Без счётчика за день' }], action: null }; } // never a switch: a fridge is not turned off by a stray tap
+    case 'tv': case 'player': { if (!main || main.state === 'unavailable') return off(); const app = st(/active_app$/) ?? (main.attributes.app_name as string | undefined) ?? null, standby = /standby/i.test(app ?? '') || (main.state === 'on' && /standby/i.test(st(/active_source$/) ?? '')), live = ['on', 'playing', 'paused'].includes(main.state) && !standby;
+      const facts: Fact[] = []; if (live && app && !/^off$/i.test(app)) facts.push({ text: app }); if (standbyW) facts.push({ text: live ? standbyW : `${standbyW} в ожидании` }); if (live && typeof main.attributes.volume_level === 'number') facts.push({ text: `Громкость ${Math.round(main.attributes.volume_level * 100)} %` });
+      return { status: live ? (main.state === 'paused' ? 'Пауза' : 'Смотрят') : standby ? 'Спит (ожидание)' : 'Выключен', tone: live ? 'on' : 'ok', active: live, facts, action: th.main ? { label: live || standby ? 'Выключить' : 'Включить', run: call('media_player', live || standby ? 'turn_off' : 'turn_on', th.main) } : null }; }
+    case 'speaker': { if (!main || main.state === 'unavailable') return off(); const title = [main.attributes.media_artist, main.attributes.media_title].filter(Boolean).join(' — '), vol = typeof main.attributes.volume_level === 'number' ? Math.round(main.attributes.volume_level * 100) : null;
+      const facts: Fact[] = []; if (title) facts.push({ text: title }); if (vol !== null) facts.push({ text: `Громкость ${vol} %` }); if (standbyW) facts.push({ text: standbyW });
+      return { status: main.state === 'playing' ? 'Играет' : main.state === 'paused' ? 'На паузе' : 'Ждёт команды', tone: main.state === 'playing' ? 'on' : 'ok', active: main.state === 'playing', facts, action: main.state === 'playing' ? { label: 'Пауза', run: call('media_player', 'media_pause', th.main!) } : main.state === 'paused' ? { label: 'Продолжить', run: call('media_player', 'media_play', th.main!) } : null }; }
+    case 'purifier': { const pm = n(/_pm25$/), life = n(/filter_life$/), left = n(/filter_left_time$/), mode = main?.attributes.preset_mode as string | undefined, sp = main?.attributes.percentage as number | undefined;
+      return { status: th.on ? `Чистит · ${mode === 'Auto' ? 'авто' : mode === 'Sleep' ? 'ночной' : mode ?? ''}${sp ? `, ${sp} %` : ''}` : 'Выключен', tone: th.on ? 'on' : 'ok', active: !!th.on, facts: [{ text: `PM2.5 ${pm !== null ? fmt(pm, lang) : '—'}` }, { text: `Фильтр ${pct(life)}${left !== null ? ` · ${fmt(left, lang)} дн.` : ''}`, tone: life !== null && life <= 20 ? 'warn' : undefined }], action: tog('Включить', 'Выключить') }; }
+    case 'humidifier': if (main?.state === 'unavailable' || !main) return off(reg.states['switch.living_humidifier_plug']?.state === 'off' ? 'Не в сети · розетка выкл.' : 'Не в сети'); return { status: main.state === 'on' ? 'Увлажняет' : 'Выключен', tone: main.state === 'on' ? 'on' : 'ok', active: main.state === 'on', facts: [], action: tog('Включить', 'Выключить') };
+    case 'airfryer': { const s = st(/airfryer_status$/); if (!s || s === 'unavailable') return off(); return { status: s, tone: 'on', active: true, facts: [], action: null }; }
+    case 'washer': { const s = st(/washer_current_status$/); if (s && !['unavailable', 'power_off', 'end', 'sleep', 'initial'].includes(s)) return { status: 'Стирает', tone: 'on', active: true, facts: standbyW ? [{ text: standbyW }] : [], action: null }; return { status: s === 'end' ? 'Стирка закончена' : 'Не стирает', tone: 'ok', active: false, facts: [{ text: th.on ? `Розетка вкл.${standbyW ? ` · ${standbyW}` : ''}` : 'Розетка выключена' }], action: null }; }
+    case 'dryer': { const s = st(/machine_state$/), r = n(/dryer_remaining$/), drum = n(/drum_clean_due_in$/); const facts: Fact[] = drum !== null ? [{ text: drum <= 1 ? 'Пора почистить барабан' : `Чистка барабана через ${fmt(drum, lang)} цикла`, tone: drum <= 1 ? 'warn' : undefined }] : [];
+      return s === 'active' || s === 'run' ? { status: `Сушит${r ? ` · ещё ${fmt(r, lang)} мин` : ''}`, tone: 'on', active: true, facts, action: null } : { status: 'Не сушит', tone: 'ok', active: false, facts, action: null }; }
+    case 'camera': return { status: th.available ? 'Пишет' : 'Не в сети', tone: th.available ? 'ok' : 'muted', active: false, facts: [], action: null };
+    default: if (!th.available) return off(); return { status: th.on ? 'Включено' : 'Выключено', tone: th.on ? 'on' : 'ok', active: !!th.on, facts: standbyW ? [{ text: standbyW }] : [], action: tog('Включить', 'Выключить') };
+  }
+}
 function Tile({ th, p }: { th: Thing; p: Props }) {
-  const d = th.main ? p.deviceOf(th.main) : undefined, tap = d && th.kind !== 'camera' ? () => p.toggle(d) : () => openThing(th, p);
-  return <article className={`rm-tile ${th.on ? 'is-on' : ''} ${th.available ? '' : 'is-off'}`} style={`--rm-tint:${TINT[th.kind]}`}>
-    <button type="button" className="rm-tile-hit" aria-pressed={d ? !!th.on : undefined} disabled={!th.available} onClick={tap}><span className="rm-tile-ic"><Icon name={GLYPH[th.kind]} size={26} /></span><strong>{th.name}</strong><small>{line(th, p.reg, p.lang)}</small></button>
-    {th.power !== null && th.power >= 0.5 && <span className="rm-watt">{watts(th.power, p.lang)}</span>}
-    <button type="button" className="rm-tile-more" aria-label={`${th.name}: подробнее`} onClick={() => openThing(th, p)}><Icon name="more" size={18} /></button>
+  const x = detail(th, p);
+  return <article className={`rm-tile is-${x.tone} ${x.active ? 'is-on' : ''}`} style={`--rm-tint:${TINT[th.kind]}`}>
+    <button type="button" className="rm-tile-open" aria-label={`${th.name}: подробнее`} onClick={() => openThing(th, p)} />
+    <div className="rm-tile-head"><span className="rm-tile-ic"><Icon name={GLYPH[th.kind]} size={22} /></span><span className="rm-tile-name"><strong>{th.name}</strong><small>{x.status}</small></span></div>
+    {x.facts.length > 0 && <ul className="rm-facts">{x.facts.slice(0, 3).map(f => <li className={f.tone === 'warn' ? 'is-warn' : ''}>{f.tone === 'warn' && <Icon name="warning" size={12} />}{f.text}</li>)}</ul>}
+    {x.action && <button type="button" className="rm-tile-act" onClick={x.action.run}>{x.action.label}</button>}
   </article>;
 }
 function LayoutB({ m, p }: { m: RoomModel; p: Props }) {
-  const rest = m.things.filter(t => !t.main || !['light'].includes(t.kind));
+  const rest = [...m.things.filter(t => t.kind !== 'light' || m.things.filter(x => x.kind === 'light').length > 1), ...m.air];
   return <div className={`rm-page rm-b ${p.wide ? 'is-wide' : ''}`}>
     <div className="rm-b-top"><Hero m={m} p={p} /><Quick m={m} p={p} /></div>
     <div className="rm-b-cols"><div className="rm-b-main"><h2 className="rm-h">Устройства</h2><div className="rm-tile-grid">{rest.map(th => <Tile th={th} p={p} />)}</div></div>
-      <div className="rm-b-side"><h2 className="rm-h">Климат и энергия</h2><HeatLine m={m} p={p} /><AirRows m={m} p={p} /><Power m={m} lang={p.lang} kind="bar" /></div></div>
+      <div className="rm-b-side"><h2 className="rm-h">Климат и энергия</h2><HeatLine m={m} p={p} /><Power m={m} lang={p.lang} kind="bar" /></div></div>
   </div>;
 }
 
