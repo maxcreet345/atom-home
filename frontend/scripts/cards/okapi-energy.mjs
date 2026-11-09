@@ -9,6 +9,8 @@ const stats = JSON.parse(readFileSync(resolve(dir, 'okapi-energy-stats-20261109.
 export const AT = '2026-11-09T11:20:00+02:00';
 const POW = ['sensor.tasmota_energy_total', 'sensor.tasmota_energy_total_2', 'sensor.tasmota_energy_total_3', 'sensor.tasmota_energy_total_4', 'sensor.tasmota_energy_total_5'];
 const STORE = 'sensor.basic_1gsp_sonoff_1002b4ae59_energy_year', TARIFF = 'input_number.energiia_tarif';
+// the lines as named in HA's Energy settings on 09.11.2026
+const LINES = ['Пайка', 'Свет и климат Сервиса', 'Рабочие места', 'Приёмка и Шоурум', 'Плёнка и ролеты'];
 // the meters inside each line (owner, 09.11.2026: «все 5 да»)
 const INSIDE = [
   ['sensor.svet_servis_rabochaia_storona_energiia', 1, 'Свет Сервиса — рабочая сторона'], ['sensor.svet_servis_vkhodnaia_storona_energiia', 1, 'Свет Сервиса — входная сторона'],
@@ -18,7 +20,7 @@ const INSIDE = [
 ];
 export const PREFS = {
   energy_sources: [...POW, STORE].map(id => ({ type: 'grid', stat_energy_from: id, stat_energy_to: null, entity_energy_price: TARIFF, number_energy_price: null, cost_adjustment_day: 0 })),
-  device_consumption: [...POW.map((id, i) => ({ stat_consumption: id, name: `Ввод ${i + 1}` })), ...INSIDE.map(([id, i, name]) => ({ stat_consumption: id, name, included_in_stat: POW[i] }))],
+  device_consumption: [...POW.map((id, i) => ({ stat_consumption: id, name: LINES[i] })), { stat_consumption: STORE, name: 'Склад самокатов' }, ...INSIDE.map(([id, i, name]) => ({ stat_consumption: id, name, included_in_stat: POW[i] }))],
   device_consumption_water: [],
 };
 const NAMES = { 'e:switch.tasmota': 'Пайка', 'e:switch.tasmota_2': 'Свет и климат Сервиса', 'e:switch.tasmota_3': 'Рабочие места', 'e:switch.tasmota_4': 'Приёмка и Шоурум', 'e:switch.tasmota_5': 'Плёнка и ролеты', 'e:switch.basic_1gsp_sonoff_1002b4ae59_1': 'Склад самокатов' };
