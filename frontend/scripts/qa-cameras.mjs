@@ -90,6 +90,7 @@ try {
   { const { page, ctx } = await open({ scenario: 'hallClosed', hash: '#camera' });
     const c = await page.evaluate(() => { const cell = document.querySelector('.at-cams-cell[data-device-key="e:camera.hall_camera_sd"]'); return { wait: cell?.querySelector('.hm-camera-wait span')?.textContent, player: !!cell?.querySelector('.at-go2rtc'), name: cell?.querySelector('.at-cams-cap strong')?.textContent }; });
     check('imou: closed shutter is «Объектив закрыт» without a stream, named after its room', c.wait === 'Объектив закрыт' && !c.player && c.name === 'Прихожая', c);
+    const sum = await page.evaluate(() => document.querySelector('.at-cams-summary small')?.textContent); check('imou: a closed lens (stream gone with it) is not «без связи»', sum === 'Все камеры на связи', sum);
     await page.click('.at-cams-cell[data-device-key="e:camera.hall_camera_sd"] .at-cams-hit'); await page.waitForTimeout(500);
     const sh = await page.evaluate(() => ({ lens: document.querySelector('.hm-sheet .at-cam-lens')?.textContent, pad: [...document.querySelectorAll('.hm-sheet .at-cam-pad-btn')].map(b => b.disabled) }));
     check('imou: closed — the lens button opens, the pad waits', /Открыть объектив/.test(sh.lens ?? '') && sh.pad.length === 4 && sh.pad.every(Boolean), sh); await ctx.close(); }
