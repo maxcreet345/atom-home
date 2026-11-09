@@ -114,7 +114,7 @@ function ZoneCard({ z, c, t, lang, admin }: { z: OfficeZone; c: OfficeClimate; t
     <div className={`at-oc-ac ${ac.online && ac.mode === 'heat' ? 'is-on' : ''}`}>
       <span className="at-oc-ac-name"><Icon name="climate" size={16} />{acLine}</span>
       {ac.reading !== null && <span>{tk(t, 'acSees', { v: nowT(ac.reading, lang) })}</span>}
-      {ac.power !== null && <span><Icon name="bolt" size={14} />{ac.power >= 1000 ? `${(ac.power / 1000).toLocaleString(LOC[lang], { maximumFractionDigits: 1 })} ${tk(t, 'kw')}` : `${Math.round(ac.power)} ${tk(t, 'w')}`}</span>}
+      {ac.power !== null && ac.power > 0 && <span><Icon name="bolt" size={14} />{ac.power >= 1000 ? `${(ac.power / 1000).toLocaleString(LOC[lang], { maximumFractionDigits: 1 })} ${tk(t, 'kw')}` : `${Math.round(ac.power)} ${tk(t, 'w')}`}</span>}
     </div>
     <footer>{z.humidity !== null && <span><Icon name="water" size={14} />{tk(t, 'humidity', { v: Math.round(z.humidity) })}</span>}<span><Icon name="thermo" size={14} />{tk(t, 'sensorNote')}</span></footer>
   </article>;
@@ -144,7 +144,7 @@ export function OfficeClimatePanel({ c, host, t, lang, now }: { c: OfficeClimate
         <ul className="at-heat-hero-facts">
           <li className={c.armed ? 'is-warn' : ''}><Icon name="shield" size={15} />{c.armed === null ? tk(t, 'f.alarmUnknown') : c.armed ? tk(t, 'f.armed') : tk(t, 'f.disarmed')}</li>
           <li><Icon name="clock" size={15} />{c.work ? tk(t, 'f.work', { from: hhmm(c.work.start), stop: hhmm(c.work.heatEnd) }) : c.nextWork ? tk(t, 'f.nextWork', { when: when(c.nextWork, now, t, lang) }) : tk(t, 'f.noWork')}</li>
-          <li className={heating ? 'is-hot' : ''}><Icon name="flame" size={15} />{heating ? tk(t, 'f.heating', { n: heating, total: c.zones.length, p: power >= 1000 ? `${(power / 1000).toLocaleString(LOC[lang], { maximumFractionDigits: 1 })} ${tk(t, 'kw')}` : `${Math.round(power)} ${tk(t, 'w')}` }) : tk(t, 'f.rest')}</li>
+          <li className={heating ? 'is-hot' : ''}><Icon name="flame" size={15} />{heating ? power <= 0 ? tk(t, 'f.heatingN', { n: heating, total: c.zones.length }) : tk(t, 'f.heating', { n: heating, total: c.zones.length, p: power >= 1000 ? `${(power / 1000).toLocaleString(LOC[lang], { maximumFractionDigits: 1 })} ${tk(t, 'kw')}` : `${Math.round(power)} ${tk(t, 'w')}` }) : tk(t, 'f.rest')}</li>
         </ul>
         <div className="at-heat-hero-side"><ModePill m={c.mode} t={t} /><small className="at-heat-modehint">{tk(t, 'autoHint')}</small></div>
       </div>

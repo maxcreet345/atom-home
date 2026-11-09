@@ -227,6 +227,7 @@ export const en: Dictionary = {
   'module.oc.f.nextWork': "Working day {when}",
   'module.oc.f.noWork': "No working days in the calendar",
   'module.oc.f.heating': "{n} of {total} heating · {p}",
+  'module.oc.f.heatingN': "{n} of {total} heating",
   'module.oc.f.rest': "The air conditioners rest",
   'module.oc.autoHint': "The mode picks itself: from the alarm and the calendar",
   'module.oc.zones': "Rooms",

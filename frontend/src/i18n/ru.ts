@@ -226,6 +226,7 @@ export const ru = {
   'module.oc.f.nextWork': "Рабочий день {when}",
   'module.oc.f.noWork': "В календаре нет рабочих дней",
   'module.oc.f.heating': "Греют {n} из {total} · {p}",
+  'module.oc.f.heatingN': "Греют {n} из {total}",
   'module.oc.f.rest': "Кондиционеры отдыхают",
   'module.oc.autoHint': "Режим выбирается сам: по охране и календарю",
   'module.oc.zones': "Помещения",

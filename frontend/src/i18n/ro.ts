@@ -227,6 +227,7 @@ export const ro: Dictionary = {
   'module.oc.f.nextWork': "Zi de lucru {when}",
   'module.oc.f.noWork': "Nicio zi de lucru în calendar",
   'module.oc.f.heating': "Încălzesc {n} din {total} · {p}",
+  'module.oc.f.heatingN': "Încălzesc {n} din {total}",
   'module.oc.f.rest': "Aparatele se odihnesc",
   'module.oc.autoHint': "Modul se alege singur: după pază și calendar",
   'module.oc.zones': "Încăperi",
