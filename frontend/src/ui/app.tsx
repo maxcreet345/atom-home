@@ -363,8 +363,8 @@ function CameraTile({ device, player, state, onOpen, t, lang, large }: { device:
   </div>;
 }
 function RoomPage({ home, registry, roomId, runner, toggle, go, t, lang, alarms, heating, vacuum, host, now, modules }: Common & { home: Home; registry: Registry; roomId: string; toggle: (d: HomeDevice) => void; alarms: Alarm[] | null; heating: ReturnType<typeof readHeating>; vacuum: ReturnType<typeof readVacuum>; host: Host; now: number; modules: ActiveModule[] }) {
-  // a device a module draws (the kettle): its room card opens the module's own sheet (owner 09.11.2026: the kettle only on the Kitchen's page)
-  const sheetOf = (deviceId: string) => modules.find(m => m.def.placement.includes('room') && m.def.sheetKey && m.entities.device === deviceId)?.def.sheetKey;
+  // a device a module draws (the kettle, the cat feeder): its room card opens the module's own sheet, wherever else the module shows
+  const sheetOf = (deviceId: string) => modules.find(m => m.def.sheetKey && m.entities.device === deviceId)?.def.sheetKey;
   // the room page the owner chose on 09.11.2026 (docs/ROOM.md): readings on top, one card per device, the room's radiator and power
   const byMain = (id: string) => home.devices.find(d => d.enabled && d.primary.id === id);
   return <RoomView reg={registry} roomId={roomId} roomName={home.rooms.find(r => r.id === roomId)?.name ?? ''} heating={heating} vacuum={vacuum} host={host} t={t} lang={lang} now={now} alarms={alarms}

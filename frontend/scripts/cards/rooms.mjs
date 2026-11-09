@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { card as vac } from './vacuum.mjs';
 const live = JSON.parse(readFileSync(resolve(import.meta.dirname, '../../../private/fixtures/criuleni-rooms-20261109.json'), 'utf8'));
-const KEEP = /^(climate\.|vacuum\.|camera\.|input_|timer\.)|_robot_vacuum|kitchen_boiler_(?!plug)/; // the other cards' own moments
+const KEEP = /^(climate\.|vacuum\.|camera\.|input_|timer\.|button\.|number\.|select\.)|_robot_vacuum|kitchen_boiler_(?!plug)/; // the other cards' own moments
 export const card = {
   name: 'Комната', sheet: '#rooms?room=kukhnia', home: '#rooms', sheetRoot: '.rm-page', tileRoot: '.at-room', actionButton: null,
   scenarios: { live: {}, evening: { sc: 'evening' } },
