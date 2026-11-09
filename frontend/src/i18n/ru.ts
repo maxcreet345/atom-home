@@ -164,5 +164,14 @@ export const ru = {
   'module.heat.pressureHigh': "Котёл: давление {v} bar, выше нормы",
   'module.heat.screenOffPower': "Термостат не на связи: включить или выключить отопление сейчас нельзя",
   'module.heat.noScenario': "Сценарий неизвестен",
+  'module.heat.hyst': "Гистерезис",
+  'module.heat.hystAll': "Один для всех пяти головок",
+  'module.heat.hystDown': "Начинать греть, когда остынет на",
+  'module.heat.hystDownHint': "ниже заданной температуры",
+  'module.heat.hystUp': "Перестать греть, когда нагреется на",
+  'module.heat.hystUpHint': "выше заданной температуры",
+  'module.heat.hystExample': "При {t}° радиатор откроется на {from}° и закроется на {to}°. Вместе не больше 1°: так устроены головки",
+  'module.heat.downFine': "меньше на 0,2°",
+  'module.heat.upFine': "больше на 0,2°",
 };
 export type Dictionary = typeof ru;

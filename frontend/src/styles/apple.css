@@ -813,3 +813,6 @@
 @media (max-width:420px){.hm-shell .at-heat-hero .at-heat-step.is-range b{font-size:36px}.hm-shell .at-heat-hero .at-heat-step{gap:8px}}
 .hm-shell [aria-disabled="true"]:is(.at-heat-pm,.at-heat-power,.hm-text-btn),.hm-shell .at-heat-mode button[aria-disabled="true"],.hm-shell button.at-heat-scen-card[aria-disabled="true"]{opacity:.45;cursor:default}
 .hm-shell .at-heat-room .at-heat-err{margin-top:-4px}
+.hm-shell .at-heat-hyst{display:grid;gap:4px;padding:6px 16px 14px;border-radius:20px;background:var(--hz-card)}
+.hm-shell .at-heat-hyst-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;padding:10px 0;border-bottom:1px solid #7676801f}.hm-shell .at-heat-hyst-row>div:first-child{display:grid;gap:2px;min-width:0;flex:1 1 220px}.hm-shell .at-heat-hyst-row strong{font-size:15px;font-weight:600;color:var(--ah-ink)}.hm-shell .at-heat-hyst-row small{font-size:12.5px;color:var(--ah-muted)}
+.hm-shell .at-heat-hyst-say{margin:8px 0 0;font-size:13.5px;line-height:1.35;color:var(--ah-ink)}

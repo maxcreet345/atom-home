@@ -165,4 +165,13 @@ export const ro: Dictionary = {
   'module.heat.pressureHigh': "Centrala: presiune {v} bar, peste normă",
   'module.heat.screenOffPower': "Termostat deconectat: încălzirea nu poate fi pornită sau oprită acum",
   'module.heat.noScenario': "Scenariu necunoscut",
+  'module.heat.hyst': "Histerezis",
+  'module.heat.hystAll': "Unul pentru toate cele cinci capete",
+  'module.heat.hystDown': "Începe încălzirea când se răcește cu",
+  'module.heat.hystDownHint': "sub temperatura setată",
+  'module.heat.hystUp': "Oprește încălzirea când se încălzește cu",
+  'module.heat.hystUpHint': "peste temperatura setată",
+  'module.heat.hystExample': "La {t}° caloriferul se deschide la {from}° și se închide la {to}°. Împreună cel mult 1°: așa funcționează capetele",
+  'module.heat.downFine': "cu 0,2° mai puțin",
+  'module.heat.upFine': "cu 0,2° mai mult",
 };

@@ -165,4 +165,13 @@ export const en: Dictionary = {
   'module.heat.pressureHigh': "Boiler: pressure {v} bar, above normal",
   'module.heat.screenOffPower': "Thermostat offline: heating cannot be turned on or off now",
   'module.heat.noScenario': "Scenario unknown",
+  'module.heat.hyst': "Hysteresis",
+  'module.heat.hystAll': "One for all five heads",
+  'module.heat.hystDown': "Start heating when it cools by",
+  'module.heat.hystDownHint': "below the set temperature",
+  'module.heat.hystUp': "Stop heating when it warms by",
+  'module.heat.hystUpHint': "above the set temperature",
+  'module.heat.hystExample': "At {t}° the radiator opens at {from}° and closes at {to}°. Together at most 1°: that is how the heads work",
+  'module.heat.downFine': "0.2° lower",
+  'module.heat.upFine': "0.2° higher",
 };

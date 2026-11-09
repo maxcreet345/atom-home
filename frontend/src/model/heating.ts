@@ -23,6 +23,8 @@ export interface Heating {
   system: boolean; systemKnown: boolean; scenarioKnown: boolean; thermostat: string; thermostatOnline: boolean; mode: 'auto' | 'manual';
   scenario: Scenario; scenarioRaw: string; target: number | null; temps: Record<Scenario, number | null>;
   sleep: { from: string; to: string }; guests: boolean; eco: boolean; vacation: boolean; vacationReturn: string | null; scenarioOverride: boolean;
+  /** one hysteresis for every head (owner, 09.11.2026): how far a room may cool before its head opens, how far it may warm before it closes; null until the helpers exist */
+  hyst: { down: number; up: number } | null;
   rooms: HeatRoom[]; boiler: Boiler; outdoor: { temp: number | null; state: string | null };
 }
 const SCENARIO: Record<string, Scenario> = { 'Дома': 'home', 'Сон': 'sleep', 'Нет дома': 'away', 'Эко': 'eco', 'Отпуск': 'vacation' };
@@ -55,6 +57,8 @@ export function readHeating(reg: Registry, now = Date.now()): Heating | null {
       override: until && until > now ? { temp: n(s(`input_number.${key}_heating_override_temp`)) ?? 0, until } : null,
       manual: n(s(`input_number.${key}_heating_manual_temp`)), desired: s(`sensor.${key}_heating_desired`)?.state ?? null, sensor: null };
   });
+  // the heads are fed the room's sensor minus «вверх» (heating_external_temp), so what they report is that much lower than the room
+  const shift = n(s('input_number.heating_hyst_up')) ?? 0; for (const r of rooms) if (r.current !== null) r.current = Math.round((r.current + shift) * 10) / 10;
   const th = s('climate.living_thermostat'), scenarioRaw = s('sensor.heating_scenario')?.state ?? 'Дома';
   const v = (k: string) => n(s(`input_number.heating_${k}_temp`));
   const B = (k: string) => n(s(`sensor.kitchen_boiler_${k}`));
@@ -72,6 +76,7 @@ export function readHeating(reg: Registry, now = Date.now()): Heating | null {
     sleep: { from: (s('input_datetime.heating_sleep_start')?.state ?? '23:00').slice(0, 5), to: (s('input_datetime.heating_sleep_end')?.state ?? '06:00').slice(0, 5) },
     guests: on('input_boolean.heating_guests'), eco: on('input_boolean.heating_eco'), vacation: on('input_boolean.heating_vacation'),
     vacationReturn: s('input_datetime.heating_vacation_return')?.state ?? null, scenarioOverride: on('input_boolean.heating_scenario_override'),
+    hyst: (d => d && n(s('input_number.heating_hyst_up')) !== null ? { down: d, up: n(s('input_number.heating_hyst_up'))! } : null)(n(s('input_number.heating_hyst_down'))),
     rooms,
     boiler: { online: busOn && B('flow_temp') !== null, flame: !busOn ? null : flame === 'on' ? true : flame === 'off' ? false : null, flow: B2('flow_temp'), flowTarget: B2('flow_temp_target'), ret: B2('return_temp'),
       dhw: B2('dhw_temp'), dhwTarget: B2('dhw_temp_target'), pressure, pressureLow: pressure !== null && (pLow ?? pressure < 1), pressureHigh: pressure !== null && (pHigh ?? pressure > 2.5), relay: relay === 'on' ? true : relay === 'off' ? false : null, state: s('sensor.kitchen_boiler_state_code')?.state ?? null },

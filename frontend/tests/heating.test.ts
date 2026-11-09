@@ -59,3 +59,8 @@ test('an unknown system or scenario is not taken for «off» or «Дома»', (
 test('a thermostat that is not reachable is worth a look', () => {
   const h = readHeating(house({ 'climate.living_thermostat': ['unavailable'] }), NOW)!; assert.equal(h.thermostatOnline, false); assert.equal(heatTone(h), 'warn');
 });
+test('the room reads its own sensor: the heads are fed it minus «вверх», the card adds it back', () => {
+  const h = readHeating(house({ 'input_number.heating_hyst_down': ['0.6'], 'input_number.heating_hyst_up': ['0.2'], 'climate.kids_trv': ['heat', { current_temperature: 21 }] }), NOW)!;
+  assert.deepEqual(h.hyst, { down: 0.6, up: 0.2 }); assert.equal(h.rooms.find(r => r.key === 'kids')!.current, 21.2);
+  const none = readHeating(house(), NOW)!; assert.equal(none.hyst, null);
+});

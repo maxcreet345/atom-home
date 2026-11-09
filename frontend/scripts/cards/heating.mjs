@@ -10,6 +10,7 @@ const boilerOn = { flow_temp: '52.4', flow_temp_target: '60', return_temp: '44.1
 function apply(snap, now, sc) {
   const S = snap.states, set = (id, state, attrs) => { const o = S[id] ?? { attributes: {}, last_changed: iso(now, 30), last_updated: iso(now, 30) }; S[id] = { ...o, state: state ?? o.state, attributes: { ...o.attributes, ...(attrs ?? {}) } }; };
   const trv = (k, cur, target, action, state = 'heat') => { set(`climate.${k}_trv`, state, { current_temperature: cur, temperature: target, hvac_action: action }); };
+  for (const [k, v, name] of [['down', '0.6', 'Отопление · Гистерезис вниз'], ['up', '0.2', 'Отопление · Гистерезис вверх']]) { const id = `input_number.heating_hyst_${k}`; if (!snap.entities.some(e => e.entity_id === id)) snap.entities.push({ entity_id: id, device_id: null, area_id: null, name: null, original_name: name, platform: 'input_number', entity_category: null, disabled_by: null, hidden_by: null }); set(id, v, { min: 0, max: 1, step: 0.2, unit_of_measurement: '°C', friendly_name: name }); }
   set('binary_sensor.kitchen_boiler_ebus_signal', 'on');
   for (const [k, v] of Object.entries(boilerOn)) set(`sensor.kitchen_boiler_${k}`, v);
   set('switch.kitchen_boiler_heat_relay', 'on'); set('weather.forecast_home', 'fog', { temperature: -2.9 });

@@ -29,6 +29,8 @@ export function heatingActions(h: Heating, host: Host) {
     /** the head itself: in «Авто» the automation keeps it three hours, in «Ручной» it becomes the room's temperature */
     room: (r: HeatRoom, v: number) => call('climate', 'set_temperature', { entity_id: r.trv, temperature: v }),
     back: (r: HeatRoom) => call('timer', 'cancel', { entity_id: `timer.${r.key}_heating_override` }),
+    /** the heads' hysteresis for the whole house: the helpers only, the heating automation puts it on every head */
+    hyst: (k: 'down' | 'up', v: number) => call('input_number', 'set_value', { entity_id: `input_number.heating_hyst_${k}`, value: v }),
     flag: (k: 'eco' | 'guests' | 'vacation', on: boolean) => call('input_boolean', on ? 'turn_on' : 'turn_off', { entity_id: `input_boolean.heating_${k}` }),
   };
 }
@@ -105,22 +107,22 @@ function houseValue(h: Heating, lang: Lang): { text: string; value: number | nul
 }
 /** ± answers at once and sends the last value after a short pause, so five taps are one command. */
 /** A refused command puts the real value back and says so; an accepted one that HA never reflects gives up after 20 s. */
-function useStepper(value: number | null, send: (v: number) => Promise<unknown>, onFail: () => void, onOk: () => void, min = 8, max = 24, lo?: number) {
+function useStepper(value: number | null, send: (v: number) => Promise<unknown>, onFail: () => void, onOk: () => void, min = 8, max = 24, lo?: number, by = 0.5) {
   const [local, setLocal] = useState<number | null>(null), timer = useRef<ReturnType<typeof setTimeout> | null>(null), stale = useRef<ReturnType<typeof setTimeout> | null>(null), seq = useRef(0), waiting = useRef<number | null>(null);
   useEffect(() => { if (local !== null && value === local) setLocal(null); }, [value]);
   const fire = (v: number) => { const n = ++seq.current; waiting.current = null; send(v).then(() => { if (n === seq.current) onOk(); }, () => { if (n === seq.current) { setLocal(null); onFail(); } }); stale.current = setTimeout(() => { if (n === seq.current) setLocal(null); }, 20000); };
   // leaving the card within the pause still sends the last value: a tap is never lost
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); if (stale.current) clearTimeout(stale.current); if (waiting.current !== null) fire(waiting.current); }, []);
   const shown = local ?? value;
-  const step = (dir: 1 | -1) => { if (shown === null) return; const base = local ?? (dir < 0 && lo !== undefined ? lo : shown); const v = Math.min(max, Math.max(min, Math.round((base + dir * 0.5) * 2) / 2)); setLocal(v); waiting.current = v; seq.current++; if (timer.current) clearTimeout(timer.current); if (stale.current) clearTimeout(stale.current);
-    timer.current = setTimeout(() => fire(v), 700); };
+  const step = (dir: 1 | -1) => { if (shown === null) return; const base = local ?? (dir < 0 && lo !== undefined ? lo : shown); const v = Math.min(max, Math.max(min, Math.round((base + dir * by) / by) * by)); const r = Math.round(v * 10) / 10; setLocal(r); waiting.current = r; seq.current++; if (timer.current) clearTimeout(timer.current); if (stale.current) clearTimeout(stale.current);
+    timer.current = setTimeout(() => fire(r), 700); };
   return { shown, step, pending: local !== null && local !== value, atMin: shown !== null && (local ?? lo ?? shown) <= min, atMax: shown !== null && shown >= max };
 }
-function Stepper({ value, text, onStep, t, size = 'big', disabled, label, atMin, atMax, pending }: { value: number | null; text: string; onStep: (d: 1 | -1) => void; t: T; size?: 'big' | 'small'; disabled?: boolean; label: string; atMin?: boolean; atMax?: boolean; pending?: boolean }) {
+function Stepper({ value, text, onStep, t, size = 'big', disabled, label, atMin, atMax, pending, fine }: { value: number | null; text: string; onStep: (d: 1 | -1) => void; t: T; size?: 'big' | 'small'; disabled?: boolean; label: string; atMin?: boolean; atMax?: boolean; pending?: boolean; /** steps of 0,2° */ fine?: boolean }) {
   return <div className={`at-heat-step is-${size} ${pending ? 'is-pending' : ''} ${text.includes('–') ? 'is-range' : ''}`} role="group" aria-label={label}>
-    <button type="button" className="at-heat-pm" aria-label={`${label}: ${tk(t, 'down')}`} disabled={disabled || value === null} aria-disabled={atMin || undefined} onClick={e => { e.stopPropagation(); if (!atMin) onStep(-1); }}><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" /></svg></button>
+    <button type="button" className="at-heat-pm" aria-label={`${label}: ${tk(t, fine ? 'downFine' : 'down')}`} disabled={disabled || value === null} aria-disabled={atMin || undefined} onClick={e => { e.stopPropagation(); if (!atMin) onStep(-1); }}><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" /></svg></button>
     <b aria-live="polite">{text}<i>°</i></b>
-    <button type="button" className="at-heat-pm" aria-label={`${label}: ${tk(t, 'up')}`} disabled={disabled || value === null} aria-disabled={atMax || undefined} onClick={e => { e.stopPropagation(); if (!atMax) onStep(1); }}><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" /></svg></button>
+    <button type="button" className="at-heat-pm" aria-label={`${label}: ${tk(t, fine ? 'upFine' : 'up')}`} disabled={disabled || value === null} aria-disabled={atMax || undefined} onClick={e => { e.stopPropagation(); if (!atMax) onStep(1); }}><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" /></svg></button>
   </div>;
 }
 function ModeSwitch({ h, t, onMode, disabled }: { h: Heating; t: T; onMode: (m: 'auto' | 'manual') => void; disabled?: boolean }) {
@@ -183,6 +185,18 @@ function Scenarios({ h, act, t, lang, ui }: { h: Heating; act: ReturnType<typeof
       const body = <><span className="at-heat-scen-top"><strong>{tk(t, `sc.${s.id}`)}</strong>{temp !== null && <b>{setT(temp, lang)}°</b>}</span><small>{sub(s.id)}</small>{now ? <em>{tk(t, 'now')}</em> : s.flag ? <em className="is-sw">{on ? tk(t, 'on') : tk(t, 'turnOnShort')}</em> : <em className="is-auto">{tk(t, 'byItself')}</em>}</>;
       return s.flag ? <button type="button" role="switch" aria-checked={on} className={`at-heat-scen-card ${now ? 'is-now' : ''} ${on ? 'is-on' : ''}`} aria-disabled={ui.busy === s.flag || undefined} aria-busy={ui.busy === s.flag || undefined} onClick={() => ui.run(s.flag!, () => act.flag(s.flag!, !on))}>{body}</button> : <div className={`at-heat-scen-card ${now ? 'is-now' : ''}`}>{body}</div>; })}</div><Err text={ui.err('eco', 'guests', 'vacation')} /></section>;
 }
+/** One hysteresis for all five heads. A head can open again at most 1° below where it closes, so «down» and «up» share that degree. */
+function Hysteresis({ h, act, t, lang, ui }: { h: Heating; act: ReturnType<typeof heatingActions>; t: T; lang: Lang; ui: ReturnType<typeof useAct> }) {
+  const y = h.hyst!, down = useStepper(y.down, v => act.hyst('down', v), () => ui.fail('hyst'), ui.ok, 0.2, Math.min(1, Math.round((1 - y.up) * 10) / 10), undefined, 0.2), up = useStepper(y.up, v => act.hyst('up', v), () => ui.fail('hyst'), ui.ok, 0, Math.round((1 - (down.shown ?? y.down)) * 10) / 10, undefined, 0.2);
+  const base = h.target ?? 20, d = down.shown ?? y.down, u = up.shown ?? y.up, f = (v: number) => v.toLocaleString(LOC[lang], { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  return <section className="at-heat-sec"><div className="hm-section-head"><h2>{tk(t, 'hyst')}</h2><small className="at-heat-sec-hint">{tk(t, 'hystAll')}</small></div>
+    <div className="at-heat-hyst">
+      <div className="at-heat-hyst-row"><div><strong>{tk(t, 'hystDown')}</strong><small>{tk(t, 'hystDownHint')}</small></div><Stepper value={down.shown} text={f(d)} onStep={down.step} t={t} size="small" label={tk(t, 'hystDown')} fine atMin={down.atMin} atMax={down.atMax} pending={down.pending} /></div>
+      <div className="at-heat-hyst-row"><div><strong>{tk(t, 'hystUp')}</strong><small>{tk(t, 'hystUpHint')}</small></div><Stepper value={up.shown} text={f(u)} onStep={up.step} t={t} size="small" label={tk(t, 'hystUp')} fine atMin={up.atMin} atMax={up.atMax} pending={up.pending} /></div>
+      <p className="at-heat-hyst-say">{tk(t, 'hystExample', { t: setT(base, lang), from: f(Math.round((base - d) * 10) / 10), to: f(Math.round((base + u) * 10) / 10) })}</p>
+      <Err text={ui.err('hyst')} />
+    </div></section>;
+}
 function BoilerCard({ h, t, lang }: { h: Heating; t: T; lang: Lang }) {
   const b = h.boiler, f = (v: number | null, d = 1) => v === null ? '—' : v.toLocaleString(LOC[lang], { maximumFractionDigits: d }), low = b.pressureLow, high = b.pressureHigh;
   const cell = (label: string, value: string, unit: string, sub: string, tone = '') => <div className={`at-heat-bcell ${tone}`}><small>{label}</small><b>{value}{value !== '—' && <i>{unit}</i>}</b><span>{sub}</span></div>;
@@ -223,5 +237,6 @@ export function HeatingPanel({ h, host, t, lang, now }: { h: Heating; host: Host
       <div className="at-heat-rooms">{h.rooms.map(r => <RoomCard r={r} h={h} act={act} t={t} lang={lang} now={now} ui={ui} />)}</div></section>
     <Scenarios h={h} act={act} t={t} lang={lang} ui={ui} />
     <BoilerCard h={h} t={t} lang={lang} />
+    {h.hyst && <Hysteresis h={h} act={act} t={t} lang={lang} ui={ui} />}
   </div>;
 }
