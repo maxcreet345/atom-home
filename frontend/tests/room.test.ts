@@ -70,3 +70,15 @@ test('the room speaks of its worst reading, red before yellow', () => {
   assert.deepEqual(worst(m.readings), { metric: 'co2', tone: 'bad', value: 2400 });
   assert.equal(plainName('Гостиная · Розетка Apple TV (Xiaomi)', 'Гостиная'), 'Розетка Apple TV');
 });
+test('the feeder card reads the bowl from the scale, as the feeder sheet does, never «bowl_percent»', () => {
+  const reg = house();
+  reg.devices.push({ id: 'feeder', name: 'Кухня · Кормушка кошки (Xiaomi)', model: 'xiaomi.feeder.iv2001', manufacturer: null, area_id: 'kukhnia' } as never);
+  for (const [id, state, attributes] of [['switch.kitchen_cat_feeder_schedule', 'on', {}], ['sensor.kitchen_cat_feeder_bowl_percent', '75', {}], ['sensor.kitchen_cat_feeder_eaten_p22', '0.0', { 'eaten_food_measure-2-22': 0, unit_of_measurement: 'g' }], ['sensor.kitchen_cat_feeder_food_level', 'normal', {}]] as const) {
+    reg.entities.push({ entity_id: id, device_id: 'feeder', area_id: null, name: null, original_name: null, platform: 'x', entity_category: null, disabled_by: null, hidden_by: null } as never);
+    reg.states[id] = { state, attributes, last_changed: '', last_updated: '' } as never;
+  }
+  const th = readRoom(reg, 'kukhnia', 'Кухня', null, null).things.find(x => x.kind === 'feeder')!;
+  let d = detail(th, P(reg)); assert.ok(d.facts.some(f => f.text === 'Миска пустая'), JSON.stringify(d.facts)); assert.ok(!d.facts.some(f => /75/.test(f.text)));
+  reg.states['sensor.kitchen_cat_feeder_eaten_p22'] = { ...reg.states['sensor.kitchen_cat_feeder_eaten_p22'], state: '12' };
+  d = detail(th, P(reg)); assert.ok(d.facts.some(f => f.text === 'В миске 12 г'));
+});

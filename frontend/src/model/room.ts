@@ -109,7 +109,7 @@ export function readRoom(reg: Registry, roomId: string, roomName: string, heatin
   void now;
   return {
     id: roomId, readings, heat: heating?.rooms.find(r => r.areaId === roomId) ?? null,
-    air: sorted.filter(t => airKinds.includes(t.kind)), things: sorted.filter(t => !airKinds.includes(t.kind) && (t.kind !== 'vacuum' || !vacuum)),
+    air: sorted.filter(t => airKinds.includes(t.kind)), things: sorted.filter(t => !airKinds.includes(t.kind)),
     consumers, total, vacuum: vacuum ? { linked: vacuum.rooms.some(r => r.areaId === roomId) } : null,
   };
 }

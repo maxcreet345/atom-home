@@ -1,3 +1,4 @@
+import type { ComponentChildren } from 'preact';
 /* The room page (owner's choice of 09.11.2026, variant «Пульт»; docs/ROOM.md): a hero with what the room reads and one sentence about it,
  * one-tap actions, a card per real device in that device's own words, the room's radiator and who draws the power. */
 import { Icon } from './primitives.tsx';
@@ -11,12 +12,13 @@ import type { T } from '../i18n/index.ts';
 import { rk, fmt, watts, detail, GUARDED } from './room-words.ts';
 import type { Lang } from './format.ts';
 import { readRoom, worst, type RoomModel, type Thing, type ThingKind, type Num, type Binary } from '../model/room.ts';
-import { heatRoomWord, heatingActions, useStepper, Stepper, heatSetText } from './heating.tsx';
+import { heatRoomWord, HeatRoomCard, heatSetText } from './heating.tsx';
 import { vacuumActions } from './vacuum.tsx';
 
 export interface RoomProps { reg: Registry; roomId: string; roomName: string; heating: Heating | null; vacuum: Vacuum | null; host: Host; t: T; lang: Lang; now: number; alarms: Alarm[] | null;
   deviceOf: (entity: string) => HomeDevice | undefined; toggle: (d: HomeDevice) => void; open: (d: HomeDevice) => void; busy: (d: HomeDevice) => boolean; onHeating: () => void; onAlarms: () => void;
-  /** a device drawn by a module (the kettle): the module's sheet key, and how to open it */ sheetOf?: (deviceId: string) => string | undefined; openSheet?: (key: string) => void }
+  /** a device drawn by a module (the kettle): the module's sheet key, and how to open it */ sheetOf?: (deviceId: string) => string | undefined; openSheet?: (key: string) => void;
+  /** the device's own card, when one was made for it (kettle, feeder, robot, camera): the room draws exactly that card */ ownCard?: (th: Thing, all: Thing[]) => ComponentChildren | null | false }
 type P = RoomProps;
 
 const GLYPH: Record<ThingKind, string> = { light: 'light', kettle: 'cup', feeder: 'paw', fountain: 'water', fridge: 'socket', tv: 'media', speaker: 'speaker', player: 'media', vacuum: 'vacuum', washer: 'washer', dryer: 'washer', camera: 'camera', purifier: 'air', humidifier: 'water', vent: 'fan', airfryer: 'pot', boiler: 'flame', valve: 'valve', socket: 'socket', other: 'generic' };
@@ -76,15 +78,6 @@ function Quick({ m, p }: { m: RoomModel; p: P }) {
     {clean && <button type="button" className="rm-q is-vac" style="--rm-tint:#5e5ce6" onClick={() => void vacuumActions(clean, p.host).rooms([m.id], 1)} disabled={!clean.available || clean.phase === 'cleaning'} aria-label={rk(p.t, 'cleanRoom', { r: where(p.roomName, p.lang) })}><Icon name="vacuum" size={22} /><strong>{rk(p.t, 'clean')}</strong><small>{clean.phase === 'cleaning' ? rk(p.t, 'cleaning') : where(p.roomName, p.lang)}</small></button>}
   </div>;
 }
-function HeatLine({ m, p }: { m: RoomModel; p: P }) {
-  const r = m.heat, h = p.heating, act = h ? heatingActions(h, p.host) : null;
-  const st = useStepper(r?.target ?? null, v => act && r ? act.room(r, v) : Promise.resolve(), () => {}, () => {}, 5, 30);
-  if (!r || !h) return null;
-  const word = heatRoomWord(r, p.t, p.now);
-  return <section className={`rm-card rm-heatline is-${r.action}`}><span className="rm-glyph" style="--rm-tint:#ff7a1a"><Icon name="heating" size={20} /></span>
-    <button type="button" className="rm-row-tx" onClick={p.onHeating}><strong>{rk(p.t, 'radiator')}</strong><small>{heatSetText(r.current, p.lang)}° · {word.toLowerCase()}</small></button>
-    {r.action === 'window' || r.action === 'off' || r.action === 'offline' || !h.system ? <span className="rm-muted">{rk(p.t, 'offShort')}</span> : <Stepper value={st.shown} text={heatSetText(st.shown, p.lang)} onStep={st.step} t={p.t} size="small" label={`${p.roomName}: ${rk(p.t, 'set')}`} atMin={st.atMin} atMax={st.atMax} pending={st.pending} />}</section>;
-}
 function Power({ m, p }: { m: RoomModel; p: P }) {
   if (!m.consumers.length) return null;
   const top = m.consumers.slice(0, 5), today = m.consumers.reduce((s, c) => s + (c.today ?? 0), 0), sum = top.reduce((s, c) => s + c.power, 0) || 1, cols = ['#30d158', '#0a84ff', '#ff9f0a', '#bf5af2', '#8e8e93'];
@@ -102,13 +95,17 @@ export function RoomView(p: RoomProps) {
   const m = readRoom(p.reg, p.roomId, p.roomName, p.heating, p.vacuum, p.now);
   // one lamp lives in the one-tap row; several get their own cards
   const tiles = [...m.things.filter(t => t.kind !== 'light' || m.things.filter(x => x.kind === 'light').length > 1), ...m.air];
+  // a device that already has its own card (kettle, feeder, robot, camera) is drawn by it, the same as on Home; the rest get the room's card
+  const cards = tiles.map(th => [th, p.ownCard?.(th, tiles) ?? null] as const), own = cards.filter(([, c]) => c !== null && c !== false), plain = cards.filter(([, c]) => c === null).map(([th]) => th); // false: drawn by another device's card (the room's cameras card)
   const side = m.heat || m.consumers.length;
   return <div className="rm-page rm-b">
     <div className="rm-b-top"><Hero m={m} p={p} /><Quick m={m} p={p} /></div>
     <Alarms p={p} />
     <div className="rm-b-cols">
-      {tiles.length > 0 && <div className="rm-b-main"><h2 className="rm-h">{rk(p.t, 'devices')}</h2><div className="rm-tile-grid">{tiles.map(th => <Tile th={th} p={p} />)}</div></div>}
-      {side ? <div className="rm-b-side"><h2 className="rm-h">{m.heat && m.consumers.length ? rk(p.t, 'climateEnergy') : m.heat ? rk(p.t, 'climate') : rk(p.t, 'energy')}</h2><HeatLine m={m} p={p} /><Power m={m} p={p} /></div> : null}
+      {tiles.length > 0 && <div className="rm-b-main"><h2 className="rm-h">{rk(p.t, 'devices')}</h2>
+        {own.length > 0 && <div className="ah-grid ah-face rm-own">{own.map(([, card]) => card)}</div>}
+        {plain.length > 0 && <div className="rm-tile-grid">{plain.map(th => <Tile th={th} p={p} />)}</div>}</div>}
+      {side ? <div className="rm-b-side"><h2 className="rm-h">{m.heat && m.consumers.length ? rk(p.t, 'climateEnergy') : m.heat ? rk(p.t, 'climate') : rk(p.t, 'energy')}</h2>{m.heat && p.heating && <div className="rm-heat"><HeatRoomCard h={p.heating} room={m.heat} host={p.host} t={p.t} lang={p.lang} now={p.now} /></div>}<Power m={m} p={p} /></div> : null}
     </div>
   </div>;
 }

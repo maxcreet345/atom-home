@@ -73,3 +73,8 @@
 /* the page follows its own width, not the screen's: a phone on its side and a tablet standing up keep one column of content */
 @container (min-width:700px){.hm-shell .rm-b-top{display:grid;grid-template-columns:7fr 5fr;gap:16px;align-items:stretch}.hm-shell .rm-b-top .rm-quick{grid-template-columns:repeat(2,minmax(0,1fr))}.hm-shell .rm-tile-grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}}
 @container (min-width:1000px){.hm-shell .rm-b-cols{display:grid;grid-template-columns:7fr 5fr;gap:16px;align-items:start}}
+.hm-shell .rm-own{margin-bottom:10px}
+.hm-shell .rm-heat .at-heat-room{background:var(--rm-card)}
+/* a device's own card keeps the size it has on Home: rows at least as tall as a column is wide, so the cameras card's two rows stay two squares */
+.hm-shell .rm-b-main{container-type:inline-size}
+.hm-shell .rm-own{grid-auto-rows:minmax(calc((100cqw - 2 * var(--ah-gap)) / 3),auto)}

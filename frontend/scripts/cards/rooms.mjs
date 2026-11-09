@@ -17,6 +17,8 @@ export const card = {
     snap.entities = snap.entities.filter(e => KEEP.test(e.entity_id) || (!ids.has(e.entity_id) && !areas.has(areaOf(e)))).concat(live.entities.filter(e => !KEEP.test(e.entity_id) || !snap.entities.some(x => x.entity_id === e.entity_id)));
     for (const a of live.areas) { const o = snap.areas.find(x => x.area_id === a.area_id); if (o) Object.assign(o, a); else snap.areas.push(a); }
     for (const [id, s] of Object.entries(live.states)) if (!KEEP.test(id) || !snap.states[id]) snap.states[id] = structuredClone(s);
+    // the bowl's scale as live HA marks it (the fixture keeps few attributes): the feeder's sheet and the room card read the same grams
+    if (snap.states['sensor.kitchen_cat_feeder_eaten_p22']) snap.states['sensor.kitchen_cat_feeder_eaten_p22'].attributes['eaten_food_measure-2-22'] = 0;
     const set = (id, state) => { if (snap.states[id]) snap.states[id] = { ...snap.states[id], state }; };
     // the kitchen as it was: the centre window open, so its head waits (the heating's own «window» moment)
     set('input_boolean.kitchen_heating_window', 'on'); snap.states['climate.kitchen_trv'] = { ...snap.states['climate.kitchen_trv'], state: 'off', attributes: { ...snap.states['climate.kitchen_trv'].attributes, current_temperature: 20.5, temperature: null, hvac_action: 'off' } };
