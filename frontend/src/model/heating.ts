@@ -25,6 +25,7 @@ export interface Heating {
   sleep: { from: string; to: string }; guests: boolean; eco: boolean; vacation: boolean; vacationReturn: string | null; scenarioOverride: boolean;
   /** one hysteresis for every head (owner, 09.11.2026): how far a room may cool before its head opens, how far it may warm before it closes; null until the helpers exist */
   hyst: { down: number; up: number } | null;
+  /** the house's security (Alarmo): its «Отпуск» is the whole house's, the heating follows it (automation heating_security) */ security: { id: string; state: string; mode: string | null; vacation: boolean } | null;
   rooms: HeatRoom[]; boiler: Boiler; outdoor: { temp: number | null; state: string | null };
 }
 const SCENARIO: Record<string, Scenario> = { 'Дома': 'home', 'Сон': 'sleep', 'Нет дома': 'away', 'Эко': 'eco', 'Отпуск': 'vacation' };
@@ -77,6 +78,7 @@ export function readHeating(reg: Registry, now = Date.now()): Heating | null {
     guests: on('input_boolean.heating_guests'), eco: on('input_boolean.heating_eco'), vacation: on('input_boolean.heating_vacation'),
     vacationReturn: s('input_datetime.heating_vacation_return')?.state ?? null, scenarioOverride: on('input_boolean.heating_scenario_override'),
     hyst: (d => d && n(s('input_number.heating_hyst_up')) !== null ? { down: d, up: n(s('input_number.heating_hyst_up'))! } : null)(n(s('input_number.heating_hyst_down'))),
+    security: (a => a ? { id: 'alarm_control_panel.alarmo', state: a.state, mode: typeof a.attributes.arm_mode === 'string' ? a.attributes.arm_mode : null, vacation: ((Number(a.attributes.supported_features) || 0) & 32) === 32 } : null)(s('alarm_control_panel.alarmo')),
     rooms,
     boiler: { online: busOn && B('flow_temp') !== null, flame: !busOn ? null : flame === 'on' ? true : flame === 'off' ? false : null, flow: B2('flow_temp'), flowTarget: B2('flow_temp_target'), ret: B2('return_temp'),
       dhw: B2('dhw_temp'), dhwTarget: B2('dhw_temp_target'), pressure, pressureLow: pressure !== null && (pLow ?? pressure < 1), pressureHigh: pressure !== null && (pHigh ?? pressure > 2.5), relay: relay === 'on' ? true : relay === 'off' ? false : null, state: s('sensor.kitchen_boiler_state_code')?.state ?? null },

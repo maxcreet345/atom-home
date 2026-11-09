@@ -16,6 +16,7 @@ function apply(snap, now, sc) {
   set('switch.kitchen_boiler_heat_relay', 'on'); set('weather.forecast_home', 'fog', { temperature: -2.9 });
   set('input_number.heating_home_temp', '20.5'); set('sensor.heating_target_temp', '20.5'); set('climate.living_thermostat', 'heat', { temperature: 21, current_temperature: 20 });
   trv('living', 19.7, 20.5, 'heating'); trv('kitchen', 19.9, 20.5, 'heating'); trv('bedroom', 19.4, 20.5, 'heating'); trv('kids', 21.0, 20.5, 'idle'); trv('office', 20.1, 20.5, 'heating');
+  if (sc === 'secvac') { set('alarm_control_panel.alarmo', 'disarmed', { supported_features: 43, friendly_name: 'Alarmo' }); if (!snap.entities.some(e => e.entity_id === 'alarm_control_panel.alarmo')) snap.entities.push({ entity_id: 'alarm_control_panel.alarmo', device_id: null, area_id: null, name: null, original_name: 'Alarmo', platform: 'alarmo', entity_category: null, disabled_by: null, hidden_by: null }); }
   if (sc === 'own') {
     trv('kids', 22.3, 24, 'heating'); set('input_number.kids_heating_override_temp', '24'); set('timer.kids_heating_override', 'active', { finishes_at: new Date(now.getTime() + 161 * 60000).toISOString(), duration: '3:00:00' });
     set('binary_sensor.kitchen_window_center_contact', 'on'); S['binary_sensor.kitchen_window_center_contact'].last_changed = iso(now, 12); set('input_boolean.kitchen_heating_window', 'on'); trv('kitchen', 18.6, null, 'off', 'off');
@@ -31,7 +32,7 @@ function apply(snap, now, sc) {
 }
 export const card = {
   name: 'Отопление', sheet: '#climate', home: '#home', sheetRoot: '.at-heat-panel', tileRoot: '.at-heat-tile', actionButton: null, darkScenarios: ['normal', 'own', 'silent'], homeScenarios: ['normal', 'own', 'off'],
-  scenarios: { normal: {}, own: { sc: 'own' }, manual: { sc: 'manual' }, sleep: { sc: 'sleep' }, off: { sc: 'off' }, silent: { sc: 'silent' } },
+  scenarios: { normal: {}, secvac: { sc: 'secvac' }, own: { sc: 'own' }, manual: { sc: 'manual' }, sleep: { sc: 'sleep' }, off: { sc: 'off' }, silent: { sc: 'silent' } },
   build(base, scenario, now) {
     const out = cams.build(base, cams.scenarios.quiet, now), snap = out.snapshot, ids = new Set(live.entities.map(e => e.entity_id));
     snap.entities = snap.entities.filter(e => !ids.has(e.entity_id) && !OLD.test(e.entity_id)).concat(live.entities);

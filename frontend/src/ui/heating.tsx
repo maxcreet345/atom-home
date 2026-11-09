@@ -31,6 +31,8 @@ export function heatingActions(h: Heating, host: Host) {
     back: (r: HeatRoom) => call('timer', 'cancel', { entity_id: `timer.${r.key}_heating_override` }),
     /** the heads' hysteresis for the whole house: the helpers only, the heating automation puts it on every head */
     hyst: (k: 'down' | 'up', v: number) => call('input_number', 'set_value', { entity_id: `input_number.heating_hyst_${k}`, value: v }),
+    /** «Отпуск» is the house's: with the security's own «Отпуск» it arms or disarms that, and the heating follows (heating_security) */
+    vacation: (on: boolean) => h.security?.vacation ? (on ? call('alarm_control_panel', 'alarm_arm_vacation', { entity_id: h.security.id }) : h.security.state === 'armed_vacation' || h.security.mode === 'armed_vacation' ? call('alarm_control_panel', 'alarm_disarm', { entity_id: h.security.id }) : call('input_boolean', 'turn_off', { entity_id: 'input_boolean.heating_vacation' })) : call('input_boolean', on ? 'turn_on' : 'turn_off', { entity_id: 'input_boolean.heating_vacation' }),
     flag: (k: 'eco' | 'guests' | 'vacation', on: boolean) => call('input_boolean', on ? 'turn_on' : 'turn_off', { entity_id: `input_boolean.heating_${k}` }),
   };
 }
@@ -179,11 +181,16 @@ function RoomCard({ r, h, act, t, lang, now, ui }: { r: HeatRoom; h: Heating; ac
 }
 const SCEN: Array<{ id: Scenario | 'guests'; flag?: 'eco' | 'guests' | 'vacation' }> = [{ id: 'home' }, { id: 'sleep' }, { id: 'away' }, { id: 'eco', flag: 'eco' }, { id: 'guests', flag: 'guests' }, { id: 'vacation', flag: 'vacation' }];
 function Scenarios({ h, act, t, lang, ui }: { h: Heating; act: ReturnType<typeof heatingActions>; t: T; lang: Lang; ui: ReturnType<typeof useAct> }) {
+  const [askVac, setAskVac] = useState(false), cancel = useRef<HTMLButtonElement>(null);
+  useEffect(() => { if (askVac) cancel.current?.focus(); }, [askVac]);
+  const press = (k: 'eco' | 'guests' | 'vacation', on: boolean) => { if (k === 'vacation' && on) { setAskVac(true); return; } ui.run(k, () => k === 'vacation' ? act.vacation(on) : act.flag(k, on)); };
   const sub = (id: string) => id === 'home' ? tk(t, 'scs.home') : id === 'sleep' ? `${h.sleep.from}–${h.sleep.to}` : id === 'away' ? tk(t, 'scs.away') : id === 'eco' ? tk(t, 'scs.eco') : id === 'guests' ? tk(t, 'scs.guests') : h.vacation && h.vacationReturn ? tk(t, 'scs.back', { at: new Date(h.vacationReturn.replace(' ', 'T')).toLocaleDateString(LOC[lang], { day: 'numeric', month: 'short' }) }) : tk(t, 'scs.vacation');
   return <section className="at-heat-sec"><div className="hm-section-head"><h2>{tk(t, 'scenario')}</h2></div>
     <div className="at-heat-scen">{SCEN.map(s => { const now = s.id === h.scenario, on = s.flag ? h[s.flag] : now, temp = s.id === 'guests' ? null : h.temps[s.id as Scenario];
       const body = <><span className="at-heat-scen-top"><strong>{tk(t, `sc.${s.id}`)}</strong>{temp !== null && <b>{setT(temp, lang)}°</b>}</span><small>{sub(s.id)}</small>{now ? <em>{tk(t, 'now')}</em> : s.flag ? <em className="is-sw">{on ? tk(t, 'on') : tk(t, 'turnOnShort')}</em> : <em className="is-auto">{tk(t, 'byItself')}</em>}</>;
-      return s.flag ? <button type="button" role="switch" aria-checked={on} className={`at-heat-scen-card ${now ? 'is-now' : ''} ${on ? 'is-on' : ''}`} aria-disabled={ui.busy === s.flag || undefined} aria-busy={ui.busy === s.flag || undefined} onClick={() => ui.run(s.flag!, () => act.flag(s.flag!, !on))}>{body}</button> : <div className={`at-heat-scen-card ${now ? 'is-now' : ''}`}>{body}</div>; })}</div><Err text={ui.err('eco', 'guests', 'vacation')} /></section>;
+      return s.flag ? <button type="button" role="switch" aria-checked={on} className={`at-heat-scen-card ${now ? 'is-now' : ''} ${on ? 'is-on' : ''}`} aria-disabled={ui.busy === s.flag || undefined} aria-busy={ui.busy === s.flag || undefined} onClick={() => press(s.flag!, !on)}>{body}</button> : <div className={`at-heat-scen-card ${now ? 'is-now' : ''}`}>{body}</div>; })}</div>
+    {askVac && <div className="at-heat-confirm is-wide" role="group" aria-label={tk(t, h.security?.vacation ? 'vacAskSec' : 'vacAsk')} onKeyDown={e => { if (e.key === 'Escape') setAskVac(false); }}><span>{tk(t, h.security?.vacation ? 'vacAskSec' : 'vacAsk', { v: setT(h.temps.vacation, lang) })}</span><button type="button" className="at-heat-power is-danger" onClick={() => { setAskVac(false); ui.run('vacation', () => act.vacation(true)); }}>{tk(t, 'vacYes')}</button><button type="button" ref={cancel} className="at-heat-power is-on" onClick={() => setAskVac(false)}>{tk(t, 'cancel')}</button></div>}
+    <Err text={ui.err('eco', 'guests', 'vacation')} /></section>;
 }
 /** One hysteresis for all five heads. A head can open again at most 1° below where it closes, so «down» and «up» share that degree. */
 function Hysteresis({ h, act, t, lang, ui }: { h: Heating; act: ReturnType<typeof heatingActions>; t: T; lang: Lang; ui: ReturnType<typeof useAct> }) {

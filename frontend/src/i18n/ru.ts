@@ -241,5 +241,8 @@ export const ru = {
   'module.oc.nextMode': "{when} — {m} режим",
   'module.oc.standbyWord': "Простой",
   'module.oc.targetHidden': "режим простоя",
+  'module.heat.vacAsk': "Включить «Отпуск»? Во всём доме будет {v}°",
+  'module.heat.vacAskSec': "Включить «Отпуск»? Охрана встанет в «Отпуск», во всём доме будет {v}°",
+  'module.heat.vacYes': "Включить «Отпуск»",
 };
 export type Dictionary = typeof ru;

@@ -242,4 +242,7 @@ export const ro: Dictionary = {
   'module.oc.nextMode': "{when} — modul {m}",
   'module.oc.standbyWord': "Repaus",
   'module.oc.targetHidden': "mod de repaus",
+  'module.heat.vacAsk': "Porniți «Vacanță»? Toată casa va avea {v}°",
+  'module.heat.vacAskSec': "Porniți «Vacanță»? Paza trece în «Vacanță», toată casa va avea {v}°",
+  'module.heat.vacYes': "Pornește «Vacanță»",
 };

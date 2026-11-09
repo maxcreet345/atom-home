@@ -242,4 +242,7 @@ export const en: Dictionary = {
   'module.oc.nextMode': "{when} — {m} mode",
   'module.oc.standbyWord': "Standby",
   'module.oc.targetHidden': "standby mode",
+  'module.heat.vacAsk': "Turn on «Vacation»? The whole house goes to {v}°",
+  'module.heat.vacAskSec': "Turn on «Vacation»? Security arms «Vacation», the whole house goes to {v}°",
+  'module.heat.vacYes': "Turn on «Vacation»",
 };

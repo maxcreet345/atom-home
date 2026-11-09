@@ -905,3 +905,4 @@
 .at-ep-bld-num.is-none{font-size:22px}
 .at-ep-bld-now{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;color:var(--ah-muted);font-variant-numeric:tabular-nums}
 .hm-shell.ah-shell[data-theme="dark"] .at-ep-bld{background:rgba(255,255,255,.06)}
+.hm-shell .at-heat-confirm.is-wide{margin-top:10px;padding:12px 14px;border-radius:16px;background:var(--hz-card);justify-content:flex-start}.hm-shell .at-heat-confirm.is-wide span{text-align:left}

@@ -96,6 +96,14 @@ const settle = page => page.waitForTimeout(900); // the stepper sends after 700 
   check('hysteresis «вниз» +: one command to its helper, 0,8', l.length === 1 && l[0].entity_id === 'input_number.heating_hyst_down' && Math.abs(l[0].value - 0.8) < 1e-9, l);
   check('«вниз» + «вверх» never above 1°', await p.page.evaluate(() => document.querySelectorAll('.at-heat-hyst-row')[1].querySelectorAll('.at-heat-pm')[1].getAttribute('aria-disabled') === 'true'));
   check('the example names the real thresholds', /откроется на 19,7° и закроется на 20,7°/.test(await p.page.locator('.at-heat-hyst-say').innerText())); await p.ctx.close(); }
+{ const p = await open({ hash: '#climate' }); await p.page.locator('.at-heat-scen-card', { hasText: 'Отпуск' }).click(); await p.page.waitForTimeout(150);
+  check('«Отпуск» asks first, nothing sent', (await log(p.page)).length === 0 && await p.page.locator('.at-heat-scen + .at-heat-confirm').isVisible());
+  await p.page.locator('.at-heat-scen + .at-heat-confirm .is-danger').click(); await p.page.waitForTimeout(150); const l = await log(p.page);
+  check('…then turns the heating «Отпуск» on (no security «Отпуск» in this house yet)', l.length === 1 && l[0].entity_id === 'input_boolean.heating_vacation' && l[0].s === 'turn_on', l); await p.ctx.close(); }
+{ const p = await open({ scenario: 'secvac', hash: '#climate' }); await p.page.locator('.at-heat-scen-card', { hasText: 'Отпуск' }).click(); await p.page.waitForTimeout(150);
+  check('with the security\'s «Отпуск» the question names it', /Охрана встанет в «Отпуск»/.test(await p.page.locator('.at-heat-scen + .at-heat-confirm').innerText()));
+  await p.page.locator('.at-heat-scen + .at-heat-confirm .is-danger').click(); await p.page.waitForTimeout(150); const l = await log(p.page);
+  check('…and arms the security «Отпуск»', l.length === 1 && l[0].s === 'alarm_arm_vacation' && l[0].entity_id === 'alarm_control_panel.alarmo', l); await p.ctx.close(); }
 // 5. a refused command puts the value back and says so
 { const p = await open({ accept: false }); await press(p.page, '.at-heat-tile [aria-label$="больше на 0,5°"]'); await p.page.waitForTimeout(1200);
   const s = await p.page.evaluate(() => ({ n: document.querySelector('.at-heat-tile .at-heat-step b').textContent, err: document.querySelector('.at-heat-tile .at-heat-err')?.textContent }));
