@@ -12,7 +12,7 @@ test('people from HA: home, away, a zone, unknown; home first; hidden ones left 
   assert.deepEqual(p.map(x => x.state), ['home', 'away', 'zone', 'unknown']);
   assert.equal(p.find(x => x.first === 'Gayane')?.zone, 'Traian'); assert.equal(p.find(x => x.first === 'Gayane')?.initials, 'GG');
   assert.equal(p.find(x => x.first === 'Ararat')?.picture, '/api/image/serve/x/512x512'); assert.equal(p.find(x => x.first === 'Guest')?.initials, 'G');
-  assert.equal(typeof p[0].since, 'number');
+  assert.equal(p[0].since, null, 'all in the same minute (the fixture) reads as an HA restart: no time');
 });
 test('a person whose card is switched off in Setup → Devices is left out of the header', () => {
   const states = { 'person.a': st('home', 'Ararat Melconean'), 'person.d': st('home', 'Daniela Melconean') };
@@ -36,4 +36,11 @@ test('the summary: nobody known is «no data», not «nobody home»', () => {
 });
 test('the time never breaks away from «since» at the line end, in every language', () => {
   for (const d of [ru, en, ro]) for (const k of ['people.since', 'people.sinceYesterday'] as const) assert.match(d[k], / \{t\}/, k);
+});
+test('after an HA restart every person changed in the same minute: no «с ЧЧ:ММ» for anyone', () => {
+  const t = '2026-11-09T03:12:05Z', u = '2026-11-09T03:12:40Z';
+  const p = people({ states: { 'person.a': st('home', 'A B', {}, t), 'person.b': st('not_home', 'C D', {}, u) }, entities: [] } as never, { entities: {}, devices: {} } as never);
+  assert.deepEqual(p.map(x => x.since), [null, null]);
+  const q = people({ states: { 'person.a': st('home', 'A B', {}, t), 'person.b': st('not_home', 'C D', {}, '2026-11-09T07:40:00Z') }, entities: [] } as never, { entities: {}, devices: {} } as never);
+  assert.ok(q.every(x => typeof x.since === 'number'), 'different times stay');
 });
