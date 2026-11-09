@@ -51,7 +51,9 @@ export function discover(reg: Registry, config: HouseConfig, claimed: ReadonlySe
     const sensors = classified.filter(x => x.cat === 'primary' && x.kind && !CONTROL_KINDS.includes(x.kind));
     // Room-light rule: a light that is an appliance's indicator (camera LED, hub status light) is a setting of that device, never a lamp of the room.
     const nameOf = (x: typeof classified[number]) => typeof x.s?.attributes.friendly_name === 'string' ? x.s.attributes.friendly_name : x.e.name ?? x.e.original_name ?? '';
-    const appliance = controls.some(x => APPLIANCE_KINDS.includes(x.kind!));
+    // a ceiling fan's lamp is a lamp (Atom + Okapi, 09.11.2026: the iFan04 over the soldering bench), not a purifier's status light
+    const ceilingFan = /ifan|ceiling\s*fan|потолочн/i.test(`${d.model ?? ''} ${d.name ?? ''}`) && !controls.some(x => x.kind !== 'fan' && x.kind !== 'light' && APPLIANCE_KINDS.includes(x.kind!));
+    const appliance = !ceilingFan && controls.some(x => APPLIANCE_KINDS.includes(x.kind!));
     // an LED controller's light is its whole point, whatever «led» its name carries (Atom + Okapi, 09.11.2026: `light.kontroller_led_podsvetki_atom`)
     const ledController = /gledopto|led\s*controller|pixel\s*controller|контроллер\s+(лед|led)|strip/i.test(`${d.manufacturer ?? ''} ${d.model ?? ''} ${d.name ?? ''}`);
     const indicators = controls.filter(x => x.kind === 'light' && !ledController && (appliance || isIndicatorLight(x.e.entity_id, nameOf(x))));
