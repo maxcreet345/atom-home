@@ -1,13 +1,13 @@
-// The room page (mock, 09.11.2026): the house as HA showed it at 13:18 that day (private/fixtures/criuleni-rooms-20261109.json, every enabled entity
+// The room page (09.11.2026): the house as HA showed it at 13:18 that day (private/fixtures/criuleni-rooms-20261109.json, every enabled entity
 // with an area, without diagnostics) over the Vacuum card's house; the heating, the robot and the cameras stay as their own cards drew them.
-// The layout under test is the page's ?layout= (a | b | c).
+//
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { card as vac } from './vacuum.mjs';
 const live = JSON.parse(readFileSync(resolve(import.meta.dirname, '../../../private/fixtures/criuleni-rooms-20261109.json'), 'utf8'));
 const KEEP = /^(climate\.|vacuum\.|camera\.|input_|timer\.)|_robot_vacuum|kitchen_boiler_(?!plug)/; // the other cards' own moments
 export const card = {
-  name: 'Комната', sheet: '#rooms?room=kukhnia', home: '#rooms', sheetRoot: '.hm-room-page', tileRoot: '.at-room', actionButton: null,
+  name: 'Комната', sheet: '#rooms?room=kukhnia', home: '#rooms', sheetRoot: '.rm-page', tileRoot: '.at-room', actionButton: null,
   scenarios: { live: {}, evening: { sc: 'evening' } },
   build(base, scenario, now) {
     const out = vac.build(base, vac.scenarios.docked, now), snap = out.snapshot, ids = new Set(live.entities.map(e => e.entity_id));

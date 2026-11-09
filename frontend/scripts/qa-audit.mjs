@@ -64,7 +64,7 @@ try {
     const rendered = {}; for (const s of sections) { await go(s); rendered[s] = await page.evaluate(() => !!document.querySelector('.hm-page')?.children.length); }
     check(`${tag}/all-sections-render`, Object.values(rendered).every(Boolean), rendered);
     await go('rooms'); await page.evaluate(() => document.querySelector('.at-room').click()); await page.waitForTimeout(400);
-    const inRoom = await has('.hm-room-page'); await page.evaluate(() => history.back()); await page.waitForTimeout(400);
+    const inRoom = await has('.rm-page'); await page.evaluate(() => history.back()); await page.waitForTimeout(400);
     check(`${tag}/room-opens-and-history-back-returns`, inRoom && await has('.hm-room-grid.is-page'));
     await page.evaluate(() => document.querySelector('.at-room').click()); await page.waitForTimeout(300); await page.evaluate(() => document.querySelector('.hm-back').click()); await page.waitForTimeout(300);
     check(`${tag}/back-button-returns-to-rooms`, await has('.hm-room-grid.is-page'));

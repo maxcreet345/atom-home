@@ -1,4 +1,4 @@
-/* A room as its owner sees it (mock, 09.11.2026): one strip of readings, the room's own climate, a card per real device, who draws the power.
+/* A room as its owner sees it (docs/ROOM.md, 09.11.2026): one strip of readings, the room's own climate, a card per real device, who draws the power.
  * Pure: reads the registry and the live states, never writes. HA devices, not entities: a kettle is one card, not its eleven switches;
  * a plug or a meter that powers a device of the room gives that device its watts instead of a card of its own. */
 import type { Registry, EntityRow } from './registry.ts';
@@ -10,7 +10,7 @@ export type Metric = 'temperature' | 'humidity' | 'co2' | 'pm25';
 export interface Num { id: string; value: number | null; tone: Tone }
 export interface Binary { ids: string[]; on: string[]; unknown: boolean; since: number | null }
 export interface Readings { temperature: Num | null; humidity: Num | null; co2: Num | null; pm25: Num | null; lux: Num | null; motion: Binary | null; windows: Binary | null; door: Binary | null; leak: Binary | null; gas: Binary | null; scale: HumidityScale }
-export type ThingKind = 'light' | 'kettle' | 'feeder' | 'fountain' | 'fridge' | 'tv' | 'speaker' | 'player' | 'vacuum' | 'washer' | 'dryer' | 'camera' | 'purifier' | 'humidifier' | 'vent' | 'airfryer' | 'boiler' | 'socket' | 'other';
+export type ThingKind = 'light' | 'kettle' | 'feeder' | 'fountain' | 'fridge' | 'tv' | 'speaker' | 'player' | 'vacuum' | 'washer' | 'dryer' | 'camera' | 'purifier' | 'humidifier' | 'vent' | 'airfryer' | 'boiler' | 'valve' | 'socket' | 'other';
 export interface Thing {
   key: string; kind: ThingKind; name: string; model: string | null; available: boolean;
   /** the entity a tap switches, if the device has one worth a tap */ main: string | null; on: boolean | null;
@@ -34,6 +34,7 @@ const stem = (w: string) => w.toLowerCase().replace(/ё/g, 'е').slice(0, 5);
 const kindOf = (name: string, ids: string[], model: string): ThingKind => {
   const s = `${name} ${model} ${ids.join(' ')}`;
   if (ids.some(i => i.startsWith('vacuum.'))) return 'vacuum';
+  if (ids.some(i => i.startsWith('valve.'))) return 'valve';
   if (/kettle|чайник/i.test(s)) return 'kettle';
   if (/feeder|кормушк/i.test(s)) return 'feeder';
   if (/fountain|поилк/i.test(s)) return 'fountain';
@@ -53,7 +54,7 @@ const kindOf = (name: string, ids: string[], model: string): ThingKind => {
   if (ids.some(i => i.startsWith('switch.'))) return 'socket';
   return 'other';
 };
-const MAIN: Partial<Record<ThingKind, RegExp>> = { kettle: /^switch\..*kettle_power$/, fountain: /^switch\..*_pump$/, light: /^light\.(?!.*_ambient)/, tv: /^media_player\./, speaker: /^media_player\./, player: /^media_player\./, purifier: /^fan\./, humidifier: /^humidifier\./, vent: /^(fan|switch)\./, fridge: /^switch\./, socket: /^switch\./, washer: /^switch\..*socket$/, dryer: /^switch\..*socket$/, boiler: /^switch\./ };
+const MAIN: Partial<Record<ThingKind, RegExp>> = { valve: /^valve\./, kettle: /^switch\..*kettle_power$/, fountain: /^switch\..*_pump$/, light: /^light\.(?!.*_ambient)/, tv: /^media_player\./, speaker: /^media_player\./, player: /^media_player\./, purifier: /^fan\./, humidifier: /^humidifier\./, vent: /^(fan|switch)\./, fridge: /^switch\./, socket: /^switch\./, washer: /^switch\..*socket$/, dryer: /^switch\..*socket$/, boiler: /^switch\./ };
 
 export function readRoom(reg: Registry, roomId: string, roomName: string, heating: Heating | null, vacuum: Vacuum | null, now = Date.now()): RoomModel {
   const devById = new Map(reg.devices.map(d => [d.id, d]));
@@ -77,6 +78,7 @@ export function readRoom(reg: Registry, roomId: string, roomName: string, heatin
   const things: Thing[] = [], meters: Array<{ target: string | null; thing: Thing }> = [];
   for (const [key, list] of groups) {
     const d = devById.get(key), raw = d ? ((d as { name_by_user?: string | null }).name_by_user ?? d.name ?? '') : (reg.states[list[0].entity_id]?.attributes.friendly_name as string ?? list[0].entity_id), ids = list.map(e => e.entity_id);
+    if (/\bspm\b|ввод/i.test(`${raw} ${d?.model ?? ''}`)) continue; // the house's mains belong to «Энергия», never to a room's cards
     if (INFRA.test(raw) || ids.some(i => i.startsWith('climate.')) || /котл|котёл|boiler/i.test(raw)) continue; // the hub's own relays; the radiator heads and the boiler belong to the heating
     if (list.some(e => e.entity_id.startsWith('binary_sensor.') && ['gas', 'moisture', 'window', 'door', 'opening', 'smoke'].includes(dcOf(reg, e) ?? ''))) continue; // a detector with a test switch is still a detector: the strip // the hub's own relays; the radiator heads live in the climate block
     if (/док-станц|dock/i.test(raw) && vacuum) continue; // the dock is part of the robot
@@ -99,7 +101,7 @@ export function readRoom(reg: Registry, roomId: string, roomName: string, heatin
     things.push(thing);
   }
   for (let i = things.length - 1; i >= 0; i--) { const twin = things.findIndex((t, j) => j < i && t.name === things[i].name); if (twin >= 0) { const a = things[twin], b = things[i]; a.ids.push(...b.ids); a.main ??= b.main; a.available ||= b.available; things.splice(i, 1); } } // one camera, two HA devices
-  const ORDER: ThingKind[] = ['light', 'vacuum', 'kettle', 'feeder', 'fountain', 'airfryer', 'tv', 'player', 'speaker', 'washer', 'dryer', 'fridge', 'camera', 'boiler', 'socket', 'other'];
+  const ORDER: ThingKind[] = ['light', 'vacuum', 'kettle', 'feeder', 'fountain', 'airfryer', 'tv', 'player', 'speaker', 'washer', 'dryer', 'fridge', 'valve', 'camera', 'boiler', 'socket', 'other'];
   const airKinds: ThingKind[] = ['purifier', 'humidifier', 'vent'];
   const sorted = things.sort((a, b) => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind) || a.name.localeCompare(b.name, 'ru'));
   const consumers = sorted.filter(t => t.power !== null && t.available).map(t => ({ key: t.key, name: t.name, power: t.power!, today: t.today })).sort((a, b) => b.power - a.power);
