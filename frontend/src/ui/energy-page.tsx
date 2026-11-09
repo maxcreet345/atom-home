@@ -8,7 +8,7 @@ import { Icon } from './primitives.tsx';
 import { Tick } from './motion.tsx';
 import { energyText, powerText } from '../model/energy.ts';
 import type { FloorRow } from '../model/registry.ts';
-import { channels as findChannels, feedOfStat, gridIds, prefChannels, prefName, prefTariff, type EnergyPrefs, firstStatistics, keptSessions, loadReport, meters as findMeters, range } from '../model/energy-load.ts';
+import { channels as findChannels, feedOfStat, gridIds, prefChannels, prefName, shortName, prefTariff, type EnergyPrefs, firstStatistics, keptSessions, loadReport, meters as findMeters, range } from '../model/energy-load.ts';
 import { PERIODS, UNASSIGNED, failedLoad, type LoadState, axis, barAverage, byRoom, change, counted, daysElapsed, forecast, lei, pick as pickSum, sum, totals, type Bucket, type EnergyReport, type FeedInfo, type Period, type Split } from '../model/energy-report.ts';
 /** The Energy panel (owner, 08.11.2026, approved from the mock): the period and its lei on top, one big animated chart of the house feed split
  * by the SPM's channels, the channels side by side, each apartment by room and device, the comparison and the month's forecast, the network
@@ -29,7 +29,8 @@ export function EnergyPanel({ chargerOf = null, host, devices, boilers, feedOfRo
   const [hidden, setHidden] = useState<string[]>([]), [pick, setPick] = useState<number | null>(null), [group, setGroup] = useState<string | null>(null), [prefs, setPrefs] = useState<{ parents: Set<string>; listed: Set<string>; ok: boolean; raw?: EnergyPrefs | null } | null>(null), [tick, setTick] = useState(0), [firstState, setFirst] = useState<{ key: string; v: number | null; failed: boolean } | null>(null), [firstAgain, setFirstAgain] = useState(0);
   const h2 = useRef<HTMLHeadingElement>(null), focusHead = useRef(false), attempts = useRef(0), last = useRef<EnergyReport | null>(null), firstFailed = useRef(false);
   const grid = useMemo(() => gridIds(prefs?.raw), [prefs?.raw]);
-  const chs = useMemo(() => prefChannels(findChannels(devices, boilers, grid), prefs?.raw ?? null), [devices, boilers, grid, prefs?.raw]);
+  // a line is named where the owner names it, in HA's Energy settings («Пайка»); otherwise by its meter
+  const chs = useMemo(() => prefChannels(findChannels(devices, boilers, grid), prefs?.raw ?? null).map(c => { const n = prefName(prefs?.raw, [c.total, c.energy].filter((x): x is string => !!x)); return n ? { ...c, name: n, short: shortName(n) } : c; }), [devices, boilers, grid, prefs?.raw]);
   const chKey = chs.map(c => c.energy).join(' '), firstRead = firstState?.key === chKey ? firstState.v : undefined, first = firstRead ?? null;
   firstFailed.current = firstState?.key === chKey && firstState.failed;
   // HA's Energy settings say which plug holds others (the kitchen's appliance plug held the fridge, the kettle and the air fryer): left out, or they
