@@ -23,16 +23,16 @@ export function feedPower(devices: HomeDevice[], boilers: Set<string>, grid?: Re
   const values = channels.map(m => m.available ? Number(m.state) * (m.unit === 'kW' ? 1000 : 1) : NaN);
   return { watts: values.every(Number.isFinite) ? values.reduce((a, v) => a + v, 0) : null, channels };
 }
-/** Energy of the feed: the SPM's «today» counters summed (Tasmota resets them at midnight), and the ids of its running totals, from which HA's
+/** Energy of the feed (Tasmota POW number their readings: `tasmota_energy_today_2`, the suffix is part of the name): the SPM's «today» counters summed (Tasmota resets them at midnight), and the ids of its running totals, from which HA's
  * statistics give the month. One silent counter and the day is not known: no figure rather than a part of the house. */
 const feedEnergy = (devices: HomeDevice[], ending: RegExp, grid?: ReadonlySet<string>) => devices.filter(d => isMains(d, grid)).flatMap(x => x.metrics.filter(m => m.deviceClass === 'energy' && ending.test(m.id)));
 export function feedToday(devices: HomeDevice[], grid?: ReadonlySet<string>): number | null {
-  const today = feedEnergy(devices, /_energy_(today|day)$/, grid); if (!today.length) return null;
+  const today = feedEnergy(devices, /_energy_(today|day)(_\d+)?$/, grid); if (!today.length) return null;
   const values = today.map(m => m.available ? Number(m.state) * (m.unit === 'Wh' ? 0.001 : 1) : NaN);
   return values.every(Number.isFinite) ? values.reduce((a, v) => a + v, 0) : null;
 }
 /** The counters the month is read from: the daily ones, whose statistics a first day or a meter restart cannot blow up (live check 09.11.2026). */
-export const feedTotalIds = (devices: HomeDevice[], grid?: ReadonlySet<string>): string[] => { const daily = feedEnergy(devices, /_energy_(today|day)$/, grid); return (daily.length ? daily : feedEnergy(devices, /_energy_total$/, grid)).map(m => m.id).sort(); };
+export const feedTotalIds = (devices: HomeDevice[], grid?: ReadonlySet<string>): string[] => { const daily = feedEnergy(devices, /_energy_(today|day)(_\d+)?$/, grid); return (daily.length ? daily : feedEnergy(devices, /_energy_total(_\d+)?$/, grid)).map(m => m.id).sort(); };
 /** «7,3 kWh», «123 kWh», «1 234 kWh»: one decimal while it is small, whole numbers after. */
 export const energyText = (kwh: number, fmt: (v: number, digits: number) => string): { value: string; unit: string } => ({ value: fmt(kwh, kwh < 10 ? 1 : 0), unit: 'kWh' });
 /** «380 W», «2,4 kW»: watts up to a thousand, then kilowatts with one decimal (owner, 06.11.2026). */
