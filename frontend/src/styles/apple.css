@@ -1081,3 +1081,13 @@
 .hm-shell .at-sec-panel .at-osec-chips button{min-height:44px}
 .hm-shell .at-sec-panel .at-osec-dev-text b,.hm-shell .at-sec-panel .at-osec-dev-text small{white-space:normal;overflow:visible}
 @container (max-width:185px){.hm-shell .at-house-tile .ah-tile-hit{gap:4px}.hm-shell .at-house-tile .at-sec-tile-head{flex-direction:column;align-items:flex-start;gap:4px}.hm-shell .at-house-tile .at-sec-tile-head svg{width:28px;height:28px}.hm-shell .at-house-tile .at-sec-tile-head strong{font-size:14px;max-width:100%}}
+/* office security, text colours dark enough on white (AA 4.5:1, the peer's axe check 09.11.2026): the rings keep the bright Ajax teal and blue.
+   Scoped to the office's own wrapper and tile: the house card (1.22.11) reuses .at-osec inside .at-sec-panel and .at-osec-tile on .at-house-tile */
+.hm-shell .at-osec-wrap{--os-teal-ink:#0a7a57;--os-armed-ink:#0062c9;--os-warn-ink:#9a5200;--os-alarm-ink:#c4271d}
+.hm-shell .at-osec-tile:not(.at-house-tile){--os-teal-ink:#07664a;--os-armed-ink:#0057b3} /* the tile sits on the grey tile colour, a step darker */
+.hm-shell.ah-shell[data-theme="dark"] .at-osec-wrap,.hm-shell.ah-shell[data-theme="dark"] .at-osec-tile:not(.at-house-tile){--os-teal-ink:#2fd3a0;--os-armed-ink:#5aaeff;--os-warn-ink:#ffc266;--os-alarm-ink:#ff8a80}
+.hm-shell .at-osec-wrap .at-osec-state{color:var(--os-teal-ink)}.hm-shell .at-osec-wrap .at-osec-control.is-st-armed .at-osec-state{color:var(--os-armed-ink)}
+.hm-shell .at-osec-wrap .at-osec-control.is-st-arming .at-osec-state,.hm-shell .at-osec-wrap .at-osec-control.is-st-pending .at-osec-state{color:var(--os-warn-ink)}.hm-shell .at-osec-wrap .at-osec-control.is-alarm .at-osec-state{color:var(--os-alarm-ink)}
+.hm-shell .at-osec-tile:not(.at-house-tile) .at-sec-tile-word{color:var(--os-teal-ink)}.hm-shell .at-osec-tile.is-st-armed:not(.at-house-tile) .at-sec-tile-word{color:var(--os-armed-ink)}
+.hm-shell .at-osec-wrap .at-osec-now.is-warn,.hm-shell .at-osec-wrap .at-osec-row b.is-warn{color:var(--os-warn-ink)}.hm-shell .at-osec-wrap .at-osec-now.is-alarm,.hm-shell .at-osec-wrap .at-osec-row b.is-bad{color:var(--os-alarm-ink)}
+.hm-shell .at-osec-tile.is-alarm:not(.at-house-tile) .at-sec-tile-word{color:#b3221a}
