@@ -160,4 +160,9 @@ export const en: Dictionary = {
   'module.heat.confirmOff': "Turn heating off in the whole house?",
   'module.heat.offYes': "Turn off",
   'module.heat.cancel': "Cancel",
+  'module.heat.noState': "Not sure whether heating is on",
+  'module.heat.screenOff': "Living room thermostat offline",
+  'module.heat.pressureHigh': "Boiler: pressure {v} bar, above normal",
+  'module.heat.screenOffPower': "Thermostat offline: heating cannot be turned on or off now",
+  'module.heat.noScenario': "Scenario unknown",
 };

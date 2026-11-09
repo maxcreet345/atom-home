@@ -160,4 +160,9 @@ export const ro: Dictionary = {
   'module.heat.confirmOff': "Opriți încălzirea în toată casa?",
   'module.heat.offYes': "Oprește",
   'module.heat.cancel': "Anulează",
+  'module.heat.noState': "Nu știu dacă încălzirea e pornită",
+  'module.heat.screenOff': "Termostatul din sufragerie deconectat",
+  'module.heat.pressureHigh': "Centrala: presiune {v} bar, peste normă",
+  'module.heat.screenOffPower': "Termostat deconectat: încălzirea nu poate fi pornită sau oprită acum",
+  'module.heat.noScenario': "Scenariu necunoscut",
 };

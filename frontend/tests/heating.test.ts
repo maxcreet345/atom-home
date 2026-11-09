@@ -43,9 +43,19 @@ test('system, mode, scenario and its temperature', () => {
 test('the boiler is offline while eBUS is silent, and its numbers are unknown, not zero', () => {
   const h = readHeating(house({ 'binary_sensor.kitchen_boiler_ebus_signal': ['off'] }), NOW)!;
   assert.equal(h.boiler.online, false); assert.equal(h.boiler.flow, null); assert.equal(h.boiler.pressure, null);
-  const on = readHeating(house({ 'binary_sensor.kitchen_boiler_ebus_signal': ['on'], 'sensor.kitchen_boiler_flow_temp': ['52.4'], 'sensor.kitchen_boiler_pressure': ['0.7'] }), NOW)!;
+  const stale = readHeating(house({ 'binary_sensor.kitchen_boiler_ebus_signal': ['off'], 'sensor.kitchen_boiler_flow_temp': ['52.4'], 'sensor.kitchen_boiler_pressure': ['0.7'] }), NOW)!;
+  assert.equal(stale.boiler.flow, null); assert.equal(stale.boiler.pressureLow, false); // the last numbers of a silent bus are old: no refill warning from them
+  const on = readHeating(house({ 'binary_sensor.kitchen_boiler_ebus_signal': ['on'], 'sensor.kitchen_boiler_flow_temp': ['52.4'], 'sensor.kitchen_boiler_pressure': ['0.7'], 'binary_sensor.kitchen_boiler_pressure_low': ['on'] }), NOW)!;
+  assert.equal(on.boiler.pressureLow, true);
   assert.equal(on.boiler.online, true); assert.equal(on.boiler.flow, 52.4); assert.equal(heatTone(on), 'warn');
 });
 test('heating rooms are counted from the heads', () => {
   const h = readHeating(house(), NOW)!; assert.equal(heatingRooms(h), h.rooms.filter(r => r.action === 'heating').length);
+});
+test('an unknown system or scenario is not taken for «off» or «Дома»', () => {
+  const h = readHeating(house({ 'input_boolean.heating_system': ['unavailable'], 'sensor.heating_scenario': ['unknown'] }), NOW)!;
+  assert.equal(h.systemKnown, false); assert.equal(h.scenarioKnown, false); assert.equal(heatTone(h), 'warn');
+});
+test('a thermostat that is not reachable is worth a look', () => {
+  const h = readHeating(house({ 'climate.living_thermostat': ['unavailable'] }), NOW)!; assert.equal(h.thermostatOnline, false); assert.equal(heatTone(h), 'warn');
 });

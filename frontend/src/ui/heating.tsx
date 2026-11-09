@@ -33,18 +33,24 @@ export function heatingActions(h: Heating, host: Host) {
   };
 }
 /** One command at a time per card: the button that sent it waits, a refusal is said in words. */
+/** The refusal is said next to the control that sent it (a room's card, the scenarios, the hero), and the next accepted command clears it. */
 function useAct(t: T) {
-  const [busy, setBusy] = useState<string | null>(null), [err, setErr] = useState<string | null>(null);
-  const fail = () => setErr(tk(t, 'failed'));
-  const run = (key: string, p: () => Promise<unknown>) => { setBusy(key); setErr(null); p().catch(fail).finally(() => setBusy(null)); };
-  return { busy, err, fail, run };
+  const [busy, setBusy] = useState<string | null>(null), [errKey, setErrKey] = useState<string | null>(null);
+  const fail = (key: string) => setErrKey(key), ok = () => setErrKey(null);
+  const run = (key: string, p: () => Promise<unknown>) => { if (busy === key) return; setBusy(key); setErrKey(null); p().then(ok, () => fail(key)).finally(() => setBusy(null)); };
+  const err = (...keys: string[]) => errKey && keys.some(k => errKey === k || errKey.startsWith(k + ':')) ? tk(t, 'failed') : null;
+  return { busy, err, fail, ok, run };
 }
 const Err = ({ text }: { text: string | null }) => <p className="at-heat-err" role="alert">{text ?? ''}</p>;
 /** Turning the whole house's heating off asks once more; turning it on does not. */
-function Power({ on, busy, t, onPower, small }: { on: boolean; busy: boolean; t: T; onPower: (v: boolean) => void; small?: boolean }) {
-  const [ask, setAsk] = useState(false);
-  if (ask) return <div className="at-heat-confirm" role="group" aria-label={tk(t, 'confirmOff')}><span>{tk(t, 'confirmOff')}</span><button type="button" className="at-heat-power is-danger" onClick={e => { e.stopPropagation(); setAsk(false); onPower(false); }}>{tk(t, 'offYes')}</button><button type="button" className="at-heat-power is-on" onClick={e => { e.stopPropagation(); setAsk(false); }}>{tk(t, 'cancel')}</button></div>;
-  return <button type="button" className={`at-heat-power ${on ? 'is-on' : ''} ${small ? 'is-small' : ''}`} disabled={busy} aria-busy={busy || undefined} onClick={e => { e.stopPropagation(); if (on) setAsk(true); else onPower(true); }}><Icon name="power" size={16} />{on ? tk(t, 'turnOff') : tk(t, 'turnOn')}</button>;
+function Power({ on, busy, t, onPower, offline }: { on: boolean; busy: boolean; t: T; onPower: (v: boolean) => void; offline?: boolean }) {
+  const [ask, setAsk] = useState(false), cancel = useRef<HTMLButtonElement>(null), main = useRef<HTMLButtonElement>(null), back = useRef(false);
+  // focus goes to the safe choice when the question opens, and back to the button when it closes (WCAG 2.4.3)
+  useEffect(() => { if (ask) cancel.current?.focus(); else if (back.current) { back.current = false; main.current?.focus(); } }, [ask]);
+  const close = () => { back.current = true; setAsk(false); };
+  if (offline) return <p className="at-heat-modehint">{tk(t, 'screenOffPower')}</p>; // HA would quietly skip a command to a thermostat it cannot reach
+  if (ask) return <div className="at-heat-confirm" role="group" aria-label={tk(t, 'confirmOff')} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } }}><span>{tk(t, 'confirmOff')}</span><button type="button" className="at-heat-power is-danger" onClick={e => { e.stopPropagation(); close(); onPower(false); }}>{tk(t, 'offYes')}</button><button type="button" ref={cancel} className="at-heat-power is-on" onClick={e => { e.stopPropagation(); close(); }}>{tk(t, 'cancel')}</button></div>;
+  return <button type="button" ref={main} className={`at-heat-power ${on ? 'is-on' : ''}`} aria-disabled={busy || undefined} aria-busy={busy || undefined} onClick={e => { e.stopPropagation(); if (busy) return; if (on) setAsk(true); else onPower(true); }}><Icon name="power" size={16} />{on ? tk(t, 'turnOff') : tk(t, 'turnOn')}</button>;
 }
 /** The house's little radiator: warm and smiling with heat rising while a room heats, content when all is warm, asleep when off, worried when something is wrong. */
 export function Radiator({ tone }: { tone: HeatTone }) {
@@ -71,16 +77,19 @@ function roomWord(r: HeatRoom, t: T, now: number) {
   return r.action === 'heating' ? tk(t, 'r.heating') : tk(t, 'r.idle');
 }
 function sentence(h: Heating, t: T, lang: Lang): string {
+  if (!h.systemKnown) return tk(t, 'noState');
   if (!h.system) return tk(t, 'offSentence');
+  if (!h.thermostatOnline) return tk(t, 'screenOff');
   const off = h.rooms.filter(r => r.action === 'offline');
   if (off.length) return tk(t, 'noLink', { rooms: off.map(r => r.name).join(', ') });
-  if (h.boiler.pressure !== null && h.boiler.pressure < 1) return tk(t, 'pressureLow', { v: h.boiler.pressure.toLocaleString(LOC[lang], { maximumFractionDigits: 2 }) });
+  if (h.boiler.pressureLow || h.boiler.pressureHigh) return tk(t, h.boiler.pressureLow ? 'pressureLow' : 'pressureHigh', { v: h.boiler.pressure === null ? '—' : h.boiler.pressure.toLocaleString(LOC[lang], { maximumFractionDigits: 2 }) });
   const n = heatingRooms(h), win = h.rooms.filter(r => r.action === 'window');
   const main = n ? tk(t, 'heatN', { n, total: h.rooms.length }) : tk(t, 'warmAll');
   return win.length ? `${main} · ${tk(t, 'winPaused', { n: win.length })}` : main;
 }
 function caption(h: Heating, t: T): string {
   if (!h.system) return tk(t, 'offHint');
+  if (!h.scenarioKnown) return tk(t, 'noScenario');
   if (h.mode === 'manual') return tk(t, 'capManual');
   const sc = tk(t, `sc.${h.scenario}`);
   if (h.scenario === 'home') return tk(t, 'capHome');
@@ -88,32 +97,35 @@ function caption(h: Heating, t: T): string {
   return h.scenarioOverride ? tk(t, 'capOwn', { s: sc }) : sc;
 }
 /** The number the house is held at: in «Ручной» the rooms' common value when they agree, else their range. */
-function houseValue(h: Heating, lang: Lang): { text: string; value: number | null } {
-  if (h.mode !== 'manual') return { text: setT(h.target, lang), value: h.target };
+function houseValue(h: Heating, lang: Lang): { text: string; value: number | null; lo?: number } {
+  if (h.mode !== 'manual') return h.scenarioKnown ? { text: setT(h.target, lang), value: h.target } : { text: setT(h.target, lang), value: null }; // an unknown scenario must not be taken for «Дома» and overwritten
   const vals = h.rooms.map(r => r.manual).filter((x): x is number => x !== null), min = Math.min(...vals), max = Math.max(...vals);
-  return !vals.length ? { text: '—', value: null } : min === max ? { text: setT(min, lang), value: min } : { text: `${setT(min, lang)}–${setT(max, lang)}`, value: max };
+  // a range: − starts from its low end, + from its high end, so neither raises or lowers every room by surprise
+  return !vals.length ? { text: '—', value: null } : min === max ? { text: setT(min, lang), value: min } : { text: `${setT(min, lang)}–${setT(max, lang)}`, value: max, lo: min };
 }
 /** ± answers at once and sends the last value after a short pause, so five taps are one command. */
 /** A refused command puts the real value back and says so; an accepted one that HA never reflects gives up after 20 s. */
-function useStepper(value: number | null, send: (v: number) => Promise<unknown>, onFail: () => void, min = 8, max = 24) {
-  const [local, setLocal] = useState<number | null>(null), timer = useRef<ReturnType<typeof setTimeout> | null>(null), stale = useRef<ReturnType<typeof setTimeout> | null>(null);
+function useStepper(value: number | null, send: (v: number) => Promise<unknown>, onFail: () => void, onOk: () => void, min = 8, max = 24, lo?: number) {
+  const [local, setLocal] = useState<number | null>(null), timer = useRef<ReturnType<typeof setTimeout> | null>(null), stale = useRef<ReturnType<typeof setTimeout> | null>(null), seq = useRef(0), waiting = useRef<number | null>(null);
   useEffect(() => { if (local !== null && value === local) setLocal(null); }, [value]);
-  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); if (stale.current) clearTimeout(stale.current); }, []);
+  const fire = (v: number) => { const n = ++seq.current; waiting.current = null; send(v).then(() => { if (n === seq.current) onOk(); }, () => { if (n === seq.current) { setLocal(null); onFail(); } }); stale.current = setTimeout(() => { if (n === seq.current) setLocal(null); }, 20000); };
+  // leaving the card within the pause still sends the last value: a tap is never lost
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); if (stale.current) clearTimeout(stale.current); if (waiting.current !== null) fire(waiting.current); }, []);
   const shown = local ?? value;
-  const step = (dir: 1 | -1) => { if (shown === null) return; const v = Math.min(max, Math.max(min, Math.round((shown + dir * 0.5) * 2) / 2)); setLocal(v); if (timer.current) clearTimeout(timer.current); if (stale.current) clearTimeout(stale.current);
-    timer.current = setTimeout(() => { send(v).catch(() => { setLocal(null); onFail(); }); stale.current = setTimeout(() => setLocal(null), 20000); }, 700); };
-  return { shown, step, pending: local !== null && local !== value, atMin: shown !== null && shown <= min, atMax: shown !== null && shown >= max };
+  const step = (dir: 1 | -1) => { if (shown === null) return; const base = local ?? (dir < 0 && lo !== undefined ? lo : shown); const v = Math.min(max, Math.max(min, Math.round((base + dir * 0.5) * 2) / 2)); setLocal(v); waiting.current = v; seq.current++; if (timer.current) clearTimeout(timer.current); if (stale.current) clearTimeout(stale.current);
+    timer.current = setTimeout(() => fire(v), 700); };
+  return { shown, step, pending: local !== null && local !== value, atMin: shown !== null && (local ?? lo ?? shown) <= min, atMax: shown !== null && shown >= max };
 }
 function Stepper({ value, text, onStep, t, size = 'big', disabled, label, atMin, atMax, pending }: { value: number | null; text: string; onStep: (d: 1 | -1) => void; t: T; size?: 'big' | 'small'; disabled?: boolean; label: string; atMin?: boolean; atMax?: boolean; pending?: boolean }) {
   return <div className={`at-heat-step is-${size} ${pending ? 'is-pending' : ''} ${text.includes('–') ? 'is-range' : ''}`} role="group" aria-label={label}>
-    <button type="button" className="at-heat-pm" aria-label={`${label}: ${tk(t, 'down')}`} disabled={disabled || value === null || atMin} onClick={e => { e.stopPropagation(); onStep(-1); }}><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" /></svg></button>
+    <button type="button" className="at-heat-pm" aria-label={`${label}: ${tk(t, 'down')}`} disabled={disabled || value === null} aria-disabled={atMin || undefined} onClick={e => { e.stopPropagation(); if (!atMin) onStep(-1); }}><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" /></svg></button>
     <b aria-live="polite">{text}<i>°</i></b>
-    <button type="button" className="at-heat-pm" aria-label={`${label}: ${tk(t, 'up')}`} disabled={disabled || value === null || atMax} onClick={e => { e.stopPropagation(); onStep(1); }}><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" /></svg></button>
+    <button type="button" className="at-heat-pm" aria-label={`${label}: ${tk(t, 'up')}`} disabled={disabled || value === null} aria-disabled={atMax || undefined} onClick={e => { e.stopPropagation(); if (!atMax) onStep(1); }}><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" /></svg></button>
   </div>;
 }
 function ModeSwitch({ h, t, onMode, disabled }: { h: Heating; t: T; onMode: (m: 'auto' | 'manual') => void; disabled?: boolean }) {
   // the group is the radio set; the arrow keys are not needed for two options, Tab reaches both
-  return <div className="at-heat-mode" role="radiogroup" aria-label={tk(t, 'mode')}>{(['auto', 'manual'] as const).map(m => <button type="button" role="radio" aria-checked={h.mode === m} className={h.mode === m ? 'is-on' : ''} disabled={disabled} onClick={e => { e.stopPropagation(); if (h.mode !== m) onMode(m); }}>{tk(t, `mode.${m}`)}</button>)}</div>;
+  return <div className="at-heat-mode" role="radiogroup" aria-label={tk(t, 'mode')}>{(['auto', 'manual'] as const).map(m => <button type="button" role="radio" aria-checked={h.mode === m} className={h.mode === m ? 'is-on' : ''} aria-disabled={disabled || undefined} onClick={e => { e.stopPropagation(); if (!disabled && h.mode !== m) onMode(m); }}>{tk(t, `mode.${m}`)}</button>)}</div>;
 }
 /** One room on the tile: its radiator lit while it heats, its reading, its name; a window or a lost head says so instead of the reading. */
 function Chip({ r, t, lang, now }: { r: HeatRoom; t: T; lang: Lang; now: number }) {
@@ -125,24 +137,24 @@ function Chip({ r, t, lang, now }: { r: HeatRoom; t: T; lang: Lang; now: number 
 }
 export function HeatingTile({ h, host, t, lang, onOpen, now }: { h: Heating; host: Host; t: T; lang: Lang; onOpen: () => void; now: number }) {
   const act = heatingActions(h, host), tone = heatTone(h), hv = houseValue(h, lang), ui = useAct(t);
-  const st = useStepper(hv.value, act.house, ui.fail);
+  const st = useStepper(hv.value, act.house, () => ui.fail('house'), ui.ok, 8, 24, hv.lo);
   const text = st.pending && st.shown !== null ? setT(st.shown, lang) : hv.text;
   return <div className={`ah-tile hm-card at-heat-tile hz-${tone}`} data-mode={h.mode}>
     <button type="button" className="at-heat-open" aria-label={`${tk(t, 'title')}: ${sentence(h, t, lang)}. ${tk(t, 'open')}`} onClick={onOpen} />
     <span className="at-heat-tile-buddy"><Radiator tone={tone} /></span>
-    <div className="at-heat-tile-head"><strong>{tk(t, 'title')}</strong><small>{sentence(h, t, lang)}</small><Err text={ui.err} /></div>
+    <div className="at-heat-tile-head"><strong>{tk(t, 'title')}</strong><small>{sentence(h, t, lang)}</small><Err text={ui.err('house', 'mode', 'power')} /></div>
     <div className="at-heat-tile-mid">
-      {h.system ? <><ModeSwitch h={h} t={t} disabled={ui.busy === 'mode'} onMode={m => ui.run('mode', () => act.mode(m))} />
+      {h.system || !h.systemKnown ? <><ModeSwitch h={h} t={t} disabled={ui.busy === 'mode'} onMode={m => ui.run('mode', () => act.mode(m))} />
         <Stepper value={st.shown} text={text} onStep={st.step} t={t} label={tk(t, 'houseTemp')} atMin={st.atMin} atMax={st.atMax} pending={st.pending} />
         <small className="at-heat-cap">{caption(h, t)}</small></> :
-        <><b className="at-heat-offword">{tk(t, 'offWord')}</b><Power on={false} busy={ui.busy === 'power'} t={t} onPower={v => ui.run('power', () => act.power(v))} /></>}
+        <><b className="at-heat-offword">{tk(t, 'offWord')}</b>{h.systemKnown && <Power on={false} busy={ui.busy === 'power'} offline={!h.thermostatOnline} t={t} onPower={v => ui.run('power', () => act.power(v))} />}</>}
     </div>
     <ul className="at-heat-chips">{h.rooms.map(r => <Chip r={r} t={t} lang={lang} now={now} />)}</ul>
   </div>;
 }
 /* ---------- the panel ---------- */
 function RoomCard({ r, h, act, t, lang, now, ui }: { r: HeatRoom; h: Heating; act: ReturnType<typeof heatingActions>; t: T; lang: Lang; now: number; ui: ReturnType<typeof useAct> }) {
-  const st = useStepper(r.target, v => act.room(r, v), ui.fail, 5, 30), dis = !h.system || r.action === 'offline' || r.action === 'window';
+  const st = useStepper(r.target, v => act.room(r, v), () => ui.fail(`room:${r.key}`), ui.ok, 5, 30), dis = !h.system || r.action === 'offline' || r.action === 'window';
   const own = h.mode === 'auto' && r.override, gap = r.current !== null && st.shown !== null ? st.shown - r.current : null;
   const fill = r.current === null || st.shown === null ? 0 : Math.max(4, Math.min(100, 100 - Math.max(0, st.shown - r.current) / 3 * 100));
   const openWins = r.windows.filter(w => w.open);
@@ -155,7 +167,8 @@ function RoomCard({ r, h, act, t, lang, now, ui }: { r: HeatRoom; h: Heating; ac
     </div>
     <div className="at-heat-bar" aria-hidden="true"><i style={`width:${fill}%`} /></div>
     <p className="at-heat-room-line">{r.action === 'window' ? tk(t, 'windowLine', { w: openWins.map(w => w.name.toLowerCase()).join(', ') || tk(t, 'aWindow') }) : r.action === 'offline' ? tk(t, 'offlineLine') : gap !== null && gap > 0.05 && r.action === 'heating' ? tk(t, 'gapLine', { d: setT(Math.round(gap * 10) / 10, lang) }) : r.action === 'idle' ? tk(t, 'idleLine') : r.action === 'off' ? tk(t, 'offLine') : ''}</p>
-    {own && r.override && <div className="at-heat-own"><span><Icon name="hourglass" size={15} />{tk(t, 'ownLine', { v: setT(r.override.temp, lang), at: hhmm(r.override.until), left: left(r.override.until - now, t) })}</span><button type="button" className="hm-text-btn" disabled={ui.busy === `back:${r.key}`} onClick={() => ui.run(`back:${r.key}`, () => act.back(r))}>{tk(t, 'backAuto')}</button></div>}
+    {own && r.override && <div className="at-heat-own"><span><Icon name="hourglass" size={15} />{tk(t, 'ownLine', { v: setT(r.override.temp, lang), at: hhmm(r.override.until), left: left(r.override.until - now, t) })}</span><button type="button" className="hm-text-btn" aria-disabled={ui.busy === `back:${r.key}` || undefined} onClick={() => ui.run(`back:${r.key}`, () => act.back(r))}>{tk(t, 'backAuto')}</button></div>}
+    <Err text={ui.err(`room:${r.key}`, `back:${r.key}`)} />
     <footer>
       <span className={openWins.length ? 'is-open' : ''}><Glyph d={WIN} />{r.windows.length ? (openWins.length ? tk(t, 'winOpen', { w: openWins.map(w => w.name.toLowerCase()).join(', ') }) : r.windows.length > 1 ? tk(t, 'winsClosed', { n: r.windows.length }) : tk(t, 'winClosed')) : tk(t, 'noWin')}</span>
       {r.battery !== null && <span className={r.battery < 20 ? 'is-open' : ''}><Icon name="battery" size={14} />{r.battery} %</span>}
@@ -168,10 +181,10 @@ function Scenarios({ h, act, t, lang, ui }: { h: Heating; act: ReturnType<typeof
   return <section className="at-heat-sec"><div className="hm-section-head"><h2>{tk(t, 'scenario')}</h2></div>
     <div className="at-heat-scen">{SCEN.map(s => { const now = s.id === h.scenario, on = s.flag ? h[s.flag] : now, temp = s.id === 'guests' ? null : h.temps[s.id as Scenario];
       const body = <><span className="at-heat-scen-top"><strong>{tk(t, `sc.${s.id}`)}</strong>{temp !== null && <b>{setT(temp, lang)}°</b>}</span><small>{sub(s.id)}</small>{now ? <em>{tk(t, 'now')}</em> : s.flag ? <em className="is-sw">{on ? tk(t, 'on') : tk(t, 'turnOnShort')}</em> : <em className="is-auto">{tk(t, 'byItself')}</em>}</>;
-      return s.flag ? <button type="button" role="switch" aria-checked={on} className={`at-heat-scen-card ${now ? 'is-now' : ''} ${on ? 'is-on' : ''}`} disabled={ui.busy === s.flag} aria-busy={ui.busy === s.flag || undefined} onClick={() => ui.run(s.flag!, () => act.flag(s.flag!, !on))}>{body}</button> : <div className={`at-heat-scen-card ${now ? 'is-now' : ''}`}>{body}</div>; })}</div></section>;
+      return s.flag ? <button type="button" role="switch" aria-checked={on} className={`at-heat-scen-card ${now ? 'is-now' : ''} ${on ? 'is-on' : ''}`} aria-disabled={ui.busy === s.flag || undefined} aria-busy={ui.busy === s.flag || undefined} onClick={() => ui.run(s.flag!, () => act.flag(s.flag!, !on))}>{body}</button> : <div className={`at-heat-scen-card ${now ? 'is-now' : ''}`}>{body}</div>; })}</div><Err text={ui.err('eco', 'guests', 'vacation')} /></section>;
 }
 function BoilerCard({ h, t, lang }: { h: Heating; t: T; lang: Lang }) {
-  const b = h.boiler, f = (v: number | null, d = 1) => v === null ? '—' : v.toLocaleString(LOC[lang], { maximumFractionDigits: d }), low = b.pressure !== null && b.pressure < 1, high = b.pressure !== null && b.pressure > 2.5;
+  const b = h.boiler, f = (v: number | null, d = 1) => v === null ? '—' : v.toLocaleString(LOC[lang], { maximumFractionDigits: d }), low = b.pressureLow, high = b.pressureHigh;
   const cell = (label: string, value: string, unit: string, sub: string, tone = '') => <div className={`at-heat-bcell ${tone}`}><small>{label}</small><b>{value}{value !== '—' && <i>{unit}</i>}</b><span>{sub}</span></div>;
   const state = !b.online ? tk(t, 'b.offline') : b.flame ? (b.relay ? tk(t, 'b.burningHeat') : tk(t, 'b.burningDhw')) : tk(t, 'b.idle');
   return <section className="at-heat-sec"><div className="hm-section-head"><h2>{tk(t, 'boiler')}</h2></div>
@@ -188,21 +201,21 @@ function BoilerCard({ h, t, lang }: { h: Heating; t: T; lang: Lang }) {
     </article></section>;
 }
 export function HeatingPanel({ h, host, t, lang, now }: { h: Heating; host: Host; t: T; lang: Lang; now: number }) {
-  const act = heatingActions(h, host), tone = heatTone(h), hv = houseValue(h, lang), ui = useAct(t), st = useStepper(hv.value, act.house, ui.fail);
+  const act = heatingActions(h, host), tone = heatTone(h), hv = houseValue(h, lang), ui = useAct(t), st = useStepper(hv.value, act.house, () => ui.fail('house'), ui.ok, 8, 24, hv.lo);
   const out = h.outdoor.temp !== null ? tk(t, 'outside', { v: setT(Math.round(h.outdoor.temp), lang).replace('-', '−'), w: (k => t(k as Key) === k ? '' : ` · ${t(k as Key).toLocaleLowerCase()}`)(`clock.weather.${(h.outdoor.state ?? '').replace('-', '')}`) }) : '';
   return <div className="at-heat-panel">
     <section className={`at-heat-hero hz-${tone}`} aria-label={tk(t, 'title')}>
-      <div className="at-heat-hero-text"><h2>{tk(t, 'title')}</h2>{out && <small>{out}</small>}<p className="at-heat-hero-say">{sentence(h, t, lang)}</p><Err text={ui.err} /></div>
+      <div className="at-heat-hero-text"><h2>{tk(t, 'title')}</h2>{out && <small>{out}</small>}<p className="at-heat-hero-say">{sentence(h, t, lang)}</p><Err text={ui.err('house', 'mode', 'power')} /></div>
       <span className="at-heat-hero-buddy"><Radiator tone={tone} /></span>
       <div className="at-heat-hero-ctl">
-        {h.system ? <div className="at-heat-hero-temp"><Stepper value={st.shown} text={st.pending && st.shown !== null ? setT(st.shown, lang) : hv.text} onStep={st.step} t={t} label={tk(t, 'houseTemp')} atMin={st.atMin} atMax={st.atMax} pending={st.pending} /><small className="at-heat-cap">{caption(h, t)}</small></div> : <div className="at-heat-hero-temp"><b className="at-heat-offword">{tk(t, 'offWord')}</b><small className="at-heat-cap">{tk(t, 'offHint')}</small></div>}
+        {h.system || !h.systemKnown ? <div className="at-heat-hero-temp"><Stepper value={st.shown} text={st.pending && st.shown !== null ? setT(st.shown, lang) : hv.text} onStep={st.step} t={t} label={tk(t, 'houseTemp')} atMin={st.atMin} atMax={st.atMax} pending={st.pending} /><small className="at-heat-cap">{caption(h, t)}</small></div> : <div className="at-heat-hero-temp"><b className="at-heat-offword">{tk(t, 'offWord')}</b><small className="at-heat-cap">{tk(t, 'offHint')}</small></div>}
         <ul className="at-heat-hero-facts">
         <li className={h.boiler.relay ? 'is-hot' : ''}><Icon name="flame" size={15} />{!h.boiler.online ? tk(t, 'f.boilerOff') : h.boiler.flame ? tk(t, 'f.burning', { v: setT(h.boiler.flow === null ? null : Math.round(h.boiler.flow), lang) }) : tk(t, 'f.rest')}</li>
         <li><Icon name="thermo" size={15} />{h.thermostatOnline ? tk(t, 'f.screen') : tk(t, 'f.screenOff')}</li>
         <li className={h.rooms.some(r => r.windows.some(w => w.open)) ? 'is-warn' : ''}><Glyph d={WIN} />{(n => n ? tk(t, 'f.winOpen', { n }) : tk(t, 'f.winClosed'))(h.rooms.reduce((a, r) => a + r.windows.filter(w => w.open).length, 0))}</li>
       </ul>
-        <div className="at-heat-hero-side">{h.system && <ModeSwitch h={h} t={t} disabled={ui.busy === 'mode'} onMode={m => ui.run('mode', () => act.mode(m))} />}<small className="at-heat-modehint">{h.mode === 'manual' ? tk(t, 'manualHint') : tk(t, 'autoHint')}</small>
-          <Power on={h.system} busy={ui.busy === 'power'} t={t} onPower={v => ui.run('power', () => act.power(v))} /></div>
+        <div className="at-heat-hero-side">{(h.system || !h.systemKnown) && <ModeSwitch h={h} t={t} disabled={ui.busy === 'mode'} onMode={m => ui.run('mode', () => act.mode(m))} />}<small className="at-heat-modehint">{h.mode === 'manual' ? tk(t, 'manualHint') : tk(t, 'autoHint')}</small>
+          {h.systemKnown && <Power on={h.system} busy={ui.busy === 'power'} offline={!h.thermostatOnline} t={t} onPower={v => ui.run('power', () => act.power(v))} />}</div>
       </div>
 
     </section>

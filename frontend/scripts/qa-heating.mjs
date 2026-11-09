@@ -67,7 +67,18 @@ const settle = page => page.waitForTimeout(900); // the stepper sends after 700 
 { const p = await open({ scenario: 'sleep' }); await press(p.page, '.at-heat-tile [aria-label$="больше на 0,5°"]'); await settle(p.page); const l = await log(p.page);
   check('in «Сон» the change is the scenario\'s own', l.some(c => c.entity_id === 'input_number.heating_scenario_override_temp' && c.value === 19.5) && l.some(c => c.s === 'turn_on' && c.entity_id === 'input_boolean.heating_scenario_override') && !l.some(c => c.entity_id === 'input_number.heating_home_temp'), l); await p.ctx.close(); }
 { const p = await open({ scenario: 'manual' }); await press(p.page, '.at-heat-tile [aria-label$="меньше на 0,5°"]'); await settle(p.page); const l = await log(p.page);
-  check('in «Ручной» the common − sets every room at once', l.length === 5 && l.every(c => /_heating_manual_temp$/.test(c.entity_id) && c.value === 21.5), l); await p.ctx.close(); }
+  check('in «Ручной» the common − starts from the coldest room and sets every room at once', l.length === 5 && l.every(c => /_heating_manual_temp$/.test(c.entity_id) && c.value === 19), l); await p.ctx.close(); }
+{ const p = await open({}); await press(p.page, '.at-heat-tile [aria-label$="больше на 0,5°"]'); await p.page.locator('.at-heat-open').click(); await settle(p.page); const l = await log(p.page);
+  check('a tap is not lost when the card is left within the pause', l.length === 1 && l[0].value === 21, l); await p.ctx.close(); }
+{ const p = await open({ accept: false, hash: '#climate', w: 402, h: 874 }); await p.page.locator('.at-heat-room').last().locator('[aria-label$="больше на 0,5°"]').click(); await p.page.waitForTimeout(1200);
+  const e = await p.page.evaluate(() => document.querySelectorAll('.at-heat-room')[4].querySelector('.at-heat-err')?.textContent);
+  check('a refused room command is said in that room', /не дошла/.test(e ?? ''), e);
+  await p.page.evaluate(() => window.atomPreview.host.setAccept(true)); await p.page.locator('.at-heat-room').last().locator('[aria-label$="больше на 0,5°"]').click(); await p.page.waitForTimeout(1200);
+  check('…and the next accepted one clears it', !(await p.page.evaluate(() => document.querySelectorAll('.at-heat-room')[4].querySelector('.at-heat-err')?.textContent))); await p.ctx.close(); }
+{ const p = await open({ hash: '#climate' }); await p.page.locator('.at-heat-hero .at-heat-power').focus(); await p.page.keyboard.press('Enter'); await p.page.waitForTimeout(150);
+  check('the question puts focus on «Отмена»', await p.page.evaluate(() => document.activeElement?.textContent === 'Отмена'));
+  await p.page.keyboard.press('Escape'); await p.page.waitForTimeout(150);
+  check('Escape closes it and focus is back on the button', await p.page.evaluate(() => document.activeElement?.classList.contains('at-heat-power') && /Выключить/.test(document.activeElement.textContent)) && (await log(p.page)).length === 0); await p.ctx.close(); }
 { const p = await open({ hash: '#climate' }); await p.page.locator('.at-heat-room').first().locator('[aria-label$="больше на 0,5°"]').click(); await settle(p.page); const l = await log(p.page);
   check('room +: the head itself', l.length === 1 && l[0].s === 'set_temperature' && l[0].entity_id === 'climate.living_trv' && l[0].temperature === 21, l);
   await p.page.locator('.at-heat-scen-card', { hasText: 'Эко' }).click(); await p.page.waitForTimeout(100); const e = (await log(p.page)).slice(1);

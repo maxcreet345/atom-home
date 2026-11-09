@@ -16,10 +16,11 @@ export interface HeatRoom {
 export interface Boiler {
   online: boolean; flame: boolean | null; flow: number | null; flowTarget: number | null; ret: number | null;
   dhw: number | null; dhwTarget: number | null; pressure: number | null; relay: boolean | null; state: string | null;
+  /** the house's own Threshold helpers (≤ 0,8 / > 2,8 bar with hysteresis), else the manual's norm */ pressureLow: boolean; pressureHigh: boolean;
 }
 export type Scenario = 'home' | 'sleep' | 'away' | 'eco' | 'vacation';
 export interface Heating {
-  system: boolean; thermostat: string; thermostatOnline: boolean; mode: 'auto' | 'manual';
+  system: boolean; systemKnown: boolean; scenarioKnown: boolean; thermostat: string; thermostatOnline: boolean; mode: 'auto' | 'manual';
   scenario: Scenario; scenarioRaw: string; target: number | null; temps: Record<Scenario, number | null>;
   sleep: { from: string; to: string }; guests: boolean; eco: boolean; vacation: boolean; vacationReturn: string | null; scenarioOverride: boolean;
   rooms: HeatRoom[]; boiler: Boiler; outdoor: { temp: number | null; state: string | null };
@@ -59,9 +60,12 @@ export function readHeating(reg: Registry, now = Date.now()): Heating | null {
   const B = (k: string) => n(s(`sensor.kitchen_boiler_${k}`));
   const flame = s('sensor.kitchen_boiler_flame')?.state, relay = s('switch.kitchen_boiler_heat_relay')?.state;
   const busOn = s('binary_sensor.kitchen_boiler_ebus_signal')?.state === 'on';
+  const B2 = (k: string) => busOn ? B(k) : null; // a silent bus leaves the last numbers in HA: they are old, not now
+  const pressure = B2('pressure'), helper = (id: string) => { const x = s(id)?.state; return x === 'on' ? true : x === 'off' ? false : null; };
+  const pLow = helper('binary_sensor.kitchen_boiler_pressure_low'), pHigh = helper('binary_sensor.kitchen_boiler_pressure_high');
   const weather = ['weather.forecast_home', ...Object.keys(S).filter(id => id.startsWith('weather.'))].find(id => S[id] && !unavailable(S[id].state));
   return {
-    system: on('input_boolean.heating_system'), thermostat: 'climate.living_thermostat', thermostatOnline: !!th && !unavailable(th.state),
+    system: on('input_boolean.heating_system'), systemKnown: ['on', 'off'].includes(s('input_boolean.heating_system')?.state ?? ''), scenarioKnown: scenarioRaw in SCENARIO, thermostat: 'climate.living_thermostat', thermostatOnline: !!th && !unavailable(th.state),
     mode: s('input_select.heating_mode')?.state === 'Ручной' ? 'manual' : 'auto',
     scenario: SCENARIO[scenarioRaw] ?? 'home', scenarioRaw, target: n(s('sensor.heating_target_temp')),
     temps: { home: v('home'), sleep: v('sleep'), away: v('away'), eco: v('eco'), vacation: v('vacation') },
@@ -69,14 +73,14 @@ export function readHeating(reg: Registry, now = Date.now()): Heating | null {
     guests: on('input_boolean.heating_guests'), eco: on('input_boolean.heating_eco'), vacation: on('input_boolean.heating_vacation'),
     vacationReturn: s('input_datetime.heating_vacation_return')?.state ?? null, scenarioOverride: on('input_boolean.heating_scenario_override'),
     rooms,
-    boiler: { online: busOn && B('flow_temp') !== null, flame: flame === 'on' ? true : flame === 'off' ? false : null, flow: B('flow_temp'), flowTarget: B('flow_temp_target'), ret: B('return_temp'),
-      dhw: B('dhw_temp'), dhwTarget: B('dhw_temp_target'), pressure: B('pressure'), relay: relay === 'on' ? true : relay === 'off' ? false : null, state: s('sensor.kitchen_boiler_state_code')?.state ?? null },
+    boiler: { online: busOn && B('flow_temp') !== null, flame: !busOn ? null : flame === 'on' ? true : flame === 'off' ? false : null, flow: B2('flow_temp'), flowTarget: B2('flow_temp_target'), ret: B2('return_temp'),
+      dhw: B2('dhw_temp'), dhwTarget: B2('dhw_temp_target'), pressure, pressureLow: pressure !== null && (pLow ?? pressure < 1), pressureHigh: pressure !== null && (pHigh ?? pressure > 2.5), relay: relay === 'on' ? true : relay === 'off' ? false : null, state: s('sensor.kitchen_boiler_state_code')?.state ?? null },
     outdoor: { temp: weather && typeof S[weather].attributes.temperature === 'number' ? S[weather].attributes.temperature as number : null, state: weather ? S[weather].state : null },
   };
 }
 export const heatingRooms = (h: Heating) => h.rooms.filter(r => r.action === 'heating').length;
 /** What the tile and the hero say first. */
 export type HeatTone = 'heat' | 'calm' | 'off' | 'warn';
-export function heatTone(h: Heating): HeatTone { if (!h.system) return 'off'; if (h.rooms.some(r => r.action === 'offline') || (h.boiler.pressure !== null && (h.boiler.pressure < 1 || h.boiler.pressure > 2.5))) return 'warn'; return heatingRooms(h) ? 'heat' : 'calm'; }
+export function heatTone(h: Heating): HeatTone { if (!h.systemKnown) return 'warn'; if (!h.system) return 'off'; if (!h.thermostatOnline || h.rooms.some(r => r.action === 'offline') || h.boiler.pressureLow || h.boiler.pressureHigh) return 'warn'; return heatingRooms(h) ? 'heat' : 'calm'; }
 /** The ids the heating card draws, so they do not come back as tiles of their own. */
 export function heatingClaims(h: Heating): string[] { return [h.thermostat, ...h.rooms.map(r => r.trv)]; }

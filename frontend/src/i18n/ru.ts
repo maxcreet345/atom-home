@@ -159,5 +159,10 @@ export const ru = {
   'module.heat.confirmOff': "Выключить отопление во всём доме?",
   'module.heat.offYes': "Выключить",
   'module.heat.cancel': "Отмена",
+  'module.heat.noState': "Не знаю, включено ли отопление",
+  'module.heat.screenOff': "Термостат в Гостиной не на связи",
+  'module.heat.pressureHigh': "Котёл: давление {v} bar, выше нормы",
+  'module.heat.screenOffPower': "Термостат не на связи: включить или выключить отопление сейчас нельзя",
+  'module.heat.noScenario': "Сценарий неизвестен",
 };
 export type Dictionary = typeof ru;
