@@ -97,7 +97,7 @@ export function CameraSheet({ device: shown, registry, entities, options, host, 
   const cycle = (a: Action) => { const opts = a.options ?? []; const i = opts.indexOf(String(a.current ?? '')); return opts[(i + 1) % opts.length]; };
   const nightNowLabel = night && night.kind === 'select' && night.current ? nightLabel(String(night.current)) : null, hdrNowLabel = hdr && hdr.kind === 'select' && hdr.current ? onOffAuto(String(hdr.current)) : null;
   const video = <>
-    <div className={`hm-camera-frame at-camera-stage at-cam-stage ${feed.playing ? 'is-clip at-door-stage' : ''}`} ref={stageRef}>{feed.playing ? <ClipStage feed={feed} t={t} lang={lang} /> : stage ?? <div className="hm-camera-wait"><Icon name="camera" size={32} /><span>{device.primary.available ? t('state.idle') : tx('module.camera.noLink')}</span></div>}</div>
+    <div className={`hm-camera-frame at-camera-stage at-cam-stage ${feed.playing ? 'is-clip at-door-stage' : ''}`} ref={stageRef}>{feed.playing ? <ClipStage feed={feed} t={t} lang={lang} motionLabel={entities.ring ? undefined : t('cams.kind.motion')} /> : stage ?? <div className="hm-camera-wait"><Icon name="camera" size={32} /><span>{device.primary.available ? t('state.idle') : tx('module.camera.noLink')}</span></div>}</div>
     <div className="at-cam-tools">
       <button type="button" className="at-cam-tool at-cam-snapshot" disabled={!pic || closed} onClick={() => void snapshot()}><b><Icon name="camera" size={22} /></b>{tx('module.camera.tool.snapshot')}</button>
       <button type="button" className="at-cam-tool" disabled title={tx('module.camera.tool.talkLater')}><b><Icon name="sensor" size={22} /></b>{tx('module.camera.tool.talk')}</button>
@@ -111,7 +111,7 @@ export function CameraSheet({ device: shown, registry, entities, options, host, 
     {note && <p className="at-feeder-note at-cam-note" role="status">{note}</p>}
   </>;
   const main = <>
-    {(entities.ring || entities.motionEvent) && <FeedList feed={feed} t={t} lang={lang} onArchive={() => setPage('archive')} />}
+    {(entities.ring || entities.motionEvent) && <FeedList feed={feed} t={t} lang={lang} onArchive={() => setPage('archive')} rings={!!entities.ring} motionLabel={entities.ring ? undefined : t('cams.kind.motion')} />}
     {(entities.tracking || entities.petTracking || entities.cruise || pad || entities.motionTracking) && <div className="ah-rows"><Title>{tx('module.camera.group.ptz')}</Title>{pad}{preset && (presets.length ? <SelectRow action={{ ...preset, options: presets }} labels={o => o} device={device} runner={runner} disabled={busy || off || closed} icon="rooms" color="#0a84ff" /> : pad ? <p className="at-cam-hint">{tx('module.imou.presetNone')}</p> : null)}{toggleRow('motionTracking', tx('module.imou.motionTracking'), 'motion', '#0a84ff')}{toggleRow('tracking', tx('module.camera.tracking'), 'person', '#0a84ff')}{toggleRow('petTracking', tx('module.camera.petTracking'), 'paw', '#0a84ff')}{toggleRow('cruise', tx('module.camera.cruise'), 'vacuum', '#0a84ff')}</div>}
     {(entities.motion || entities.aiHuman) && <div className="ah-rows"><Title>{tx('module.camera.group.detection')}</Title>{toggleRow('motion', tx('module.camera.motion'), 'motion', '#30d158')}{selectRow('motionSens', tx('module.camera.motionSens'), sens)}{sliderRow('alarmInterval', tx('module.camera.alarmInterval'), tx('module.camera.min'))}
       {entities.aiHuman && <Title>{tx('module.camera.group.ai')}</Title>}{toggleRow('aiHuman', tx('module.camera.ai.human'), 'person', '#30d158')}{toggleRow('aiMotion', tx('module.camera.ai.motion'), 'motion', '#30d158')}{selectRow('moveSens', tx('module.camera.moveSens'), sens)}{toggleRow('aiPet', tx('module.camera.ai.pet'), 'paw', '#30d158')}{toggleRow('aiFace', tx('module.camera.ai.face'), 'person', '#30d158')}{toggleRow('aiBabycry', tx('module.camera.ai.babycry'), 'sensor', '#30d158')}{toggleRow('aiSound', tx('module.camera.ai.sound'), 'media', '#30d158')}{selectRow('soundSens', tx('module.camera.soundSens'), sens)}</div>}
@@ -134,7 +134,7 @@ export function CameraSheet({ device: shown, registry, entities, options, host, 
     </div>
   </>;
   const archive = <ArchiveGrid feed={feed} t={t} lang={lang} onPlayed={() => { if (!wide) setPage('main'); }} />;
-  const archiveHead = <ArchiveHead feed={feed} t={t} title={device.name} onBack={() => setPage('main')} onClose={wide ? undefined : onClose} />;
+  const archiveHead = <ArchiveHead feed={feed} t={t} title={device.name} onBack={() => setPage('main')} onClose={wide ? undefined : onClose} rings={!!entities.ring} />;
   if (wide) return <div className="hm-sheet-body ah-sheet at-cam is-split" data-kind="camera" data-page={page}>
     <div className="at-cam-left">{head}{video}</div>
     <div className="at-cam-right">{page === 'archive' ? <>{archiveHead}{archive}</> : <>{headBtns}{page === 'main' ? main : <><h3 className="at-cam-h3">{tx('module.camera.settings')}</h3>{settings}</>}</>}</div>
