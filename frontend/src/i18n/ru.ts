@@ -208,6 +208,8 @@ export const ru = {
   'module.oc.acOffline': "Кондиционер не на связи",
   'module.oc.acOff': "Кондиционер выключен",
   'module.oc.acHeat': "Кондиционер греет · на нём {v}°",
+  'module.oc.acHeating': "Кондиционер греет",
+  'module.oc.acSet': "на нём {v}°",
   'module.oc.acSees': "его датчик {v}°",
   'module.oc.kw': "кВт",
   'module.oc.w': "Вт",

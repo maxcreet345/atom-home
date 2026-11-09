@@ -209,6 +209,8 @@ export const en: Dictionary = {
   'module.oc.acOffline': "Air conditioner offline",
   'module.oc.acOff': "Air conditioner off",
   'module.oc.acHeat': "Air conditioner heating · set to {v}°",
+  'module.oc.acHeating': "Air conditioner heating",
+  'module.oc.acSet': "set to {v}°",
   'module.oc.acSees': "its sensor {v}°",
   'module.oc.kw': "kW",
   'module.oc.w': "W",

@@ -209,6 +209,8 @@ export const ro: Dictionary = {
   'module.oc.acOffline': "Aparat deconectat",
   'module.oc.acOff': "Aparat oprit",
   'module.oc.acHeat': "Aparatul încălzește · setat la {v}°",
+  'module.oc.acHeating': "Aparatul încălzește",
+  'module.oc.acSet': "setat la {v}°",
   'module.oc.acSees': "senzorul lui {v}°",
   'module.oc.kw': "kW",
   'module.oc.w': "W",

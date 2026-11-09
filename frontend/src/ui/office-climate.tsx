@@ -102,7 +102,7 @@ function DayPlan({ c, t, lang, now, admin }: { c: OfficeClimate; t: T; lang: Lan
 function ZoneCard({ z, c, t, lang, admin }: { z: OfficeZone; c: OfficeClimate; t: T; lang: Lang; admin: boolean }) {
   const gap = z.current !== null && z.target !== null ? z.target - z.current : null;
   const fill = z.current === null || z.target === null ? 0 : Math.max(4, Math.min(100, 100 - Math.max(0, z.target - z.current) / 6 * 100));
-  const ac = z.ac, acLine = !ac.entity ? tk(t, 'acNone') : !ac.online ? tk(t, 'acOffline') : ac.mode === 'off' || ac.mode === null ? tk(t, 'acOff') : tk(t, 'acHeat', { v: setT(ac.setpoint, lang) });
+  const ac = z.ac, heatsNow = ac.online && ac.mode !== 'off' && ac.mode !== null, acLine = !ac.entity ? tk(t, 'acNone') : !ac.online ? tk(t, 'acOffline') : !heatsNow ? tk(t, 'acOff') : tk(t, 'acHeating');
   return <article className={`at-heat-room is-${z.action}`} aria-label={z.name}>
     <header><strong>{z.name}</strong><span className={`at-heat-badge is-${z.action}`}>{z.action === 'heating' && <i className="at-heat-badge-wave" aria-hidden="true" />}{zoneWord(z, t)}</span></header>
     <div className="at-heat-room-nums">
@@ -112,7 +112,7 @@ function ZoneCard({ z, c, t, lang, admin }: { z: OfficeZone; c: OfficeClimate; t
     <div className="at-heat-bar" aria-hidden="true"><i style={`width:${fill}%`} /></div>
     <p className="at-heat-room-line">{z.action === 'offline' ? tk(t, 'offlineLine') : seesTemp(c.mode, admin) && gap !== null && gap > 0.05 && z.action === 'heating' ? tk(t, 'gapLine', { d: setT(Math.round(gap * 10) / 10, lang) }) : z.action === 'heating' ? tk(t, 'heatLine') : tk(t, 'idleLine')}</p>
     <div className={`at-oc-ac ${ac.online && ac.mode === 'heat' ? 'is-on' : ''}`}>
-      <span className="at-oc-ac-name"><Icon name="climate" size={16} />{acLine}</span>
+      <span className="at-oc-ac-name"><Icon name="climate" size={16} />{acLine}</span>{heatsNow && ac.setpoint !== null && <span className="at-oc-ac-name">{tk(t, 'acSet', { v: setT(ac.setpoint, lang) })}</span>}
       {ac.reading !== null && <span>{tk(t, 'acSees', { v: nowT(ac.reading, lang) })}</span>}
       {ac.power !== null && ac.power > 0 && <span><Icon name="bolt" size={14} />{ac.power >= 1000 ? `${(ac.power / 1000).toLocaleString(LOC[lang], { maximumFractionDigits: 1 })} ${tk(t, 'kw')}` : `${Math.round(ac.power)} ${tk(t, 'w')}`}</span>}
     </div>

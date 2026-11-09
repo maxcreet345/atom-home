@@ -890,3 +890,8 @@
 .hm-shell.ah-shell[data-theme="dark"] .at-oc-seg{border-right-color:#00000059}.hm-shell.ah-shell[data-theme="dark"] .at-oc-now{border-left-color:#fff}.hm-shell.ah-shell[data-theme="dark"] .at-oc-now em{background:#fff;color:#1c1c1e}
 .at-oc-word{font-size:clamp(28px,11cqw,40px);font-weight:600;letter-spacing:-.8px;line-height:1.1;color:var(--ah-muted)}.at-oc-word.is-hero{font-size:44px}
 .at-oc-target.is-muted{font-size:20px;font-weight:600;color:var(--ah-muted)}
+.at-oc-seg>*{position:relative;z-index:2;text-shadow:0 0 6px rgba(255,255,255,.85),0 0 2px rgba(255,255,255,.9)}.at-oc-now{z-index:1}.hm-shell.ah-shell[data-theme="dark"] .at-oc-seg>*{text-shadow:0 0 6px rgba(0,0,0,.7)}
+.at-oc-ac span{white-space:nowrap}
+.at-oc-seg.is-now>*{padding:0 6px;border-radius:6px;background:rgba(255,255,255,.72)}.hm-shell.ah-shell[data-theme="dark"] .at-oc-seg.is-now>*{background:rgba(0,0,0,.38)}
+.at-oc-seg.is-now>*{opacity:1}.at-oc-seg.is-now.is-work>*{background:#ffe3c7}.at-oc-seg.is-now.is-duty>*{background:#e6e5ff}.at-oc-seg.is-now.is-dayoff>*{background:#eceff4}
+.hm-shell.ah-shell[data-theme="dark"] .at-oc-seg.is-now.is-work>*{background:#6a3f17}.hm-shell.ah-shell[data-theme="dark"] .at-oc-seg.is-now.is-duty>*{background:#33325f}.hm-shell.ah-shell[data-theme="dark"] .at-oc-seg.is-now.is-dayoff>*{background:#363a41}

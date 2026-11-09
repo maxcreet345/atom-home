@@ -4,8 +4,8 @@ import { SCENARIOS } from './cards/okapi-climate.mjs';
 const [out, port, ...jobs] = process.argv.slice(2);
 const browser = await chromium.launch();
 for (const job of jobs) {
-  const [name, sc, hash, size, ...flags] = job.split('|'); const [w, h] = size.split('x').map(Number);
-  const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 2 });
+  const [name, sc, hash, size, ...flags] = job.split('|'); const [wh, dpr = '2'] = size.split('@'); const [w, h] = wh.split('x').map(Number);
+  const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: Number(dpr), isMobile: flags.includes('mobile'), hasTouch: flags.includes('mobile') });
   page.on('pageerror', e => console.log('pageerror', name, e.message));
   await page.clock.setFixedTime(new Date(SCENARIOS[sc].at));
   if (flags.includes('guest')) await page.addInitScript(() => { window.__beforeDraw = h => { try { Object.defineProperty(h, 'admin', { value: false }); } catch { h.admin = false; } }; });
