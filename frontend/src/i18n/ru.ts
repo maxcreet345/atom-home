@@ -625,6 +625,8 @@ export const ru = {
   'module.vac.appOnly': "Только в приложении Roborock",
   'module.vac.appOnlyList': "HA их не передаёт: интервал промывки салфетки, стирка и сушка салфетки, частота самоочистки, ковры, порядок и маршрут по комнатам, FlexiArm, повтор грязных мест, обход препятствий, видео, голосовой помощник, кнопки-лампочки, карта и запретные зоны.",
   // the room page (docs/ROOM.md)
+  'room.energyTab.overview': "Обзор",
+  'room.energyTab.now': "Сейчас",
   'room.liveTitle': "Кто тянет сейчас",
   'room.houseTitle': "Сейчас в доме",
   'room.liveNow': "обновляется само",

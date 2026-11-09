@@ -626,6 +626,8 @@ export const ro: Dictionary = {
   'module.vac.appOnly': "Doar în aplicația Roborock",
   'module.vac.appOnlyList': "HA nu le transmite: spălarea și uscarea mopului, frecvența golirii, covoare, ordinea camerelor, FlexiArm, ocolirea obstacolelor, video, asistent vocal, harta și zonele interzise.",
   // the room page (docs/ROOM.md)
+  'room.energyTab.overview': "Prezentare",
+  'room.energyTab.now': "Acum",
   'room.liveTitle': "Consum acum",
   'room.houseTitle': "Acum în casă",
   'room.liveNow': "se actualizează singur",

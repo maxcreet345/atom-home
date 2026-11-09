@@ -102,3 +102,5 @@
 /* a narrow card: the bar goes under the name, the name keeps its width */
 .hm-shell .rm-live{container-type:inline-size}
 @container (max-width:460px){.hm-shell .rm-live-list li{grid-template-columns:28px minmax(0,1fr) auto;grid-template-areas:"ic name w" "ic bar w";row-gap:5px}.hm-shell .rm-live-ic{grid-area:ic}.hm-shell .rm-live-name{grid-area:name;flex-direction:row;align-items:baseline;gap:6px}.hm-shell .rm-live-bar{grid-area:bar;height:6px}.hm-shell .rm-live-w{grid-area:w}}
+/* «Энергия»: Обзор | Сейчас */
+.hm-shell .rm-energy-tabs{width:auto;max-width:360px;margin:0 0 14px}.hm-shell .rm-energy-tabs button{flex:1 1 0}
