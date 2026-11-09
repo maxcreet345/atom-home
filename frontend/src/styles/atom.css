@@ -425,3 +425,18 @@
 .hm-shell :is(.at-cams-name i,.at-cams-flag).tone-warning,.hm-shell .at-cams-thumb.tone-warning .at-cams-dot{background:#9a4f00}
 .hm-shell .at-cams-summary.is-danger .at-cams-state{color:#b0000d}.hm-shell .at-cams-summary.is-warning .at-cams-state{color:#8a4600}
 .hm-shell .at-cam-layer{position:absolute;inset:0}.hm-shell .at-cam-layer.is-pending{opacity:0;pointer-events:none}
+/* Imou: the pan-and-tilt pad in the camera sheet (owner, 09.11.2026) */
+.hm-shell .at-cam-pad{display:grid;grid-template-columns:repeat(3,56px);grid-template-rows:repeat(3,56px);gap:4px;justify-content:center;margin:6px auto 10px}
+.hm-shell .at-cam-pad-btn{all:unset;display:grid;place-items:center;border-radius:50%;background:var(--ah-tile);color:var(--ah-ink);cursor:pointer;box-shadow:var(--ah-tile-shadow)}
+.hm-shell .at-cam-pad-btn:focus-visible{outline:3px solid var(--ah-blue);outline-offset:2px}
+.hm-shell .at-cam-pad-btn:disabled{opacity:.4;cursor:default}
+.hm-shell .at-cam-pad-btn:not(:disabled):active{transform:scale(.94)}
+.hm-shell .at-cam-pad-btn.is-up{grid-area:1/2}.hm-shell .at-cam-pad-btn.is-up svg{transform:rotate(-90deg)}
+.hm-shell .at-cam-pad-btn.is-left{grid-area:2/1}.hm-shell .at-cam-pad-btn.is-left svg{transform:rotate(180deg)}
+.hm-shell .at-cam-pad-btn.is-right{grid-area:2/3}
+.hm-shell .at-cam-pad-btn.is-down{grid-area:3/2}.hm-shell .at-cam-pad-btn.is-down svg{transform:rotate(90deg)}
+.hm-shell .at-cam-pad-hub{grid-area:2/2;display:grid;place-items:center;color:var(--ah-muted)}
+.hm-shell .at-cam-hint{margin:2px 4px 8px;font-size:13px;color:var(--ah-muted);text-align:center}
+/* five cameras: four small ones under the big picture; a thumbnail narrower than its name shows the picture only (the name stays in its label) */
+.hm-shell .at-cams-thumb{container-type:inline-size}
+@container (max-width:110px){.hm-shell .at-cams-thumb small{display:none}}

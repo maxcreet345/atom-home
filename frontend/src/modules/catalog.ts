@@ -155,7 +155,9 @@ export const cameraOnvifSpec: ModuleSpec = {
   ],
   detect(reg) {
     const live = (id: string) => reg.entities.some(e => e.entity_id === id && !e.disabled_by) && !!reg.states[id];
-    const onvifCam = reg.entities.find(e => e.platform === 'onvif' && e.entity_id.startsWith('camera.') && live(e.entity_id) && e.device_id);
+    // a camera that also has an Imou cloud shutter (switch.<prefix>_privacy) belongs to the Imou module, which plays its ONVIF stream the C700's way
+    const imouOwned = (id: string) => { const p = id.slice('camera.'.length).replace(/_(sd|hd|profile_?\d+)$/, ''); return reg.entities.some(e => e.entity_id === `switch.${p}_privacy` && e.platform === 'imou'); };
+    const onvifCam = reg.entities.find(e => e.platform === 'onvif' && e.entity_id.startsWith('camera.') && live(e.entity_id) && e.device_id && !imouOwned(e.entity_id));
     if (!onvifCam) return null;
     const own = reg.entities.filter(e => e.device_id === onvifCam.device_id && live(e.entity_id)).map(e => e.entity_id);
     const sds = own.filter(id => id.startsWith('camera.')).sort();
@@ -196,7 +198,32 @@ export const kettleSpec: ModuleSpec = {
     } };
   },
 };
-export const MODULE_SPECS: ModuleSpec[] = [boilerEbusSpec, doorbellSpec, cameraGo2rtcSpec, cameraOnvifSpec, petFeederSpec, airSpec, clockSpec, kettleSpec];
+/** Imou camera (Ranger 2C): video only from the local network — the ONVIF device's SD profile on tiles, the generic camera on the HD RTSP in the sheet — and the functions from Imou's cloud
+ * integration (shutter, pan and tilt, presets, detections, siren). The cloud is not polled (30 000 requests a month): a command asks for one fresh state afterwards. Roles by the entity prefix of `switch.<prefix>_privacy`. */
+export const IMOU_ROLES: ReadonlyArray<{ role: string; id: (p: string) => string }> = [
+  { role: 'camera', id: p => `camera.${p}_sd` }, { role: 'hd', id: p => `camera.${p}_hd` },
+  { role: 'privacy', id: p => `switch.${p}_privacy` }, { role: 'ptzUp', id: p => `button.${p}_ptz_up` }, { role: 'ptzDown', id: p => `button.${p}_ptz_down` }, { role: 'ptzLeft', id: p => `button.${p}_ptz_left` }, { role: 'ptzRight', id: p => `button.${p}_ptz_right` }, { role: 'preset', id: p => `select.${p}_preset` },
+  { role: 'motionTracking', id: p => `switch.${p}_smart_tracking` }, { role: 'motion', id: p => `switch.${p}_motion_detection` }, { role: 'aiHuman', id: p => `switch.${p}_human_detection` }, { role: 'aiPet', id: p => `switch.${p}_pet_detection` },
+  { role: 'ir', id: p => `switch.${p}_ir` }, { role: 'wdr', id: p => `switch.${p}_wdr` }, { role: 'flip', id: p => `switch.${p}_flip` }, { role: 'indicator', id: p => `switch.${p}_indicator` },
+  { role: 'promptSound', id: p => `switch.${p}_prompt_sound` }, { role: 'audioRec', id: p => `switch.${p}_audio_recording` }, { role: 'alarmSiren', id: p => `switch.${p}_alarm_siren` }, { role: 'siren', id: p => `siren.${p}_siren` },
+  { role: 'motionEvent', id: p => `binary_sensor.${p}_motion` }, { role: 'sceneChange', id: p => `binary_sensor.${p}_scene_change` },
+  { role: 'reboot', id: p => `button.${p}_reboot` }, { role: 'syncTime', id: p => `button.${p}_sync_time` }, { role: 'cloudStatus', id: p => `sensor.${p}_cloud_status` },
+];
+export const cameraImouSpec: ModuleSpec = {
+  id: 'camera_imou', titleKey: 'module.camera_imou', placement: [],
+  roles: IMOU_ROLES.map(r => ({ role: r.role, labelKey: `module.imou.role.${r.role}`, required: r.role === 'camera' })),
+  detect(reg) {
+    const live = (id: string) => reg.entities.some(e => e.entity_id === id && !e.disabled_by) && !!reg.states[id];
+    const shutter = reg.entities.find(e => e.platform === 'imou' && /^switch\.[a-z0-9_]+_privacy$/.test(e.entity_id) && !e.disabled_by);
+    if (!shutter) return null;
+    const p = shutter.entity_id.slice('switch.'.length, -'_privacy'.length), entities: ModuleEntities = {};
+    for (const r of IMOU_ROLES) { const id = r.id(p); if (live(id)) entities[r.role] = id; }
+    if (!entities.camera) return null; // no local video, nothing to show: the cloud streams are not used (owner, 09.11.2026)
+    const dev = reg.devices.find(d => d.id === reg.entities.find(e => e.entity_id === entities.camera)?.device_id);
+    return { label: dev?.name ?? 'Imou', entities };
+  },
+};
+export const MODULE_SPECS: ModuleSpec[] = [boilerEbusSpec, doorbellSpec, cameraGo2rtcSpec, cameraOnvifSpec, cameraImouSpec, petFeederSpec, airSpec, clockSpec, kettleSpec];
 export interface ActiveSpec { spec: ModuleSpec; entities: ModuleEntities; label: string; options: ModuleOptions }
 /** Modules whose hardware is present (or that the owner configured by hand) and that are not disabled. */
 export function activeSpecs(registry: Registry, config: HouseConfig, specs: ModuleSpec[] = MODULE_SPECS): ActiveSpec[] {

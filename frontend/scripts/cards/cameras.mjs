@@ -14,6 +14,8 @@ export const card = {
     person: { s: { [SONOFF.person]: ['on', ago(0.3)], [SONOFF.motion]: ['on', ago(0.3)] } },
     ring: { s: { 'event.entrance_doorbell_ring': [{ ago: 0.33 }], 'binary_sensor.entrance_doorbell_motion': ['on', ago(0.5)] } },
     offline: { off: [SONOFF.fixed, SONOFF.sd1] },
+    // the hall's Imou with its shutter closed (somebody at home: the automation closes it)
+    hallClosed: { s: { 'switch.hall_camera_privacy': ['on'] }, off: ['camera.hall_camera_sd', 'camera.hall_camera_hd'] },
   },
   build: (base, scenario, now) => ({ snapshot: addFeeder(addAir(addEnergy(addCameras(base, at(scenario.s, now), scenario.off), { apt8: '153.4', ev: '0.0', apt9: '1126.0', ch4: '0.0' }))), feederLog: feederLog(now), airTasks: [], energyMonth: null, frames: frames(), camHistory: history(now.getTime()) }),
   config: text => { const c = JSON.parse(renameAreas(text)); c.modules = { ...c.modules, camera_go2rtc: { entities: { camera: 'camera.entrance_camera' }, options: { addon: 'a889bffc_go2rtc', stream: 'entrance_camera_h264', streamHd: 'entrance_camera_hd' } }, doorbell: { options: { addon: 'a889bffc_go2rtc', stream: 'entrance_doorbell_720', streamHd: 'entrance_doorbell' } } }; return c; },

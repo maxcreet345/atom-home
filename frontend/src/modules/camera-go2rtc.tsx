@@ -31,7 +31,8 @@ function SelectRow({ action, labels, device, runner, disabled, icon, color }: { 
 const Title = ({ children }: { children: ComponentChildren }) => <div className="ah-row at-cam-title"><small>{children}</small></div>;
 const KV = ({ k, v }: { k: string; v: ComponentChildren }) => <div className="at-cam-kv"><span>{k}</span><small>{v}</small></div>;
 
-function CameraSheet({ device, registry, entities, options, host, t, lang, runner, onClose, room, stage, wide }: ModuleSheetProps) {
+/** The camera sheet, shared by the Xiaomi C700 (MIoT roles) and the Imou Ranger (cloud roles: shutter, pan and tilt, presets, switches): one layout, the roles a camera has decide its rows. */
+export function CameraSheet({ device: shown, registry, entities, options, host, t, lang, runner: baseRunner, onClose, room, stage, wide }: ModuleSheetProps) {
   const [page, setPage] = useState<'main' | 'settings' | 'archive'>('main');
   const [note, setNote] = useState('');
   const stageRef = useRef<HTMLDivElement>(null);
@@ -45,16 +46,23 @@ function CameraSheet({ device, registry, entities, options, host, t, lang, runne
     const a = entityActions(r)[0] ?? (r.domain === 'light' ? ({ id: 'toggle', label, kind: 'toggle', domain: 'light', service: 'toggle', entityId: r.id, confirm: false, risk: 'normal', current: r.state === 'on' } satisfies Action) : null);
     return a ? { ...a, label } : null;
   };
+  // Imou's cloud is not polled (a quota of 30 000 requests a month): after a command its entity is read once a few seconds later, and once more for a confirmed one
+  const cloud = new Set(registry.entities.filter(e => e.platform === 'imou').map(e => e.entity_id));
+  const runner: Runner = { busy: baseRunner.busy, async run(d, a, v) { await baseRunner.run(d, a, v); if (cloud.has(a.entityId)) for (const ms of [3000, 12000]) setTimeout(() => void host.call('homeassistant', 'update_entity', { entity_id: a.entityId }).catch(() => undefined), ms); } };
+  const privacy = ref('privacy'), power = ref('power');
+  // the shutter (Imou: on = lens closed) or the power switch (C700: off = lens closed)
+  const closed = privacy ? privacy.state === 'on' : !!power && power.state === 'off', off = privacy ? !privacy.available : !power || !power.available;
+  // the Imou's local stream goes away while its shutter is closed: its settings still work through the cloud
+  const device: HomeDevice = privacy ? { ...shown, primary: { ...shown.primary, available: privacy.available } } : shown;
   const busy = runner.busy.has(device.key);
-  const power = ref('power'), closed = !!power && power.state === 'off', off = !power || !power.available;
   const roomShown = room && !device.name.trim().toLowerCase().endsWith(room.trim().toLowerCase()) ? room : '';
-  const hasControls = CAMERA_CONTROL_ROLES.some(r => entities[r.role]);
+  const hasControls = CAMERA_CONTROL_ROLES.some(r => entities[r.role]) || !!entities.privacy;
   const night = act('night', tx('module.camera.night')), hdr = act('hdr', tx('module.camera.hdr'));
   const nightLabel = (o: string) => ({ on: tx('module.camera.night.always'), off: tx('module.camera.night.never'), auto: tx('module.camera.night.auto') } as Record<string, string>)[o.toLowerCase()] ?? o;
   const onOffAuto = (o: string) => ({ 'выкл': t('mode.off'), off: t('mode.off'), 'вкл': t('state.on'), on: t('state.on'), 'авто': t('mode.auto'), auto: t('mode.auto') } as Record<string, string>)[o.toLowerCase()] ?? o;
   const sens = (o: string) => ({ low: tx('module.camera.sens.low'), middle: tx('module.camera.sens.middle'), medium: tx('module.camera.sens.middle'), high: tx('module.camera.sens.high') } as Record<string, string>)[o.toLowerCase()] ?? o;
   const rec = (o: string) => ({ 'no record': tx('module.camera.rec.none'), 'motion record': tx('module.camera.rec.motion'), 'all record': tx('module.camera.rec.all') } as Record<string, string>)[o.toLowerCase()] ?? o;
-  const powerAction: Action | null = power ? { id: 'toggle', label: closed ? tx('module.camera.openLens') : tx('module.camera.closeLens'), kind: 'toggle', domain: 'switch', service: closed ? 'turn_on' : 'turn_off', entityId: power.id, confirm: !closed, risk: 'security' } : null;
+  const powerAction: Action | null = privacy ? { id: 'toggle', label: closed ? tx('module.camera.openLens') : tx('module.camera.closeLens'), kind: 'toggle', domain: 'switch', service: closed ? 'turn_off' : 'turn_on', entityId: privacy.id, confirm: !closed, risk: 'security' } : power ? { id: 'toggle', label: closed ? tx('module.camera.openLens') : tx('module.camera.closeLens'), kind: 'toggle', domain: 'switch', service: closed ? 'turn_on' : 'turn_off', entityId: power.id, confirm: !closed, risk: 'security' } : null;
   const pic = typeof device.primary.attributes.entity_picture === 'string' ? device.primary.attributes.entity_picture : null;
   const snapshot = async () => {
     if (!pic) return; setNote('');
@@ -67,11 +75,17 @@ function CameraSheet({ device, registry, entities, options, host, t, lang, runne
   const fullscreen = () => { const el = stageRef.current; if (!el) return; const v = el.querySelector('video') as (HTMLVideoElement & { webkitEnterFullscreen?: () => void }) | null; if (el.requestFullscreen) el.requestFullscreen().catch(() => v?.webkitEnterFullscreen?.()); else v?.webkitEnterFullscreen?.(); };
   useEffect(() => { if (!note) return; const id = setTimeout(() => setNote(''), 4000); return () => clearTimeout(id); }, [note]);
   const toggleRow = (role: string, label: string, icon: string, color: string, sub?: string) => { const a = act(role, label); return a ? <SettingRow device={device} action={a} runner={runner} t={t} lang={lang} icon={icon} color={color} /> : null; };
-  const selectRow = (role: string, label: string, labels: (o: string) => string, icon = 'more') => { const a = act(role, label); return a && a.kind === 'select' ? <SelectRow action={a} labels={labels} device={device} runner={runner} disabled={busy || off} icon={icon} color="#8e8e93" /> : null; };
+  const selectRow = (role: string, label: string, labels: (o: string) => string, icon = 'more'): ComponentChildren => { const a = act(role, label); return a && a.kind === 'select' ? <SelectRow action={a} labels={labels} device={device} runner={runner} disabled={busy || off} icon={icon} color="#8e8e93" /> : null; };
   const sliderRow = (role: string, label: string, unit?: string) => { const a = act(role, label); return a && a.kind === 'number' ? <SliderRow device={device} action={unit ? { ...a, unit } : a} runner={runner} t={t} lang={lang} /> : null; };
   const rotation = ref('rotation'), flipped = !!rotation && Number(rotation.state) >= 90;
   const flipAction: Action | null = rotation ? { id: 'value', label: tx('module.camera.flip'), kind: 'number', domain: 'number', service: 'set_value', entityId: rotation.id, confirm: false, risk: 'normal' } : null;
-  const info = ref('info')?.attributes ?? {}, funcDev = registry.devices.find(d => d.id === registry.entities.find(e => e.entity_id === entities.power)?.device_id);
+  const info = ref('info')?.attributes ?? {}, funcDev = registry.devices.find(d => d.id === registry.entities.find(e => e.entity_id === (entities.power ?? entities.privacy))?.device_id);
+  const press = (role: string, label: string, confirm = false): Action | null => entities[role] && registry.states[entities[role]!] ? { id: role === 'reboot' ? 'reboot' : 'press', label, kind: 'button', domain: 'button', service: 'press', entityId: entities[role]!, confirm, risk: confirm ? 'security' : 'normal' } : null;
+  const ir = act('ir', tx('module.camera.night')), wdr = act('wdr', 'WDR'), irOn = ir?.current === true, wdrOn = wdr?.current === true;
+  const sirenRef = ref('siren'), sirenAction: Action | null = sirenRef ? { id: 'siren', label: tx('module.imou.sirenOn'), kind: 'button', domain: 'siren', service: 'turn_on', entityId: sirenRef.id, confirm: true, risk: 'security' } : null;
+  const preset = act('preset', tx('module.imou.preset')), presets = (preset?.options ?? []).filter(o => o !== 'select_collection_point');
+  const pad = entities.ptzUp || entities.ptzLeft ? <div className="at-cam-pad" role="group" aria-label={tx('module.imou.ptz')}>{([['ptzUp', 'up'], ['ptzLeft', 'left'], ['ptzRight', 'right'], ['ptzDown', 'down']] as const).map(([role, dir]) => { const a = press(role, tx(`module.imou.ptz.${dir}`)); return a ? <button type="button" className={`at-cam-pad-btn is-${dir}`} aria-label={String(a.label)} disabled={busy || off || closed} onClick={() => void runner.run(device, a)}><Icon name="next" size={22} /></button> : null; })}<span className="at-cam-pad-hub" aria-hidden="true"><Icon name="camera" size={18} /></span></div> : null;
+  const buttonRow = (a: Action | null, icon: string, color: string) => a ? <div className="ah-row hm-setting"><span className="ah-row-icon" style={`--tile:${color}`}><Icon name={icon} size={18} /></span><span className="ah-row-text"><strong>{String(a.label)}</strong></span><button type="button" className="hm-pill" disabled={busy || off} onClick={() => void runner.run(device, a)}>{t('action.press')}</button></div> : null;
   const codec = info['p2p_stream.video_codec'] === 1 ? 'H.265' : info['p2p_stream.video_codec'] === 0 ? 'H.264' : null, audio = ({ 0: 'G711A', 1: 'AAC', 2: 'OPUS', 3: 'PCM' } as Record<number, string>)[Number(info['p2p_stream.audio_codec'])], res = ({ 1: '480p', 3: '1080p', 9: '4K' } as Record<number, string>)[Number(info['p2p_stream.resolution_types'])];
   const sd = ref('sdStatus'), sdFree = ref('sdFree'), sdUsed = ref('sdUsed'), hasCard = !!sd && sd.state.toLowerCase() === 'normal';
   const mb = (r: EntityRef | null) => r && Number.isFinite(Number(r.state)) && Number(r.state) > 0 ? `${num(Number(r.state) / 1024, lang, 1)} GB` : '—';
@@ -90,28 +104,33 @@ function CameraSheet({ device, registry, entities, options, host, t, lang, runne
       <button type="button" className="at-cam-tool at-cam-full" disabled={!stage} onClick={fullscreen}><b><Icon name="panel" size={22} /></b>{tx('module.camera.tool.fullscreen')}</button>
       {powerAction && <button type="button" className={`at-cam-tool at-cam-lens ${closed ? '' : 'is-on'}`} disabled={busy || off} onClick={() => void runner.run(device, powerAction)}><b><Icon name="power" size={22} /></b>{String(powerAction.label)}</button>}
       {night && night.kind === 'select' && <button type="button" className={`at-cam-tool at-cam-night ${String(night.current).toLowerCase() !== 'off' ? 'is-on' : ''}`} disabled={busy || off} title={tx('module.camera.tool.cycle')} onClick={() => void runner.run(device, night, cycle(night))}><b><Icon name="motion" size={22} /></b>{tx('module.camera.night')}<small>{nightNowLabel}</small></button>}
+      {ir && <button type="button" className={`at-cam-tool at-cam-night ${irOn ? 'is-on' : ''}`} disabled={busy || off} aria-pressed={irOn} onClick={() => void runner.run(device, ir, !irOn)}><b><Icon name="motion" size={22} /></b>{tx('module.camera.night')}<small>{irOn ? t('state.on') : t('mode.off')}</small></button>}
+      {wdr && <button type="button" className={`at-cam-tool at-cam-hdr ${wdrOn ? 'is-on' : ''}`} disabled={busy || off} aria-pressed={wdrOn} onClick={() => void runner.run(device, wdr, !wdrOn)}><b>WDR</b><small>{wdrOn ? t('state.on') : t('mode.off')}</small></button>}
       {hdr && hdr.kind === 'select' && <button type="button" className={`at-cam-tool at-cam-hdr ${/^(выкл|off)$/i.test(String(hdr.current)) ? '' : 'is-on'}`} disabled={busy || off} title={tx('module.camera.tool.cycle')} onClick={() => void runner.run(device, hdr, cycle(hdr))}><b>HDR</b><small>{hdrNowLabel}</small></button>}
     </div>
     {note && <p className="at-feeder-note at-cam-note" role="status">{note}</p>}
   </>;
   const main = <>
     {(entities.ring || entities.motionEvent) && <FeedList feed={feed} t={t} lang={lang} onArchive={() => setPage('archive')} />}
-    {(entities.tracking || entities.petTracking || entities.cruise) && <div className="ah-rows"><Title>{tx('module.camera.group.ptz')}</Title>{toggleRow('tracking', tx('module.camera.tracking'), 'person', '#0a84ff')}{toggleRow('petTracking', tx('module.camera.petTracking'), 'paw', '#0a84ff')}{toggleRow('cruise', tx('module.camera.cruise'), 'vacuum', '#0a84ff')}</div>}
+    {(entities.tracking || entities.petTracking || entities.cruise || pad || entities.motionTracking) && <div className="ah-rows"><Title>{tx('module.camera.group.ptz')}</Title>{pad}{preset && (presets.length ? <SelectRow action={{ ...preset, options: presets }} labels={o => o} device={device} runner={runner} disabled={busy || off || closed} icon="rooms" color="#0a84ff" /> : pad ? <p className="at-cam-hint">{tx('module.imou.presetNone')}</p> : null)}{toggleRow('motionTracking', tx('module.imou.motionTracking'), 'motion', '#0a84ff')}{toggleRow('tracking', tx('module.camera.tracking'), 'person', '#0a84ff')}{toggleRow('petTracking', tx('module.camera.petTracking'), 'paw', '#0a84ff')}{toggleRow('cruise', tx('module.camera.cruise'), 'vacuum', '#0a84ff')}</div>}
     {(entities.motion || entities.aiHuman) && <div className="ah-rows"><Title>{tx('module.camera.group.detection')}</Title>{toggleRow('motion', tx('module.camera.motion'), 'motion', '#30d158')}{selectRow('motionSens', tx('module.camera.motionSens'), sens)}{sliderRow('alarmInterval', tx('module.camera.alarmInterval'), tx('module.camera.min'))}
       {entities.aiHuman && <Title>{tx('module.camera.group.ai')}</Title>}{toggleRow('aiHuman', tx('module.camera.ai.human'), 'person', '#30d158')}{toggleRow('aiMotion', tx('module.camera.ai.motion'), 'motion', '#30d158')}{selectRow('moveSens', tx('module.camera.moveSens'), sens)}{toggleRow('aiPet', tx('module.camera.ai.pet'), 'paw', '#30d158')}{toggleRow('aiFace', tx('module.camera.ai.face'), 'person', '#30d158')}{toggleRow('aiBabycry', tx('module.camera.ai.babycry'), 'sensor', '#30d158')}{toggleRow('aiSound', tx('module.camera.ai.sound'), 'media', '#30d158')}{selectRow('soundSens', tx('module.camera.soundSens'), sens)}</div>}
     {(entities.volume || entities.mute) && <div className="ah-rows"><Title>{tx('module.camera.group.sound')}</Title>{sliderRow('volume', tx('module.camera.volume'), '%')}{toggleRow('mute', tx('module.camera.mute'), 'media', '#30d158')}</div>}
   </>;
   const settings = <>
-    {(entities.watermark || entities.distortion || entities.rotation || entities.colorNight || entities.indicator) && <div className="ah-rows"><Title>{tx('module.camera.group.image')}</Title>{toggleRow('watermark', tx('module.camera.watermark'), 'more', '#7b74d8')}{toggleRow('distortion', tx('module.camera.distortion'), 'settings', '#7b74d8')}
+    {(entities.watermark || entities.distortion || entities.rotation || entities.colorNight || entities.indicator || entities.flip) && <div className="ah-rows"><Title>{tx('module.camera.group.image')}</Title>{toggleRow('flip', tx('module.camera.flip'), 'rooms', '#7b74d8')}{toggleRow('watermark', tx('module.camera.watermark'), 'more', '#7b74d8')}{toggleRow('distortion', tx('module.camera.distortion'), 'settings', '#7b74d8')}
       {rotation && flipAction && <div className="ah-row hm-setting"><span className="ah-row-icon" style="--tile:#7b74d8"><Icon name="rooms" size={18} /></span><span className="ah-row-text"><strong>{tx('module.camera.flip')}</strong></span><Switch on={flipped} pending={busy} disabled={off} label={tx('module.camera.flip')} onToggle={() => void runner.run(device, flipAction, flipped ? 0 : 180)} /></div>}
       {toggleRow('colorNight', tx('module.camera.colorNight'), 'light', '#7b74d8')}{toggleRow('indicator', tx('module.camera.indicator'), 'light', '#7b74d8')}</div>}
     {(entities.recording || entities.sdStatus) && <div className="ah-rows"><Title>{tx('module.camera.group.storage')}</Title>{selectRow('recording', tx('module.camera.recording'), rec, 'settings')}{sd && <KV k={tx('module.camera.sdCard')} v={sdStatusLabel(sd.state, tx)} />}{(sdFree || sdUsed) && <KV k={tx('module.camera.sdSpace')} v={hasCard ? `${mb(sdFree)} / ${mb(sdUsed)}` : '— / —'} />}</div>}
+    {(entities.promptSound || entities.audioRec || entities.alarmSiren || sirenAction) && <div className="ah-rows"><Title>{tx('module.imou.group.sound')}</Title>{toggleRow('promptSound', tx('module.imou.promptSound'), 'speaker', '#30d158')}{toggleRow('audioRec', tx('module.imou.audioRec'), 'mic', '#30d158')}{toggleRow('alarmSiren', tx('module.imou.alarmSiren'), 'bell', '#ff9f0a')}{buttonRow(sirenAction, 'bell', '#ff3b30')}</div>}
     <div className="ah-rows"><Title>{t('ui.diagnostics')}</Title>
       {(funcDev?.model || device.model) && <KV k={t('ui.model')} v={[funcDev?.manufacturer ?? device.manufacturer, funcDev?.model ?? device.model].filter(Boolean).join(' · ')} />}
       {typeof info.lan_ip === 'string' && <KV k={tx('module.camera.diag.ip')} v={info.lan_ip} />}
       {typeof info.mac === 'string' && <KV k="MAC" v={info.mac} />}
       {(codec || audio || res) && <KV k={tx('module.camera.diag.codec')} v={[codec, res, audio].filter(Boolean).join(' · ')} />}
-      <KV k={tx('module.camera.diag.stream')} v={`${options.stream ?? 'auto'}${options.streamHd ? ` · HD ${options.streamHd}` : ''}`} />
+      <KV k={tx('module.camera.diag.stream')} v={entities.hd ? tx('module.imou.streams') : `${options.stream ?? 'auto'}${options.streamHd ? ` · HD ${options.streamHd}` : ''}`} />
+      {ref('cloudStatus') && <KV k={tx('module.imou.cloudStatus')} v={ref('cloudStatus')!.state} />}
+      {buttonRow(press('syncTime', tx('module.imou.syncTime')), 'clock', '#8e8e93')}{buttonRow(press('reboot', tx('module.imou.reboot'), true), 'power', '#ff9f0a')}
     </div>
   </>;
   const archive = <ArchiveGrid feed={feed} t={t} lang={lang} onPlayed={() => { if (!wide) setPage('main'); }} />;

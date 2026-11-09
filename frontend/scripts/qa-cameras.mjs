@@ -17,7 +17,7 @@ const report = () => { console.log(`${passed} passed, ${fails.length} failed`); 
 const stop = code => { report(); server.kill(); process.exit(code); };
 process.on('uncaughtException', e => { fails.push('script stopped: ' + e.message.slice(0, 1500) + ' ' + (e.stack ?? '').split('\n').find(l => l.includes('qa-cameras'))?.trim()); stop(1); }); process.on('unhandledRejection', e => { fails.push('script stopped: ' + String(e?.message ?? e).slice(0, 1500) + ' ' + (e?.stack ?? '').split('\n').find(l => l.includes('qa-cameras'))?.trim()); stop(1); });
 const DEVICES = [[360, 792, '13R'], [792, 360, '13R-land'], [402, 874, 'phone'], [874, 402, 'phone-land'], [764, 1070, 'pad-port'], [1070, 764, 'pad'], [698, 751, 'open'], [751, 698, 'open-land'], [1440, 900, 'mac'], [1920, 1080, 'hd'], [1280, 720, 'tv'], [320, 640, 'narrow']];
-const C700 = 'e:camera.entrance_camera', DOOR = 'e:camera.entrance_doorbell', DOWN = 'e:camera.cam_c44he_ptz_hd', UP = 'e:camera.cam_c44he_fixed_hd';
+const HALL = 'e:camera.hall_camera_sd', C700 = 'e:camera.entrance_camera', DOOR = 'e:camera.entrance_doorbell', DOWN = 'e:camera.cam_c44he_ptz_hd', UP = 'e:camera.cam_c44he_fixed_hd';
 async function open({ w = 1070, h = 764, theme = 'light', lang = 'ru', scenario = 'quiet', hash = '#home', reduced = false } = {}) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: w < 1100, timezoneId: 'Europe/Chisinau', reducedMotion: reduced ? 'reduce' : 'no-preference' }), page = await ctx.newPage(), errors = [];
   page.on('pageerror', e => errors.push(e.message)); page.on('console', m => { if (['error', 'warning'].includes(m.type()) && !/Failed to load resource|404/.test(m.text())) errors.push(m.text()); });
@@ -52,15 +52,15 @@ try {
     check(`errors [${tag}]`, !errors.length, errors); await ctx.close();
   }
   // 2. which camera is big and what the line says
-  const want = { quiet: [DOOR, null, /^Тихо · 4 камеры$/], person: [DOWN, 'is-warning', /^Человек · Лестница вниз · сейчас$/], ring: [DOOR, 'is-danger', /^Звонок · Камера звонка · \d\d:\d\d$/], offline: [DOOR, 'is-muted', /^1 камера без связи$/] };
+  const want = { quiet: [DOOR, null, /^Тихо · 5 камер$/], person: [DOWN, 'is-warning', /^Человек · Лестница вниз · сейчас$/], ring: [DOOR, 'is-danger', /^Звонок · Камера звонка · \d\d:\d\d$/], offline: [DOOR, 'is-muted', /^1 камера без связи$/] };
   for (const [scenario, [focus, tone, line]] of Object.entries(want)) {
     const { page, ctx } = await open({ scenario }); const t = await tileInfo(page);
-    check(`${scenario}: big camera, tone and line`, t && t.focus === focus && t.tone === tone && line.test(t.line ?? '') && t.thumbs === 3 && t.live === 'live' && t.singles === 0, t); await ctx.close();
+    check(`${scenario}: big camera, tone and line`, t && t.focus === focus && t.tone === tone && line.test(t.line ?? '') && t.thumbs === 4 && t.live === 'live' && t.singles === 0, t); await ctx.close();
   }
   // 3. the panel: summary, cells, filters with counts, the cell of the event, offline camera
   { const { page, ctx } = await open({ scenario: 'person', hash: '#camera' });
     const p = await page.evaluate(() => ({ cells: [...document.querySelectorAll('.at-cams-cell')].map(c => c.dataset.deviceKey), flag: document.querySelector('.at-cams-cell.tone-warning')?.dataset.deviceKey, summary: document.querySelector('.at-cams-summary')?.className, tabs: [...document.querySelectorAll('.at-cams-filter button')].map(b => b.textContent), rows: document.querySelectorAll('.at-cams-ev').length, tab: document.querySelector('.hm-range-tabs [aria-selected="true"]')?.textContent }));
-    check('panel: four cells in order, the stairs flagged, the summary yellow, the tab selected', p.cells.join() === [DOOR, C700, DOWN, UP].join() && p.flag === DOWN && /is-warning/.test(p.summary) && p.tab === 'Камеры', p);
+    check('panel: four cells in order, the stairs flagged, the summary yellow, the tab selected', p.cells.join() === [DOOR, C700, DOWN, UP, HALL].join() && p.flag === DOWN && /is-warning/.test(p.summary) && p.tab === 'Камеры', p);
     check('panel: filters count the day', p.tabs.join('|') === 'Все19|Звонки2|Люди5|Движение12' && p.rows === 19, p);
     await page.click('.at-cams-filter button:nth-child(2)'); await page.waitForTimeout(150);
     const rings = await page.evaluate(() => [...document.querySelectorAll('.at-cams-ev strong')].map(x => x.textContent)); check('panel: «Звонки» shows the two rings only', rings.join() === 'Звонок,Звонок', rings);
@@ -72,11 +72,11 @@ try {
     const sheet = await page.evaluate(() => ({ stage: !!document.querySelector('.hm-sheet .at-go2rtc'), title: document.querySelector('.hm-sheet h2')?.textContent })); check('panel: the Sonoff sheet plays its lens', sheet.stage, sheet);
     const log = await page.evaluate(() => window.atomPreview.host.log.filter(x => x.domain !== 'ws')); check('panel: no command sent', !log.length, log); await ctx.close(); }
   { const { page, ctx } = await open({ scenario: 'offline', hash: '#camera' });
-    const o = await page.evaluate(() => ({ off: [...document.querySelectorAll('.at-cams-cell.is-off')].map(c => c.dataset.deviceKey), small: document.querySelector('.at-cams-summary small')?.textContent })); check('offline: the cell dimmed, «На связи 3 из 4»', o.off.join() === 'e:camera.cam_c44he_fixed_hd' && o.small === 'На связи 3 из 4', o); await ctx.close(); }
+    const o = await page.evaluate(() => ({ off: [...document.querySelectorAll('.at-cams-cell.is-off')].map(c => c.dataset.deviceKey), small: document.querySelector('.at-cams-summary small')?.textContent })); check('offline: the cell dimmed, «На связи 3 из 4»', o.off.join() === 'e:camera.cam_c44he_fixed_hd' && o.small === 'На связи 4 из 5', o); await ctx.close(); }
   // 4. the card's controls: the big picture, a frame and the caption
   { const { page, ctx } = await open({ scenario: 'quiet' });
     const thumbs = await page.evaluate(() => [...document.querySelectorAll('.at-cams-thumb')].map(b => ({ name: b.querySelector('small')?.textContent, live: b.querySelector('.at-go2rtc')?.dataset.playerStatus ?? null })));
-    check('tile: the three small cameras are live too, the C700 named after its room', thumbs.map(x => x.name).join() === 'Компьютерная,Лестница вниз,Лестница вверх' && thumbs.every(x => x.live === 'live'), thumbs);
+    check('tile: the three small cameras are live too, the C700 named after its room', thumbs.map(x => x.name).join() === 'Компьютерная,Лестница вниз,Лестница вверх,Прихожая' && thumbs.filter(x => x.name !== 'Прихожая').every(x => x.live === 'live') /* the hall has no recorded frame in the preview */, thumbs);
     await page.click('.at-cams-thumb:nth-child(1)'); await page.waitForTimeout(200); check('tile: a small camera opens its sheet', /device=e%3Acamera.entrance_camera/.test(page.url()) && !!(await page.$('.at-cam')), page.url());
     await page.waitForTimeout(400); await page.keyboard.press('Escape'); await page.waitForTimeout(350);
     await page.click('.at-cams-main'); await page.waitForTimeout(400); const stage = await page.evaluate(() => ({ layers: [...document.querySelectorAll('.hm-sheet .at-cam-layer')].map(l => `${l.dataset.quality ?? 'low'}:${l.classList.contains('is-pending') ? 'pending' : 'shown'}:${l.querySelector('.at-go2rtc')?.dataset.stream}`) }));
@@ -85,7 +85,24 @@ try {
     await page.click('.at-cams-caption'); await page.waitForTimeout(250); check('tile: the caption opens the panel', /#camera$/.test(page.url()), page.url());
     // keyboard: the three kinds of controls are reachable and named
     const names = await page.evaluate(() => { location.hash = '#home'; return new Promise(r => setTimeout(() => r([...document.querySelectorAll('.at-cams-tile button')].map(b => b.getAttribute('aria-label'))), 300)); });
-    check('tile: every control has a name', names.length === 5 && names.slice(1, 4).every(Boolean) && names[0] === null && names[4] === null, names); await ctx.close(); }
+    check('tile: every control has a name', names.length === 6 && names.slice(1, 5).every(Boolean) && names[0] === null && names[5] === null, names); await ctx.close(); }
+  // Imou in the hall (09.11.2026): closed shutter on the card and in the panel, the pad turns it, «Закрыть объектив» asks first, the cloud is read once after a command
+  { const { page, ctx } = await open({ scenario: 'hallClosed', hash: '#camera' });
+    const c = await page.evaluate(() => { const cell = document.querySelector('.at-cams-cell[data-device-key="e:camera.hall_camera_sd"]'); return { wait: cell?.querySelector('.hm-camera-wait span')?.textContent, player: !!cell?.querySelector('.at-go2rtc'), name: cell?.querySelector('.at-cams-cap strong')?.textContent }; });
+    check('imou: closed shutter is «Объектив закрыт» without a stream, named after its room', c.wait === 'Объектив закрыт' && !c.player && c.name === 'Прихожая', c);
+    await page.click('.at-cams-cell[data-device-key="e:camera.hall_camera_sd"] .at-cams-hit'); await page.waitForTimeout(500);
+    const sh = await page.evaluate(() => ({ lens: document.querySelector('.hm-sheet .at-cam-lens')?.textContent, pad: [...document.querySelectorAll('.hm-sheet .at-cam-pad-btn')].map(b => b.disabled) }));
+    check('imou: closed — the lens button opens, the pad waits', /Открыть объектив/.test(sh.lens ?? '') && sh.pad.length === 4 && sh.pad.every(Boolean), sh); await ctx.close(); }
+  { const { page, ctx } = await open({ scenario: 'quiet', hash: '#camera?device=e%3Acamera.hall_camera_sd' }); await page.waitForTimeout(400);
+    await page.evaluate(() => window.atomPreview.setAccept(true));
+    await page.click('.hm-sheet .at-cam-pad-btn.is-up'); await page.waitForTimeout(200);
+    await page.click('.hm-sheet .at-cam-lens'); await page.waitForSelector('.hm-confirm', { timeout: 3000 }).catch(() => {}); const ask = await page.evaluate(() => document.querySelector('.hm-confirm p')?.textContent);
+    await page.click('.hm-confirm .is-primary'); await page.waitForTimeout(3400);
+    const log = await page.evaluate(() => window.atomPreview.host.log.filter(x => x.domain !== 'ws').map(x => `${x.domain}.${x.service}:${x.data.entity_id}`));
+    check('imou: up turns it, closing asks first, then the cloud is read once', log.includes('button.press:button.hall_camera_ptz_up') && log.includes('switch.turn_on:switch.hall_camera_privacy') && log.includes('homeassistant.update_entity:switch.hall_camera_privacy') && !!ask, { ask, log });
+    await page.click('.hm-sheet .at-cam-gear'); await page.waitForTimeout(300);
+    const rows = await page.evaluate(() => [...document.querySelectorAll('.hm-sheet .ah-row strong')].map(x => x.textContent));
+    check('imou: settings like the C700, plus sound and siren', ['Перевернуть изображение', 'Звуковые подсказки', 'Запись звука', 'Сирена при тревоге', 'Включить сирену', 'Перезагрузить камеру'].every(r => rows.includes(r)), rows); await ctx.close(); }
   // 5. languages: no raw keys, the line in en / ro
   for (const lang of ['en', 'ro']) for (const hash of ['#home', '#camera']) { const { page, ctx, errors } = await open({ lang, scenario: 'person', hash }); const raw = await page.evaluate(() => (document.querySelector('.hm-main').innerText.match(/\b(cams|module)\.[a-z.]+/g) ?? [])); check(`${lang} ${hash}: no raw keys`, !raw.length && !errors.length, [raw, errors]); await page.screenshot({ path: `${out}/${lang}-${hash.slice(1)}.png` }); await ctx.close(); }
   // 6. reduced motion: nothing animates on the card

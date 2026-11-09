@@ -43,13 +43,25 @@ export function addCameras(base, s = {}, off = []) {
   for (const b of ['button.cam_c44he_reboot', 'button.cam_c44he_set_system_date_and_time']) { fx.entities.push(ent(b, 'c44he-onvif', 'onvif')); fx.states[b] = st('unknown', {}); }
   fx.states['binary_sensor.entrance_doorbell_motion'] = { ...fx.states['binary_sensor.entrance_doorbell_motion'], state: 'off', last_changed: new Date(Date.now() - 40 * 60_000).toISOString() };
   fx.states['event.entrance_doorbell_ring'] = { ...fx.states['event.entrance_doorbell_ring'], state: new Date(Date.now() - 5 * 3600_000).toISOString() };
+  // Imou Ranger 2C in the hall (09.11.2026): ONVIF device with the 352p profile and local events, generic HD, the cloud device with the functions
+  if (!fx.areas.some(a => a.area_id === 'prikhozhaia')) fx.areas.push({ area_id: 'prikhozhaia', name: 'Прихожая', icon: null, picture: null });
+  dev('imou-onvif', 'Прихожая · Камера (Imou IPC-K2EC)', 'IPC-K2EC-3R1W', 'IMOU'); for (const d of fx.devices) if (d.id === 'imou-onvif') d.area_id = 'prikhozhaia';
+  dev('imou-hd', 'Прихожая · Камера (HD)', null, 'Generic'); dev('imou-cloud', 'Прихожая · Камера Imou Ranger 2C (облако)', 'IPC-K2EC-R1W', 'Imou'); for (const d of fx.devices) if (d.id === 'imou-hd' || d.id === 'imou-cloud') d.area_id = 'prikhozhaia';
+  const imou = (id, devId, platform, state, attrs = {}, extra = {}) => { fx.entities.push(ent(id, devId, platform, extra)); fx.states[id] = st(state, { friendly_name: id, ...attrs }, old); };
+  imou('camera.hall_camera_sd', 'imou-onvif', 'onvif', 'idle', { friendly_name: 'Прихожая · Камера (Imou IPC-K2EC) (352p)', entity_picture: '/api/camera_proxy/camera.hall_camera_sd?token=x' });
+  imou('camera.hall_camera_hd', 'imou-hd', 'generic', 'idle', { friendly_name: 'Прихожая · Камера (HD)' });
+  imou('binary_sensor.hall_camera_motion', 'imou-onvif', 'onvif', 'off', { device_class: 'motion' }, { device_class: 'motion' }); imou('binary_sensor.hall_camera_scene_change', 'imou-onvif', 'onvif', 'off');
+  imou('switch.hall_camera_ir', 'imou-onvif', 'onvif', 'unknown'); for (const b of ['reboot', 'sync_time']) imou(`button.hall_camera_${b}`, 'imou-onvif', 'onvif', 'unknown', {}, { entity_category: 'config' });
+  for (const d of ['up', 'down', 'left', 'right']) imou(`button.hall_camera_ptz_${d}`, 'imou-cloud', 'imou', 'unknown');
+  imou('select.hall_camera_preset', 'imou-cloud', 'imou', 'select_collection_point', { options: ['select_collection_point'] }); imou('sensor.hall_camera_cloud_status', 'imou-cloud', 'imou', 'online', {}, { entity_category: 'diagnostic' }); imou('siren.hall_camera_siren', 'imou-cloud', 'imou', 'unknown');
+  for (const [k, v] of [['privacy', 'off'], ['smart_tracking', 'off'], ['motion_detection', 'on'], ['human_detection', 'on'], ['pet_detection', 'off'], ['wdr', 'on'], ['flip', 'off'], ['indicator', 'on'], ['prompt_sound', 'on'], ['audio_recording', 'on'], ['alarm_siren', 'off']]) imou(`switch.hall_camera_${k}`, 'imou-cloud', 'imou', v, {}, k === 'privacy' || k === 'smart_tracking' ? {} : { entity_category: 'config' });
   for (const [id, [state, at]] of Object.entries(s)) fx.states[id] = { ...fx.states[id], state, last_changed: at ?? fx.states[id]?.last_changed ?? '' };
   for (const id of off) fx.states[id] = { ...fx.states[id], state: 'unavailable' };
   return fx;
 }
 /** Recorded frames by the names the players ask for (go2rtc stream or HA entity). The G4 gave none on 09.11 (its RTSP lacks SPS/PPS). */
 export function frames() {
-  const map = { entrance_camera_h264: 'entrance_camera_hd.jpg', 'camera.entrance_camera': 'entrance_camera_hd.jpg', [SONOFF.sd0]: 'camera.cam_c44he_ptz_hd.jpg', [SONOFF.ptz]: 'camera.cam_c44he_ptz_hd.jpg', [SONOFF.sd1]: 'camera.cam_c44he_fixed_hd.jpg', [SONOFF.fixed]: 'camera.cam_c44he_fixed_hd.jpg', entrance_doorbell: 'entrance_doorbell.jpg', entrance_doorbell_720: 'entrance_doorbell.jpg', 'camera.entrance_doorbell_fast': 'entrance_doorbell.jpg', 'camera.entrance_doorbell': 'entrance_doorbell.jpg', 'camera.entrance_doorbell_video': 'entrance_doorbell.jpg' };
+  const map = { entrance_camera_h264: 'entrance_camera_hd.jpg', 'camera.entrance_camera': 'entrance_camera_hd.jpg', [SONOFF.sd0]: 'camera.cam_c44he_ptz_hd.jpg', [SONOFF.ptz]: 'camera.cam_c44he_ptz_hd.jpg', [SONOFF.sd1]: 'camera.cam_c44he_fixed_hd.jpg', [SONOFF.fixed]: 'camera.cam_c44he_fixed_hd.jpg', entrance_doorbell: 'entrance_doorbell.jpg', entrance_doorbell_720: 'entrance_doorbell.jpg', 'camera.entrance_doorbell_fast': 'entrance_doorbell.jpg', 'camera.entrance_doorbell': 'entrance_doorbell.jpg', 'camera.entrance_doorbell_video': 'entrance_doorbell.jpg', 'camera.hall_camera_sd': 'hall_camera_sd.jpg', 'camera.hall_camera_hd': 'hall_camera_sd.jpg' };
   return Object.fromEntries(Object.entries(map).filter(([, f]) => existsSync(resolve(FRAMES, f))).map(([k, f]) => [k, `/frames/${f}`]));
 }
 /** A day of rings and detections in HA's minimal history format, so the panel's list has something to read. */
