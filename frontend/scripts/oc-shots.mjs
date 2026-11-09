@@ -2,7 +2,8 @@
 import { chromium } from '@playwright/test';
 import { SCENARIOS } from './cards/okapi-climate.mjs';
 import { AT as ENERGY_AT } from './cards/okapi-energy.mjs';
-const CARD = process.env.CARD ?? 'okapi-climate', atOf = sc => CARD === 'okapi-energy' ? ENERGY_AT : SCENARIOS[sc].at;
+import { AT as LIGHT_AT } from './cards/okapi-light.mjs';
+const CARD = process.env.CARD ?? 'okapi-climate', atOf = sc => CARD === 'okapi-energy' ? ENERGY_AT : CARD === 'okapi-light' ? LIGHT_AT : SCENARIOS[sc].at;
 const [out, port, ...jobs] = process.argv.slice(2);
 const browser = await chromium.launch();
 for (const job of jobs) {

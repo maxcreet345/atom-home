@@ -906,3 +906,4 @@
 .at-ep-bld-now{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;color:var(--ah-muted);font-variant-numeric:tabular-nums}
 .hm-shell.ah-shell[data-theme="dark"] .at-ep-bld{background:rgba(255,255,255,.06)}
 .hm-shell .at-heat-confirm.is-wide{margin-top:10px;padding:12px 14px;border-radius:16px;background:var(--hz-card);justify-content:flex-start}.hm-shell .at-heat-confirm.is-wide span{text-align:left}
+.at-strip{display:grid;gap:10px}.at-strip-body{display:grid;gap:12px}.at-strip-body.is-off{opacity:.45}.at-strip-scenes{display:flex;flex-wrap:wrap;gap:8px}.at-strip-scenes .hm-pill.is-on{background:#1c1c1e;color:#fff}.hm-shell.ah-shell[data-theme="dark"] .at-strip-scenes .hm-pill.is-on{background:#fff;color:#1c1c1e}

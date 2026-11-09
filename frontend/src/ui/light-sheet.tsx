@@ -57,7 +57,9 @@ export function LightBody({ device, runner, t, lang, host, sleepAt }: Common & {
   const live = brightnessPct(a) ?? 0;
   useEffect(() => { if (draft !== null && on && Math.abs(live - draft) <= 2) setDraft(null); }, [live, on, draft]);
   useEffect(() => { if (draft === null) return; const id = setTimeout(() => setDraft(null), 2500); return () => clearTimeout(id); }, [draft]);
-  if (!isDimmable(a)) return <><RelayHero device={device} runner={runner} t={t} lang={lang} /><SleepRow entityId={e.id} on={on && avail} host={host} sleepAt={sleepAt ?? null} t={t} /></>;
+  // a relay that powers a strip (Atom + Okapi, 09.11.2026: «LED Шоурума» is the S60TPF socket, the Gledopto strip inside it): the big bulb is the
+  // power, the strip below has its colour, brightness and scenes but no switch of its own
+  if (!isDimmable(a)) return <><RelayHero device={device} runner={runner} t={t} lang={lang} />{ambient && <StripRows device={device} strip={ambient} powered={on && avail} runner={runner} t={t} lang={lang} />}<SleepRow entityId={e.id} on={on && avail} host={host} sleepAt={sleepAt ?? null} t={t} /></>;
   const pct = draft ?? live, shownOn = on || draft !== null;
   const send = useThrottled(v => void runner.run(device, act(e.id, 'brightness', { transition: 0.3 }), v));
   const k = kelvinOf(a), range = kelvinRange(a), temp = hasColorTemp(a);
@@ -98,6 +100,28 @@ function AmbientRows({ device, ambient, runner, t, lang }: Common & { ambient: E
       </div>
       {isDimmable(a) && <input type="range" className="at-amb-range" min={1} max={100} step={1} value={pct} aria-label={`${t('light.ambient')} · ${t('action.brightness')}`} style={`--c:${hex}`} onChange={ev => void runner.run(device, act(ambient.id, 'brightness', { transition: 0.3 }), Number((ev.target as HTMLInputElement).value))} />}
     </div>}
+  </div>;
+}
+/** A strip fed by the lamp's relay: colours, white tones, brightness and the controller's scenes; no switch (the relay is the power). Picking a colour
+ * or a scene turns the strip on; while the relay is off there is nothing to drive, and it says so. */
+function StripRows({ device, strip, powered, runner, t, lang }: Common & { strip: EntityRef; powered: boolean }) {
+  const a = strip.attributes, avail = strip.available && powered, on = isOn(strip), pct = brightnessPct(a), cur = nearestColor(a.rgb_color), k = kelvinOf(a), range = kelvinRange(a), hex = ambientHex(a);
+  // the live scene select first: Z2M leaves an unavailable twin of every entity it moved
+  const sceneSel = [...device.parameters, ...device.controls, ...device.metrics].filter(x => x.domain === 'select' && /_scene(_\d+)?$/.test(x.id)), scene = sceneSel.find(x => x.available) ?? sceneSel[0] ?? null;
+  const scenes = scene && Array.isArray(scene.attributes.options) ? (scene.attributes.options as unknown[]).filter((o): o is string => typeof o === 'string') : [];
+  const sceneName = (o: string) => { const key = `light.scene.${o}` as Key; return t(key) !== key ? t(key) : o.replace(/_/g, ' '); };
+  const colour = cur ? t(`light.color.${cur}` as Key) : k !== null && !Array.isArray(a.rgb_color) ? (k <= 3500 ? t('light.white.warm') : t('light.white.cold')) : '';
+  const line = !powered ? t('light.stripOff') : !strip.available ? t('state.unavailable') : [on && scene && scenes.includes(scene.state) ? sceneName(scene.state) : null, on ? colour : null, on && pct !== null ? `${pct} %` : null].filter(Boolean).join(' · ') || t('light.stripReady');
+  return <div className="ah-group at-strip">
+    <div className="ah-row"><span className="ah-row-icon" style={`--tile:${avail && on ? hex : '#8e8e93'}`}><Icon name="sun" size={18} /></span><span className="ah-row-text"><strong>{t('light.strip')}</strong><small>{line}</small></span></div>
+    <div className={`at-amb-row at-strip-body ${avail ? '' : 'is-off'}`} aria-disabled={!avail || undefined}>
+      <div className="at-amb-colors">
+        {hasColor(a) && AMBIENT_COLORS.map(c => <button type="button" className={`at-amb-dot ${on && cur === c.key ? 'is-on' : ''}`} style={`--c:${rgbHex(c.rgb)}`} disabled={!avail} aria-label={t(`light.color.${c.key}` as Key)} onClick={() => void runner.run(device, act(strip.id, 'color', undefined, 'turn_on', 'select'), c.rgb)} />)}
+        {hasColorTemp(a) && <><button type="button" className={`at-amb-dot is-white ${on && !cur && k !== null && k <= 3500 ? 'is-on' : ''}`} style={`--c:${kelvinColor(2700)}`} disabled={!avail} aria-label={t('light.white.warm')} onClick={() => void runner.run(device, act(strip.id, 'color_temp'), clampKelvin(2700, range.min, range.max))} /><button type="button" className={`at-amb-dot is-white ${on && !cur && k !== null && k > 3500 ? 'is-on' : ''}`} style={`--c:${kelvinColor(6000)}`} disabled={!avail} aria-label={t('light.white.cold')} onClick={() => void runner.run(device, act(strip.id, 'color_temp'), clampKelvin(6000, range.min, range.max))} /></>}
+      </div>
+      <input type="range" className="at-amb-range" min={1} max={100} step={1} value={pct ?? 100} disabled={!avail} aria-label={`${t('light.strip')} · ${t('action.brightness')}`} style={`--c:${hex}`} onChange={ev => void runner.run(device, act(strip.id, 'brightness', { transition: 0.3 }), Number((ev.target as HTMLInputElement).value))} />
+      {scene && scenes.length > 0 && <><small className="at-light-title">{t('light.scenes')}</small><div className="hm-chips at-strip-scenes">{scenes.map(o => <button type="button" className={`hm-pill ${on && scene.state === o ? 'is-on' : ''}`} aria-pressed={on && scene.state === o} disabled={!avail} onClick={() => void runner.run(device, act(scene.id, 'option', undefined, 'select_option', 'select'), o)}>{sceneName(o)}</button>)}</div></>}
+    </div>
   </div>;
 }
 /** «Выключить через 15/30/60»: the integration keeps the timer and switches the lamp off; the pending time comes back through the mirror text. */

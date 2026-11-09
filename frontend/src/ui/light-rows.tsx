@@ -27,7 +27,7 @@ export function LightRows({ devices, room, runner, toggle, open, t, lang }: { de
           </span>
         </button>
         <Switch on={on} pending={busy} disabled={!e.available} label={name(d)} onToggle={() => toggle(d)} />
-      </div>; }).flatMap((row, i) => { const d = devices[i], amb = d.controls.find((c, j) => j > 0 && c.domain === 'light'); if (!amb) return [row];
+      </div>; }).flatMap((row, i) => { const d = devices[i], amb = d.controls.find((c, j) => j > 0 && c.domain === 'light'); if (!amb || d.primary.domain !== 'light') return [row]; // a strip on a relay has no switch of its own: it lives in the sheet
       const aon = amb.available && isOn(amb), cur = nearestColor(amb.attributes.rgb_color), apct = brightnessPct(amb.attributes);
       return [row, <div className={`ah-row at-light-row is-ambient ${aon ? 'is-on' : ''}`} data-device-key={`${d.key}:ambient`}>
         <button type="button" className="at-light-row-hit" onClick={() => open(d)}><span className="ah-row-icon at-light-row-icon" style={`--tile:${aon ? ambientHex(amb.attributes) : '#8e8e93'}`}><Icon name="sun" size={18} /></span>
