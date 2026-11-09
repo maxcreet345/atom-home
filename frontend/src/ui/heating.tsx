@@ -36,14 +36,14 @@ export function heatingActions(h: Heating, host: Host) {
 }
 /** One command at a time per card: the button that sent it waits, a refusal is said in words. */
 /** The refusal is said next to the control that sent it (a room's card, the scenarios, the hero), and the next accepted command clears it. */
-function useAct(t: T) {
+export function useAct(t: T) {
   const [busy, setBusy] = useState<string | null>(null), [errKey, setErrKey] = useState<string | null>(null);
   const fail = (key: string) => setErrKey(key), ok = () => setErrKey(null);
   const run = (key: string, p: () => Promise<unknown>) => { if (busy === key) return; setBusy(key); setErrKey(null); p().then(ok, () => fail(key)).finally(() => setBusy(null)); };
   const err = (...keys: string[]) => errKey && keys.some(k => errKey === k || errKey.startsWith(k + ':')) ? tk(t, 'failed') : null;
   return { busy, err, fail, ok, run };
 }
-const Err = ({ text }: { text: string | null }) => <p className="at-heat-err" role="alert">{text ?? ''}</p>;
+export const Err = ({ text }: { text: string | null }) => <p className="at-heat-err" role="alert">{text ?? ''}</p>;
 /** Turning the whole house's heating off asks once more; turning it on does not. */
 function Power({ on, busy, t, onPower, offline }: { on: boolean; busy: boolean; t: T; onPower: (v: boolean) => void; offline?: boolean }) {
   const [ask, setAsk] = useState(false), cancel = useRef<HTMLButtonElement>(null), main = useRef<HTMLButtonElement>(null), back = useRef(false);
@@ -68,7 +68,7 @@ export function Radiator({ tone }: { tone: HeatTone }) {
   </svg>;
 }
 const WIN = 'M5 3h14v18H5zM12 3v18M5 12h14';
-const Glyph = ({ d, size = 14 }: { d: string; size?: number }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={d} /></svg>;
+export const Glyph = ({ d, size = 14 }: { d: string; size?: number }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={d} /></svg>;
 /** The words for a room's state, the same on the tile's chip (its label) and in the panel. */
 function roomWord(r: HeatRoom, t: T, now: number) {
   if (r.action === 'offline') return tk(t, 'r.offline');
@@ -107,7 +107,7 @@ function houseValue(h: Heating, lang: Lang): { text: string; value: number | nul
 }
 /** ± answers at once and sends the last value after a short pause, so five taps are one command. */
 /** A refused command puts the real value back and says so; an accepted one that HA never reflects gives up after 20 s. */
-function useStepper(value: number | null, send: (v: number) => Promise<unknown>, onFail: () => void, onOk: () => void, min = 8, max = 24, lo?: number, by = 0.5) {
+export function useStepper(value: number | null, send: (v: number) => Promise<unknown>, onFail: () => void, onOk: () => void, min = 8, max = 24, lo?: number, by = 0.5) {
   const [local, setLocal] = useState<number | null>(null), timer = useRef<ReturnType<typeof setTimeout> | null>(null), stale = useRef<ReturnType<typeof setTimeout> | null>(null), seq = useRef(0), waiting = useRef<number | null>(null);
   useEffect(() => { if (local !== null && value === local) setLocal(null); }, [value]);
   const fire = (v: number) => { const n = ++seq.current; waiting.current = null; send(v).then(() => { if (n === seq.current) onOk(); }, () => { if (n === seq.current) { setLocal(null); onFail(); } }); stale.current = setTimeout(() => { if (n === seq.current) setLocal(null); }, 20000); };
@@ -118,7 +118,7 @@ function useStepper(value: number | null, send: (v: number) => Promise<unknown>,
     timer.current = setTimeout(() => fire(r), 700); };
   return { shown, step, pending: local !== null && local !== value, atMin: shown !== null && (local ?? lo ?? shown) <= min, atMax: shown !== null && shown >= max };
 }
-function Stepper({ value, text, onStep, t, size = 'big', disabled, label, atMin, atMax, pending, fine }: { value: number | null; text: string; onStep: (d: 1 | -1) => void; t: T; size?: 'big' | 'small'; disabled?: boolean; label: string; atMin?: boolean; atMax?: boolean; pending?: boolean; /** steps of 0,2° */ fine?: boolean }) {
+export function Stepper({ value, text, onStep, t, size = 'big', disabled, label, atMin, atMax, pending, fine }: { value: number | null; text: string; onStep: (d: 1 | -1) => void; t: T; size?: 'big' | 'small'; disabled?: boolean; label: string; atMin?: boolean; atMax?: boolean; pending?: boolean; /** steps of 0,2° */ fine?: boolean }) {
   return <div className={`at-heat-step is-${size} ${pending ? 'is-pending' : ''} ${text.includes('–') ? 'is-range' : ''}`} role="group" aria-label={label}>
     <button type="button" className="at-heat-pm" aria-label={`${label}: ${tk(t, fine ? 'downFine' : 'down')}`} disabled={disabled || value === null} aria-disabled={atMin || undefined} onClick={e => { e.stopPropagation(); if (!atMin) onStep(-1); }}><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" /></svg></button>
     <b aria-live="polite">{text}<i>°</i></b>

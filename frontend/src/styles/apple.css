@@ -850,3 +850,43 @@
 .is-narrow .at-people{min-width:0;flex:0 1 auto}.is-narrow .at-people-btn{max-width:100%;min-width:0}.is-narrow .at-people-sum{min-width:0;overflow:hidden;text-overflow:ellipsis}.is-narrow .at-head-pill{flex:none}.is-narrow .at-pill-btn{padding:0 8px;gap:4px}.is-narrow .at-head-tools{gap:8px}.is-narrow .at-people-btn{padding-right:10px}.is-narrow .at-people-stack .at-person-ava+.at-person-ava{margin-left:-12px} /* «everyone home» fits beside the pill on a 360 px phone */
 .hm-shell .hm-head{position:relative;z-index:20} /* the header menus open over the tiles */
 .is-narrow .at-people-menu{left:0;right:auto;max-width:calc(100vw - 24px);transform-origin:top left}
+/* ---------- Climate of a building heated by air conditioners (office-climate.tsx, mock 09.11.2026) ---------- */
+.hm-shell .ah-grid>.at-oc-tile{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}.hm-shell.is-narrow .ah-grid>.at-oc-tile{grid-column:1/-1;grid-row:auto}
+.at-oc-pill{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:0 12px;border-radius:999px;background:var(--hz-chip);font-size:13.5px;font-weight:600;color:var(--ah-ink)}
+.at-oc-pill.is-work svg{color:#ff9f0a}.at-oc-pill.is-duty svg{color:#5e5ce6}.at-oc-pill.is-dayoff svg{color:#8e8e93}
+.at-oc-big{font-size:clamp(42px,17cqw,66px);font-weight:400;letter-spacing:-2px;line-height:1;font-variant-numeric:tabular-nums;color:var(--ah-ink)}
+.at-oc-big i,.at-oc-target i{font-style:normal;font-size:.5em;vertical-align:.7em}
+.at-oc-big.is-hero{font-size:64px}
+.at-oc-target{font-size:30px;font-weight:500;letter-spacing:-.6px;line-height:1;font-variant-numeric:tabular-nums;color:var(--ah-ink);min-height:36px;display:flex;align-items:center}
+.at-oc-plan{display:grid;gap:8px;padding:16px 16px 12px;border-radius:20px;background:var(--hz-card,var(--ah-card))}
+.at-oc-track{position:relative;height:58px;margin-top:22px;border-radius:14px;background:#7676801a}
+.at-oc-seg{position:absolute;top:0;bottom:0;display:grid;align-content:center;justify-items:center;gap:1px;border-right:2px solid #ffffffcc;overflow:hidden;white-space:nowrap}
+.at-oc-seg:first-child{border-radius:14px 0 0 14px}.at-oc-seg:nth-last-child(2){border-right:0;border-radius:0 14px 14px 0}.at-oc-seg.is-narrow small{display:none}
+.at-oc-seg b{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}.at-oc-seg small{font-size:11.5px;font-weight:500;opacity:.8}
+.at-oc-seg.is-work{background:linear-gradient(180deg,#ffd7b0,#ffb46e);color:#5a2a00}
+.at-oc-seg.is-duty{background:linear-gradient(180deg,#dcdcff,#c3c2f5);color:#262566}
+.at-oc-seg.is-dayoff{background:linear-gradient(180deg,#e6e9ef,#d3d8e0);color:#3a4250}
+.at-oc-seg:not(.is-now){filter:saturate(.75)}
+.at-oc-now{position:absolute;top:-2px;bottom:-2px;width:0;border-left:2px solid var(--ah-ink)}
+.at-oc-now em{position:absolute;top:-22px;left:0;transform:translateX(-50%);padding:1px 5px;border-radius:6px;background:#1c1c1e;color:#fff;font-style:normal;font-size:11px;font-weight:600;white-space:nowrap}
+.at-oc-ticks{position:relative;height:16px;font-size:11.5px;color:var(--ah-muted);font-variant-numeric:tabular-nums}
+.at-oc-ticks span{position:absolute;transform:translateX(-50%)}.at-oc-ticks span[style="left:0"]{transform:none}.at-oc-ticks span[style="left:100%"]{transform:translateX(-100%)}
+.at-oc-note{display:flex;align-items:center;gap:8px;margin:6px 0 0;font-size:13px;color:var(--ah-muted)}
+.at-oc-note svg{flex:none}
+.at-oc-ac{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:9px 12px;border-radius:14px;background:#7676800f;font-size:13px;color:var(--ah-muted)}
+.at-oc-ac span{display:inline-flex;align-items:center;gap:5px}
+.at-oc-ac-name{color:var(--ah-ink);font-weight:500}
+.at-oc-ac.is-on .at-oc-ac-name svg{color:var(--hz-hot,#ff7a2f)}
+.at-oc-modes{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+.at-oc-mode{cursor:default;gap:8px}
+.at-oc-mode .at-heat-scen-top strong{display:inline-flex;align-items:center;gap:6px}
+.at-oc-mode.is-work .at-heat-scen-top svg{color:#ff9f0a}.at-oc-mode.is-duty .at-heat-scen-top svg{color:#5e5ce6}.at-oc-mode.is-dayoff .at-heat-scen-top svg{color:#8e8e93}
+.at-oc-mode .at-heat-step{justify-self:start}
+.hm-shell.ah-shell[data-theme="dark"] .at-oc-seg.is-work{background:linear-gradient(180deg,#7a4a1f,#5c3510);color:#ffe2c4}
+.hm-shell.ah-shell[data-theme="dark"] .at-oc-seg.is-duty{background:linear-gradient(180deg,#3a3970,#2c2b58);color:#dedcff}
+.hm-shell.ah-shell[data-theme="dark"] .at-oc-seg.is-dayoff{background:linear-gradient(180deg,#3b4048,#2e3238);color:#dfe3ea}
+.hm-shell.ah-shell[data-theme="dark"] .at-oc-pill,.hm-shell.ah-shell[data-theme="dark"] .at-oc-ac{background:rgba(255,255,255,.08)}
+.hm-shell .at-heat-scen.at-oc-modes{grid-template-columns:repeat(3,minmax(0,1fr))}.hm-shell.is-narrow .at-heat-scen.at-oc-modes{grid-template-columns:1fr}
+.hm-shell.ah-shell[data-theme="dark"] .at-oc-seg{border-right-color:#00000059}.hm-shell.ah-shell[data-theme="dark"] .at-oc-now{border-left-color:#fff}.hm-shell.ah-shell[data-theme="dark"] .at-oc-now em{background:#fff;color:#1c1c1e}
+.at-oc-word{font-size:clamp(28px,11cqw,40px);font-weight:600;letter-spacing:-.8px;line-height:1.1;color:var(--ah-muted)}.at-oc-word.is-hero{font-size:44px}
+.at-oc-target.is-muted{font-size:20px;font-weight:600;color:var(--ah-muted)}
