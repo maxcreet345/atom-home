@@ -32,7 +32,7 @@ function apply(fx, now, sc) {
   return fx;
 }
 export const card = {
-  name: 'Чайник', sheet: '#home?device=kettle', home: '#home', sheetRoot: '.at-kt-sheet', tileRoot: '[data-module-card="kettle"]', actionButton: '.at-kt-go',
+  name: 'Чайник', sheet: '#home?device=kettle', home: '#rooms?room=kukhnia', sheetRoot: '.at-kt-sheet', tileRoot: '[data-module-card="kettle"]', actionButton: '.at-kt-go',
   scenarios: { idle: {}, heating: { sc: 'heating' }, boil: { sc: 'boil' }, keep: { sc: 'keep' }, lifted: { sc: 'lifted' }, knob: { sc: 'knob' }, offline: { sc: 'offline' } },
   build(base, scenario, now) { const out = heat.build(base, heat.scenarios.normal, now); return { ...out, snapshot: apply(out.snapshot, now, scenario.sc) }; },
   config: (text, s) => heat.config(text, s),

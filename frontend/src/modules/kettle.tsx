@@ -143,10 +143,11 @@ export const kettle: ModuleDef = {
   claims: entities => [entities.heater, ...(entities.rest ?? '').split(',')].filter((x): x is string => !!x),
   Card(props) {
     const { t, lang, onOpen } = props, k = read(props);
-    const line = k.phase === 'off' ? kk(t, 'offline') : k.phase === 'lifted' ? kk(t, 'lifted') : k.phase === 'heating' ? kk(t, k.target >= 99 ? 'tileBoil' : 'tileHeat', { t: k.target }) : k.phase === 'keep' ? kk(t, 'tileKeep', { t: k.keepTemp }) : kk(t, 'idle');
-    return <div className={`ah-tile ah-value hm-card at-kt-tile is-${k.phase}`} data-module-card="kettle"><button type="button" className="ah-tile-hit" onClick={onOpen} disabled={!onOpen} aria-label={`${kk(t, 'title')}: ${k.temp === null ? '—' : `${Math.round(k.temp)} °C`}, ${line}`}>
+    const line = k.phase === 'off' ? kk(t, 'tileOff') : k.phase === 'lifted' ? kk(t, 'tileLifted') : k.phase === 'heating' ? kk(t, k.target >= 99 ? 'tileBoil' : 'tileHeat', { t: k.target }) : k.phase === 'keep' ? kk(t, 'tileKeep', { t: k.keepTemp }) : kk(t, 'idle');
+    // like Mi Home's tile: the kettle's picture, its name, the state with the water's temperature
+    const temp = k.temp === null ? '' : ` · ${num(k.temp, lang, 0)}°`;
+    return <div className={`ah-tile hm-card at-kt-tile is-${k.phase}`} data-module-card="kettle"><button type="button" className="ah-tile-hit" onClick={onOpen} disabled={!onOpen} aria-label={`${kk(t, 'title')}: ${line}${k.temp === null ? '' : `, ${Math.round(k.temp)} °C`}`}>
       <span className="at-kt-tile-art"><KettleArt phase={k.phase} temp={null} /></span>
-      <span className="ah-value-num"><b>{k.temp === null ? '—' : num(k.temp, lang, 0)}</b>{k.temp !== null && <i>°C</i>}</span>
-      <span className="ah-tile-text"><strong>{kk(t, 'title')}</strong><small>{line}</small></span></button></div>;
+      <span className="ah-tile-text"><strong>{kk(t, 'title')}</strong><small>{line}{k.phase === 'off' ? '' : temp}</small></span></button></div>;
   },
 };

@@ -826,4 +826,7 @@ export const ro: Dictionary = {
   'module.kettle.knobModes': 'Schimbă modurile: {list}',
   'module.kettle.knobFreeShort': 'Fin',
   'module.kettle.knobModesShort': 'Moduri',
+  'room.appliances': 'Aparate',
+  'module.kettle.tileOff': 'Fără legătură',
+  'module.kettle.tileLifted': 'Luat de pe bază',
 };

@@ -22,7 +22,8 @@ export interface ModuleDef {
   /** Suggest entity ids from the registry; null when the hardware is absent. */
   detect(registry: Registry): ModuleMatch | null;
   /** Where the card goes: a section screen and/or the overview status row. */
-  placement: Array<'climate' | 'overview' | 'systems'>;
+  /** `room`: a card on its device's room page (the kettle on the Kitchen's, owner 09.11.2026) */
+  placement: Array<'climate' | 'overview' | 'systems' | 'room'>;
   /** The module has a sheet of its own, reached as `device=<sheetKey>`: its tile opens the sheet, there is no wide card on the section screen. */
   sheetKey?: string;
   Card: ComponentType<{ registry: Registry; entities: ModuleEntities; options: ModuleOptions; host: Host; t: T; lang: Lang; compact?: boolean; /** the tile opens the module's own sheet (see `sheetKey`) */ onOpen?: () => void; /** the house's rooms in dashboard order */ rooms?: Array<{ id: string; name: string }> }>;

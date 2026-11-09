@@ -15,7 +15,8 @@ import { heatRoomWord, heatingActions, useStepper, Stepper, heatSetText } from '
 import { vacuumActions } from './vacuum.tsx';
 
 export interface RoomProps { reg: Registry; roomId: string; roomName: string; heating: Heating | null; vacuum: Vacuum | null; host: Host; t: T; lang: Lang; now: number; alarms: Alarm[] | null;
-  deviceOf: (entity: string) => HomeDevice | undefined; toggle: (d: HomeDevice) => void; open: (d: HomeDevice) => void; busy: (d: HomeDevice) => boolean; onHeating: () => void; onAlarms: () => void }
+  deviceOf: (entity: string) => HomeDevice | undefined; toggle: (d: HomeDevice) => void; open: (d: HomeDevice) => void; busy: (d: HomeDevice) => boolean; onHeating: () => void; onAlarms: () => void;
+  /** a device drawn by a module (the kettle): the module's sheet key, and how to open it */ sheetOf?: (deviceId: string) => string | undefined; openSheet?: (key: string) => void }
 type P = RoomProps;
 
 const GLYPH: Record<ThingKind, string> = { light: 'light', kettle: 'cup', feeder: 'paw', fountain: 'water', fridge: 'socket', tv: 'media', speaker: 'speaker', player: 'media', vacuum: 'vacuum', washer: 'washer', dryer: 'washer', camera: 'camera', purifier: 'air', humidifier: 'water', vent: 'fan', airfryer: 'pot', boiler: 'flame', valve: 'valve', socket: 'socket', other: 'generic' };
@@ -55,7 +56,7 @@ function Hero({ m, p }: { m: RoomModel; p: P }) {
   </section>;
 }
 
-const openThing = (th: Thing, p: P) => { const d = (th.main ? p.deviceOf(th.main) : undefined) ?? th.ids.map(p.deviceOf).find(Boolean); if (d) p.open(d); };
+const openThing = (th: Thing, p: P) => { const sheet = p.sheetOf?.(th.key); if (sheet && p.openSheet) { p.openSheet(sheet); return; } const d = (th.main ? p.deviceOf(th.main) : undefined) ?? th.ids.map(p.deviceOf).find(Boolean); if (d) p.open(d); };
 function Tile({ th, p }: { th: Thing; p: P }) {
   const x = detail(th, p);
   return <article className={`rm-tile is-${x.tone} ${x.active ? 'is-on' : ''}`} style={`--rm-tint:${TINT[th.kind]}`}>

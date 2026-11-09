@@ -3,7 +3,7 @@ import type { HouseConfig } from '../model/config.ts';
 import type { ModuleEntities, ModuleMatch, ModuleOptionField, ModuleOptions } from './types.ts';
 import { addonFromEntity } from './go2rtc-protocol.ts';
 /** Plain-TypeScript part of every module (no UI), so detection is testable under Node. */
-export interface ModuleSpec { id: string; titleKey: string; roles: Array<{ role: string; labelKey: string; required: boolean }>; options?: ModuleOptionField[]; placement: Array<'climate' | 'overview' | 'systems'>; detect(registry: Registry): ModuleMatch | null }
+export interface ModuleSpec { id: string; titleKey: string; roles: Array<{ role: string; labelKey: string; required: boolean }>; options?: ModuleOptionField[]; placement: Array<'climate' | 'overview' | 'systems' | 'room'>; detect(registry: Registry): ModuleMatch | null }
 const find = (reg: Registry, re: RegExp) => reg.entities.find(e => re.test(e.entity_id) && reg.states[e.entity_id] && reg.states[e.entity_id].state !== 'unavailable')?.entity_id;
 export const boilerEbusSpec: ModuleSpec = {
   id: 'boiler_ebus', titleKey: 'module.boiler_ebus', placement: ['climate', 'overview'],
@@ -173,7 +173,8 @@ export const cameraOnvifSpec: ModuleSpec = {
 /** Xiaomi smart kettle (MIOT, xiaomi.kettle.*; owner 09.11.2026: «как в Mi Home»): the device's model finds it, the entity suffixes the roles;
  * the socket it stands on (a power meter named after the kettle) gives the watts while it boils. */
 export const kettleSpec: ModuleSpec = {
-  id: 'kettle', titleKey: 'module.kettle', placement: ['overview', 'systems'],
+  // only on the Kitchen's page, not on the home screen (owner 09.11.2026: «в панели Дом не будет, а только в панели Кухни»)
+  id: 'kettle', titleKey: 'module.kettle', placement: ['room'],
   roles: [{ role: 'heater', labelKey: 'module.kettle.role.heater', required: true }, { role: 'temp', labelKey: 'module.kettle.role.temp', required: false }, { role: 'power', labelKey: 'module.kettle.role.power', required: false }],
   detect(reg) {
     const dev = reg.devices.find(d => /^xiaomi\.kettle\./.test(d.model ?? '') && !d.disabled_by);

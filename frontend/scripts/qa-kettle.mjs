@@ -23,7 +23,7 @@ async function open({ w = 1070, h = 764, theme = 'light', lang = 'ru', scenario 
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: w < 1100, timezoneId: 'Europe/Chisinau' }), page = await ctx.newPage(), errors = [];
   page.on('pageerror', e => errors.push(e.message)); page.on('console', m => { if (['error', 'warning'].includes(m.type()) && !noise(m.text())) errors.push(m.text()); });
   await page.goto(`${origin}/?card=kettle&scenario=${scenario}&theme=${theme}&lang=${lang}${hash}`); await page.waitForFunction(() => window.ready);
-  await page.waitForSelector(hash === '#home' ? '[data-module-card="kettle"]' : '.at-kt-sheet'); await page.waitForTimeout(250);
+  await page.waitForSelector(hash.startsWith('#rooms') ? '[data-module-card="kettle"]' : hash === '#home' ? '.ah-face' : '.at-kt-sheet'); await page.waitForTimeout(250);
   return { page, ctx, errors };
 }
 const runAxe = async (page, scope) => { await page.addScriptTag({ content: axe }); return page.evaluate(async sc => { const r = await window.axe.run(document.querySelector(sc), { runOnly: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] }); return r.violations.filter(v => ['serious', 'critical'].includes(v.impact)).map(v => `${v.id}: ${v.nodes.slice(0, 2).map(n => n.target.join(' ')).join(' | ')}`); }, scope); };
@@ -48,12 +48,15 @@ for (const theme of ['light', 'dark']) for (const [w, h, dev] of DEVICES) for (c
   check(`errors ${tag}`, !errors.length, errors); check(`no command ${tag}`, !(await log(page)).some(x => !x.startsWith('ws.')), await log(page)); await ctx.close();
 }
 for (const theme of ['light', 'dark']) for (const [w, h, dev] of [[360, 792, '13R'], [1070, 764, 'pad'], [1920, 1080, 'hd']]) for (const scenario of ['idle', 'heating', 'offline']) {
-  const { page, ctx, errors } = await open({ w, h, theme, scenario, hash: '#home' }), tag = `home ${dev}/${theme}/${scenario}`;
+  const { page, ctx, errors } = await open({ w, h, theme, scenario, hash: '#rooms?room=kukhnia' }), tag = `kitchen ${dev}/${theme}/${scenario}`;
   const l = await layout(page, '[data-module-card="kettle"]'); check(`layout ${tag}`, !l.length, l);
   const a = await runAxe(page, '[data-module-card="kettle"]'); check(`axe ${tag}`, !a.length, a);
   check(`no «function …» tiles ${tag}`, !(await page.locator('.ah-tile', { hasText: 'function' }).count()));
   check(`errors ${tag}`, !errors.length, errors); await ctx.close();
 }
+// the owner: on the Kitchen's page, never on the home screen
+for (const [w, h, dev] of [[402, 874, 'phone'], [1070, 764, 'pad']]) { const { page, ctx } = await open({ w, h, scenario: 'heating', hash: '#home' }); check(`not on the home screen ${dev}`, await page.locator('[data-module-card="kettle"]').count() === 0); await ctx.close(); }
+{ const { page, ctx } = await open({ scenario: 'idle', hash: '#rooms?room=kukhnia' }); await page.locator('[data-module-card="kettle"] .ah-tile-hit').click(); await page.waitForTimeout(400); check('the Kitchen tile opens the kettle', await page.locator('.at-kt-sheet').count() === 1); await ctx.close(); }
 // 2. the commands, only on a tap (MIOT: number + switch); the scenarios in three languages
 const sends = async (scenario, steps, label, want) => { const { page, ctx } = await open({ scenario }); await page.evaluate(() => window.atomPreview.host.setAccept(true));
   for (const st of steps) { await page.locator(st).first().click(); await page.waitForTimeout(250); }

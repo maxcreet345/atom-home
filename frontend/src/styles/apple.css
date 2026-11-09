@@ -1325,6 +1325,8 @@
 .hm-shell .at-kt-sw i::after{content:'';position:absolute;left:2px;top:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 4px #0003;transition:transform .2s ease}.hm-shell .at-kt-sw.is-on i{background:var(--kt-strong)}.hm-shell .at-kt-sw.is-on i::after{transform:translateX(20px)}.hm-shell .at-kt-sw:disabled{opacity:.5}
 .hm-shell .at-kt-seg button{min-height:44px}
 .hm-shell .at-kt-tile .ah-value-num,.hm-shell .at-kt-tile .ah-tile-text{position:relative;z-index:1}.hm-shell .at-kt-tile .ah-tile-text small{white-space:normal}
-@container (max-width:150px){.hm-shell .at-kt-tile-art{display:none}}
+
 .hm-shell .at-kt-tile.is-off{opacity:1}.hm-shell .at-kt-tile.is-off .ah-value-num b{color:var(--ah-muted)}
 .hm-shell .at-kt-row .ah-row-text strong{white-space:normal;overflow:visible}
+.hm-shell .at-kt-tile .ah-tile-hit{display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:6px;padding:14px;text-align:left}.hm-shell .at-kt-tile .at-kt-tile-art{position:static;width:clamp(44px,40cqw,72px);aspect-ratio:1}
+@container (max-width:130px){.hm-shell .at-kt-tile .ah-tile-hit{padding:10px;gap:2px}.hm-shell .at-kt-tile .at-kt-tile-art{width:34px}.hm-shell .at-kt-tile .ah-tile-text strong{font-size:14px}.hm-shell .at-kt-tile .ah-tile-text small{font-size:12px;line-height:1.25}}

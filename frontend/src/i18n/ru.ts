@@ -825,5 +825,8 @@ export const ru = {
   'module.kettle.knobModes': 'Переключает режимы: {list}',
   'module.kettle.knobFreeShort': 'Плавно',
   'module.kettle.knobModesShort': 'Режимы',
+  'room.appliances': 'Техника',
+  'module.kettle.tileOff': 'Нет связи',
+  'module.kettle.tileLifted': 'Снят с базы',
 };
 export type Dictionary = typeof ru;

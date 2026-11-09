@@ -826,4 +826,7 @@ export const en: Dictionary = {
   'module.kettle.knobModes': 'Switches modes: {list}',
   'module.kettle.knobFreeShort': 'Stepless',
   'module.kettle.knobModesShort': 'Modes',
+  'room.appliances': 'Appliances',
+  'module.kettle.tileOff': 'Offline',
+  'module.kettle.tileLifted': 'Off its base',
 };
