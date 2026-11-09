@@ -177,6 +177,8 @@ await state('silentHours', async page => {
   await page.click('.at-ep-step'); await page.waitForSelector('.at-ep[data-period="day"] .at-ep-hero'); await page.waitForTimeout(700);
   check('silent hours: the curve has a dotted gap', await page.locator('.at-ep-curvegap').count() >= 1, await page.locator('.at-ep-curvegap').count());
   check('silent hours: the area breaks at the gap', await page.locator('.at-ep-area').first().evaluate(p => (p.getAttribute('d').match(/M/g) ?? []).length) >= 2);
+  // the chart in the middle of the screen: the house's live list stands above it and the tab bar covers the bottom edge
+  await page.locator('.at-ep-plot').evaluate(e => e.scrollIntoView({ block: 'center' })); await page.waitForTimeout(200);
   const box = await page.locator('.at-ep-plot svg').boundingBox(), at = async (h, m) => { await page.mouse.move(box.x + 34 + (h * 12 + m / 5) / 287 * (box.width - 42), box.y + 80); await page.waitForTimeout(80); return page.locator('.at-ep-readout').textContent(); };
   for (const [h, m, what] of [[14, 30, 'the whole SPM silent'], [13, 30, 'apartment 9 silent']]) { const rd = await at(h, m); check(`silent hours: ${what} at ${h}:${m} reads «no data», not watts`, /Счётчик не передавал данные/.test(rd) && !/\d\s*k?W/.test(rd), rd); }
   const ok = await at(10, 0); check('silent hours: a measured minute still reads watts', /\d\s*k?W/.test(ok), ok);
@@ -250,7 +252,7 @@ await state('now', async page => {
   check('one daily average on the screen', avgs[1] !== undefined && ru2(avgs[0]) === ru2(avgs[1]), avgs);
   // a drag across the month's bars reads the bar under the finger, a tap on the picked one clears it
   await page.click('.at-ep-periods button:nth-child(3)'); await page.waitForSelector('.at-ep[data-period="month"] .at-ep-bar'); await page.waitForTimeout(900);
-  await page.locator('.at-ep-plot').scrollIntoViewIfNeeded(); const b2 = await page.locator('.at-ep-bar').nth(1).boundingBox(), b5 = await page.locator('.at-ep-bar').nth(4).boundingBox();
+  await page.locator('.at-ep-plot').evaluate(e => e.scrollIntoView({ block: 'center' })); await page.waitForTimeout(200); const b2 = await page.locator('.at-ep-bar').nth(1).boundingBox(), b5 = await page.locator('.at-ep-bar').nth(4).boundingBox();
   await page.mouse.move(b2.x + b2.width / 2, b2.y + b2.height - 2); await page.mouse.down(); await page.mouse.move(b5.x + b5.width / 2, b5.y + b5.height - 2, { steps: 6 }); await page.mouse.up();
   check('dragging across the bars', /5 ноября/.test(await page.locator('.at-ep-readout strong').textContent()));
   await page.mouse.click(b5.x + b5.width / 2, b5.y + b5.height - 2); check('a tap on the picked bar clears it', await page.locator('.at-ep-readout.is-hint').count() === 1);
@@ -329,6 +331,7 @@ await state('now', async page => {
   const areas = await page.locator('.at-ep-area').count(); await page.click('.at-ep-legend button:nth-child(3)'); check('legend hides a series', await page.locator('.at-ep-area').count() === areas - 1 && await page.locator('.at-ep-legend button:nth-child(3)').getAttribute('aria-pressed') === 'false');
   await page.click('.at-ep-legend button:nth-child(1)'); await page.click('.at-ep-legend button:nth-child(2)'); check('the last series cannot be hidden', await page.locator('.at-ep-area').count() >= 1);
   await page.click('.at-ep-legend button:nth-child(1)'); await page.click('.at-ep-legend button:nth-child(3)');
+  await page.locator('.at-ep-plot').evaluate(e => e.scrollIntoView({ block: 'center' })); await page.waitForTimeout(200);
   const box = await page.locator('.at-ep-plot svg').boundingBox(); await page.mouse.move(box.x + box.width * 0.12, box.y + 80); check('the finger reads a minute', /^\d\d:\d\d/.test(await page.locator('.at-ep-readout strong').textContent()));
   await page.focus('.at-ep-plot'); await page.keyboard.press('ArrowLeft'); await page.keyboard.press('Escape'); check('keyboard: Esc clears the reading', await page.locator('.at-ep-readout.is-hint').count() === 1);
   await page.click('.at-ep-periods button:nth-child(3)'); await page.waitForSelector('.at-ep[data-period="month"] .at-ep-bar'); await page.waitForTimeout(900);
