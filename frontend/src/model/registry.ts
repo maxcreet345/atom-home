@@ -6,6 +6,8 @@ export interface EntityRow {
   entity_id: string; device_id: string | null; area_id: string | null; name: string | null; original_name: string | null; platform: string;
   entity_category: 'config' | 'diagnostic' | null; disabled_by: string | null; hidden_by: string | null; icon?: string | null; original_icon?: string | null;
   device_class?: string | null; unit?: string | null; has_entity_name?: boolean; labels?: string[];
+  /** the integration's own key for the entity (HA translation_key): finds a robot's parts whatever they are named */ translation_key?: string | null;
+  /** a vacuum's rooms as HA links them to areas (entity settings → «Комнаты», HA 2026.11 clean_area) */ vacuum?: { areas: Record<string, string[]>; segments: Array<{ id: string; name: string }> } | null;
 }
 export interface StateRow { state: string; attributes: Record<string, unknown>; last_changed: string; last_updated: string }
 export interface Registry { /** HA's floors (a building of several, Atom + Okapi 09.11.2026); absent where not read */ floors?: FloorRow[]; areas: AreaRow[]; devices: DeviceRow[]; entities: EntityRow[]; states: Record<string, StateRow>; services?: Record<string, string[]> }

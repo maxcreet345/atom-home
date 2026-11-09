@@ -62,7 +62,16 @@ const toRow = (e: Record<string, unknown>): EntityRow => ({
   entity_id: String(e.entity_id), device_id: (e.device_id as string | null) ?? null, area_id: (e.area_id as string | null) ?? null, name: (e.name as string | null) ?? null, original_name: (e.original_name as string | null) ?? null,
   platform: String(e.platform ?? ''), entity_category: (e.entity_category as EntityRow['entity_category']) ?? null, disabled_by: (e.disabled_by as string | null) ?? null, hidden_by: (e.hidden_by as string | null) ?? null,
   icon: (e.icon as string | null) ?? null, original_icon: (e.original_icon as string | null) ?? null, device_class: ((e.original_device_class ?? e.device_class) as string | null) ?? null, unit: (e.unit_of_measurement as string | null) ?? null, has_entity_name: e.has_entity_name === true, labels: Array.isArray(e.labels) ? (e.labels as unknown[]).map(String) : [],
+  translation_key: (e.translation_key as string | null) ?? null, vacuum: vacuumOptions(e),
 });
+/** Only what the panel reads of a vacuum's registry options: the rooms linked to areas and the robot's own names for them. */
+function vacuumOptions(e: Record<string, unknown>): EntityRow['vacuum'] {
+  const o = (e.options as Record<string, unknown> | undefined)?.vacuum as Record<string, unknown> | undefined;
+  if (!o || typeof o.area_mapping !== 'object' || !o.area_mapping) return null;
+  const seg = Array.isArray(o.last_seen_segments) ? o.last_seen_segments as Array<Record<string, unknown>> : [];
+  const areas = Object.fromEntries(Object.entries(o.area_mapping as Record<string, unknown>).filter(([, v]) => Array.isArray(v)).map(([k, v]) => [k, (v as unknown[]).map(String)]));
+  return { areas, segments: seg.map(x => ({ id: String(x.id), name: String(x.name ?? x.id) })) };
+}
 /** Live host over the authenticated `hass` object: registry via WebSocket (read-only), states from hass, commands via callService.
  * HA hands the panel a new `hass` on every state change, several times a second. One host lives as long as the panel and reads the current
  * `hass` when asked: effects keyed on the host must not restart with every update (the chart blinked and every panel re-queried HA, 05.11.2026). */
