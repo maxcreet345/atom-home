@@ -170,7 +170,32 @@ export const cameraOnvifSpec: ModuleSpec = {
     } };
   },
 };
-export const MODULE_SPECS: ModuleSpec[] = [boilerEbusSpec, doorbellSpec, cameraGo2rtcSpec, cameraOnvifSpec, petFeederSpec, airSpec, clockSpec];
+/** Xiaomi smart kettle (MIOT, xiaomi.kettle.*; owner 09.11.2026: «как в Mi Home»): the device's model finds it, the entity suffixes the roles;
+ * the socket it stands on (a power meter named after the kettle) gives the watts while it boils. */
+export const kettleSpec: ModuleSpec = {
+  id: 'kettle', titleKey: 'module.kettle', placement: ['overview', 'systems'],
+  roles: [{ role: 'heater', labelKey: 'module.kettle.role.heater', required: true }, { role: 'temp', labelKey: 'module.kettle.role.temp', required: false }, { role: 'power', labelKey: 'module.kettle.role.power', required: false }],
+  detect(reg) {
+    const dev = reg.devices.find(d => /^xiaomi\.kettle\./.test(d.model ?? '') && !d.disabled_by);
+    if (!dev) return null;
+    const own = reg.entities.filter(e => e.device_id === dev.id && !e.disabled_by && reg.states[e.entity_id]).map(e => e.entity_id);
+    const find = (domain: string, re: RegExp) => own.find(id => id.startsWith(`${domain}.`) && re.test(id));
+    const heater = find('water_heater', /./) ?? find('switch', /_power$/);
+    if (!heater) return null;
+    // the socket: «switch.<stem>_plug» beside the kettle's own entities, with its power and today's energy
+    const stem = heater.split('.')[1].replace(/_(power|kettle)$/, '') || heater.split('.')[1];
+    const has = (id: string) => reg.states[id] ? id : undefined;
+    return { label: dev.model ?? 'MIOT', entities: {
+      heater, status: find('sensor', /_status$/), temp: find('sensor', /_temperature$/), power: find('switch', /_power$/), keepWarm: find('switch', /_auto_keep_warm$/),
+      target: find('number', /_target_temperature$/), keepTemp: find('number', /_keep_warm_temperature$/), keepTime: find('number', /_keep_warm_time$/), lifted: find('binary_sensor', /_lift(ed|ing)$/),
+      stop: find('button', /_stop$/), dnd: find('switch', /_no_disturb$/), liftRemember: find('switch', /_lift_remember_temp$/), boilRemind: find('switch', /_boiling_reminder$/), warmRemind: find('switch', /_keep_warm_reminder$/),
+      knob: find('switch', /_custom_knob_temp$/), warming: find('sensor', /_warming_time$/), info: find('button', /_info$/), mode: find('number', /_target_mode$/),
+      plug: has(`switch.${stem}_plug`), plugPower: has(`sensor.${stem}_plug_power`), plugToday: has(`sensor.${stem}_plug_energy_today`),
+      device: dev.id, rest: own.join(','),
+    } };
+  },
+};
+export const MODULE_SPECS: ModuleSpec[] = [boilerEbusSpec, doorbellSpec, cameraGo2rtcSpec, cameraOnvifSpec, petFeederSpec, airSpec, clockSpec, kettleSpec];
 export interface ActiveSpec { spec: ModuleSpec; entities: ModuleEntities; label: string; options: ModuleOptions }
 /** Modules whose hardware is present (or that the owner configured by hand) and that are not disabled. */
 export function activeSpecs(registry: Registry, config: HouseConfig, specs: ModuleSpec[] = MODULE_SPECS): ActiveSpec[] {

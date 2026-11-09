@@ -1269,3 +1269,62 @@
 /* the hero follows its own width, not the screen's: in a narrow column (a landscape pad beside HA's menu) the words get their own row */
 .hm-shell .at-vac-hero{container-type:inline-size}
 @container (max-width:400px){.hm-shell .at-vac-hero-top,.hm-shell .at-vac-hero-top:has(.at-vac-pic){grid-template-columns:64px minmax(0,1fr) auto;gap:6px 10px}.hm-shell .at-vac-hero-text{grid-column:1/-1;grid-row:2}.hm-shell .at-vac-hero-buddy,.hm-shell .at-vac-hero-buddy:has(.at-vac-pic){width:64px;height:56px}.hm-shell .at-vac-hero-buddy .at-vac-pic img{max-width:64px;max-height:56px}.hm-shell .at-vac-corner{grid-column:3;grid-row:1}.hm-shell .at-vac-hero-text h2{font-size:22px}}
+/* ---------- Kettle (Xiaomi Smart Kettle 2 Pro), drawn after its Mi Home screen (owner 09.11.2026) ---------- */
+.hm-shell{--kt-teal:#2bb3be;--kt-teal-2:#7fd4dc;--kt-ink:#0b6f78}
+.hm-shell .at-kt-art{width:100%;height:100%}.hm-shell .at-kt-art .at-kt-body{fill:#fff;stroke:#c9ced3;stroke-width:1.4}.hm-shell .at-kt-art .at-kt-band{fill:#c5cbd1}.hm-shell .at-kt-art .at-kt-base{fill:#eef0f2;stroke:#c9ced3;stroke-width:1.2}
+.hm-shell .at-kt-art .at-kt-handle{fill:none;stroke:#d5d9dd;stroke-width:6;stroke-linecap:round}.hm-shell .at-kt-art .at-kt-screen{fill:#1c1c1e}.hm-shell .at-kt-art .at-kt-shadow{fill:#0000001a}
+.hm-shell .at-kt-art .at-kt-steam path{fill:none;stroke:var(--kt-teal);stroke-width:2.6;stroke-linecap:round;opacity:.75;animation:at-kt-steam 2.4s ease-in-out infinite}.hm-shell .at-kt-art .at-kt-steam path:nth-child(2){animation-delay:.4s}.hm-shell .at-kt-art .at-kt-steam path:nth-child(3){animation-delay:.8s}
+@keyframes at-kt-steam{0%{transform:translateY(4px);opacity:0}40%{opacity:.8}100%{transform:translateY(-6px);opacity:0}}
+@media (prefers-reduced-motion:reduce){.hm-shell .at-kt-art .at-kt-steam path{animation:none}}
+.hm-shell.ah-shell[data-theme="dark"] .at-kt-art .at-kt-body{fill:#e5e5ea;stroke:#8e8e93}.hm-shell.ah-shell[data-theme="dark"] .at-kt-art .at-kt-base{fill:#3a3a3c;stroke:#636366}
+/* the tile: the kettle's picture, the water's temperature, one line */
+.hm-shell .at-kt-tile .ah-tile-hit{position:relative}.hm-shell .at-kt-tile-art{position:absolute;right:10px;top:8px;width:min(46%,88px);aspect-ratio:1}
+.hm-shell .at-kt-tile.is-heating,.hm-shell .at-kt-tile.is-keep{background:linear-gradient(160deg,#dff5f7,#f4fbfc)}.hm-shell.ah-shell[data-theme="dark"] .at-kt-tile.is-heating,.hm-shell.ah-shell[data-theme="dark"] .at-kt-tile.is-keep{background:linear-gradient(160deg,rgba(43,179,190,.28),transparent 75%),var(--ah-tile)}
+.hm-shell .at-kt-tile.is-heating .ah-tile-text small,.hm-shell .at-kt-tile.is-keep .ah-tile-text small{color:var(--kt-ink);font-weight:600}.hm-shell.ah-shell[data-theme="dark"] .at-kt-tile.is-heating .ah-tile-text small,.hm-shell.ah-shell[data-theme="dark"] .at-kt-tile.is-keep .ah-tile-text small{color:#8ee3ea}
+.hm-shell .at-kt-tile.is-off{opacity:.6}
+/* the sheet */
+.hm-shell .at-kt-sheet{display:grid;gap:12px}.hm-shell .at-kt-head{align-items:center}.hm-shell .at-kt-face{width:40px;height:40px;flex:none}
+.hm-shell .at-kt-cols{display:grid;gap:12px}.hm-shell .at-kt-col{display:grid;gap:12px;align-content:start;min-width:0}
+.hm-shell .at-kt-sheet.is-wide .at-kt-cols{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);align-items:start}
+.hm-shell .at-kt-hero{position:relative;display:grid;justify-items:center;gap:4px;padding:26px 18px 46px;border-radius:26px;overflow:hidden;color:#fff;text-align:center;background:linear-gradient(180deg,var(--kt-teal),var(--kt-teal-2))}
+.hm-shell .at-kt-hero.is-off,.hm-shell .at-kt-hero.is-lifted{background:linear-gradient(180deg,#8e9aa3,#bcc6cc)}
+.hm-shell .at-kt-hero>small{font-size:15px;font-weight:500;opacity:.95}
+.hm-shell .at-kt-temp{display:flex;align-items:flex-start;line-height:1}.hm-shell .at-kt-temp b{font-size:96px;font-weight:300;letter-spacing:-3px;font-variant-numeric:tabular-nums}.hm-shell .at-kt-temp i{font-style:normal;font-size:24px;margin-top:12px}
+.hm-shell .at-kt-status{font-size:17px;font-weight:500}
+.hm-shell .at-kt-bar{display:block;width:min(260px,80%);height:6px;border-radius:3px;background:#ffffff4d;overflow:hidden;margin-top:6px}.hm-shell .at-kt-bar i{display:block;height:100%;background:#fff;border-radius:3px}
+.hm-shell .at-kt-stop{margin-top:10px;min-height:44px;padding:0 22px;background:#fff;color:var(--kt-ink);font-weight:700}
+.hm-shell .at-kt-energy{font-size:13px;opacity:.95;margin-top:2px}
+.hm-shell .at-kt-wave{position:absolute;left:0;right:0;bottom:0;width:100%;height:34px}.hm-shell .at-kt-wave .is-back{fill:#ffffff40}.hm-shell .at-kt-wave .is-front{fill:#ffffff66}
+.hm-shell .at-kt-card{display:grid;padding:4px 0 6px;border-radius:24px;background:var(--ah-group)}.hm-shell .at-kt-card h3{font-size:14.5px;font-weight:500;color:var(--ah-muted);padding:14px 18px 8px;border-bottom:1px solid var(--ah-line,#0000000f)}
+.hm-shell .at-kt-mode+.at-kt-mode{border-top:1px solid var(--ah-line,#0000000f)}
+.hm-shell .at-kt-mode-hit{display:grid;grid-template-columns:52px minmax(0,1fr) 16px;align-items:center;gap:14px;width:100%;min-height:72px;padding:10px 16px;background:none;border:0;color:var(--ah-ink);text-align:left;cursor:pointer}
+.hm-shell .at-kt-ico{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:var(--kt-teal);color:#fff}
+.hm-shell .at-kt-mode-text{display:grid;gap:2px;min-width:0}.hm-shell .at-kt-mode-text b{font-size:17px;font-weight:600}.hm-shell .at-kt-mode-text small{font-size:13.5px;color:var(--ah-muted);line-height:1.35}
+.hm-shell .at-kt-chev{font-size:24px;color:var(--ah-muted);transition:transform .2s ease}.hm-shell .at-kt-mode.is-open .at-kt-chev{transform:rotate(90deg)}
+.hm-shell .at-kt-mode-body{display:grid;gap:12px;justify-items:start;padding:2px 16px 16px 82px}
+.hm-shell .at-kt-go{min-height:44px;padding:0 24px;background:var(--kt-teal);color:#fff;font-weight:700}.hm-shell .at-kt-go:disabled{opacity:.45}
+.hm-shell .at-kt-note{font-size:14px;color:var(--ah-muted)}
+.hm-shell .at-kt-stepper{display:flex;align-items:center;gap:12px}.hm-shell .at-kt-stepper b{min-width:72px;text-align:center;font-size:24px;font-weight:600;font-variant-numeric:tabular-nums}.hm-shell .at-kt-stepper b i{font-style:normal;font-size:14px;font-weight:500;color:var(--ah-muted);margin-left:2px}
+.hm-shell .at-kt-stepper .hm-round{width:44px;height:44px}
+.hm-shell .at-kt-chips{display:flex;flex-wrap:wrap;gap:6px}.hm-shell .at-kt-chips button{min-width:52px;min-height:44px;padding:0 12px;border-radius:999px;border:0;background:var(--ah-tile);color:var(--ah-ink);font-size:14.5px;font-weight:600}
+.hm-shell .at-kt-chips button.is-on{background:var(--kt-teal);color:#fff}.hm-shell .at-kt-chips button:disabled{opacity:.5}
+.hm-shell .at-kt-row{padding:12px 18px;gap:12px}.hm-shell .at-kt-row+.at-kt-row{border-top:1px solid var(--ah-line,#0000000f)}.hm-shell .at-kt-row.is-col{flex-direction:column;align-items:stretch}
+.hm-shell .at-kt-seg{display:flex;gap:4px;padding:3px;border-radius:14px;background:var(--ah-tile);align-self:flex-start}.hm-shell .at-kt-seg button{min-height:40px;padding:0 16px;border-radius:11px;border:0;background:none;color:var(--ah-ink);font-weight:600}.hm-shell .at-kt-seg button.is-on{background:var(--kt-teal);color:#fff}
+.hm-shell .at-kt-err{color:#c4271d;font-size:13.5px;padding:0 4px}
+.hm-shell .at-kt-set .hm-switch.is-on{background:var(--kt-teal)}
+.hm-shell .at-kt-head .at-kt-gear{margin-left:auto}.hm-shell .at-kt-head .at-kt-gear+.hm-icon-btn{margin-left:6px}
+.hm-shell .at-kt-sheet.is-settings .at-kt-set{padding-top:6px}
+.hm-shell .at-kt-sheet.is-wide .at-kt-hero{min-height:100%}
+.hm-shell .at-kt-tile-art{width:min(40%,80px)}
+/* kettle: inner padding, AA colours on the filled controls, thumb-sized targets */
+.hm-shell{--kt-strong:#0a7781}.hm-shell.ah-shell[data-theme="dark"]{--kt-strong:#0a7781}
+.hm-shell .at-kt-sheet{overflow-x:clip}.hm-shell .at-kt-cols,.hm-shell .at-kt-body{padding:0 16px 20px}.hm-shell .at-kt-err{margin:0 16px}
+.hm-shell .at-kt-head .hm-icon-btn{width:44px;height:44px}
+.hm-shell .at-kt-go,.hm-shell .at-kt-chips button.is-on,.hm-shell .at-kt-seg button.is-on{background:var(--kt-strong)}
+.hm-shell .at-kt-sw{flex:none;display:grid;place-items:center;width:60px;height:44px;padding:0;border:0;background:none;cursor:pointer}.hm-shell .at-kt-sw i{position:relative;display:block;width:51px;height:31px;border-radius:16px;background:#78788052;transition:background-color .2s ease}
+.hm-shell .at-kt-sw i::after{content:'';position:absolute;left:2px;top:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 4px #0003;transition:transform .2s ease}.hm-shell .at-kt-sw.is-on i{background:var(--kt-strong)}.hm-shell .at-kt-sw.is-on i::after{transform:translateX(20px)}.hm-shell .at-kt-sw:disabled{opacity:.5}
+.hm-shell .at-kt-seg button{min-height:44px}
+.hm-shell .at-kt-tile .ah-value-num,.hm-shell .at-kt-tile .ah-tile-text{position:relative;z-index:1}.hm-shell .at-kt-tile .ah-tile-text small{white-space:normal}
+@container (max-width:150px){.hm-shell .at-kt-tile-art{display:none}}
+.hm-shell .at-kt-tile.is-off{opacity:1}.hm-shell .at-kt-tile.is-off .ah-value-num b{color:var(--ah-muted)}
+.hm-shell .at-kt-row .ah-row-text strong{white-space:normal;overflow:visible}

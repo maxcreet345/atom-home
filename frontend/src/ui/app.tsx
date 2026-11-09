@@ -10,6 +10,7 @@ import { translator, type Key } from '../i18n/index.ts';
 import { RoomTile, AccessoryTile, ThermostatTile, ClockTile as PlainClockTile, SceneTile, ValueTile, Section as Block, artOf } from './cards.tsx';
 import { ClockTile, ClockSheet, beep, armBeep } from '../modules/clock.tsx';
 import { FeederSheet } from '../modules/pet-feeder.tsx';
+import { KettleSheet } from '../modules/kettle.tsx';
 import { AirSheet } from '../modules/air.tsx';
 import type { Alarm } from '../model/config.ts';
 import { DeviceSheet, heatOn, type Runner } from './sheet.tsx';
@@ -186,6 +187,7 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
   const clockOpen = view.device === 'clock' && !!clockMod;
   const feederMod = modules.find(m => m.def.sheetKey === 'feeder'), feederOpen = view.device === 'feeder' && !!feederMod;
   const airMod = modules.find(m => m.def.sheetKey === 'air'), airOpen = view.device === 'air' && !!airMod;
+  const kettleMod = modules.find(m => m.def.sheetKey === 'kettle'), kettleOpen = view.device === 'kettle' && !!kettleMod;
   // H9 of the audit: a room is shown when it has a photo or something to look at or switch; «no room» only for the admin
   const LIVING: Kind[] = ['light', 'climate', 'media', 'vacuum', 'camera', 'environment', 'switch', 'socket', 'fan', 'cover', 'lock', 'opening', 'leak', 'motion'];
   const rooms = home.rooms.filter(r => !r.hidden && (r.id === NO_ROOM ? host.admin : (!!r.photo || enabled.some(d => d.roomId === r.id && LIVING.includes(d.kind)))));
@@ -193,14 +195,14 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
   const title = view.section === 'setup' ? t('setup.title') : view.section === 'rooms' && view.room ? roomName(view.room) : view.section === 'home' ? home.name : inSystems ? t('section.systems') : t(`section.${view.section}` as Key);
   const subtitle = view.section === 'home' ? `${greeting(now, t)} · ${date}` : view.section === 'rooms' && !view.room ? t('rooms.count', { n: rooms.length }) : '';
   const pageKey = `${view.section}/${view.room ?? ''}`;
-  const modal = !!device || clockOpen || feederOpen || airOpen || !!confirm;
+  const modal = !!device || clockOpen || feederOpen || airOpen || kettleOpen || !!confirm;
   const navItems = [...NAV.filter(n => n.id !== 'lights' || (present('lights') && !config.sections.lights?.hidden)), ...(host.admin ? [{ id: 'setup' as const, icon: 'gear' }] : [])];
   const navLabel = (id: Section | 'setup') => id === 'setup' ? t('section.settings') : t(`section.${id}` as Key);
   // F8 of the audit (WCAG 2.4.3): focus moves into an opened sheet or confirmation and comes back to the opener when it closes
   const mainRef = useRef<HTMLElement>(null), sheetRef = useRef<HTMLElement>(null), confirmRef = useRef<HTMLDivElement>(null), sheetOpener = useRef<HTMLElement | null>(null), confirmOpener = useRef<HTMLElement | null>(null);
   const activeIn = (el: HTMLElement | null) => ((el?.getRootNode() as Document | ShadowRoot | undefined)?.activeElement as HTMLElement | null) ?? null;
   const focusFirst = (el: HTMLElement | null) => el?.querySelector<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])')?.focus({ preventScroll: true });
-  const sheetOpen = !!device || clockOpen || feederOpen || airOpen;
+  const sheetOpen = !!device || clockOpen || feederOpen || airOpen || kettleOpen;
   const lastInMain = useRef<HTMLElement | null>(null); // `main` is already inert when the effect runs, so the opener is remembered as focus moves, not read afterwards
   useEffect(() => { if (sheetOpen) { sheetOpener.current ??= lastInMain.current; const raf = requestAnimationFrame(() => focusFirst(sheetRef.current)); return () => cancelAnimationFrame(raf); } const back = sheetOpener.current; sheetOpener.current = null; if (back?.isConnected) back.focus({ preventScroll: true }); }, [sheetOpen, view.device]);
   useEffect(() => { if (confirm) { confirmOpener.current ??= activeIn(mainRef.current); const raf = requestAnimationFrame(() => focusFirst(confirmRef.current)); return () => cancelAnimationFrame(raf); } const back = confirmOpener.current; confirmOpener.current = null; back?.focus?.({ preventScroll: true }); }, [!!confirm]);
@@ -249,6 +251,9 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
     {airOpen && (() => { const close = () => go({ section: view.section, room: view.room }), airWide = landscape && viewport.width >= 700;
       return <div className="hm-scrim" onClick={e => { if (e.target === e.currentTarget) close(); }}><section className="hm-sheet" role="dialog" aria-modal="true" aria-label={t('module.air.title' as Key)} ref={sheetRef} {...swipeToClose(close)}>
         <AirSheet registry={registry} rooms={home.rooms} host={host} t={t} lang={lang} onClose={close} wide={airWide} /></section></div>; })()}
+    {kettleOpen && kettleMod && (() => { const close = () => go({ section: view.section, room: view.room }), devRoom = registry.devices.find(d => d.id === kettleMod.entities.device)?.area_id, kettleWide = landscape && viewport.width >= 700;
+      return <div className="hm-scrim" onClick={e => { if (e.target === e.currentTarget) close(); }}><section className={`hm-sheet ${kettleWide ? 'is-split' : ''}`} role="dialog" aria-modal="true" aria-label={t('module.kettle.title' as Key)} ref={sheetRef} {...swipeToClose(close)}>
+        <KettleSheet registry={registry} entities={kettleMod.entities} options={kettleMod.options} host={host} t={t} lang={lang} room={home.rooms.find(r => r.id === devRoom)?.name} wide={kettleWide} onClose={close} /></section></div>; })()}
     {feederOpen && feederMod && (() => { const close = () => go({ section: view.section, room: view.room }), dev = feederMod.entities.device ?? '', devRoom = registry.devices.find(d => d.id === dev)?.area_id, roomLabel = home.rooms.find(r => r.id === devRoom)?.name, feederWide = landscape && viewport.width >= 700;
       return <div className="hm-scrim" onClick={e => { if (e.target === e.currentTarget) close(); }}><section className={`hm-sheet ${feederWide ? 'is-split' : ''}`} role="dialog" aria-modal="true" aria-label={t('module.pet_feeder')} ref={sheetRef} {...swipeToClose(close)}>
         <FeederSheet registry={registry} entities={feederMod.entities} options={feederMod.options} host={host} t={t} lang={lang} room={roomLabel} wide={feederWide} onClose={close} automations={automations.filter(a => a.devices.includes(dev) || a.entities.some(id => Object.values(feederMod.entities).includes(id))).map(a => ({ ...a, byRoom: false }))} /></section></div>; })()}
