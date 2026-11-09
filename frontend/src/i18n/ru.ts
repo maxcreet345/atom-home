@@ -173,5 +173,6 @@ export const ru = {
   'module.heat.hystExample': "При {t}° радиатор откроется на {from}° и закроется на {to}°. Вместе не больше 1°: так устроены головки",
   'module.heat.downFine': "меньше на 0,2°",
   'module.heat.upFine': "больше на 0,2°",
+  'people.title': 'Кто дома', 'people.home': 'дома', 'people.away': 'не дома', 'people.unknown': 'нет данных', 'people.since': 'с\u00a0{t}', 'people.sinceYesterday': 'со\u00a0вчера,\u00a0{t}', 'people.allHome': 'все дома', 'people.nobody': 'никого нет', 'people.count': '{n} дома|{n} дома|{n} дома|{n} дома',
 };
 export type Dictionary = typeof ru;

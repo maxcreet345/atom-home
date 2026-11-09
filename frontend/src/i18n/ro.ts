@@ -174,4 +174,5 @@ export const ro: Dictionary = {
   'module.heat.hystExample': "La {t}° caloriferul se deschide la {from}° și se închide la {to}°. Împreună cel mult 1°: așa funcționează capetele",
   'module.heat.downFine': "cu 0,2° mai puțin",
   'module.heat.upFine': "cu 0,2° mai mult",
+  'people.title': 'Cine e acasă', 'people.home': 'acasă', 'people.away': 'plecat', 'people.unknown': 'fără date', 'people.since': 'din\u00a0{t}', 'people.sinceYesterday': 'de ieri,\u00a0{t}', 'people.allHome': 'toți acasă', 'people.nobody': 'nimeni acasă', 'people.count': '{n} acasă|{n} acasă|{n} acasă|{n} acasă',
 };

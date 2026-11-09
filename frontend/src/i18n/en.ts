@@ -174,4 +174,5 @@ export const en: Dictionary = {
   'module.heat.hystExample': "At {t}° the radiator opens at {from}° and closes at {to}°. Together at most 1°: that is how the heads work",
   'module.heat.downFine': "0.2° lower",
   'module.heat.upFine': "0.2° higher",
+  'people.title': 'Who is home', 'people.home': 'home', 'people.away': 'away', 'people.unknown': 'unknown', 'people.since': 'since\u00a0{t}', 'people.sinceYesterday': 'since yesterday,\u00a0{t}', 'people.allHome': 'everyone home', 'people.nobody': 'nobody home', 'people.count': '{n} home|{n} home|{n} home|{n} home',
 };

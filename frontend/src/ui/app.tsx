@@ -24,6 +24,7 @@ import { LightRows } from './light-rows.tsx';
 import { boilerDeviceIds, isElectric } from '../model/energy.ts';
 import { EnergyTile } from './energy-tile.tsx';
 import { EnergyPanel } from './energy-page.tsx';
+import { HeadTools } from './head-tools.tsx';
 import { meterName } from '../model/energy-load.ts';
 import { CamerasTile, CamerasPanel, type CamView } from './cameras.tsx';
 import { HeatingTile, HeatingPanel } from './heating.tsx';
@@ -49,13 +50,18 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
   const confirmed = useRef(initialConfig);
   useEffect(() => { setConfig(initialConfig); confirmed.current = initialConfig; }, [initialConfig]);
   /** Shown at once, kept only once the store confirms. A refused save returns to the last confirmed config (after a conflict: the fresh one) and rejects, so the caller does not report success. */
+  /** Saves can overlap (two quick language picks): only the newest one decides what the panel shows, unless it has already failed, so the panel never stays on a value the house does not hold. */
+  const saveSeq = useRef(0), failedSeq = useRef(0);
   const applyConfig = async (next: HouseConfig) => {
+    const seq = ++saveSeq.current;
     setConfig(next); onConfigChange?.(next);
     if (!store) return;
-    try { await store.save(next); confirmed.current = next; }
+    try { await store.save(next); confirmed.current = next; if (seq === saveSeq.current || failedSeq.current === saveSeq.current) { setConfig(next); onConfigChange?.(next); } }
     catch (e) {
       const code = e instanceof SaveError ? e.code : 'failed';
       if (code === 'conflict') { try { confirmed.current = (await store.load()).config; } catch { /* keep the last confirmed copy */ } }
+      if (seq !== saveSeq.current) throw e; // a newer save is on its way and will settle the panel
+      failedSeq.current = seq;
       setConfig(confirmed.current); onConfigChange?.(confirmed.current);
       notify(translator(confirmed.current.home.language)(`save.error.${code}` as Key), 6000);
       throw e;
@@ -192,7 +198,7 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
         <div className="hm-head-title" key={pageKey}><h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</div>
         {!wide && <span className="hm-head-time">{time}</span>}
         {!host.online && <span className="hm-badge tone-danger">{t('ui.offline')}</span>}
-        {view.section === 'home' && host.admin && <button type="button" className="hm-icon-btn ah-head-btn" aria-label={t('section.settings')} onClick={() => go({ section: 'setup' })}><Icon name="gear" size={20} /></button>}
+        {view.section === 'home' && <HeadTools registry={registry} config={config} t={t} lang={lang} now={now.getTime()} admin={!!host.admin} wide={wide} blocked={modal} onLanguage={l => { void applyConfig({ ...config, home: { ...config.home, language: l } }).catch(() => undefined); }} onSettings={() => go({ section: 'setup' })} />}
       </header>
       {inSystems && systemTabs.length > 1 && <div className="ah-segments hm-range-tabs" role="tablist">{systemTabs.map(s => <button type="button" role="tab" aria-selected={view.section === s} className={view.section === s ? 'is-active' : ''} onClick={() => go({ section: s })}>{t(`section.${s}` as Key)}</button>)}</div>}
       <div className="hm-page" key={pageKey}>

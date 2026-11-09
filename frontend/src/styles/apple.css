@@ -421,6 +421,7 @@
 .hm-shell .hm-confirm .is-primary.risk-security{background:#ff3b30;color:#fff}.hm-shell .hm-confirm .is-primary.risk-water{background:#32ade6;color:#fff}
 /* WDG: balanced headings */
 .hm-shell .hm-head h1,.hm-shell .hm-section-head h2,.hm-shell .hm-sheet-head h2,.hm-shell .hm-confirm h2{text-wrap:balance}
+.hm-shell .hm-head h1{white-space:nowrap} /* the balance above resets the wrap mode: the page title stays on one line */
 /* F5: Windows high-contrast / forced colours keep the surfaces visible */
 @media (forced-colors:active){.hm-shell .ah-tile,.hm-shell .hm-card,.hm-shell .hm-sheet,.hm-shell .hm-confirm,.hm-shell .hm-row,.hm-shell .hm-pill{border:1px solid CanvasText;background:Canvas;color:CanvasText;box-shadow:none;backdrop-filter:none}.hm-shell .hm-switch{border:1px solid ButtonText}.hm-shell .hm-switch.is-on{background:Highlight}.hm-shell .hm-switch-knob{background:ButtonText}.hm-shell .hm-nav-ind{outline:2px solid Highlight}.hm-shell .ah-wallpaper{display:none}}
 /* UI-1: a television (≥ 1800 px, no mouse) read from the sofa */
@@ -816,3 +817,36 @@
 .hm-shell .at-heat-hyst{display:grid;gap:4px;padding:6px 16px 14px;border-radius:20px;background:var(--hz-card)}
 .hm-shell .at-heat-hyst-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;padding:10px 0;border-bottom:1px solid #7676801f}.hm-shell .at-heat-hyst-row>div:first-child{display:grid;gap:2px;min-width:0;flex:1 1 220px}.hm-shell .at-heat-hyst-row strong{font-size:15px;font-weight:600;color:var(--ah-ink)}.hm-shell .at-heat-hyst-row small{font-size:12.5px;color:var(--ah-muted)}
 .hm-shell .at-heat-hyst-say{margin:8px 0 0;font-size:13.5px;line-height:1.35;color:var(--ah-ink)}
+/* ---------- Header tools: who is home, language, settings (owner, 09.11.2026) ---------- */
+.hm-shell .at-head-tools{display:flex;align-items:center;gap:10px;margin-left:auto;align-self:center;flex-wrap:nowrap;justify-content:flex-end}
+.hm-shell .at-menu-scrim{position:fixed;inset:0;z-index:29} /* while a menu is open a tap outside only closes it, it never presses the tile underneath */
+.hm-shell.is-wide.hm-route-home .hm-head-title{flex:1 1 280px} /* a floor for the title: past it the tools move to their own row */
+.hm-shell .at-people,.hm-shell .at-lang{position:relative}.hm-shell .at-people,.hm-shell .at-head-pill{position:relative;z-index:31}.hm-shell .at-head-tools,.hm-shell .at-people{min-width:0;max-width:100%}.hm-shell .at-people-btn{max-width:100%}.hm-shell .at-head-pill{flex:none}
+.hm-shell .at-people-btn{display:flex;align-items:center;gap:6px;min-height:48px;padding:4px 14px 4px 6px;border-radius:999px;background:var(--ah-tile);box-shadow:var(--ah-tile-shadow,none);backdrop-filter:blur(var(--ah-tile-blur,0));color:var(--ah-ink);transition:background-color .2s ease}
+@media (hover:hover){.hm-shell .at-people-btn:hover{background:var(--ah-group)}}
+.hm-shell .at-person-chip{display:flex;align-items:center;gap:8px;padding-right:8px}.hm-shell .at-person-chip+.at-person-chip{padding-left:10px;border-left:1px solid var(--ah-line)}
+.hm-shell .at-person-chip>span{display:grid;line-height:1.15;text-align:left;min-width:0}.hm-shell .at-person-chip{min-width:0}.hm-shell .at-person-chip :is(b,small){white-space:nowrap;overflow:hidden;text-overflow:ellipsis} /* a long zone name gives way before the row does */.hm-shell .at-person-chip b{font-size:14px;font-weight:600}.hm-shell .at-person-chip small{font-size:12px;color:var(--ah-muted)}
+.hm-shell .at-person-ava{position:relative;flex:none;width:var(--s);height:var(--s);border-radius:50%;display:grid;place-items:center;background:linear-gradient(140deg,#6a63db,#4f48c9);color:#fff;outline:2px solid var(--ring,#8e8e93);outline-offset:2px}
+.hm-shell .at-person-ava img{width:100%;height:100%;border-radius:50%;object-fit:cover}.hm-shell .at-person-ava b{font-size:max(12px,calc(var(--s) * .38));font-weight:700;letter-spacing:.02em}
+.hm-shell .at-person-ava i{position:absolute;right:-2px;bottom:-2px;width:calc(var(--s) * .32);height:calc(var(--s) * .32);border-radius:50%;background:var(--ring,#8e8e93);box-shadow:0 0 0 2px var(--sep,var(--ah-sheet))}.hm-shell .at-people-btn{--sep:var(--ah-tile)}
+.hm-shell .at-person-ava.is-home{--ring:#34c759}.hm-shell .at-person-ava.is-zone{--ring:#0a84ff}.hm-shell .at-person-ava.is-away{--ring:#8e8e93}.hm-shell .at-person-ava.is-unknown{--ring:#c7c7cc}
+.hm-shell .at-person-ava.is-away,.hm-shell .at-person-ava.is-unknown{background:linear-gradient(140deg,#757579,#545458)}.hm-shell .at-person-ava.is-away img,.hm-shell .at-person-ava.is-unknown img{filter:grayscale(.7);opacity:.75}
+.hm-shell .at-people-stack{display:flex;padding-left:4px;margin-right:4px}.hm-shell .at-people-stack .at-person-ava:not(:last-child) i{display:none}.hm-shell .at-people-stack .at-person-ava+.at-person-ava{margin-left:-8px}
+.hm-shell .at-people-sum{font-size:14px;font-weight:600;white-space:nowrap}
+.hm-shell .at-head-pill{display:flex;align-items:center;min-height:50px;padding:3px;border-radius:999px;background:var(--ah-tile);box-shadow:var(--ah-tile-shadow,none);backdrop-filter:blur(var(--ah-tile-blur,0))}
+.hm-shell .at-pill-btn{display:flex;align-items:center;justify-content:center;gap:6px;min-width:44px;height:44px;padding:0 12px;border-radius:999px;color:var(--ah-ink);transition:background-color .2s ease}
+.hm-shell .at-pill-btn b{font-size:14px;font-weight:700;letter-spacing:.04em}.hm-shell .at-pill-btn[aria-expanded="true"]{background:var(--ah-group)}@media (hover:hover){.hm-shell .at-pill-btn:hover{background:var(--ah-group)}}
+.hm-shell .at-pill-btn.is-icon{width:44px;padding:0}.hm-shell .at-pill-btn.is-icon svg{transition:transform .5s var(--ah-ease,ease)}@media (hover:hover){.hm-shell .at-pill-btn.is-icon:hover svg{transform:rotate(60deg)}}
+.hm-shell .at-pill-sep{width:1px;height:22px;background:var(--ah-line)}
+.hm-shell .at-menu{position:absolute;right:0;max-width:calc(100vw - 24px);overflow-y:auto;overscroll-behavior:contain;translate:var(--dx,0) 0;top:calc(100% + 8px);z-index:30;min-width:220px;padding:8px;border-radius:18px;background:var(--ah-sheet);color:var(--ah-ink);box-shadow:0 12px 40px #0000003d,0 0 0 1px var(--ah-line);display:grid;gap:2px;animation:at-menu-in .18s var(--ah-ease,ease) both;transform-origin:top right}
+.hm-shell .at-menu-title{font-size:13px;font-weight:600;color:var(--ah-muted);padding:6px 10px 4px}
+.hm-shell .at-person-row{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:12px}.hm-shell .at-person-row>span{display:grid;gap:1px}.hm-shell .at-person-row b{font-size:15px;font-weight:600}.hm-shell .at-person-row small{font-size:13px;color:var(--ah-muted)}
+.hm-shell .at-people-menu{min-width:260px}
+.hm-shell .at-lang-menu button{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:12px;text-align:left}@media (hover:hover){.hm-shell .at-lang-menu button:hover{background:var(--ah-tile)}}
+.hm-shell .at-lang-menu button b{width:28px;font-size:13px;font-weight:700;color:var(--ah-muted)}.hm-shell .at-lang-menu button span{flex:1;font-size:15px}.hm-shell .at-lang-menu button.is-active{color:var(--ah-accent-ink,var(--ah-accent))}
+@keyframes at-menu-in{from{opacity:0;transform:scale(.96) translateY(-4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.hm-shell .at-menu{animation:none}}@media (prefers-reduced-motion:reduce) and (hover:hover){.hm-shell .at-pill-btn.is-icon:hover svg{transform:none}}
+.is-narrow .at-head-tools{width:100%;justify-content:space-between;margin-left:0;order:5;flex-wrap:nowrap}
+.is-narrow .at-people{min-width:0;flex:0 1 auto}.is-narrow .at-people-btn{max-width:100%;min-width:0}.is-narrow .at-people-sum{min-width:0;overflow:hidden;text-overflow:ellipsis}.is-narrow .at-head-pill{flex:none}.is-narrow .at-pill-btn{padding:0 8px;gap:4px}.is-narrow .at-head-tools{gap:8px}.is-narrow .at-people-btn{padding-right:10px}.is-narrow .at-people-stack .at-person-ava+.at-person-ava{margin-left:-12px} /* «everyone home» fits beside the pill on a 360 px phone */
+.hm-shell .hm-head{position:relative;z-index:20} /* the header menus open over the tiles */
+.is-narrow .at-people-menu{left:0;right:auto;max-width:calc(100vw - 24px);transform-origin:top left}
