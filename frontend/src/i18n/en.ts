@@ -626,6 +626,11 @@ export const en: Dictionary = {
   'module.vac.appOnly': "Only in the Roborock app",
   'module.vac.appOnlyList': "HA does not pass these on: mop wash interval, mop washing and drying, emptying frequency, carpets, room order and route, FlexiArm, re-mopping, obstacle avoidance, video, voice assistant, button lights, map editing and no-go zones.",
   // the room page (docs/ROOM.md)
+  'room.liveTitle': "Drawing power now",
+  'room.houseTitle': "In the house now",
+  'room.liveNow': "updates live",
+  'room.liveMore': "{n} more",
+  'room.liveIdle': "{n} idle",
   'room.strip': "Room readings",
   'room.m.temperature': "Temperature",
   'room.m.humidity': "Humidity",

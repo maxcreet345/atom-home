@@ -36,7 +36,10 @@ import { readOfficeSecurity } from '../model/office-security.ts';
 import { OfficeSecurityTile, OfficeSecurityPanel } from './office-security.tsx';
 import { VacuumTile, VacuumPanel, VacuumSettings } from './vacuum.tsx';
 import { readVacuum } from '../model/vacuum.ts';
-import { RoomView } from './room.tsx';
+import { RoomView, GLYPH } from './room.tsx';
+import { LiveLoad } from './live-load.tsx';
+import { readRoom } from '../model/room.ts';
+import { channels } from '../model/energy-load.ts';
 import type { Thing } from '../model/room.ts';
 import { OfficeClimateTile, OfficeClimatePanel } from './office-climate.tsx';
 import { readOfficeClimate } from '../model/office-climate.ts';
@@ -238,6 +241,7 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
         {view.section === 'cleaning' && vacuum && view.filter === 'settings' && <VacuumSettings v={vacuum} host={host} t={t} lang={lang} onBack={() => go({ section: 'cleaning' })} />}
         {view.section === 'cleaning' && vacuum && view.filter !== 'settings' && <><VacuumPanel pics={vacPics} v={vacuum} host={host} t={t} lang={lang} onSettings={() => go({ section: 'cleaning', filter: 'settings' })} />{enabled.some(d => d.section === 'cleaning' && d.primary.id !== vacuum.entity) && <KindList devices={enabled.filter(d => d.section === 'cleaning' && d.primary.id !== vacuum.entity)} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} admin={host.admin} />}</>}
         {view.section === 'cleaning' && !vacuum && <KindList devices={enabled.filter(d => d.section === 'cleaning')} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} admin={host.admin} />}
+        {view.section === 'energy' && <HouseLoad home={home} registry={registry} heating={heating} vacuum={vacuum} energyDevices={energyDevices} boilers={boilers} grid={grid} t={t} lang={lang} />}
         {view.section === 'energy' && <EnergyPanel chargerOf={config.modules.energy?.options?.chargerOf ?? null} tariffs={config.energy.tariffs} host={host} devices={energyDevices} boilers={boilers} floors={registry.floors ?? []} floorOfArea={id => registry.areas.find(a => a.area_id === id)?.floor_id ?? null} feedOfRoom={id => config.rooms[id]?.feed ?? null} roomFeeds={Object.values(config.rooms).map(r => r.feed).filter((f): f is string => !!f)} roomName={roomName} nameOf={d => meterName(d.name)} onDevice={key => go({ section: 'energy', device: key })} t={t} lang={lang} fallback={<EnergyPage devices={energyDevices} go={go} t={t} lang={lang} roomName={roomName} admin={host.admin} boilers={boilers} />} />}
         {view.section === 'camera' && <CamerasPanel views={camViews} player={player} host={host} now={now.getTime()} t={t} lang={lang} wide={wide} onCamera={key => go({ section: 'camera', device: key })} />}
         {view.section === 'setup' && <Setup registry={registry} config={config} onChange={applyConfig} admin={host.admin} t={t} lang={lang} storeLabel={store?.label ?? 'memory'} warnings={configWarnings} photos={store?.photos} />}
@@ -384,6 +388,12 @@ function RoomPage({ home, registry, roomId, runner, toggle, go, t, lang, alarms,
   };
   return <RoomView ownCard={ownCard} reg={registry} roomId={roomId} roomName={home.rooms.find(r => r.id === roomId)?.name ?? ''} heating={heating} vacuum={vacuum} host={host} t={t} lang={lang} now={now} alarms={alarms}
     deviceOf={byMain} toggle={toggle} open={d => go({ section: 'rooms', room: roomId, device: d.key })} busy={d => runner.busy.has(d.key)} onHeating={() => go({ section: 'climate' })} onAlarms={() => go({ section: 'rooms', room: roomId, device: 'clock' })} sheetOf={sheetOf} openSheet={key => go({ section: 'rooms', room: roomId, device: key })} />;
+}
+/** The whole house's consumers now, room by room, plus the car's charger from the mains (HA's Energy → «Сейчас»): the busiest on top. */
+function HouseLoad({ home, registry, heating, vacuum, energyDevices, boilers, grid, t, lang }: { home: Home; registry: Registry; heating: ReturnType<typeof readHeating>; vacuum: ReturnType<typeof readVacuum>; energyDevices: HomeDevice[]; boilers: Set<string>; grid: ReadonlySet<string>; t: ReturnType<typeof translator>; lang: 'ru' | 'ro' | 'en' }) {
+  const rows = home.rooms.filter(r => !r.hidden).flatMap(r => { const m = readRoom(registry, r.id, r.name, heating, vacuum), all = [...m.things, ...m.air]; return m.consumers.map(c => ({ key: c.key, name: c.name, sub: r.name, watts: c.power, icon: GLYPH[all.find(x => x.key === c.key)?.kind ?? 'other'] })); });
+  for (const ch of channels(energyDevices, boilers, grid).filter(c => c.charger)) { const w = Number(ch.power.state); if (Number.isFinite(w)) rows.push({ key: ch.key, name: ch.name, sub: home.rooms.find(r => r.id === ch.areaId)?.name ?? '', watts: w, icon: 'car' }); }
+  return rows.length ? <LiveLoad title={t('room.houseTitle' as Key)} rows={rows} t={t} lang={lang} limit={12} className="rm-house-load" /> : null;
 }
 /** The Lights section: lamps grouped by room (room title, tiles named without the room), «N on» and «all off» on top. */
 function LightsPage({ devices, rooms, runner, toggle, go, t, lang, roomName, admin }: Common & { devices: HomeDevice[]; rooms: Room[]; toggle: (d: HomeDevice) => void; roomName: (id: string) => string }) {

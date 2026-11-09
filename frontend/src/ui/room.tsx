@@ -14,6 +14,7 @@ import type { Lang } from './format.ts';
 import { readRoom, worst, type RoomModel, type Thing, type ThingKind, type Num, type Binary } from '../model/room.ts';
 import { heatRoomWord, HeatRoomCard, heatSetText } from './heating.tsx';
 import { vacuumActions } from './vacuum.tsx';
+import { LiveLoad } from './live-load.tsx';
 
 export interface RoomProps { reg: Registry; roomId: string; roomName: string; heating: Heating | null; vacuum: Vacuum | null; host: Host; t: T; lang: Lang; now: number; alarms: Alarm[] | null;
   deviceOf: (entity: string) => HomeDevice | undefined; toggle: (d: HomeDevice) => void; open: (d: HomeDevice) => void; busy: (d: HomeDevice) => boolean; onHeating: () => void; onAlarms: () => void;
@@ -21,7 +22,7 @@ export interface RoomProps { reg: Registry; roomId: string; roomName: string; he
   /** the device's own card, when one was made for it (kettle, feeder, robot, camera): the room draws exactly that card */ ownCard?: (th: Thing, all: Thing[]) => ComponentChildren | null | false }
 type P = RoomProps;
 
-const GLYPH: Record<ThingKind, string> = { light: 'light', kettle: 'cup', feeder: 'paw', fountain: 'water', fridge: 'socket', tv: 'media', speaker: 'speaker', player: 'media', vacuum: 'vacuum', washer: 'washer', dryer: 'washer', camera: 'camera', purifier: 'air', humidifier: 'water', vent: 'fan', airfryer: 'pot', boiler: 'flame', valve: 'valve', socket: 'socket', other: 'generic' };
+export const GLYPH: Record<ThingKind, string> = { light: 'light', kettle: 'cup', feeder: 'paw', fountain: 'water', fridge: 'socket', tv: 'media', speaker: 'speaker', player: 'media', vacuum: 'vacuum', washer: 'washer', dryer: 'washer', camera: 'camera', purifier: 'air', humidifier: 'water', vent: 'fan', airfryer: 'pot', boiler: 'flame', valve: 'valve', socket: 'socket', other: 'generic' };
 const TINT: Record<ThingKind, string> = { light: '#ffb800', kettle: '#ff8a3d', feeder: '#c08a4a', fountain: '#32ade6', fridge: '#5ac8c8', tv: '#bf5af2', speaker: '#8e7cf0', player: '#bf5af2', vacuum: '#5e5ce6', washer: '#32ade6', dryer: '#64a8e6', camera: '#8e8e93', purifier: '#30b0c7', humidifier: '#32ade6', vent: '#64d2ff', airfryer: '#ff9f0a', boiler: '#ff6b35', valve: '#32ade6', socket: '#30d158', other: '#8e8e93' };
 const ago = (since: number | null, now: number, t: T) => { if (!since) return ''; const m = Math.max(0, Math.round((now - since) / 60000)); return m < 1 ? rk(t, 'ago.now') : m < 60 ? rk(t, 'ago.min', { n: m }) : m < 1440 ? rk(t, 'ago.h', { n: Math.floor(m / 60) }) : rk(t, 'ago.d', { n: Math.floor(m / 1440) }); };
 /** «Кухня» → «кухню»: the robot's button says where it goes; other languages take the name as it is */
@@ -78,14 +79,6 @@ function Quick({ m, p }: { m: RoomModel; p: P }) {
     {clean && <button type="button" className="rm-q is-vac" style="--rm-tint:#5e5ce6" onClick={() => void vacuumActions(clean, p.host).rooms([m.id], 1)} disabled={!clean.available || clean.phase === 'cleaning'} aria-label={rk(p.t, 'cleanRoom', { r: where(p.roomName, p.lang) })}><Icon name="vacuum" size={22} /><strong>{rk(p.t, 'clean')}</strong><small>{clean.phase === 'cleaning' ? rk(p.t, 'cleaning') : where(p.roomName, p.lang)}</small></button>}
   </div>;
 }
-function Power({ m, p }: { m: RoomModel; p: P }) {
-  if (!m.consumers.length) return null;
-  const top = m.consumers.slice(0, 5), today = m.consumers.reduce((s, c) => s + (c.today ?? 0), 0), sum = top.reduce((s, c) => s + c.power, 0) || 1, cols = ['#30d158', '#0a84ff', '#ff9f0a', '#bf5af2', '#8e8e93'];
-  return <section className="rm-card rm-power is-bar"><h3>{rk(p.t, 'power')}</h3>
-    <div className="rm-pw-head"><span><b>{watts(m.total ?? 0, p.t, p.lang)}</b> {rk(p.t, 'now')}</span>{today > 0 && <small>{rk(p.t, 'today', { v: fmt(today, p.lang, today < 10 ? 2 : 1) })}</small>}</div>
-    <div className="rm-pw-stack" aria-hidden="true">{top.map((c, i) => <i style={`flex:${Math.max(c.power, sum * 0.02)};background:${cols[i]}`} />)}</div>
-    <ul className="rm-pw-legend">{top.map((c, i) => <li><i style={`background:${cols[i]}`} />{c.name}<b>{watts(c.power, p.t, p.lang)}</b></li>)}</ul></section>;
-}
 function Alarms({ p }: { p: P }) {
   if (!p.alarms) return null;
   return <button type="button" className="rm-card rm-alarms" onClick={p.onAlarms}><span className="rm-glyph" style="--rm-tint:#7b74d8"><Icon name="bell" size={18} /></span><span className="rm-row-tx"><strong>{p.t('alarm.title')}</strong><small>{p.alarms.length ? p.alarms.map(a => `${a.time}${a.enabled ? '' : ` (${p.t('state.off').toLowerCase()})`}`).join(' · ') : p.t('alarm.addHere')}</small></span><Icon name="next" size={18} /></button>;
@@ -105,7 +98,7 @@ export function RoomView(p: RoomProps) {
       {tiles.length > 0 && <div className="rm-b-main"><h2 className="rm-h">{rk(p.t, 'devices')}</h2>
         {own.length > 0 && <div className="ah-grid ah-face rm-own">{own.map(([, card]) => card)}</div>}
         {plain.length > 0 && <div className="rm-tile-grid">{plain.map(th => <Tile th={th} p={p} />)}</div>}</div>}
-      {side ? <div className="rm-b-side"><h2 className="rm-h">{m.heat && m.consumers.length ? rk(p.t, 'climateEnergy') : m.heat ? rk(p.t, 'climate') : rk(p.t, 'energy')}</h2>{m.heat && p.heating && <div className="rm-heat"><HeatRoomCard h={p.heating} room={m.heat} host={p.host} t={p.t} lang={p.lang} now={p.now} /></div>}<Power m={m} p={p} /></div> : null}
+      {side ? <div className="rm-b-side"><h2 className="rm-h">{m.heat && m.consumers.length ? rk(p.t, 'climateEnergy') : m.heat ? rk(p.t, 'climate') : rk(p.t, 'energy')}</h2>{m.heat && p.heating && <div className="rm-heat"><HeatRoomCard h={p.heating} room={m.heat} host={p.host} t={p.t} lang={p.lang} now={p.now} /></div>}{m.consumers.length > 0 && <LiveLoad title={rk(p.t, 'liveTitle')} rows={m.consumers.map(c => ({ key: c.key, name: c.name, watts: c.power, icon: GLYPH[[...m.things, ...m.air].find(x => x.key === c.key)?.kind ?? 'other'] }))} today={m.consumers.reduce((s, c) => s + (c.today ?? 0), 0)} t={p.t} lang={p.lang} />}</div> : null}
     </div>
   </div>;
 }
