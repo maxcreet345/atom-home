@@ -973,3 +973,83 @@
 .hm-shell .at-sec-set-loads li{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:52px;border-top:1px solid var(--ah-line,#0000000f)}.hm-shell .at-sec-set-loads li b{font-size:14.5px;font-weight:600}
 .hm-shell .at-sec-sw-btn{display:inline-grid;place-items:center;min-width:56px;min-height:44px;padding:0;background:none;border:0;cursor:pointer}.hm-shell .at-sec-sw-btn .at-sec-sw{position:relative;right:auto;top:auto;display:block}.hm-shell .at-sec-sw-btn.is-on .at-sec-sw{background:var(--sec-calm)}.hm-shell .at-sec-sw-btn.is-on .at-sec-sw::after{transform:translateX(16px)}.hm-shell .at-sec-sw-btn:disabled{opacity:.5}
 .hm-shell .at-sec-set-note{color:var(--sec-warn,#b25000)!important}.hm-shell .at-sec-err{color:#d70015;font-size:13px;margin:8px 2px 0}
+/* ---------- Office security (Atom + Okapi, 09.11.2026), drawn after the Ajax app ---------- */
+.hm-shell{--os-teal:#12b886;--os-armed:#0a84ff;--os-warn:#ff9f0a;--os-alarm:#ff3b30;--os-card:var(--ah-group,#fff);--os-pic:#f2f2f7}
+.hm-shell.ah-shell[data-theme="dark"]{--os-teal:#2fd3a0;--os-pic:#2c2c2e}
+.hm-shell .at-osec-ring .is-stroke,.hm-shell .at-osec-ring .is-track{fill:none;stroke-width:5;stroke-linecap:round}
+.hm-shell .at-osec-ring .is-stroke{stroke:var(--rc,var(--os-teal))}.hm-shell .at-osec-ring .is-track{stroke:var(--ah-line,#0000001a)}
+.hm-shell .at-osec-ring .is-fill{fill:var(--rc,var(--os-alarm))}.hm-shell .at-osec-ring .is-mark{fill:none;stroke:#fff;stroke-width:5.5;stroke-linecap:round}
+.hm-shell .at-osec-ring.is-calm,.hm-shell .at-osec-ring.is-off{--rc:var(--os-teal)}.hm-shell .at-osec-ring.is-armed{--rc:var(--os-armed)}.hm-shell .at-osec-ring.is-warn{--rc:var(--os-warn)}.hm-shell .at-osec-ring.is-alarm{--rc:var(--os-alarm)}
+.hm-shell .at-osec-ev .at-osec-ring.is-off{--rc:var(--ah-muted)}
+.hm-shell .at-osec-wrap{container-type:inline-size;width:100%}.hm-shell .at-osec{display:grid;gap:16px;max-width:1280px;margin:0 auto;width:100%;align-items:start}
+.hm-shell .at-osec-left{display:grid;gap:16px;align-content:start;min-width:0}
+@container (min-width:880px){.hm-shell .at-osec{grid-template-columns:minmax(340px,420px) minmax(0,1fr);grid-template-rows:auto 1fr;grid-template-areas:"ctl devs" "feed devs" "set set"}.hm-shell .at-osec-control{grid-area:ctl}.hm-shell .at-osec-devs{grid-area:devs}.hm-shell .at-osec-feed{grid-area:feed}.hm-shell .at-osec-set{grid-area:set}}
+.hm-shell .at-osec-control{display:grid;justify-items:center;gap:14px;padding:26px 18px 18px;border-radius:30px;background:var(--os-card);text-align:center}
+.hm-shell .at-osec-control>.at-osec-ring{margin-top:4px}
+.hm-shell .at-osec-control.is-alarm>.at-osec-ring{animation:at-sec-beat 1s ease-in-out infinite}
+.hm-shell .at-osec-name{display:grid;gap:4px;justify-items:center}.hm-shell .at-osec-name h2{font-size:26px;font-weight:700;letter-spacing:-.3px}
+.hm-shell .at-osec-state{font-size:19px;font-weight:600;color:var(--os-teal)}
+.hm-shell .at-osec-control.is-st-armed .at-osec-state{color:var(--os-armed)}.hm-shell .at-osec-control.is-st-arming .at-osec-state,.hm-shell .at-osec-control.is-st-pending .at-osec-state{color:#c77700}.hm-shell .at-osec-control.is-alarm .at-osec-state{color:var(--os-alarm)}
+.hm-shell.ah-shell[data-theme="dark"] .at-osec-control.is-st-arming .at-osec-state,.hm-shell.ah-shell[data-theme="dark"] .at-osec-control.is-st-pending .at-osec-state{color:#ffc266}
+.hm-shell .at-osec-count{font-variant-numeric:tabular-nums}
+.hm-shell .at-osec-name small{font-size:14.5px;line-height:1.35;color:var(--ah-muted);max-width:34ch}
+.hm-shell .at-osec-pad{display:grid;grid-template-columns:1fr 1fr;width:100%;border-radius:24px;background:var(--os-pic);overflow:hidden}
+.hm-shell .at-osec-key{display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:10px;min-height:118px;padding:16px 18px;text-align:left;color:var(--ah-ink);background:transparent;border:0}
+.hm-shell .at-osec-key+.at-osec-key{border-left:1px solid var(--ah-line,#0000001a);align-items:flex-end;text-align:right}
+.hm-shell .at-osec-key b{font-size:18px;font-weight:600}.hm-shell .at-osec-key .at-osec-ring{--rc:var(--ah-ink)}
+.hm-shell .at-osec-key:not(:disabled):active{background:#0000000d}
+.hm-shell .at-osec-key:disabled{cursor:default}.hm-shell .at-osec-key:disabled:not(.is-now){opacity:.35}
+.hm-shell .at-osec-key.is-now .at-osec-ring{--rc:var(--os-teal)}.hm-shell .at-osec-control.is-st-armed .at-osec-key.is-now .at-osec-ring{--rc:var(--os-armed)}
+.hm-shell .at-osec-who{font-size:13.5px;color:var(--ah-muted);font-weight:600}
+.hm-shell .at-osec-groups{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;width:100%}
+.hm-shell .at-osec-group{display:inline-flex;align-items:center;gap:7px;padding:7px 12px 7px 8px;border-radius:999px;background:var(--os-pic);font-size:14px}.hm-shell .at-osec-group b{font-weight:600}.hm-shell .at-osec-group small{color:var(--ah-muted);font-size:13px}
+.hm-shell .at-osec-group.is-triggered{background:#ff3b301f}.hm-shell .at-osec-group.is-triggered small{color:#c4271d;font-weight:700}
+.hm-shell .at-osec-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0 4px}.hm-shell .at-osec-chips::-webkit-scrollbar{display:none}
+.hm-shell .at-osec-chips button{flex:none;min-height:38px;padding:0 14px;border-radius:999px;border:0;background:var(--os-card);color:var(--ah-muted);font-size:14.5px;font-weight:600}
+.hm-shell .at-osec-chips button.is-on{background:#1c1c1e;color:#fff}.hm-shell.ah-shell[data-theme="dark"] .at-osec-chips button.is-on{background:#fff;color:#1c1c1e}
+.hm-shell .at-osec-devs,.hm-shell .at-osec-feed{display:grid;gap:10px;align-content:start;min-width:0}
+.hm-shell .at-osec-devs .hm-section-head small{color:var(--ah-muted);font-size:13px}
+.hm-shell .at-osec-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;align-items:start}
+.hm-shell .at-osec-dev{border-radius:26px;background:var(--os-card);overflow:hidden}
+.hm-shell .at-osec-dev-hit{display:grid;grid-template-columns:76px minmax(0,1fr) 14px;align-items:center;gap:14px;width:100%;padding:12px 14px 12px 12px;background:transparent;border:0;color:var(--ah-ink);text-align:left}
+.hm-shell .at-osec-pic{position:relative;width:76px;height:76px;border-radius:18px;background:var(--os-pic);display:grid;place-items:center}
+.hm-shell .at-osec-art{width:62px;height:62px}.hm-shell .at-osec-art .is-body{fill:#fff;stroke:#c7c7cc;stroke-width:1.2}.hm-shell .at-osec-art .is-inner{fill:none;stroke:#d1d1d6;stroke-width:1.4}.hm-shell .at-osec-art .is-lens{fill:#8e8e93}.hm-shell .at-osec-art .is-led{fill:#30d158}
+.hm-shell.ah-shell[data-theme="dark"] .at-osec-art .is-body{fill:#48484a;stroke:#636366}.hm-shell.ah-shell[data-theme="dark"] .at-osec-art .is-inner{stroke:#636366}
+.hm-shell .at-osec-badge{position:absolute;left:-4px;top:-4px;min-width:22px;height:22px;padding:0 6px;border-radius:7px;background:#ff3b30;color:#fff;font-style:normal;font-size:13px;font-weight:700;display:grid;place-items:center}
+.hm-shell .at-osec-dev-text{display:grid;gap:2px;min-width:0}.hm-shell .at-osec-dev-text b{font-size:16.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hm-shell .at-osec-dev-text small{font-size:13.5px;color:var(--ah-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hm-shell .at-osec-icons{display:flex;align-items:center;gap:9px;margin-top:5px;min-height:18px;color:var(--ah-ink)}.hm-shell .at-osec-icons em{font-style:normal;font-size:13px;font-weight:600;color:var(--ah-muted)}
+.hm-shell .at-osec-net{border:1.5px solid currentColor;border-radius:999px;padding:0 5px;font-size:11px!important;line-height:16px;color:var(--ah-ink)!important}
+.hm-shell .at-osec-bars rect{fill:var(--ah-line,#0000002a)}.hm-shell .at-osec-bars rect.is-on{fill:var(--ah-ink)}.hm-shell .at-osec-bars.is-weak rect.is-on{fill:#ff3b30}
+.hm-shell .at-osec-batt .is-case{fill:none;stroke:var(--ah-ink);stroke-width:1.5}.hm-shell .at-osec-batt .is-cap,.hm-shell .at-osec-batt .is-level{fill:var(--ah-ink)}.hm-shell .at-osec-batt.is-low .is-level,.hm-shell .at-osec-batt.is-low .is-cap{fill:#ff3b30}.hm-shell .at-osec-batt.is-low .is-case{stroke:#ff3b30}
+.hm-shell .at-osec-icons .is-bad{color:#ff3b30;display:inline-flex}
+.hm-shell .at-osec-pill{justify-self:end;max-width:130px;padding:6px 11px;border-radius:999px;background:var(--os-pic);font-size:13px;font-weight:600;color:var(--ah-muted);text-align:center;line-height:1.25}
+.hm-shell .at-osec-pill.is-warn{background:#ff9f0a26;color:#a35a00}.hm-shell .at-osec-pill.is-alarm{background:#ff3b30;color:#fff}.hm-shell .at-osec-pill.is-live{background:#0a84ff1f;color:#0a5fb8}
+.hm-shell.ah-shell[data-theme="dark"] .at-osec-pill.is-warn{color:#ffc266}.hm-shell.ah-shell[data-theme="dark"] .at-osec-pill.is-live{color:#8cc4ff}
+.hm-shell .at-osec-rows{display:grid;padding:0 16px 8px}
+.hm-shell .at-osec-row{display:grid;gap:1px;padding:11px 2px;border-top:1px solid var(--ah-line,#0000000f)}.hm-shell .at-osec-row small{font-size:13px;color:var(--ah-muted)}.hm-shell .at-osec-row b{font-size:16px;font-weight:500}.hm-shell .at-osec-row b.is-bad{color:#e5302a}
+.hm-shell.ah-shell[data-theme="dark"] .at-osec-row b.is-bad{color:#ff8a80}
+.hm-shell .at-osec-events{display:grid;gap:8px}.hm-shell .at-osec-events h3{font-size:14px;font-weight:600;color:var(--ah-muted);text-align:center;padding:6px 0 0}
+.hm-shell .at-osec-ev{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"top who" "text who";gap:6px 12px;align-items:center;padding:14px 16px;border-radius:22px;background:var(--os-card)}
+.hm-shell .at-osec-ev-top{grid-area:top;display:flex;align-items:center;gap:8px}.hm-shell .at-osec-ev-top small{font-size:14px;font-weight:600;color:var(--ah-muted);font-variant-numeric:tabular-nums}
+.hm-shell .at-osec-ev>b{grid-area:text;font-size:15.5px;font-weight:500;line-height:1.35}
+.hm-shell .at-osec-ev-who{grid-area:who;width:44px;height:44px;border-radius:50%;background:var(--os-pic);display:grid;place-items:center;font-size:14px;font-weight:700;color:var(--ah-muted)}
+.hm-shell .at-osec-ev.is-triggered{box-shadow:inset 0 0 0 2px #ff3b30}
+.hm-shell .at-osec-empty{color:var(--ah-muted);font-size:14px;padding:6px 2px}
+.hm-shell .at-osec-tile .at-sec-tile-word{color:var(--os-teal)}.hm-shell .at-osec-tile.is-st-armed .at-sec-tile-word{color:var(--os-armed)}.hm-shell .at-osec-tile.is-alarm .at-sec-tile-word{color:#c4271d}
+.hm-shell .at-osec-tile{background:var(--ah-tile)}
+.hm-shell.ah-shell[data-theme="dark"] .at-osec-tile{background:var(--ah-tile)}
+.hm-shell .at-osec-now{font-size:14px;font-weight:600;color:var(--ah-ink)}.hm-shell .at-osec-now.is-warn{color:#b86400}.hm-shell .at-osec-now.is-alarm{color:#e5302a}.hm-shell .at-osec-now.is-live{color:#0a6fd8}
+.hm-shell.ah-shell[data-theme="dark"] .at-osec-now.is-warn{color:#ffc266}.hm-shell.ah-shell[data-theme="dark"] .at-osec-now.is-alarm{color:#ff8a80}.hm-shell.ah-shell[data-theme="dark"] .at-osec-now.is-live{color:#8cc4ff}
+.hm-shell .at-osec-chev{color:var(--ah-muted);transition:transform .2s ease}.hm-shell .at-osec-dev.is-open .at-osec-chev{transform:rotate(90deg)}
+.hm-shell .at-osec-icons{margin-top:3px}
+.hm-shell .at-osec-row b.is-warn{color:#b86400}.hm-shell.ah-shell[data-theme="dark"] .at-osec-row b.is-warn{color:#ffc266}
+.hm-shell.ah-shell[data-theme="dark"] .at-osec-group.is-triggered small{color:#ffb0a8}.hm-shell.ah-shell[data-theme="dark"] .at-osec-group.is-triggered{background:#ff3b3040}
+.hm-shell.ah-shell[data-theme="dark"]{--os-armed:#5aaeff}
+/* a phone on its side: the ring and the words beside the two keys, not a screen of ring */
+@media (orientation:landscape) and (max-height:520px){
+  .hm-shell .at-osec-control{grid-template-columns:auto minmax(0,1fr) minmax(0,1.1fr);justify-items:start;align-items:center;text-align:left;padding:16px 18px;column-gap:16px}
+  .hm-shell .at-osec-control>.at-osec-ring{width:64px;height:64px;margin:0}
+  .hm-shell .at-osec-name{justify-items:start}.hm-shell .at-osec-name h2{font-size:20px}.hm-shell .at-osec-state{font-size:16px}
+  .hm-shell .at-osec-key{min-height:92px;padding:12px 14px}.hm-shell .at-osec-key .at-osec-ring{width:40px;height:40px}
+  .hm-shell .at-osec-groups,.hm-shell .at-osec-who,.hm-shell .at-osec-control .at-sec-err{grid-column:1/-1;justify-content:flex-start}
+}

@@ -12,10 +12,12 @@ const sk = (t: T, k: string, p?: Record<string, string | number>) => t(`sec.${k}
 const GLYPH: Record<string, string> = { door: 'M7 3h10v18H7zM14 12h.01M4 21h16', window: 'M5 4h14v16H5zM12 4v16M5 12h14', gas: 'M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-3 2-4 2-7 1 1 2 2 3 4 0-3 0-5 0-7z', leak: 'M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z', valve: 'M3 12h4M17 12h4M7 8h10v8H7zM12 8V4M9 4h6' };
 const Glyph = ({ k }: { k: string }) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={GLYPH[k]} /></svg>;
 const hm = (ms: number | null, lang: Lang) => ms === null ? '' : new Date(ms).toLocaleTimeString(locales[lang], { hour: '2-digit', minute: '2-digit' });
-function Shield({ tone, size = 64 }: { tone: SecTone; size?: number }) {
+/** The mark follows the tone; `mark` overrides it (an office disarmed with a tamper is amber, but not ticked as guarded). */
+export function Shield({ tone, size = 64, mark }: { tone: SecTone; size?: number; mark?: 'alert' | 'open' | 'check' }) {
+  const m = mark ?? (tone === 'alarm' ? 'alert' : tone === 'calm' || tone === 'off' ? 'open' : 'check');
   return <svg className={`at-sec-shield is-${tone}`} width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
     <path className="is-body" d="M32 5 9 14v15c0 15 10 26 23 30 13-4 23-15 23-30V14z" />
-    {tone === 'alarm' ? <path className="is-mark" d="M32 19v16M32 42v.5" /> : tone === 'calm' || tone === 'off' ? <path className="is-mark" d="M24 33a8 8 0 0 1 16 0" /> : <path className="is-mark" d="m22 32 7 7 13-14" />}
+    {m === 'alert' ? <path className="is-mark" d="M32 19v16M32 42v.5" /> : m === 'open' ? <path className="is-mark" d="M24 33a8 8 0 0 1 16 0" /> : <path className="is-mark" d="m22 32 7 7 13-14" />}
   </svg>;
 }
 function stateWord(s: Security, t: T): string {

@@ -3,7 +3,8 @@ import { chromium } from '@playwright/test';
 import { SCENARIOS } from './cards/okapi-climate.mjs';
 import { AT as ENERGY_AT } from './cards/okapi-energy.mjs';
 import { AT as LIGHT_AT } from './cards/okapi-light.mjs';
-const CARD = process.env.CARD ?? 'okapi-climate', atOf = sc => CARD === 'okapi-energy' ? ENERGY_AT : CARD === 'okapi-light' ? LIGHT_AT : SCENARIOS[sc].at;
+import { AT as SECURITY_AT } from './cards/okapi-security.mjs';
+const CARD = process.env.CARD ?? 'okapi-climate', atOf = sc => CARD === 'okapi-energy' ? ENERGY_AT : CARD === 'okapi-light' ? LIGHT_AT : CARD === 'okapi-security' ? SECURITY_AT : SCENARIOS[sc].at;
 const [out, port, ...jobs] = process.argv.slice(2);
 const browser = await chromium.launch();
 for (const job of jobs) {
@@ -14,6 +15,8 @@ for (const job of jobs) {
   if (flags.includes('guest')) await page.addInitScript(() => { window.__beforeDraw = h => { try { Object.defineProperty(h, 'admin', { value: false }); } catch { h.admin = false; } }; });
   await page.goto(`http://127.0.0.1:${port}/?card=${CARD}&scenario=${sc}&theme=${flags.includes('dark') ? 'dark' : 'light'}&lang=ru${hash}`);
   await page.waitForFunction(() => window.ready === true, null, { timeout: 15000 }); await page.waitForTimeout(1200);
+  for (const f of flags.filter(f => f.startsWith('tap='))) { await page.click(f.slice(4)); await page.waitForTimeout(400); } // open a card before the shot
+  for (const f of flags.filter(f => f.startsWith('scroll='))) { await page.evaluate(sel => document.querySelector(sel)?.scrollIntoView({ block: 'start' }), f.slice(7)); await page.waitForTimeout(400); }
   if (flags.includes('full')) {
     const el = await page.evaluateHandle(() => [document.querySelector('.hm-main'), ...document.querySelectorAll('*')].filter(Boolean).find(e => e.scrollHeight > e.clientHeight + 4 && /auto|scroll/.test(getComputedStyle(e).overflowY)) ?? document.scrollingElement);
     const [sh, ch] = await el.evaluate(e => [e.scrollHeight, e.clientHeight]); let i = 0;

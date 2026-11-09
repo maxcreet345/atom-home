@@ -32,6 +32,8 @@ import { HeatingTile, HeatingPanel } from './heating.tsx';
 import { readHeating } from '../model/heating.ts';
 import { readSecurity } from '../model/security.ts';
 import { SecurityTile, SecurityPanel } from './security.tsx';
+import { readOfficeSecurity } from '../model/office-security.ts';
+import { OfficeSecurityTile, OfficeSecurityPanel } from './office-security.tsx';
 import { OfficeClimateTile, OfficeClimatePanel } from './office-climate.tsx';
 import { readOfficeClimate } from '../model/office-climate.ts';
 import { currentEvents, focusCamera, holdEnded, sensorsOf, type CamEvent } from '../model/cameras.ts';
@@ -163,8 +165,10 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
   const boilers = useMemo(() => boilerDeviceIds(modules, registry), [modules, registry]); // the boiler's thermal kW is not electricity
   const hasPower = (d: HomeDevice) => d.metrics.some(m => isElectric(m, d, boilers) || m.deviceClass === 'energy');
   const energyDevices = enabled.filter(d => d.kind === 'energy' || hasPower(d));
-  const security = useMemo(() => readSecurity(registry, config), [registry, config]);
-  const present = (s: Section) => (s === 'security' && !!security) || (s === 'climate' && !!(heating || office)) || s === 'home' || s === 'rooms' || s === 'systems' || (s === 'energy' ? energyDevices.length > 0 : s === 'camera' ? camViews.length > 1 : enabled.some(d => d.section === s));
+  // an office building (several Alarmo areas under the master, Atom + Okapi 09.11.2026) has its own card; the house keeps the house's
+  const officeSec = useMemo(() => readOfficeSecurity(registry, config, { id: host.userId ?? null, admin: host.admin }), [registry, config, host.admin]);
+  const security = useMemo(() => officeSec ? null : readSecurity(registry, config), [registry, config, officeSec]);
+  const present = (s: Section) => (s === 'security' && !!(security || officeSec)) || (s === 'climate' && !!(heating || office)) || s === 'home' || s === 'rooms' || s === 'systems' || (s === 'energy' ? energyDevices.length > 0 : s === 'camera' ? camViews.length > 1 : enabled.some(d => d.section === s));
   const systemTabs = SYSTEM_TABS.filter(s => present(s) && !config.sections[s]?.hidden);
   const inSystems = (SYSTEM_TABS as string[]).includes(view.section);
   const navActive = (id: Section | 'setup') => id === 'systems' ? inSystems : view.section === id;
@@ -213,10 +217,11 @@ export function AtomApp({ registry, config: initialConfig, host, viewport, navig
       </header>
       {inSystems && systemTabs.length > 1 && <div className="ah-segments hm-range-tabs is-sys" role="tablist" ref={el => { const a = el?.querySelector<HTMLElement>('.is-active'); if (el && a && (a.offsetLeft < el.scrollLeft || a.offsetLeft + a.offsetWidth > el.scrollLeft + el.clientWidth)) el.scrollLeft = a.offsetLeft - 8; }}>{systemTabs.map(s => <button type="button" role="tab" aria-selected={view.section === s} className={view.section === s ? 'is-active' : ''} onClick={() => go({ section: s })}>{t(`section.${s}` as Key)}</button>)}</div>}
       <div className="hm-page" key={pageKey}>
-        {view.section === 'home' && <Overview security={security} heating={heating} office={office} grid={grid} home={home} registry={registry} config={config} modules={modules} player={player} tileState={tileState} host={host} runner={runner} toggle={toggle} go={go} t={t} lang={lang} now={now} camViews={camViews} />}
+        {view.section === 'home' && <Overview security={security} officeSec={officeSec} heating={heating} office={office} grid={grid} home={home} registry={registry} config={config} modules={modules} player={player} tileState={tileState} host={host} runner={runner} toggle={toggle} go={go} t={t} lang={lang} now={now} camViews={camViews} />}
         {view.section === 'rooms' && !view.room && <div className="hm-room-grid is-page">{rooms.map(r => { const c = roomClimate(home, registry, r.id); return <RoomTile room={r} temperature={c.temperature} humidity={c.humidity} co2={c.co2} lightsOn={c.lights.filter(l => isOn(l.primary)).length} onClick={() => go({ section: 'rooms', room: r.id })} t={t} lang={lang} label={r.name || t('room.none')} />; })}</div>}
         {view.section === 'rooms' && view.room && <RoomPage home={home} registry={registry} roomId={view.room} runner={runner} toggle={toggle} go={go} t={t} lang={lang} alarms={clockMod && registry.entities.some(e => e.entity_id.startsWith('media_player.') && e.platform === 'yandex_station' && !e.disabled_by && (e.area_id ?? registry.devices.find(d => d.id === e.device_id)?.area_id) === view.room) ? config.alarms.filter(a => a.room === view.room) : null} />}
         {view.section === 'lights' && <LightsPage devices={enabled.filter(d => d.kind === 'light')} rooms={home.rooms} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} admin={host.admin} />}
+        {view.section === 'security' && officeSec && <OfficeSecurityPanel s={officeSec} host={host} t={t} lang={lang} now={now.getTime()} admin={!!host.admin} title={config.home.name} />}
         {view.section === 'security' && security && <SecurityPanel s={security} registry={registry} config={config} host={host} t={t} lang={lang} now={now.getTime()} admin={!!host.admin} />}
         {view.section === 'climate' && heating && <HeatingPanel h={heating} host={host} t={t} lang={lang} now={now.getTime()} />}
         {view.section === 'climate' && !heating && office && <OfficeClimatePanel c={office} host={host} t={t} lang={lang} now={now.getTime()} />}
@@ -282,9 +287,9 @@ const shortLabel = (name: string) => { const s = name.replace(/\s*\([^)]*\)/g, '
 function Tiles({ devices, section, room, runner, toggle, go, t, lang, nameOf, roomOf }: Common & { devices: HomeDevice[]; section: Section; room?: string | null; toggle: (d: HomeDevice) => void; nameOf?: (d: HomeDevice) => string; roomOf?: (d: HomeDevice) => string }) {
   return <Cascade className="ah-grid hm-light-grid">{devices.map(d => <AccessoryTile device={d} name={nameOf?.(d)} room={roomOf?.(d)} pending={runner.busy.has(d.key)} onToggle={canToggle(d) ? () => toggle(d) : undefined} onOpen={() => go({ section, room: room ?? null, device: d.key })} t={t} lang={lang} />)}</Cascade>;
 }
-function Overview({ home, registry, config, modules, player, tileState, host, runner, toggle, go, t, lang, now, camViews, heating, office, grid, security }: Common & { security: ReturnType<typeof readSecurity>; heating: ReturnType<typeof readHeating>; office: ReturnType<typeof readOfficeClimate>; grid: ReadonlySet<string>; home: Home; registry: Registry; config: HouseConfig; modules: ActiveModule[]; player: (dev: HomeDevice, mode: 'tile' | 'stage') => JSX.Element | null; tileState: (dev: HomeDevice) => TileState | null; host: Host; toggle: (d: HomeDevice) => void; now: Date; camViews: CamView[] }) {
+function Overview({ home, registry, config, modules, player, tileState, host, runner, toggle, go, t, lang, now, camViews, heating, office, grid, security, officeSec }: Common & { security: ReturnType<typeof readSecurity>; officeSec: ReturnType<typeof readOfficeSecurity>; heating: ReturnType<typeof readHeating>; office: ReturnType<typeof readOfficeClimate>; grid: ReadonlySet<string>; home: Home; registry: Registry; config: HouseConfig; modules: ActiveModule[]; player: (dev: HomeDevice, mode: 'tile' | 'stage') => JSX.Element | null; tileState: (dev: HomeDevice) => TileState | null; host: Host; toggle: (d: HomeDevice) => void; now: Date; camViews: CamView[] }) {
   const d = home.devices.filter(x => x.enabled);
-  const secTile = !!security && !config.sections.security?.hidden; // the Security tile, when shown, tells leaks and doors-and-windows itself
+  const secTile = !!(security || officeSec) && !config.sections.security?.hidden; // the Security tile, when shown, tells leaks and doors-and-windows itself
   const roomOf = (x: HomeDevice) => home.rooms.find(r => r.id === x.roomId)?.name || t('room.none');
   const leaks = d.filter(x => x.kind === 'leak'), wet = leaks.filter(x => x.primary.state === 'on'), leaksMute = leaks.length > 0 && leaks.every(x => !x.primary.available || x.primary.state === 'unknown');
   const co2 = d.flatMap(x => x.metrics).find(m => m.deviceClass === 'carbon_dioxide' && m.available && Number.isFinite(Number(m.state)));
@@ -313,7 +318,8 @@ function Overview({ home, registry, config, modules, player, tileState, host, ru
   const tile = (x: HomeDevice, section: Section = 'home') => <AccessoryTile device={x} name={canToggle(x) ? inRoomName(x, roomOf(x)) : x.name} room={canToggle(x) ? roomOf(x) : undefined} pending={runner.busy.has(x.key)} onToggle={canToggle(x) ? () => toggle(x) : undefined} onOpen={() => go({ section, device: x.key })} t={t} lang={lang} />;
   return <Cascade className="hm-home ah-home ah-grid ah-face" data-face="home-modular">
     {modules.some(m => m.def.id === 'clock') ? <ClockTile now={now} lang={lang} t={t} registry={registry} entities={modules.find(m => m.def.id === 'clock')!.entities} onOpen={() => go({ section: 'home', device: 'clock' })} /> : <PlainClockTile now={now} lang={lang} />}
-    {secTile && <SecurityTile s={security} registry={registry} config={config} t={t} lang={lang} onOpen={() => go({ section: 'security' })} />}
+    {secTile && officeSec && <OfficeSecurityTile s={officeSec} t={t} onOpen={() => go({ section: 'security' })} />}
+    {secTile && security && <SecurityTile s={security} registry={registry} config={config} t={t} lang={lang} onOpen={() => go({ section: 'security' })} />}
     {heating && <HeatingTile h={heating} host={host} t={t} lang={lang} now={now.getTime()} onOpen={() => go({ section: 'climate' })} />}
     {office && !heating && <OfficeClimateTile c={office} host={host} t={t} lang={lang} now={now.getTime()} onOpen={() => go({ section: 'climate' })} />}
     {climate && !heating && !office && <ThermostatTile device={climate} name={inRoomName(climate, roomOf(climate))} sub={roomOf(climate)} target={temp} current={cur} onStep={tempAction ? step : undefined} onOpen={() => go({ section: 'home', device: climate.key })} t={t} lang={lang} disabled={runner.busy.has(climate.key)} />}

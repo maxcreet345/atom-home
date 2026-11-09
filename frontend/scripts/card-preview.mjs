@@ -10,7 +10,7 @@ const TYPES = { '.jpg': 'image/jpeg', '.js': 'text/javascript', '.css': 'text/cs
 const PAGE = `<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Atom Home preview</title><style>html,body{margin:0;height:100%;overflow:hidden;background:#000}#root{height:100%;position:relative}</style><div id="root"></div><script type="module">
 import "/atom-preview.js";
 const q = new URLSearchParams(location.search), d = await (await fetch('/__state' + location.search)).json();
-localStorage.clear(); d.config.home.theme = q.get('theme') ?? 'light'; d.config.home.language = q.get('lang') ?? 'ru'; window.__feederLog = d.feederLog; window.__airTasks = d.airTasks; window.__energyMonth = d.energyMonth; window.__energyStats = d.energyStats; window.__energyPrefs = d.energyPrefs; window.__frames = d.frames; window.__camHistory = d.camHistory;
+localStorage.clear(); d.config.home.theme = q.get('theme') ?? 'light'; d.config.home.language = q.get('lang') ?? 'ru'; window.__feederLog = d.feederLog; window.__airTasks = d.airTasks; window.__energyMonth = d.energyMonth; window.__energyStats = d.energyStats; window.__energyPrefs = d.energyPrefs; window.__logbook = d.logbook; window.__frames = d.frames; window.__camHistory = d.camHistory;
 await window.mountPreview(document.getElementById('root'), d.snapshot, d.config); window.ready = true;
 </script>`;
 const server = createServer(async (req, res) => { const u = new URL(req.url, 'http://l'); try {
