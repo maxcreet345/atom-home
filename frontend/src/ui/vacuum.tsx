@@ -124,6 +124,27 @@ export function VacuumTile({ v, host, t, lang, onOpen, pics }: { v: Vacuum; host
   </div>;
 }
 function alertText(a: ReturnType<typeof vacuumAlerts>[number], t: T, v?: Vacuum) { return a.key === 'due' ? tk(t, 'a.due', { p: tk(t, `c.${a.consumable}`) }) : a.key === 'dockError' && v?.dockError ? tk(t, 'a.dockIs', { e: word(t, `dock.${v.dockError}`, v.dockError) }) : tk(t, `a.${a.key}`); }
+/** HA draws the robot's map on a wide empty canvas: cut the empty margins away (once per map picture) so the flat fills its card.
+ * Falls back to the picture as it is when the canvas cannot read it. */
+function useTrimmedMap(url: string | null): string | null {
+  const [out, setOut] = useState<string | null>(null);
+  useEffect(() => {
+    setOut(null); if (!url) return;
+    let live = true; const img = new Image(); img.decoding = 'async';
+    img.onload = () => { try {
+      const w = img.naturalWidth, h = img.naturalHeight, c = document.createElement('canvas'); c.width = w; c.height = h;
+      const g = c.getContext('2d', { willReadFrequently: true })!; g.drawImage(img, 0, 0); const d = g.getImageData(0, 0, w, h).data;
+      let x0 = w, y0 = h, x1 = -1, y1 = -1;
+      for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) if (d[(y * w + x) * 4 + 3] > 16) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      if (x1 < 0 || (x1 - x0) > w * 0.92) return; // nothing to trim
+      const m = Math.round(Math.max(x1 - x0, y1 - y0) * 0.03); x0 = Math.max(0, x0 - m); y0 = Math.max(0, y0 - m); x1 = Math.min(w - 1, x1 + m); y1 = Math.min(h - 1, y1 + m);
+      const t = document.createElement('canvas'); t.width = x1 - x0 + 1; t.height = y1 - y0 + 1; t.getContext('2d')!.drawImage(c, x0, y0, t.width, t.height, 0, 0, t.width, t.height);
+      if (live) setOut(t.toDataURL('image/png'));
+    } catch { /* a picture the canvas may not read stays as it is */ } };
+    img.src = url; return () => { live = false; };
+  }, [url]);
+  return out ?? url;
+}
 /* ---------- the panel ---------- */
 function Chips<V extends string>({ label, value, options, name, onPick, busy, disabled, hint }: { label: string; value: string | null; options: V[]; name: (o: V) => string; onPick: (o: V) => void; busy?: boolean; disabled?: boolean; hint?: string }) {
   return <div className="at-vac-row"><div className="at-vac-row-head"><strong>{label}</strong>{hint && <small>{hint}</small>}</div>
@@ -202,7 +223,7 @@ export function VacuumPanel({ v, host, t, lang, onSettings, pics }: { v: Vacuum;
   const main = mainAction(v, t, chosen.length), say = vacSentence(v, t, lang), alerts = vacuumAlerts(v), can = v.available;
   const active = v.phase === 'cleaning' || v.phase === 'paused' || v.phase === 'returning', gear = useRef<HTMLButtonElement>(null);
   useEffect(() => { if (backFromSettings) { backFromSettings = false; gear.current?.focus(); } }, []);
-  const mapUrl = v.mapImage ? host.previewFrame?.(v.mapImage.entity) ?? v.mapImage.url : null;
+  const mapUrl = useTrimmedMap(v.mapImage ? host.previewFrame?.(v.mapImage.entity) ?? v.mapImage.url : null);
   return <div className="at-vac-panel">
     <section className={`at-vac-hero vz-${tone}`} aria-label={tk(t, 'title')}>
       <div className="at-vac-hero-top">
