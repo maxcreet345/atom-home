@@ -78,7 +78,7 @@ export function entityCategory(entity: EntityRow, kind: Kind | null): 'primary' 
   if (domain === 'sensor' || domain === 'binary_sensor') return 'diagnostic';
   return 'hidden';
 }
-export const SECTIONS = ['home', 'rooms', 'lights', 'climate', 'cleaning', 'energy', 'systems', 'camera', 'weather'] as const;
+export const SECTIONS = ['home', 'rooms', 'lights', 'climate', 'cleaning', 'energy', 'systems', 'camera', 'weather', 'security'] as const;
 export type Section = typeof SECTIONS[number];
 /** Which screen lists a kind by default. */
 export function sectionOfKind(kind: Kind): Section | null {

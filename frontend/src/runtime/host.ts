@@ -59,7 +59,7 @@ export interface Host {
 const toRow = (e: Record<string, unknown>): EntityRow => ({
   entity_id: String(e.entity_id), device_id: (e.device_id as string | null) ?? null, area_id: (e.area_id as string | null) ?? null, name: (e.name as string | null) ?? null, original_name: (e.original_name as string | null) ?? null,
   platform: String(e.platform ?? ''), entity_category: (e.entity_category as EntityRow['entity_category']) ?? null, disabled_by: (e.disabled_by as string | null) ?? null, hidden_by: (e.hidden_by as string | null) ?? null,
-  icon: (e.icon as string | null) ?? null, original_icon: (e.original_icon as string | null) ?? null, device_class: ((e.original_device_class ?? e.device_class) as string | null) ?? null, unit: (e.unit_of_measurement as string | null) ?? null, has_entity_name: e.has_entity_name === true,
+  icon: (e.icon as string | null) ?? null, original_icon: (e.original_icon as string | null) ?? null, device_class: ((e.original_device_class ?? e.device_class) as string | null) ?? null, unit: (e.unit_of_measurement as string | null) ?? null, has_entity_name: e.has_entity_name === true, labels: Array.isArray(e.labels) ? (e.labels as unknown[]).map(String) : [],
 });
 /** Live host over the authenticated `hass` object: registry via WebSocket (read-only), states from hass, commands via callService.
  * HA hands the panel a new `hass` on every state change, several times a second. One host lives as long as the panel and reads the current
@@ -75,7 +75,7 @@ export function liveHost(current: () => Hass): Host {
         // the floors only name the buildings of the Energy panel: an HA that will not say (older, no floors) is one building, never a failed load
         current().callWS<FloorRow[]>({ type: 'config/floor_registry/list' }).catch(() => [] as FloorRow[]),
       ]);
-      return { areas, devices: devices.map(d => ({ id: String(d.id), name: ((d.name_by_user ?? d.name) as string | null) ?? null, model: (d.model as string | null) ?? null, manufacturer: (d.manufacturer as string | null) ?? null, area_id: (d.area_id as string | null) ?? null, entry_type: (d.entry_type as string | null) ?? null, disabled_by: (d.disabled_by as string | null) ?? null, via_device_id: (d.via_device_id as string | null) ?? null } satisfies DeviceRow)), entities: entities.map(toRow), floors };
+      return { areas, devices: devices.map(d => ({ id: String(d.id), name: ((d.name_by_user ?? d.name) as string | null) ?? null, model: (d.model as string | null) ?? null, manufacturer: (d.manufacturer as string | null) ?? null, area_id: (d.area_id as string | null) ?? null, entry_type: (d.entry_type as string | null) ?? null, disabled_by: (d.disabled_by as string | null) ?? null, via_device_id: (d.via_device_id as string | null) ?? null, labels: Array.isArray(d.labels) ? (d.labels as unknown[]).map(String) : [] } satisfies DeviceRow)), entities: entities.map(toRow), floors };
     },
     async call(domain, service, data) { await current().callService(domain, service, data); },
     ws: <T,>(message: Record<string, unknown>) => current().callWS<T>(message),
