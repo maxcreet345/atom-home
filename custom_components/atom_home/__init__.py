@@ -30,7 +30,7 @@ from .air_tasks import AirTasks
 from .alarms import AlarmScheduler, normalise_alarms
 from .config_state import ConfigState, ConfigWriteError
 from .const import (
-    CLIENT_FEATURE_COMPOSITION, CLIENT_FEATURE_ROOM_FEED, DOMAIN, FRONTEND_FILE, MAX_PHOTO_BYTES, PANEL_ICON, PANEL_TITLE, PANEL_URL_PATH, PHOTOS_DIR, PHOTOS_URL, STATIC_URL, STORAGE_KEY, STORAGE_VERSION,
+    CLIENT_FEATURE_COMPOSITION, CLIENT_FEATURE_ROOM_FEED, CLIENT_FEATURE_TARIFF, DOMAIN, FRONTEND_FILE, MAX_PHOTO_BYTES, PANEL_ICON, PANEL_TITLE, PANEL_URL_PATH, PHOTOS_DIR, PHOTOS_URL, STATIC_URL, STORAGE_KEY, STORAGE_VERSION,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -239,7 +239,7 @@ def _register_ws(hass: HomeAssistant) -> None:
         config = dict(state.config or {"schemaVersion": 1, "home": {"name": "Мой дом", "language": "ru", "theme": "light"}, "rooms": {}, "devices": {}, "entities": {}, "buttons": [], "sections": {}, "modules": {}})
         config["alarms"] = alarms
         try:
-            revision = await state.write(config, msg.get("expected_revision"), [CLIENT_FEATURE_COMPOSITION, CLIENT_FEATURE_ROOM_FEED])  # only `alarms` changes: every stored field is kept
+            revision = await state.write(config, msg.get("expected_revision"), [CLIENT_FEATURE_COMPOSITION, CLIENT_FEATURE_ROOM_FEED, CLIENT_FEATURE_TARIFF])  # only `alarms` changes: every stored field is kept
         except ConfigWriteError as err:
             connection.send_error(msg["id"], err.code, err.message)
             return

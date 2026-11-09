@@ -11,6 +11,9 @@ export interface Alarm { id: string; room: string; time: string; days: number[];
 export const ALARM_FADE = [0, 5, 10, 15, 20, 30] as const;
 export const ALARM_REPEAT_EVERY = [3, 5, 10] as const;
 export interface CustomButton { id: string; label: string; icon?: string; roomId?: string; service: string; target?: Record<string, unknown>; data?: Record<string, unknown>; confirm: boolean }
+/** One electricity price of the Energy panel (owner, 09.11.2026): lei per kWh as billed, from a local calendar day until the next entry.
+ * A past period is priced by the tariff of its own time: a month at 3 lei and 100 kWh is 300 lei, the month after a rise to 4 lei is 400. */
+export interface Tariff { from: string; lei: number }
 export interface HouseConfig {
   schemaVersion: 1;
   home: { name: string; logo?: string | null; language: Language; theme: 'light' | 'dark' };
@@ -21,9 +24,10 @@ export interface HouseConfig {
   sections: Partial<Record<Section, { hidden?: boolean }>>;
   modules: Record<string, ModuleOverride>;
   alarms: Alarm[];
+  energy: { tariffs: Tariff[] };
 }
 export function defaultConfig(name = 'Мой дом'): HouseConfig {
-  return { schemaVersion: 1, home: { name, logo: null, language: 'ru', theme: 'light' }, rooms: {}, devices: {}, entities: {}, buttons: [], sections: {}, modules: {}, alarms: [] };
+  return { schemaVersion: 1, home: { name, logo: null, language: 'ru', theme: 'light' }, rooms: {}, devices: {}, entities: {}, buttons: [], sections: {}, modules: {}, alarms: [], energy: { tariffs: [] } };
 }
 const plain = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const SAFE_KEY = /^[\w.:\-]{1,128}$/;
@@ -58,6 +62,7 @@ export function normaliseConfig(input: unknown): { config: HouseConfig; warnings
     out.buttons.push(compact({ id: b.id, label: b.label.slice(0, 60), icon: str(b.icon, 40), roomId: str(b.roomId), service: b.service, target: plain(b.target) ? b.target : undefined, data: plain(b.data) ? b.data : undefined, confirm: b.confirm !== false }) as unknown as CustomButton);
   }
   out.alarms = normaliseAlarms(input.alarms);
+  out.energy = { tariffs: normaliseTariffs(plain(input.energy) ? input.energy.tariffs : undefined) };
   if (plain(input.sections)) for (const [k, v] of Object.entries(input.sections)) if (plain(v) && typeof v.hidden === 'boolean') (out.sections as Record<string, { hidden?: boolean }>)[k] = { hidden: v.hidden };
   return { config: out, warnings };
 }
@@ -76,4 +81,19 @@ export function normaliseAlarms(raw: unknown): Alarm[] {
     out.push({ id: a.id, room: typeof a.room === 'string' ? a.room.slice(0, 64) : '', time: a.time, days, enabled: a.enabled !== false, label: typeof a.label === 'string' ? a.label.slice(0, 40) : '', alice: a.alice === 'tts' || a.alice === 'music' ? a.alice : 'off', phrase: typeof a.phrase === 'string' ? a.phrase.slice(0, 120) : '', station, light: a.light === true && !!lightEntity, lightEntity, fadeMin: (ALARM_FADE as readonly number[]).includes(a.fadeMin as number) ? a.fadeMin as number : 15, push: false, repeats: typeof a.repeats === 'number' && a.repeats >= 0 && a.repeats <= 10 ? Math.round(a.repeats) : 0, repeatEveryMin: (ALARM_REPEAT_EVERY as readonly number[]).includes(a.repeatEveryMin as number) ? a.repeatEveryMin as number : 5 });
   }
   return out;
+}
+
+const DAY_KEY = /^(\d{4})-(\d{2})-(\d{2})$/;
+/** The tariff history, sorted by day; a malformed entry is dropped, two on the same day keep the later one, a price is 0,0001–1000 lei. */
+export function normaliseTariffs(raw: unknown): Tariff[] {
+  if (!Array.isArray(raw)) return [];
+  const byDay = new Map<string, number>();
+  for (const t of raw.slice(0, 64)) {
+    if (!plain(t) || typeof t.from !== 'string' || typeof t.lei !== 'number' || !Number.isFinite(t.lei) || t.lei <= 0 || t.lei > 1000) continue;
+    const m = DAY_KEY.exec(t.from); if (!m) continue;
+    const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])], date = new Date(y, mo - 1, d);
+    if (date.getFullYear() !== y || date.getMonth() !== mo - 1 || date.getDate() !== d) continue;
+    byDay.set(t.from, Math.round(t.lei * 10000) / 10000);
+  }
+  return [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([from, lei]) => ({ from, lei }));
 }

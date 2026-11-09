@@ -1,7 +1,8 @@
 import type { Host, StatPeriod, StatRow } from '../runtime/host.ts';
 import type { EntityRef, HomeDevice } from './discover.ts';
 import { isElectric, isMains } from './energy.ts';
-import { feedColors, type Bucket, type EnergyReport, type FeedNetwork, type MeteredDevice, type Period, type Session, type Split } from './energy-report.ts';
+import { feedColors, priceAt, sum, type Bucket, type EnergyReport, type FeedNetwork, type MeteredDevice, type Period, type Rate, type Session, type Split } from './energy-report.ts';
+import type { Tariff } from './config.ts';
 /** Reading the Energy panel's period out of HA's statistics (owner, 08.11.2026). Read-only: two recorder queries, nothing is written. */
 const HOUR = 3600000, DAY = 24 * HOUR, FIVE = 300000;
 /** The start of the statistics row of `period` just before `t` (an hour, a day, a month). */
@@ -130,7 +131,13 @@ export function sessionsOf(rows: StatRow[], step: number): Session[] {
   if (cur) out.push(cur); void step;
   return out.filter(s => s.kwh >= 0.3).reverse();
 }
-export interface LoadInput { /** the charger's parent feed (config modules.energy.options.chargerOf) */ chargerOf?: string | null; channels: Channel[]; meters: Meter[]; period: Period; offset: number; now: number; tariff: number | null; grouped: boolean; /** the last charging sessions of this period: half and year read the charger's hours once, not on every refresh */ sessions?: Session[] | null; /** the first moment of the statistics (firstStatistics): a month's or a week's row starts before it */ first?: number | null }
+/** Premier Energy's regulated price for final consumers at low voltage (0,4 kV), lei per kWh; households pay no VAT on electricity (2026). ANRE
+ * decision nr. 459 of 29.07.2025 (Monitorul Oficial 01.08.2025): 359 bani; nr. 222 of 31.03.2026 (Monitorul Oficial 02.04.2026): 356 bani.
+ * The panel's figure until the owner writes his own in «Настройка → Энергия»; the request of 03.11.2026 for 464 bani is not approved. */
+export const ANRE_TARIFFS: Tariff[] = [{ from: '2025-08-01', lei: 3.59 }, { from: '2026-04-02', lei: 3.56 }];
+/** The config's tariff days as moments: each from its local midnight. */
+export const ratesOf = (tariffs: Tariff[]): Rate[] => tariffs.map(t => { const [y, m, d] = t.from.split('-').map(Number); return { from: new Date(y, m - 1, d).getTime(), lei: t.lei }; }).sort((a, b) => a.from - b.from);
+export interface LoadInput { /** the charger's parent feed (config modules.energy.options.chargerOf) */ chargerOf?: string | null; channels: Channel[]; meters: Meter[]; period: Period; offset: number; now: number; /** the price of a kWh: the panel's own history (config energy.tariffs), HA's Energy settings' one price, or null for ANRE's figures */ tariff: Rate[] | number | null; grouped: boolean; /** the last charging sessions of this period: half and year read the charger's hours once, not on every refresh */ sessions?: Session[] | null; /** the first moment of the statistics (firstStatistics): a month's or a week's row starts before it */ first?: number | null }
 /** Network min/max per day for the short periods; a month per row for the long ones (only the lowest and highest count; half a year of days,
  * re-read every 5 minutes, was 0,5 MB, and a week's row began on the Monday before the half). */
 const NET: Record<Period, StatPeriod> = { day: 'day', week: 'day', month: 'day', half: 'month', year: 'month' };
@@ -238,7 +245,13 @@ export async function loadReport(host: Host, x: LoadInput): Promise<EnergyReport
   if (typeof monthKwh === 'number') { const m = range('month', 0, x.now); month = { start: m.start, end: m.end, kwh: monthKwh }; }
   // the spare SPM channel (live check 08.11.2026: «Канал 4», nothing on it) is left out while it counts nothing and no room hangs on it; a charger stays
   const counted = (k: string) => buckets.reduce((a, b) => a + (b.v[k] ?? 0), 0), shownFeeds = feeds.filter(f => f.charger || counted(f.key) >= 0.005 || x.meters.some(m => m.feed === f.key));
-  return { period: x.period, offset: x.offset, start, end, now: x.now, feeds: shownFeeds, network: network.filter(n => shownFeeds.some(f => f.key === n.feed)), tariff: { lei: x.tariff ?? 3, assumed: x.tariff === null }, power: null, buckets, curve, previous, devices, grouped: x.grouped, sessions, month, dataFrom, silentSince };
+  // the price of a kWh (owner, 09.11.2026): the panel's own history first, then HA's Energy settings (one price), then ANRE's figures for Premier
+  // Energy until the owner writes his own. Each bar is billed at the price of its own start; `lei` is the period's average price for the shares
+  // that have no bars of their own (devices, rooms, the daily average)
+  const own = Array.isArray(x.tariff) && x.tariff.length > 0, rates: Rate[] = own ? x.tariff as Rate[] : typeof x.tariff === 'number' ? [{ from: 0, lei: x.tariff }] : ratesOf(ANRE_TARIFFS);
+  const usedKwh = buckets.reduce((a, b) => a + sum(b.v), 0), spent = buckets.reduce((a, b) => a + priceAt(rates, b.at) * sum(b.v), 0);
+  const tariff: EnergyReport['tariff'] = { rates, lei: usedKwh > 0.005 ? Math.round(spent / usedKwh * 1e6) / 1e6 : priceAt(rates, x.now), assumed: !own && typeof x.tariff !== 'number', source: own ? 'panel' : typeof x.tariff === 'number' ? 'ha' : 'anre' };
+  return { period: x.period, offset: x.offset, start, end, now: x.now, feeds: shownFeeds, network: network.filter(n => shownFeeds.some(f => f.key === n.feed)), tariff, power: null, buckets, curve, previous, devices, grouped: x.grouped, sessions, month, dataFrom, silentSince };
 }
 /** The charging sessions a refresh of half a year or a year keeps instead of reading the charger's hours again: only the same period that still
  * starts where it did (offset 0 is another year after 1 January, another half after 1 July: last year's sessions stood under «2027»). */

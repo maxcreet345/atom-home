@@ -73,7 +73,7 @@ test('the report: bars from the statistics, the same stretch before, devices and
   assert.equal(r.buckets[13].future, true); assert.equal(r.buckets[12].future, false);
   assert.deepEqual(r.previous, { entrance_spm_apt9: 4, entrance_spm_apt8: 4, entrance_spm_ev: 4 });
   const rooms = byRoom(r, 'entrance_spm_apt9'); assert.equal(rooms.rooms[0].kwh, 0.5); assert.ok(Math.abs(rooms.rest - 2) < 1e-9);
-  assert.equal(r.tariff.assumed, true); assert.equal(r.tariff.lei, 3, 'the owner: an assumed 3,00 lei per kWh until Premier Energy');
+  assert.equal(r.tariff.assumed, true); assert.equal(r.tariff.lei, 3.56, 'no tariff of the owner\'s: ANRE\'s 3,56 lei per kWh (02.04.2026) until he writes one'); assert.equal(r.tariff.source, 'anre');
   assert.equal(r.month?.kwh, 120); assert.ok(forecast(r)!.kwh > 120);
   assert.deepEqual(r.network.map(n => n.feed), ['entrance_spm_apt9', 'entrance_spm_apt8'], 'the charger shares apartment 8\'s line: no network row of its own');
 });
@@ -438,4 +438,38 @@ test('HA\'s Energy settings pick the channels and the tariff; the car is billed 
   const now = new Date(2026, 10, 8, 12).getTime(), day = range('day', 0, now), h = (hr: number, change: number): StatRow => ({ start: day.start + hr * 3600000, end: day.start + (hr + 1) * 3600000, change });
   const r = await loadReport(fakeHost({ 'sensor.entrance_spm_apt8_energy_today@hour': [h(1, 1)], 'sensor.entrance_spm_ev_energy_today@hour': [h(2, 3)] }), { channels: prefChannels(all, prefs), meters: [], period: 'day', offset: 0, now, tariff: 2.95, chargerOf: 'entrance_spm_apt8', grouped: false });
   assert.equal(r.feeds.find(f => f.charger)?.partOf, 'entrance_spm_apt8'); assert.equal(r.tariff.lei, 2.95); assert.equal(r.tariff.assumed, false);
+});
+test('the tariff (owner, 09.11.2026): each bar at the price of its own time — a month at 3 lei and 100 kWh is 300, the next at 4 lei is 400', async () => {
+  const { ANRE_TARIFFS, ratesOf } = await import('../src/model/energy-load.ts');
+  const { cost, costOf, priceAt, lei } = await import('../src/model/energy-report.ts');
+  const rates = ratesOf([{ from: '2026-11-01', lei: 4 }, { from: '2025-01-01', lei: 3 }]);
+  assert.deepEqual(rates.map(r => r.lei), [3, 4], 'sorted by day whatever the order written');
+  assert.equal(priceAt(rates, new Date(2026, 9, 31, 23, 59).getTime()), 3); assert.equal(priceAt(rates, new Date(2026, 10, 1).getTime()), 4); assert.equal(priceAt(rates, new Date(2024, 0, 1).getTime()), 3, 'before the first entry: the first price');
+  // a year of months: October 100 kWh at 3 lei, November 100 kWh at 4 lei
+  const oct = new Date(2026, 9, 1).getTime(), nov = new Date(2026, 10, 1).getTime(), now = new Date(2026, 10, 9, 12).getTime();
+  const r = { buckets: [{ at: oct, v: { a: 60, b: 40 } }, { at: nov, v: { a: 70, b: 30 } }], tariff: { rates, lei: 3.5, assumed: false, source: 'panel' as const } };
+  assert.equal(cost(r), 700, '300 + 400'); assert.equal(cost(r, ['a']), 60 * 3 + 70 * 4); assert.equal(costOf(r, 10, oct), 30); assert.equal(costOf(r, 10, now), 40);
+  assert.equal(lei(100, r), 350, 'a share without bars of its own goes at the period\'s average price');
+  // the report: the panel's own rates, then HA's one price, then ANRE's figures (assumed) with the day's price in November 2026
+  const day = range('day', 0, now), h = (hr: number, change: number): StatRow => ({ start: day.start + hr * 3600000, end: day.start + (hr + 1) * 3600000, change });
+  const host = fakeHost({ 'sensor.entrance_spm_apt8_energy_today@hour': [h(1, 2)], 'sensor.entrance_spm_apt9_energy_today@hour': [h(2, 3)], 'sensor.entrance_spm_ev_energy_today@hour': [h(3, 0)] }), chs = channels([SPM], new Set());
+  const own = await loadReport(host, { channels: chs, meters: [], period: 'day', offset: 0, now, tariff: rates, grouped: false });
+  assert.deepEqual([own.tariff.source, own.tariff.assumed, own.tariff.lei, cost(own)], ['panel', false, 4, 20]);
+  const ha = await loadReport(host, { channels: chs, meters: [], period: 'day', offset: 0, now, tariff: 2.95, grouped: false });
+  assert.deepEqual([ha.tariff.source, ha.tariff.assumed, ha.tariff.lei, Math.round(cost(ha) * 100) / 100], ['ha', false, 2.95, 14.75]);
+  const anre = await loadReport(host, { channels: chs, meters: [], period: 'day', offset: 0, now, tariff: null, grouped: false });
+  assert.deepEqual([anre.tariff.source, anre.tariff.assumed, anre.tariff.lei, anre.tariff.rates.length], ['anre', true, 3.56, 2], 'ANRE: 3,56 lei from 2 April 2026');
+  assert.deepEqual(ANRE_TARIFFS, [{ from: '2025-08-01', lei: 3.59 }, { from: '2026-04-02', lei: 3.56 }]);
+  // a month across a change: the average price is weighted by the energy, the forecast goes at today's price
+  const mid = new Date(2026, 10, 5).getTime(), r2 = { buckets: [{ at: oct, v: { a: 100 } }, { at: nov, v: { a: 100 } }], tariff: { rates: ratesOf([{ from: '2026-10-01', lei: 3 }, { from: '2026-11-01', lei: 4 }]), lei: 0, assumed: false, source: 'panel' as const } };
+  assert.equal(cost(r2) / 200, 3.5); void mid;
+});
+test('the tariff in the config: sorted, one per day, malformed dropped; an old config without it reads as no tariff', async () => {
+  const { normaliseConfig, normaliseTariffs } = await import('../src/model/config.ts');
+  assert.deepEqual(normaliseTariffs([{ from: '2026-04-02', lei: 3.56 }, { from: '2025-08-01', lei: 3.59 }, { from: '2026-04-02', lei: 3.6 }, { from: '2026-02-30', lei: 3 }, { from: '2026-01-01', lei: -1 }, { from: 20260101, lei: 3 }, { from: '2026-01-01' }, 'x']),
+    [{ from: '2025-08-01', lei: 3.59 }, { from: '2026-04-02', lei: 3.6 }], 'the later entry of a day wins, 30 February is no day');
+  assert.deepEqual(normaliseConfig({ schemaVersion: 1 }).config.energy, { tariffs: [] });
+  assert.deepEqual(normaliseConfig({ schemaVersion: 1, energy: { tariffs: [{ from: '2026-11-09', lei: 4.123456 }] } }).config.energy.tariffs, [{ from: '2026-11-09', lei: 4.1235 }]);
+  const { ru } = await import('../src/i18n/ru.ts'), { en } = await import('../src/i18n/en.ts'), { ro } = await import('../src/i18n/ro.ts');
+  for (const d of [ru, en, ro]) for (const k of ['ep.tariff', 'ep.tariff.set', 'ep.tariff.ha', 'ep.tariff.until', 'ep.tariff.from', 'setup.tariff.now', 'setup.tariff.item'] as const) assert.ok(!/\d? (лей|lei)/.test((d as Record<string, string>)[k]) && / (лей|lei)/.test((d as Record<string, string>)[k]), `${k}: the lei never part from their number`);
 });

@@ -8,8 +8,9 @@ import { Icon } from './primitives.tsx';
 import { Tick } from './motion.tsx';
 import { energyText, powerText } from '../model/energy.ts';
 import type { FloorRow } from '../model/registry.ts';
-import { channels as findChannels, feedOfStat, gridIds, prefChannels, prefName, shortName, prefTariff, type EnergyPrefs, firstStatistics, keptSessions, loadReport, meters as findMeters, range } from '../model/energy-load.ts';
-import { PERIODS, UNASSIGNED, failedLoad, type LoadState, axis, barAverage, byRoom, change, counted, daysElapsed, forecast, lei, pick as pickSum, sum, totals, type Bucket, type EnergyReport, type FeedInfo, type Period, type Split } from '../model/energy-report.ts';
+import { channels as findChannels, feedOfStat, gridIds, prefChannels, prefName, shortName, prefTariff, ratesOf, type EnergyPrefs, firstStatistics, keptSessions, loadReport, meters as findMeters, range } from '../model/energy-load.ts';
+import type { Tariff } from '../model/config.ts';
+import { PERIODS, UNASSIGNED, failedLoad, type LoadState, axis, barAverage, byRoom, change, cost, costOf, counted, daysElapsed, forecast, lei, pick as pickSum, sum, totals, type Bucket, type EnergyReport, type FeedInfo, type Period, type Split } from '../model/energy-report.ts';
 /** The Energy panel (owner, 08.11.2026, approved from the mock): the period and its lei on top, one big animated chart of the house feed split
  * by the SPM's channels, the channels side by side, each apartment by room and device, the comparison and the month's forecast, the network
  * quality of each input and the car's charging sessions. Read-only: nothing here switches anything, the SPM's relays stay off it. */
@@ -21,8 +22,8 @@ function useWidth<E extends HTMLElement>() {
   useLayoutEffect(() => { const el = ref.current; if (!el) return; const read = () => setW(el.clientWidth); read(); const ro = new ResizeObserver(read); ro.observe(el); return () => ro.disconnect(); }, []);
   return [ref, w] as const;
 }
-export interface EnergyPanelProps { /** the feed the car's charger is billed with (config modules.energy.options.chargerOf) */ chargerOf?: string | null; host: Host; devices: HomeDevice[]; boilers: Set<string>; feedOfRoom: (roomId: string) => string | null; /** the feeds the rooms are assigned to in the config (rooms.<area>.feed) */ roomFeeds: string[]; roomName: (id: string) => string; nameOf: (d: HomeDevice) => string; onDevice: (key: string) => void; t: T; lang: Lang; fallback: ComponentChildren; /** HA's floors: the buildings the feeds are in (Atom + Okapi, 09.11.2026); one or none = no buildings card */ floors?: FloorRow[]; floorOfArea?: (areaId: string | null) => string | null }
-export function EnergyPanel({ chargerOf = null, host, devices, boilers, feedOfRoom, roomFeeds, roomName, nameOf, onDevice, t, lang, fallback, floors = [], floorOfArea = () => null }: EnergyPanelProps) {
+export interface EnergyPanelProps { /** the feed the car's charger is billed with (config modules.energy.options.chargerOf) */ chargerOf?: string | null; /** the panel's own electricity price history (config energy.tariffs); empty: HA's Energy settings' price, then ANRE's figures */ tariffs?: Tariff[]; host: Host; devices: HomeDevice[]; boilers: Set<string>; feedOfRoom: (roomId: string) => string | null; /** the feeds the rooms are assigned to in the config (rooms.<area>.feed) */ roomFeeds: string[]; roomName: (id: string) => string; nameOf: (d: HomeDevice) => string; onDevice: (key: string) => void; t: T; lang: Lang; fallback: ComponentChildren; /** HA's floors: the buildings the feeds are in (Atom + Okapi, 09.11.2026); one or none = no buildings card */ floors?: FloorRow[]; floorOfArea?: (areaId: string | null) => string | null }
+export function EnergyPanel({ chargerOf = null, tariffs = [], host, devices, boilers, feedOfRoom, roomFeeds, roomName, nameOf, onDevice, t, lang, fallback, floors = [], floorOfArea = () => null }: EnergyPanelProps) {
   const [period, setPeriod] = useState<Period>('day'), [offset, setOffset] = useState(0), [state, setState] = useState<LoadState | null>(null);
   // first: undefined until firstStatistics answers (the report waits for it: a month's row starts on the 1st whatever day the statistics began);
   // a failed read gives the report null (nothing limited) and is asked again with every refresh, «Повторить» and after the next good report
@@ -46,16 +47,16 @@ export function EnergyPanel({ chargerOf = null, host, devices, boilers, feedOfRo
   const meters = useMemo(() => prefs ? findMeters(devices, boilers, { name: d => prefName(prefs.raw, [...d.metrics, ...d.parameters].map(m => m.id)) ?? nameOf(d), room: d => roomName(d.roomId), feed: d => { const f = feedOfStat(chs, prefs.raw, [...d.metrics, ...d.parameters].map(m => m.id)) ?? feedOfRoom(d.roomId); return f && feedKeys.has(f) ? f : null; }, parents: prefs.parents, listed: prefs.listed, grid }) : [], [devices, boilers, parentsKey, nameOf, roomName, feedOfRoom, feedKeys, chKey]);
   // a feed is a group when rooms are assigned to it or HA's Energy settings put metered devices inside it
   const feedSet = new Set([...roomFeeds, ...meters.map(m => m.feed).filter((f): f is string => !!f)].filter(f => feedKeys.has(f))), grouped = feedSet.size > 0, meterKey = meters.map(m => `${m.id}:${m.feed ?? ''}:${m.room}`).join(' ');
-  const key = `${period}${offset}`;
+  const key = `${period}${offset}`, tariffKey = tariffs.map(x => `${x.from}:${x.lei}`).join(' ');
   useEffect(() => { if (firstState?.key === chKey && !firstState.failed) return; let alive = true;
     firstStatistics(host, chs, Date.now()).then(v => { if (alive) setFirst({ key: chKey, v, failed: false }); }, () => { if (alive) setFirst(s => ({ key: chKey, v: s?.key === chKey ? s.v : null, failed: true })); });
     return () => { alive = false; }; }, [host, chKey, tick, firstAgain]);
   useEffect(() => { if (!host.statistics || !chs.length || parentsKey === null || firstRead === undefined) return; let alive = true;
     // a period still starting where it did keeps its sessions; offset 0 after 1 January (1 July) is another year (half): read again
     const at = Date.now(), sessions = keptSessions(last.current, period, offset, at);
-    loadReport(host, { channels: chs, meters, period, offset, now: at, tariff: prefTariff(prefs?.raw ?? null, id => host.states()[id]?.state), chargerOf, grouped, sessions, first: firstRead }).then(report => { if (alive) { last.current = report; setState({ key, report }); if (firstFailed.current) setFirstAgain(n => n + 1); } },
+    loadReport(host, { channels: chs, meters, period, offset, now: at, tariff: tariffs.length ? ratesOf(tariffs) : prefTariff(prefs?.raw ?? null, id => host.states()[id]?.state), chargerOf, grouped, sessions, first: firstRead }).then(report => { if (alive) { last.current = report; setState({ key, report }); if (firstFailed.current) setFirstAgain(n => n + 1); } },
       () => { if (!alive) return; const attempt = ++attempts.current, at = Date.now(); setState(s => failedLoad(s, key, attempt, at)); });
-    return () => { alive = false; }; }, [host, chKey, meterKey, period, offset, parentsKey, tick, grouped, firstRead]);
+    return () => { alive = false; }; }, [host, chKey, meterKey, period, offset, parentsKey, tick, grouped, firstRead, tariffKey]);
   // every 5 minutes while shown; a kiosk screen that comes back after the night (no tick while hidden) reads at once if the figures are older than
   // that or from another day, instead of showing yesterday under «Сегодня» until the next tick
   useEffect(() => { if (offset !== 0) return; const timer = setInterval(() => { if (!document.hidden) setTick(n => n + 1); }, REFRESH);
@@ -105,13 +106,13 @@ export function EnergyPanel({ chargerOf = null, host, devices, boilers, feedOfRo
     {head}
     <section className="at-ep-card at-ep-hero" key={`h${key}`}>
       <div className="at-ep-used"><small>{t('ep.used')}</small><span className="at-ep-big"><Tick value={energyText(all, fmt).value} /><i>kWh</i></span>
-        <span className="at-ep-money">≈&nbsp;{money(lei(all, report))}</span>{deltaBadge(true)}
+        <span className="at-ep-money">≈&nbsp;{money(cost(report))}</span>{deltaBadge(true)}
       </div>
       {live && <div className="at-ep-now"><small><i className={`at-ep-live${liveOk ? '' : ' is-off'}`} />{t('ep.now')}</small>{liveOk ? <><span className="at-ep-big is-now"><Tick value={powerText(sum(live), fmt).value} /><i>{powerText(sum(live), fmt).unit}</i></span>
         <span className="at-ep-now-feeds">{feeds.map(f => { const p = powerText(live[f.key], fmt); return <span><i style={`--c:${f.color}`} />{f.short} <b>{`${p.value}\u00a0${p.unit}`}</b></span>; })}</span></> : <span className="at-ep-big is-now is-off">—<i>{t('overview.energy.offline')}</i></span>}
       </div>}
       {carried && <p className="at-ep-note at-ep-carried"><span aria-hidden="true">*&nbsp;</span>{`${bucketName(report, carriedAt, loc)}: ${t('ep.carried')}`}</p>}
-      {report.tariff.assumed && <p className="at-ep-note">{t('ep.tariff', { v: fmt(report.tariff.lei, 2) })}</p>}
+      <p className="at-ep-note at-ep-tariff" data-tariff={report.tariff.source}>{tariffNote(report, t, fmt, loc)}</p>
     </section>
     <Buildings floors={floors} feeds={feeds} chs={chs} tot={tot} live={liveOk ? live : null} floorOfArea={floorOfArea} report={report} t={t} fmt={fmt} kwh={kwh} money={money} />
     <section className="at-ep-card at-ep-chart">
@@ -126,8 +127,8 @@ export function EnergyPanel({ chargerOf = null, host, devices, boilers, feedOfRo
     {/* a feed billed with another (the car with apartment 8) is inside its block, not beside it: the block is the bill */}
     <div className={`at-ep-feeds is-${Math.min(feeds.filter(f => !f.partOf).length, 4)}`}>{feeds.filter(f => !f.partOf).map(f => { const kids = feeds.filter(k => k.partOf === f.key), keys = [f.key, ...kids.map(k => k.key)], v = keys.reduce((a, k) => a + (tot[k] ?? 0), 0); return <section className="at-ep-card at-ep-feed" style={`--c:${f.color}`} key={`${f.key}${key}`}>
       <span className="at-ep-feed-head"><i /><span className="at-ep-feed-name">{f.name}</span><small>{all ? t('ep.share', { n: fmt(v / all * 100, 0) }) : ''}</small></span>
-      <span className="at-ep-feed-num"><b>{energyText(v, fmt).value}</b>{'\u00a0'}kWh</span><span className="at-ep-money">≈&nbsp;{money(lei(v, report))}</span>
-      {kids.map(k => <span className="at-ep-feed-part" style={`--c:${k.color}`}><i />{t('ep.including', { name: k.name })}<b>{kwh(tot[k.key] ?? 0)}</b><small>≈&nbsp;{money(lei(tot[k.key] ?? 0, report))}</small></span>)}
+      <span className="at-ep-feed-num"><b>{energyText(v, fmt).value}</b>{'\u00a0'}kWh</span><span className="at-ep-money">≈&nbsp;{money(cost(report, keys))}</span>
+      {kids.map(k => <span className="at-ep-feed-part" style={`--c:${k.color}`}><i />{t('ep.including', { name: k.name })}<b>{kwh(tot[k.key] ?? 0)}</b><small>≈&nbsp;{money(cost(report, [k.key]))}</small></span>)}
       <Spark values={(report.curve && period === 'day' ? report.curve : report.buckets).filter(b => !b.future).map(b => keys.reduce((a, k) => a + (b.v[k] ?? 0), 0))} />
     </section>; })}</div>
     <Rooms report={report} group={g} groups={groups} setGroup={k => { setGroup(k); setPick(null); }} prefsOk={prefs?.ok !== false} carried={carried} t={t} fmt={fmt} kwh={kwh} money={money} onDevice={onDevice} />
@@ -143,6 +144,17 @@ export function EnergyPanel({ chargerOf = null, host, devices, boilers, feedOfRo
     </div>
     {report.sessions && <Sessions report={report} sessions={report.sessions} color={charger?.color ?? '#ff9f0a'} missed={missed > 0.3 ? missed : 0} t={t} loc={loc} kwh={kwh} money={money} fmt={fmt} />}
   </div>;
+}
+/** What a kWh cost in this period: ANRE's figure (and where to write one's own) until the owner has, HA's Energy settings' price, the owner's price
+ * with its day, or the changes inside the period, each with its day (owner, 09.11.2026: a past month at its own price). */
+function tariffNote(r: EnergyReport, t: T, fmt: Fmt, loc: string): string {
+  const rates = r.tariff.rates, start = Math.max(r.start, r.dataFrom ?? r.start), until = Math.min(r.now, r.end), day = (v: number) => dateLong(v, loc), price = (v: number) => fmt(v, 2);
+  if (r.tariff.source === 'ha') return t('ep.tariff.ha', { v: price(r.tariff.lei) });
+  const cur = rates.filter(x => x.from <= until).at(-1) ?? rates[0], at = rates.filter(x => x.from <= start).at(-1) ?? rates[0], inside = rates.filter(x => x.from > start && x.from < until);
+  if (!cur || !at) return '';
+  if (r.tariff.source === 'anre') return t('ep.tariff', { v: price(cur.lei), d: day(cur.from), path: `${t('section.settings')} → ${t('setup.energy')}` });
+  if (!inside.length) return t('ep.tariff.set', { v: price(at.lei), d: day(at.from) });
+  return t('ep.tariff.changed', { list: [t('ep.tariff.until', { v: price(at.lei), d: day(inside[0].from) }), ...inside.map(x => t('ep.tariff.from', { v: price(x.lei), d: day(x.from) }))].join(', ') });
 }
 const dateLong = (v: number, loc: string) => new Date(v).toLocaleDateString(loc, { day: 'numeric', month: 'long', year: 'numeric' }).replace(/\s*г\.$/, '');
 /** The first bar that counts: the one in which the statistics begin (none before it opens a reading). */
@@ -177,7 +189,7 @@ function Readout({ report, pick, hidden, hint, t, loc, kwh, money, fmt }: { repo
   // scrolled away); the sentence itself for a screen reader only: on a line of its own it moved the chart 31 px under the finger
   const b = report.buckets[pick], v = pickSum(b.v, shown.map(f => f.key));
   if (b.missing) return <p className="at-ep-readout is-gap" aria-live="polite"><strong>{bucketName(report, pick, loc)}</strong><span>{t('ep.gap')}</span></p>;
-  return <p className="at-ep-readout" aria-live="polite"><strong>{bucketName(report, pick, loc)}</strong><b>{kwh(v)}{b.carried && <span className="at-ep-mark" aria-hidden="true">*</span>}</b><span className="at-ep-money">≈&nbsp;{money(lei(v, report))}</span>{shown.map(f => <span><i style={`--c:${f.color}`} /><span className="at-vh">{f.name} </span>{kwh(b.v[f.key] ?? 0)}</span>)}{b.carried && <span className="at-vh">{t('ep.carried')}</span>}</p>;
+  return <p className="at-ep-readout" aria-live="polite"><strong>{bucketName(report, pick, loc)}</strong><b>{kwh(v)}{b.carried && <span className="at-ep-mark" aria-hidden="true">*</span>}</b><span className="at-ep-money">≈&nbsp;{money(costOf(report, v, b.at))}</span>{shown.map(f => <span><i style={`--c:${f.color}`} /><span className="at-vh">{f.name} </span>{kwh(b.v[f.key] ?? 0)}</span>)}{b.carried && <span className="at-vh">{t('ep.carried')}</span>}</p>;
 }
 const roundTop = (x: number, y: number, w: number, h: number, r: number) => { r = Math.min(r, w / 2, h); return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`; };
 /** The plot's frame: the unit once above the axis (a «1 000 kWh» tick ran past the card on a phone), the band above the plot keeps it and the average. */
@@ -262,7 +274,7 @@ function Buildings({ floors, feeds, chs, tot, live, floorOfArea, report, t, fmt,
   const rows = [...floors].sort((a, b) => (a.level ?? 0) - (b.level ?? 0)).map(f => { const keys = feeds.filter(x => floorOf(x.key) === f.floor_id).map(x => x.key); return { f, keys, v: keys.reduce((a, k) => a + (tot[k] ?? 0), 0), w: live && keys.length ? keys.reduce((a, k) => a + (live[k] ?? 0), 0) : null }; });
   return <section className="at-ep-card at-ep-buildings"><h3>{t('ep.buildings')}</h3><div className="at-ep-bld-list">{rows.map(r => <div className={`at-ep-bld${r.keys.length ? '' : ' is-none'}`}>
     <span className="at-ep-bld-name"><Icon name="home" size={18} /><b>{r.f.name}</b><small>{r.keys.length ? t('ep.bld.feeds', { n: r.keys.length }) : t('ep.bld.noMeter')}</small></span>
-    {r.keys.length ? <><span className="at-ep-bld-num"><b>{energyText(r.v, fmt).value}</b>{'\u00a0'}kWh<small>≈&nbsp;{money(lei(r.v, report))}{all ? ` · ${t('ep.share', { n: fmt(r.v / all * 100, 0) })}` : ''}</small></span>
+    {r.keys.length ? <><span className="at-ep-bld-num"><b>{energyText(r.v, fmt).value}</b>{'\u00a0'}kWh<small>≈&nbsp;{money(cost(report, r.keys))}{all ? ` · ${t('ep.share', { n: fmt(r.v / all * 100, 0) })}` : ''}</small></span>
       {r.w !== null && <span className="at-ep-bld-now"><i className="at-ep-live" />{(x => `${x.value}\u00a0${x.unit}`)(powerText(r.w, fmt))}</span>}</> : <span className="at-ep-bld-num is-none">—</span>}
   </div>)}</div></section>;
 }
@@ -307,12 +319,12 @@ function Sessions({ report, sessions, color, missed, t, loc, kwh, money, fmt }: 
   const [more, setMore] = useState(false), s = sessions, total = s.reduce((a, x) => a + x.kwh, 0), list = more ? s : s.slice(0, 5);
   const time = (v: number) => new Date(v).toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });
   return <section className="at-ep-card at-ep-sessions" style={`--c:${color}`}>
-    <div className="at-ep-rooms-head"><h3>{t('ep.sessions')}</h3>{s.length > 0 && <span className="at-ep-sessum">{t('ep.sessions.count', { n: s.length })} · {kwh(total)} · ≈&nbsp;{money(lei(total, report))}</span>}</div>
+    <div className="at-ep-rooms-head"><h3>{t('ep.sessions')}</h3>{s.length > 0 && <span className="at-ep-sessum">{t('ep.sessions.count', { n: s.length })} · {kwh(total)} · ≈&nbsp;{money(s.reduce((a, x) => a + costOf(report, x.kwh, x.start), 0))}</span>}</div>
     {missed > 0 && <p className="at-ep-note at-ep-missed">{t('ep.sessions.missed', { kwh: kwh(missed) })}</p>}
     {!s.length ? <p className="hm-muted">{t('ep.sessions.none')}</p> : <div className="at-ep-sess-list">{list.map(x => <div className="at-ep-sess">
       <span className="at-ep-sess-icon" aria-hidden="true"><Icon name="energy" size={16} /></span>
       <span className="at-ep-sess-when"><strong>{cap(new Date(x.start).toLocaleDateString(loc, { weekday: 'short', day: 'numeric', month: 'long' }))}</strong><small>{time(x.start)}–{time(x.end)} · {t('ep.hours', { v: fmt((x.end - x.start) / 3600000, 1) })} · {t('ep.upTo', { v: fmt(x.peakW / 1000, 1) })}</small></span>
-      <span className="at-ep-sess-sum"><b>{kwh(x.kwh)}</b><small>≈&nbsp;{money(lei(x.kwh, report))}</small></span>
+      <span className="at-ep-sess-sum"><b>{kwh(x.kwh)}</b><small>≈&nbsp;{money(costOf(report, x.kwh, x.start))}</small></span>
     </div>)}{s.length > 5 && <button type="button" className="hm-pill at-ep-more" aria-expanded={more} onClick={() => setMore(m => !m)}>{more ? t('ep.less') : t('ep.more', { n: s.length - 5 })}</button>}</div>}
   </section>;
 }

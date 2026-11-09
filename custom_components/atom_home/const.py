@@ -15,4 +15,6 @@ MAX_PHOTO_BYTES = 1536 * 1024
 CLIENT_FEATURE_COMPOSITION = "device_composition_v1"
 # A panel that keeps rooms.<area>.feed (the Energy panel's apartment split) declares this; 1.18.0 and older drop the field on save.
 CLIENT_FEATURE_ROOM_FEED = "room_feed_v1"
+# A panel that keeps energy.tariffs (the Energy panel's price history) declares this; 1.24.0 and older drop the field on save.
+CLIENT_FEATURE_TARIFF = "energy_tariff_v1"
 WIZARD_DEVICE_FIELDS = ("type", "composition", "layout", "module")

@@ -49,7 +49,7 @@ test('haStore sends the revision it read and advances it after each confirmed sa
   await s.save(named('one')); await s.save(named('two'));
   assert.deepEqual(f.calls.filter(c => c.type === 'atom_home/config/set').map(c => c.expected_revision), [4, 5]);
   const features = f.calls.filter(c => c.type === 'atom_home/config/set').map(c => c.client_features);
-  assert.deepEqual(features, [['room_feed_v1'], ['room_feed_v1']], 'it keeps rooms.<area>.feed and says so, or a server holding a feed refuses it as outdated');
+  assert.deepEqual(features, [['room_feed_v1', 'energy_tariff_v1'], ['room_feed_v1', 'energy_tariff_v1']], 'it keeps rooms.<area>.feed and energy.tariffs and says so, or a server holding them refuses it as outdated');
   assert.ok(features.every(list => !(list as string[]).includes('device_composition_v1')), 'release 0 does not claim to keep wizard fields');
 });
 

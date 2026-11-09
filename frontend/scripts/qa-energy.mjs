@@ -233,7 +233,7 @@ await state('offline', async page => { const now = await page.locator('.at-ep-no
 await state('now', async page => {
   const sections = { periods: await page.locator('.at-ep-periods button').count(), money: await page.locator('.at-ep-hero .at-ep-money').count(), badge: await page.locator('.at-ep-hero .at-ep-delta').count(), chart: await page.locator('.at-ep-chart svg').count(), feeds: await page.locator('.at-ep-feed').count(), rooms: await page.locator('.at-ep-rooms .ah-segments button').count(), forecast: await page.locator('.at-ep-compare .at-ep-row.is-strong').count(), net: await page.locator('.at-ep-netrow').count(), sessions: await page.locator('.at-ep-sessions').count() };
   check('the layout approved on 08.11.2026: 5 periods, hero with lei and badge, chart, a block per bill (the car inside apartment 8, owner 09.11.2026), rooms per apartment, forecast, network, sessions', JSON.stringify(sections) === JSON.stringify({ periods: 5, money: 1, badge: 1, chart: 1, feeds: 2, rooms: 2, forecast: 1, net: 2, sessions: 1 }), sections);
-  check('the assumed tariff 3,00 lei, labelled', /Тариф условный: 3,00\u00a0лей за kWh/.test(await page.locator('.at-ep-hero .at-ep-note').textContent()));
+  check('no tariff of the owner\'s: ANRE\'s figure for Premier Energy, its day, where to write one\'s own', /^Тариф по данным ANRE для Premier Energy: 3,56\u00a0лей за kWh с 2 апреля 2026, без НДС\. Свой тариф: Настройка → Энергия$/.test(await page.locator('.at-ep-tariff').textContent()) && await page.locator('.at-ep-tariff').getAttribute('data-tariff') === 'anre', await page.locator('.at-ep-tariff').textContent());
   check('a normal day: nothing said to hold a silent stretch', await page.locator('.at-ep-carried, .at-ep-bar.is-carried').count() === 0, await page.locator('.at-ep-carried').allTextContents());
   const relays = await page.evaluate(() => [...document.querySelectorAll('.at-ep .hm-switch, .at-ep [role=switch], .at-ep button')].filter(b => b.matches('.hm-switch, [role=switch]') || /включ|выключ|реле|relay|turn (on|off)/i.test(b.textContent)).length); check('no relay buttons on the panel', relays === 0, relays);
   check('the panel opened on #energy takes focus on its title', await page.evaluate(() => document.activeElement === document.querySelector('.at-ep-nav h2')));
@@ -340,6 +340,46 @@ await state('now', async page => {
   check('no command after every control', (await commands(page)) === 0);
 });
 await state('now', async page => { const a = await page.evaluate(() => getComputedStyle(document.querySelector('.at-ep-bar, .at-ep-draw')).animationName); check('reduced motion: a fade only', /fade|none/.test(a), a); }, { reduced: true });
+// the owner's rule (09.11.2026): a past month is billed at the tariff of its own time; the year names the change; the settings keep the history
+await state('tariff', async page => {
+  const note = () => page.locator('.at-ep-tariff').textContent(), money = async () => ru2(await page.locator('.at-ep-hero .at-ep-money').textContent());
+  const n = new Date(), m1 = new Date(n.getFullYear(), n.getMonth(), 1).getTime(), m0 = new Date(n.getFullYear(), n.getMonth() - 1, 1).getTime(), y0 = new Date(n.getFullYear(), 0, 1).getTime(), day1 = new Date(m1).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }).replace(/\s*г\.$/, '');
+  check('the panel\'s own tariff is named with its day', (await note()) === `Тариф 4,00 лей за kWh с ${day1}` && await page.locator('.at-ep-tariff').getAttribute('data-tariff') === 'panel', await note());
+  await page.click('.at-ep-periods button:nth-child(3)'); await page.waitForSelector('.at-ep[data-period="month"] .at-ep-hero'); await page.waitForTimeout(600);
+  const kwhNow = await truth(page, [m1, Date.now()]), leiNow = await money(); check('this month at 4 lei', Math.abs(leiNow - kwhNow * 4) <= Math.max(1, kwhNow * 4 * 0.012), { kwhNow, leiNow });
+  await page.click('.at-ep-step'); await page.waitForSelector('.at-ep[data-period="month"] .at-ep-hero'); await page.waitForTimeout(600);
+  const kwhPrev = await truth(page, [m0, m1]), leiPrev = await money(); check('last month at 3 lei, the tariff of its own time', Math.abs(leiPrev - kwhPrev * 3) <= Math.max(1, kwhPrev * 3 * 0.012), { kwhPrev, leiPrev });
+  check('last month\'s note names its own price', /^Тариф 3,00 лей за kWh с 1 января 2025$/.test(await note()), await note());
+  await page.click('.at-ep-periods button:nth-child(5)'); await page.waitForSelector('.at-ep[data-period="year"] .at-ep-hero'); await page.waitForTimeout(800);
+  check('the year names the change with its day', (await note()) === `Тариф за kWh менялся: 3,00 лей до ${day1}, с ${day1} — 4,00 лей`, await note());
+  const before = await truth(page, [y0, m1]), after = await truth(page, [m1, Date.now()]), leiYear = await money(); check('the year: the months before at 3 lei, this one at 4', Math.abs(leiYear - (before * 3 + after * 4)) <= (before * 3 + after * 4) * 0.012, { before, after, leiYear });
+  const bar = page.locator('.at-ep-bar').nth(n.getMonth() - 1); await bar.click(); await page.waitForTimeout(200); const read = await page.locator('.at-ep-readout').textContent(), readKwh = ru2(read.match(/([\d\s ]+(?:,\d+)?) kWh/)[1]), readLei = ru2(read.match(/([\d\s ]+(?:,\d+)?) лей/)[1]);
+  check('a past month\'s bar reads at its own price', Math.abs(readLei - readKwh * 3) <= Math.max(1, readKwh * 3 * 0.012), { read, readKwh, readLei });
+});
+{ // Настройка → Энергия: ANRE's figures offered until the owner writes his own; a row per change, saved to the config, read by the panel
+  const { page, ctx, errors } = await open({ hash: '#setup' });
+  await page.evaluate(() => [...document.querySelectorAll('.at-setup-tabs button')].find(b => b.innerText.trim() === 'Энергия')?.click()); await page.waitForTimeout(400);
+  check('the Energy tab opens the tariff page', await page.locator('.at-setup-tariff').count() === 1);
+  const status = () => page.locator('.at-tariff-now').textContent();
+  check('no tariff yet: ANRE named with both figures and their days', /ANRE/.test(await status()) && /3,59 лей с 1 августа 2025, 3,56 лей с 2 апреля 2026/.test(await status()), await status());
+  check('tariff page a11y', (await runAxe(page, '.at-setup')).length === 0, await runAxe(page, '.at-setup'));
+  await page.click('[data-action="use-anre"]'); await page.waitForTimeout(500);
+  const saved = () => page.evaluate(() => window.atomPreview.config.energy.tariffs);
+  check('ANRE\'s figures taken: two rows, in the config', await page.locator('[data-tariff-from]').count() === 2 && JSON.stringify(await saved()) === JSON.stringify([{ from: '2025-08-01', lei: 3.59 }, { from: '2026-04-02', lei: 3.56 }]), await saved());
+  check('the current one is named', /^Сейчас: 3,56 лей за kWh с 2 апреля 2026$/.test(await status()), await status());
+  const price = page.locator('[data-tariff-from="2026-04-02"] input[type=number]'); await price.fill('4'); await price.press('Tab'); await page.waitForTimeout(500);
+  check('a price edited is saved', (await saved()).at(-1).lei === 4 && /4,00 лей/.test(await status()), await saved());
+  const today = await page.evaluate(() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`; });
+  await page.click('[data-action="add-tariff"]'); await page.waitForTimeout(500); const list = await saved();
+  check('a change added today at the current price; a second one today cannot be added', list.length === 3 && list.at(-1).from === today && list.at(-1).lei === 4 && await page.locator('[data-action="add-tariff"]').isDisabled(), list);
+  await page.locator(`[data-tariff-from="${today}"] button.hm-pill`).click(); await page.waitForTimeout(500);
+  check('a change deleted', (await saved()).length === 2 && !(await page.locator('[data-action="add-tariff"]').isDisabled()));
+  const small = await page.evaluate(() => [...document.querySelectorAll('.at-setup-tariff button, .at-setup-tariff input')].filter(b => b.offsetWidth && b.offsetHeight < 40).map(b => `${(b.getAttribute('aria-label') || b.textContent || b.type).trim().slice(0, 18)} ${b.offsetWidth}x${b.offsetHeight}`));
+  check('tariff controls at least 40 px high (as the other setup fields)', small.length === 0, small);
+  await page.evaluate(() => { location.hash = '#energy'; }); await page.waitForSelector('.at-ep-hero'); await page.waitForTimeout(600);
+  check('the panel reads the saved tariff', (await page.locator('.at-ep-tariff').textContent()) === 'Тариф 4,00 лей за kWh с 2 апреля 2026' && await page.locator('.at-ep-tariff').getAttribute('data-tariff') === 'panel', await page.locator('.at-ep-tariff').textContent());
+  check('tariff page: no errors', errors.length === 0, errors); await ctx.close();
+}
 // 4. the tile on the home face, in every scenario and on the small tiles
 for (const scenario of ['now', 'charging', 'offline', 'oneSilent', 'fresh']) for (const [w, h] of [[1070, 764], [320, 640], [792, 360]]) { const { page, ctx, errors } = await open({ scenario, hash: '#home', w, h }); const l = await layout(page, '.at-energy-tile'); check(`tile layout ${scenario} ${w}x${h}`, !l.length, l); check(`tile errors ${scenario} ${w}x${h}`, !errors.length, errors); await ctx.close(); }
 { // the owner: now → today → month every 4 s; the tile's today and month are the panel's

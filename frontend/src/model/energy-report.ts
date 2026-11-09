@@ -14,10 +14,14 @@ export interface Bucket { at: number; future?: boolean; missing?: boolean; carri
 export interface MeteredDevice { key: string; feed: string | null; room: string; name: string; kwh: number }
 export interface FeedNetwork { feed: string; volts: number | null; voltsMin: number | null; voltsMax: number | null; amps: number | null; ampsMax: number | null; pf: number | null }
 export interface Session { start: number; end: number; kwh: number; peakW: number }
+/** One price of a kWh from a moment on (the local midnight of the owner's date) until the next one. */
+export interface Rate { from: number; lei: number }
 export interface EnergyReport {
   period: Period; offset: number; start: number; end: number; now: number;
   feeds: FeedInfo[];
-  tariff: { lei: number; assumed: boolean };
+  /** the price history in force (`rates`), the period's average price per kWh (`lei`, for shares without bars of their own) and where it came
+   * from: the panel's settings, HA's Energy settings (one flat price) or ANRE's figures for Premier Energy, used until the owner writes his own */
+  tariff: { rates: Rate[]; lei: number; assumed: boolean; source: 'panel' | 'ha' | 'anre' };
   power: Split | null;
   buckets: Bucket[];
   curve?: Bucket[];
@@ -41,6 +45,14 @@ export const pick = (s: Split, keys: string[]): number => keys.reduce((a, k) => 
 export function totals(r: Pick<EnergyReport, 'buckets' | 'feeds'>): Split {
   const t: Split = Object.fromEntries(r.feeds.map(f => [f.key, 0])); for (const b of r.buckets) for (const f of r.feeds) t[f.key] += b.v[f.key] ?? 0; return t;
 }
+/** The price of a kWh at `t`: the last rate that began by then; before the first one, the first. */
+export const priceAt = (rates: Rate[], t: number): number => { let p = rates[0]?.lei ?? 0; for (const r of rates) { if (r.from <= t) p = r.lei; else break; } return p; };
+/** The lei of the period's bars (all channels, or `keys`): each bar at the price of its own start, so a month before a tariff change is billed
+ * at the old price and the one after at the new (owner, 09.11.2026); a change inside a bar (a week of the half-year) goes by the bar's start. */
+export const cost = (r: Pick<EnergyReport, 'buckets' | 'tariff'>, keys?: string[]): number => r.buckets.reduce((a, b) => a + priceAt(r.tariff.rates, b.at) * (keys ? pick(b.v, keys) : sum(b.v)), 0);
+/** The lei of `kwh` used at the moment `at` (a bar, a charging session). */
+export const costOf = (r: Pick<EnergyReport, 'tariff'>, kwh: number, at: number): number => kwh * priceAt(r.tariff.rates, at);
+/** A share of the period's energy at the period's average price: a device, a room, the daily average have no bars of their own. */
 export const lei = (kwh: number, r: Pick<EnergyReport, 'tariff'>): number => kwh * r.tariff.lei;
 /** Change against the same stretch of the previous period, in per cent; null when the previous one used nothing. */
 export const change = (now: number, before: number | null | undefined): number | null => before ? (now - before) / before * 100 : null;
@@ -54,7 +66,7 @@ export function forecast(r: EnergyReport): { kwh: number; lei: number; at: numbe
   if (!r.month) return null;
   const gone = (r.now - r.month.start) / DAY, days = (r.month.end - r.month.start) / DAY;
   if (gone <= 0.5) return null;
-  const kwh = r.month.kwh / gone * days; return { kwh, lei: lei(kwh, r), at: r.month.start };
+  const kwh = r.month.kwh / gone * days; return { kwh, lei: costOf(r, kwh, r.now), at: r.month.start }; // the whole month at today's price
 }
 export interface RoomShare { room: string; kwh: number; devices: MeteredDevice[] }
 /** The rooms not assigned to an apartment while others are: their devices stand in a group of their own, nothing is lost. */

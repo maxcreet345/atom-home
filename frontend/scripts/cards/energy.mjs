@@ -30,6 +30,8 @@ export const card = {
     noPrefs: { power: { apt8: '153.4', ev: '0.0', apt9: '1126.0', ch4: '0.0' }, today: true, month: true, prefs: 'none' },
     // the children's room saved on a feed that is no SPM channel any more (the ids changed once, eWeLink → Tasmota): «Не распределено»
     staleFeed: { power: { apt8: '153.4', ev: '0.0', apt9: '1126.0', ch4: '0.0' }, today: true, month: true, rooms: 'stale' },
+    // the owner's tariff history (09.11.2026): 3 lei until the 1st of this month, 4 lei from it; a past month is billed at its own price
+    tariff: { power: { apt8: '153.4', ev: '0.0', apt9: '1126.0', ch4: '0.0' }, today: true, month: true, tariff: 'change' },
     statsFail: { power: { apt8: '153.4', ev: '0.0', apt9: '1126.0', ch4: '0.0' }, stats: 'fail' },
     noStats: { power: { apt8: '153.4', ev: '0.0', apt9: '1126.0', ch4: '0.0' }, stats: 'none' },
   },
@@ -37,5 +39,5 @@ export const card = {
   build: (base, scenario, now) => { const y = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1), at = h => new Date(y.getFullYear(), y.getMonth(), y.getDate(), h).getTime();
     const stats = energyStats(now.getTime(), { from: scenario.from ? new Date(scenario.from).getTime() : undefined, gapDays: scenario.gap ? [now.getTime() - 86400000] : undefined, silent: [...(scenario.silent ?? []).map(([a, b, feeds]) => ({ from: at(a), to: at(b), feeds })), ...(scenario.silentNow ? [{ from: new Date(now.getTime() - scenario.silentNow[0] * 3600000).setMinutes(0, 0, 0), to: Infinity, feeds: scenario.silentNow[1] }] : [])] }), fig = feedFigures(stats, now.getTime());
     return { snapshot: addFeeder(addAir(addMeters(addEnergy(base, scenario.power, scenario.today ? { ...fig.today, ch4: '0.0' } : undefined)))), feederLog: feederLog(now), airTasks: [], energyMonth: scenario.month ? fig.month : null, energyPrefs: scenario.prefs ?? null, energyStats: scenario.stats === 'none' ? null : scenario.stats === 'fail' ? 'fail' : stats }; },
-  config: (text, scenario = {}) => { const c = JSON.parse(renameAreas(text)); if (scenario.billed !== false) c.modules = { ...(c.modules ?? {}), energy: { options: { chargerOf: 'entrance_spm_apt8' } } }; /* the owner's house: the car is on apartment 8's bill */ if (scenario.rooms === false) return c; roomFeeds(c); if (scenario.rooms === 'part') delete c.rooms.detskaia.feed; if (scenario.rooms === 'stale') c.rooms.detskaia.feed = 'sonoff_spm_apt8_power_2'; return c; },
+  config: (text, scenario = {}) => { const c = JSON.parse(renameAreas(text)); if (scenario.billed !== false) c.modules = { ...(c.modules ?? {}), energy: { options: { chargerOf: 'entrance_spm_apt8' } } }; /* the owner's house: the car is on apartment 8's bill */ if (scenario.tariff === 'change') { const n = new Date(); c.energy = { tariffs: [{ from: '2025-01-01', lei: 3 }, { from: `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-01`, lei: 4 }] }; } if (scenario.rooms === false) return c; roomFeeds(c); if (scenario.rooms === 'part') delete c.rooms.detskaia.feed; if (scenario.rooms === 'stale') c.rooms.detskaia.feed = 'sonoff_spm_apt8_power_2'; return c; },
 };

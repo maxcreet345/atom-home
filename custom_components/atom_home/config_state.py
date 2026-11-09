@@ -8,7 +8,7 @@ import asyncio
 import json
 from typing import Any, Awaitable, Callable, Optional
 
-from .const import CLIENT_FEATURE_COMPOSITION, CLIENT_FEATURE_ROOM_FEED, MAX_CONFIG_BYTES, WIZARD_DEVICE_FIELDS
+from .const import CLIENT_FEATURE_COMPOSITION, CLIENT_FEATURE_ROOM_FEED, CLIENT_FEATURE_TARIFF, MAX_CONFIG_BYTES, WIZARD_DEVICE_FIELDS
 
 
 class ConfigWriteError(Exception):
@@ -36,6 +36,15 @@ def has_room_feeds(config: Optional[dict]) -> bool:
     return any(isinstance(r, dict) and "feed" in r for r in rooms.values())
 
 
+def has_tariffs(config: Optional[dict]) -> bool:
+    """True when a stored config holds the electricity price history (`energy.tariffs`), which a panel before energy_tariff_v1 drops on save."""
+    energy = (config or {}).get("energy")
+    if not isinstance(energy, dict):
+        return False
+    tariffs = energy.get("tariffs")
+    return isinstance(tariffs, list) and len(tariffs) > 0
+
+
 class ConfigState:
     """In-memory copy of `.storage/atom_home.config` plus its revision. `save` persists `{config, revision}`."""
 
@@ -61,6 +70,8 @@ class ConfigState:
                 raise ConfigWriteError("client_outdated", "This panel version cannot keep the saved device setup; reload the page")
             if has_room_feeds(self.config) and CLIENT_FEATURE_ROOM_FEED not in (client_features or []):
                 raise ConfigWriteError("client_outdated", "This panel version cannot keep the rooms' apartment feeds; reload the page")
+            if has_tariffs(self.config) and CLIENT_FEATURE_TARIFF not in (client_features or []):
+                raise ConfigWriteError("client_outdated", "This panel version cannot keep the electricity tariff; reload the page")
             revision = self.revision + 1
             try:
                 await self._save({"config": config, "revision": revision})

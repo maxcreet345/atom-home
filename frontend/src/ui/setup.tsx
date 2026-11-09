@@ -3,17 +3,17 @@ import { Icon } from './primitives.tsx';
 import type { Registry } from '../model/registry.ts';
 import { discover, NO_ROOM, type Home, type HomeDevice } from '../model/discover.ts';
 import { SECTIONS, type Kind } from '../model/kinds.ts';
-import { normaliseConfig, type HouseConfig, type CustomButton } from '../model/config.ts';
+import { normaliseConfig, type HouseConfig, type CustomButton, type Tariff } from '../model/config.ts';
 import { languages, type T, type Key } from '../i18n/index.ts';
 import { exportConfig, importConfig, type PhotoStore } from '../runtime/store.ts';
 import { MODULES, claimedEntities } from '../modules/index.ts';
 import { stockRoomArt } from './art.ts';
 import { artOf } from './cards.tsx';
 import { DeviceArt, DEVICE_ART_TYPES } from './device-art.tsx';
-import { iconOfKind, stateText, type Lang } from './format.ts';
-import { channels } from '../model/energy-load.ts';
+import { iconOfKind, locales, numFixed, stateText, type Lang } from './format.ts';
+import { ANRE_TARIFFS, channels } from '../model/energy-load.ts';
 
-type Tab = 'devices' | 'rooms' | 'sections' | 'buttons' | 'modules' | 'home';
+type Tab = 'devices' | 'rooms' | 'energy' | 'sections' | 'buttons' | 'modules' | 'home';
 const KINDS: Kind[] = ['light', 'switch', 'socket', 'climate', 'fan', 'cover', 'lock', 'vacuum', 'media', 'camera', 'weather', 'environment', 'energy', 'leak', 'opening', 'motion', 'alarm', 'valve', 'alarm_panel', 'person', 'measurement'];
 const ICONS = ['light', 'power', 'socket', 'heating', 'fan', 'blinds', 'lock', 'vacuum', 'media', 'camera', 'air', 'thermo', 'energy', 'water', 'door', 'motion', 'warning', 'shield', 'person', 'systems', 'home', 'rooms', 'flame', 'more'];
 export interface SetupProps { registry: Registry; config: HouseConfig; onChange: (next: HouseConfig) => Promise<void> | void; admin: boolean; t: T; lang: Lang; storeLabel: string; warnings: string[]; photos?: PhotoStore }
@@ -26,12 +26,13 @@ export function Setup({ registry, config, onChange, admin, t, lang, storeLabel, 
   const commit = (next: HouseConfig, done: string) => { setNote(t('setup.saving')); Promise.resolve(onChange(next)).then(() => setNote(done), () => setNote('')); };
   const patch = (fn: (c: HouseConfig) => void) => { const next = structuredClone(config); fn(next); commit(normaliseConfig(next).config, t('setup.saved')); };
   if (!admin) return <div className="hm-card at-placeholder"><Icon name="lock" size={40} /><p className="hm-muted">{t('setup.adminOnly')}</p></div>;
-  const tabs: Array<[Tab, Key]> = [['devices', 'setup.devices'], ['rooms', 'setup.rooms'], ['sections', 'setup.sections'], ['buttons', 'setup.buttons'], ['modules', 'setup.modules'], ['home', 'setup.home']];
+  const tabs: Array<[Tab, Key]> = [['devices', 'setup.devices'], ['rooms', 'setup.rooms'], ['energy', 'setup.energy'], ['sections', 'setup.sections'], ['buttons', 'setup.buttons'], ['modules', 'setup.modules'], ['home', 'setup.home']];
   return <div className="at-setup">
     <div className="hm-range-tabs at-setup-tabs" role="tablist">{tabs.map(([id, key]) => <button type="button" role="tab" aria-selected={tab === id} className={tab === id ? 'is-active' : ''} onClick={() => setTab(id)}>{t(key)}</button>)}</div>
     {warnings.length > 0 && <details className="hm-fold"><summary><span>{t('setup.warnings')} ({warnings.length})</span><Icon name="next" size={18} /></summary><div className="hm-fold-body">{warnings.map(w => <p className="hm-muted">{w}</p>)}</div></details>}
     {tab === 'devices' && <DevicesTab home={home} config={config} patch={patch} t={t} lang={lang} photos={photos} />}
     {tab === 'rooms' && <RoomsTab home={home} config={config} patch={patch} t={t} photos={photos} />}
+    {tab === 'energy' && <EnergyTab config={config} patch={patch} t={t} lang={lang} />}
     {tab === 'modules' && <ModulesTab registry={registry} config={config} patch={patch} t={t} />}
     {tab === 'sections' && <div className="hm-rows">{SECTIONS.filter(s => s !== 'home' && s !== 'rooms').map(s => <div className="hm-setting at-setting-row"><span>{t(`section.${s}` as Key)}</span><Toggle on={!config.sections[s]?.hidden} label={t('setup.show')} onToggle={() => patch(c => { c.sections[s] = { hidden: !c.sections[s]?.hidden }; })} /></div>)}</div>}
     {tab === 'buttons' && <ButtonsTab config={config} patch={patch} t={t} registry={registry} />}
@@ -87,6 +88,29 @@ function RoomsTab({ home, config, patch, t, photos }: { home: Home; config: Hous
       {(feeds.length > 0 || o.feed) && <label className="at-field"><span>{t('setup.feed')}</span><select value={o.feed ?? ''} onChange={e => patch(c => { const v = (e.target as HTMLSelectElement).value; c.rooms[r.id] = { ...(c.rooms[r.id] ?? {}), feed: v || undefined }; })}><option value="">{t('setup.feed.none')}</option>{feeds.map(f => <option value={f.key}>{f.name}</option>)}{o.feed && !feeds.some(f => f.key === o.feed) && <option value={o.feed}>{o.feed}</option>}</select></label>}
       <PhotoField label={t('setup.photo')} value={o.photo ?? null} fallback={stockRoomArt(r.name)} photos={photos} t={t} onChange={url => patch(c => { c.rooms[r.id] = { ...(c.rooms[r.id] ?? {}), photo: url }; })} /></div>
   </div>; })}</div>;
+}
+/** The electricity tariff (owner, 09.11.2026): a price per kWh from a day on, kept as a history, so a past period is billed at the price of its
+ * own time. Until the owner writes one, the Energy panel counts by ANRE's figures for Premier Energy, and this page says so and offers them. */
+function EnergyTab({ config, patch, t, lang }: { config: HouseConfig; patch: (fn: (c: HouseConfig) => void) => void; t: T; lang: Lang }) {
+  const list = config.energy?.tariffs ?? [], loc = locales[lang], price = (v: number) => numFixed(v, lang, 2);
+  const day = (from: string) => { const [y, m, d] = from.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString(loc, { day: 'numeric', month: 'long', year: 'numeric' }).replace(/\s*г\.$/, ''); };
+  const todayKey = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`; })();
+  const current = list.filter(x => x.from <= todayKey).at(-1) ?? list[0];
+  const set = (fn: (tariffs: Tariff[]) => Tariff[]) => patch(c => { c.energy = { tariffs: fn([...(c.energy?.tariffs ?? [])]) }; });
+  const item = (x: Tariff) => t('setup.tariff.item', { v: price(x.lei), d: day(x.from) });
+  return <div className="at-setup-energy" data-setting="tariff">
+    <section className="hm-card at-setup-new at-setup-tariff"><h3>{t('setup.tariff')}</h3>
+      <p className="hm-muted">{t('setup.tariff.hint')}</p>
+      {current ? <p className="at-tariff-now" role="status">{t('setup.tariff.now', { v: price(current.lei), d: day(current.from) })}</p>
+        : <><p className="at-tariff-now" role="status">{t('setup.tariff.none', { list: ANRE_TARIFFS.map(item).join(', ') })}</p><button type="button" className="hm-pill" data-action="use-anre" onClick={() => set(() => ANRE_TARIFFS.map(x => ({ ...x })))}>{t('setup.tariff.useAnre')}</button></>}
+      <div className="hm-rows">{list.map((x, i) => <div className="hm-row at-setup-row" data-tariff-from={x.from}><div className="at-setup-form">
+        <label className="at-field"><span>{t('setup.tariff.from')}</span><input type="date" value={x.from} max={todayKey} required onChange={e => { const v = (e.target as HTMLInputElement).value; if (v) set(l => l.map((y, k) => k === i ? { ...y, from: v } : y)); }} /></label>
+        <label className="at-field"><span>{t('setup.tariff.price')}</span><input type="number" inputMode="decimal" step="0.01" min="0.01" max="1000" value={x.lei} onChange={e => { const v = Number((e.target as HTMLInputElement).value.replace(',', '.')); if (v > 0) set(l => l.map((y, k) => k === i ? { ...y, lei: v } : y)); }} /></label>
+        <div className="at-field"><span>&nbsp;</span><button type="button" className="hm-pill" onClick={() => set(l => l.filter((_, k) => k !== i))}>{t('setup.delete')}</button></div>
+      </div></div>)}</div>
+      <button type="button" className="hm-pill is-primary" data-action="add-tariff" disabled={list.some(x => x.from === todayKey)} onClick={() => set(l => [...l, { from: todayKey, lei: current?.lei ?? ANRE_TARIFFS.at(-1)!.lei }])}>{t('setup.tariff.add')}</button>
+    </section>
+  </div>;
 }
 function ButtonsTab({ config, patch, t, registry }: { config: HouseConfig; patch: (fn: (c: HouseConfig) => void) => void; t: T; registry: Registry }) {
   const [draft, setDraft] = useState<{ label: string; service: string; entity: string; data: string; confirm: boolean; icon: string }>({ label: '', service: '', entity: '', data: '', confirm: true, icon: 'more' });
