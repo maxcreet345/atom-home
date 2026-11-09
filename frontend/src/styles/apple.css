@@ -1266,3 +1266,6 @@
 .hm-shell .at-vac-badge.is-care{background:#ff9f0a;color:#3a2200}
 .hm-shell .at-vac-tile-buddy:not(:has(.at-vac-pic)){flex:1 1 0;min-height:0}.hm-shell .at-vac-tile-buddy:not(:has(.at-vac-pic)) svg{height:100%;max-height:100%;min-height:0}
 .hm-shell .at-vac-go-pct i{font-size:max(11px,.55em)}
+/* the hero follows its own width, not the screen's: in a narrow column (a landscape pad beside HA's menu) the words get their own row */
+.hm-shell .at-vac-hero{container-type:inline-size}
+@container (max-width:400px){.hm-shell .at-vac-hero-top,.hm-shell .at-vac-hero-top:has(.at-vac-pic){grid-template-columns:64px minmax(0,1fr) auto;gap:6px 10px}.hm-shell .at-vac-hero-text{grid-column:1/-1;grid-row:2}.hm-shell .at-vac-hero-buddy,.hm-shell .at-vac-hero-buddy:has(.at-vac-pic){width:64px;height:56px}.hm-shell .at-vac-hero-buddy .at-vac-pic img{max-width:64px;max-height:56px}.hm-shell .at-vac-corner{grid-column:3;grid-row:1}.hm-shell .at-vac-hero-text h2{font-size:22px}}
