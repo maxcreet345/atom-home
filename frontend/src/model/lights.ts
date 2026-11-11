@@ -50,3 +50,34 @@ export function parseSleep(text: unknown): Record<string, string> {
   return out;
 }
 export const SLEEP_MIRROR = 'input_text.atom_light_sleep';
+/** When the lamp will be switched off, «ЧЧ:ММ» by the house's clock, or null. The integration's own answer (`pending` of `atom_home/light/sleep`
+ * and `…/sleep/state`: entity → ISO moment with the house's offset) is the whole truth and wins; the mirror text holds only what fits into the
+ * helper — with many lamps on timers, or no helper at all, it says nothing about a timer that runs — so it is the fallback of an older integration. */
+export function sleepTime(entityId: string, pending: unknown, mirror: unknown): string | null {
+  if (pending && typeof pending === 'object') { const iso = (pending as Record<string, unknown>)[entityId], m = typeof iso === 'string' ? /T(\d\d:\d\d)/.exec(iso) : null; return m ? m[1] : null; }
+  return parseSleep(mirror)[entityId] ?? null;
+}
+/** Sends a dragged value at most every 150 ms, and always the last one — once: the value a throttled send has just delivered is not sent again on release
+ * (a tap is pointer-down and pointer-up at one spot), and a value still waiting when the sheet closes goes out instead of being dropped. */
+export function throttled(run: (v: number) => void, now: () => number = Date.now, every = 150) {
+  let last = -Infinity, sent: number | null = null, pending: number | null = null, timer: ReturnType<typeof setTimeout> | null = null;
+  const go = (v: number) => { last = now(); sent = v; pending = null; if (timer) { clearTimeout(timer); timer = null; } run(v); };
+  const send = (v: number, final = false) => {
+    if (final) { if (pending === null && sent === v && now() - last < 1000) return; go(v); return; }
+    if (now() - last >= every) { if (sent !== v || pending !== null) go(v); return; }
+    pending = v;
+    if (!timer) timer = setTimeout(() => { timer = null; if (pending !== null) go(pending); }, every - (now() - last));
+  };
+  return { send, flush() { if (pending !== null) go(pending); else if (timer) { clearTimeout(timer); timer = null; } } };
+}
+/** The runner keeps one command per lamp and drops another kind of command pressed meanwhile («Выключить», an effect, a colour while a
+ * brightness is still on its way to a slow house). Such a press waits for its turn instead: it goes out as soon as the lamp is free, or after
+ * `giveUp` ms whatever the runner says; a newer press replaces the one that waits (the last wish wins). */
+export function afterBusy(busy: () => boolean, every = 100, giveUp = 5000, clock: { set: (f: () => void, ms: number) => unknown; clear: (id: unknown) => void; now: () => number } = { set: (f, ms) => setTimeout(f, ms), clear: id => clearTimeout(id as ReturnType<typeof setTimeout>), now: Date.now }) {
+  let timer: unknown = null;
+  return (send: () => void) => {
+    if (timer !== null) { clock.clear(timer); timer = null; }
+    const t0 = clock.now(), go = () => { timer = null; if (busy() && clock.now() - t0 < giveUp) { timer = clock.set(go, every); return; } send(); };
+    go();
+  };
+}

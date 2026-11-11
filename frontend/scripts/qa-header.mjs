@@ -4,12 +4,13 @@
 // usage: node scripts/qa-header.mjs [outDir]   exit code 1 on any failure; screenshots in outDir
 process.env.TZ = 'Europe/Chisinau';
 import { chromium } from '../node_modules/playwright/index.mjs';
+import { freePort } from './free-port.mjs';
 import { spawn } from 'node:child_process';
 import { readFile, mkdir, rm } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { layout } from './card-checks.mjs';
 const root = resolve(import.meta.dirname, '..'), out = resolve(root, process.argv[2] ?? 'evidence/header'); await rm(out, { recursive: true, force: true }); await mkdir(out, { recursive: true });
-const axe = await readFile(resolve(root, 'node_modules/axe-core/axe.min.js'), 'utf8'), port = (p => p === 5060 || p === 5061 ? 5062 : p)(4800 + Math.floor(Math.random() * 400)); // Chrome refuses 5060/5061 (SIP)
+const axe = await readFile(resolve(root, 'node_modules/axe-core/axe.min.js'), 'utf8'), port = await freePort(); // Chrome refuses 5060/5061 (SIP)
 const server = spawn(process.execPath, [resolve(root, 'scripts/card-preview.mjs'), String(port)], { stdio: 'pipe' }); await new Promise(r => server.stdout.once('data', r));
 const origin = `http://127.0.0.1:${port}`, browser = await chromium.launch(), fails = []; let passed = 0;
 const check = (name, ok, info) => { if (ok) passed++; else fails.push(`${name}${info === undefined ? '' : ' — ' + JSON.stringify(info).slice(0, 260)}`); };
@@ -20,7 +21,7 @@ async function open({ w = 1070, h = 764, theme = 'light', lang = 'ru', scenario 
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: w < 1100, timezoneId: 'Europe/Chisinau' }), page = await ctx.newPage(), errors = [];
   page.on('pageerror', e => errors.push(e.message)); page.on('console', m => { if (['error', 'warning'].includes(m.type())) errors.push(m.text()); });
   await page.goto(`${origin}/?card=header&scenario=${scenario}&theme=${theme}&lang=${lang}#home`); await page.waitForFunction(() => window.ready); await page.waitForSelector('.hm-head');
-  await page.evaluate(() => Promise.all(document.getAnimations().filter(a => a.effect.getTiming().iterations !== Infinity).map(a => a.finished.catch(() => {})))); await page.waitForTimeout(150);
+  await page.evaluate(() => Promise.all(document.getAnimations().filter(a => a.timeline === document.timeline && a.effect.getTiming().iterations !== Infinity).map(a => a.finished.catch(() => {})))); await page.waitForTimeout(150);
   return { page, ctx, errors };
 }
 const runAxe = async (page, scope) => { await page.addScriptTag({ content: axe }); return page.evaluate(async sc => { const r = await window.axe.run(document.querySelector(sc), { runOnly: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'], rules: { region: { enabled: false } } }); return r.violations.filter(v => ['critical', 'serious'].includes(v.impact)).map(v => `${v.id}: ${v.nodes.slice(0, 2).map(n => n.target.join(' ')).join(' | ').slice(0, 120)}`); }, scope); };
@@ -106,7 +107,8 @@ for (const [w, h, dev] of [[1070, 764, 'pad'], [360, 792, '13R'], [1440, 900, 'm
   if (at) { if (w < 1100) await page.touchscreen.tap(at.x, at.y); else await page.mouse.click(at.x, at.y); await page.waitForTimeout(400); }
   check(`a tap outside closes the menu ${tag}`, await page.locator(menu).count() === 0);
   check(`a tap outside presses nothing underneath ${tag}`, (await commands(page)) === 0 && await page.locator('.hm-confirm, .hm-sheet').count() === 0, await page.evaluate(() => window.atomPreview.host.log.slice(-2)));
-  if (at) { if (w < 1100) await page.touchscreen.tap(at.x, at.y); else await page.mouse.click(at.x, at.y); await page.waitForTimeout(400); check(`with the menu closed the same tap presses the scene ${tag}`, (await commands(page)) === 1); }
+  if (at) { if (w < 1100) await page.touchscreen.tap(at.x, at.y); else await page.mouse.click(at.x, at.y); await page.waitForTimeout(400); // «Свет выкл.» switches everything off, so the press asks first (audit 2026-11-09): the question on screen is the proof the tap reached the tile
+    check(`with the menu closed the same tap presses the scene ${tag}`, (await commands(page)) === 0 && await page.locator('.hm-confirm').count() === 1); await page.keyboard.press('Escape'); await page.waitForTimeout(150); }
   check(`errors ${tag}`, !errors.length, errors); await ctx.close();
 }
 // 5. keyboard: one menu at a time, Tab out closes, a sheet over the page takes Escape, focus after a pick
@@ -204,5 +206,19 @@ for (const [w, h] of [[792, 264], [791, 360], [792, 360]]) for (const [btn, menu
   const end = await page.evaluate(([s, l]) => { const mr = document.querySelector(s).getBoundingClientRect(), lr = [...document.querySelectorAll(l)].at(-1).getBoundingClientRect(); return { last: [Math.round(lr.top), Math.round(lr.bottom)], menu: [Math.round(mr.top), Math.round(mr.bottom)], page: document.querySelector('.hm-main').scrollTop }; }, [menu, last]);
   check(`the last item is reached by scrolling inside the menu ${tag}`, end.last[1] <= end.menu[1] + 1 && end.last[0] >= end.menu[0] - 1, end);
   check(`errors ${tag}`, !errors.length, errors); await ctx.close();
+}
+// ST-09 (studio): on a phone on its side the people menu ends 12 px above the panel's own tab bar; its last person, scrolled to, is whole and pressable
+for (const [w, h, theme, lang] of [[568, 320, 'dark', 'ro'], [568, 320, 'light', 'ru'], [792, 360, 'light', 'en'], [874, 402, 'dark', 'ru']]) {
+  const { page, ctx } = await open({ w, h, theme, lang, scenario: 'long' });
+  if (!(await page.locator('.at-people-btn').count())) { check(`ST-09 ${w}x${h}: the people button is there`, false); await ctx.close(); continue; }
+  await page.locator('.at-people-btn').click(); await page.waitForSelector('.at-people-menu'); await page.waitForTimeout(250);
+  await page.evaluate(() => { const m = document.querySelector('.at-people-menu'); m.scrollTop = m.scrollHeight; }); await page.waitForTimeout(150);
+  const g = await page.evaluate(() => { const m = document.querySelector('.at-people-menu').getBoundingClientRect(), bar = document.querySelector('.hm-tabbar'), b = bar ? bar.getBoundingClientRect() : null, rows = [...document.querySelectorAll('.at-people-menu .at-person-row')], last = rows.at(-1)?.getBoundingClientRect();
+    const hit = last ? document.elementFromPoint(last.left + last.width / 2, last.bottom - 4) : null; return { menuTop: Math.round(m.top), menuBottom: Math.round(m.bottom), barTop: b && b.height > 0 ? Math.round(b.top) : null, lastBottom: last ? Math.round(last.bottom) : null, lastHit: !!hit?.closest('.at-people-menu'), rows: rows.length, view: innerHeight }; });
+  const limit = (g.barTop ?? g.view) - 12;
+  check(`ST-09 ${w}x${h} ${theme} ${lang}: the menu ends 12 px above the tab bar`, g.menuBottom <= limit + 1 && g.menuTop >= 0, g);
+  check(`ST-09 ${w}x${h} ${theme} ${lang}: the last person, scrolled to, is whole and inside the menu`, g.rows > 0 && g.lastBottom !== null && g.lastBottom <= g.menuBottom + 1 && g.lastHit, g);
+  if (w === 568 && theme === 'dark') await page.screenshot({ path: resolve(out, 'st09-people-menu-568x320-dark.png') });
+  await ctx.close();
 }
 await browser.close(); stop(fails.length ? 1 : 0);

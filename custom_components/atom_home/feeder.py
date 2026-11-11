@@ -56,7 +56,9 @@ def parse_events(ate: list[dict[str, Any]] | None, dispensed: list[dict[str, Any
         p = _props(row)
         at = p.get(17) or row.get("time")
         if isinstance(at, int) and isinstance(p.get(8), (int, float)):
-            kind = "manual" if p.get(16) == 1 else "plan"
+            # 16: 2 = the feeder's own schedule, 1 = its button, 0 = a command (the panel, HA, Yandex). Only the schedule is «по плану»:
+            # a portion given from the panel must not count into the day's plan or stand in for a planned meal that was missed.
+            kind = "plan" if p.get(16) == 2 else "manual"
             events[(at, kind)] = {"at": at, "kind": kind, "grams": p[8]}
             if isinstance(p.get(27), int):
                 zones.append((at, p[27]))

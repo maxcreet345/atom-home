@@ -24,6 +24,11 @@ class ParseEvents(unittest.TestCase):
         events, _ = feeder.parse_events([], [row((16, 2), (8, 20), (17, 50)), row((16, 1), (8, 10), (17, 60))])
         self.assertEqual([(e["kind"], e["grams"]) for e in events], [("plan", 20), ("manual", 10)])
 
+    def test_a_portion_from_the_panel_is_not_the_plan(self):
+        """piid 16 = 0 is a command (the panel, HA, Yandex): counted as the plan it raised «План дня» and hid a planned meal that was missed."""
+        events, _ = feeder.parse_events([], [row((16, 0), (8, 5), (17, 70)), row((8, 5), (17, 80)), row((16, 2), (8, 20), (17, 90))])
+        self.assertEqual([(e["at"], e["kind"]) for e in events], [(70, "manual"), (80, "manual"), (90, "plan")])
+
     def test_duplicates_merge_and_order(self):
         ate = [row((18, 4), (25, 200), (28, 0)), row((18, 4), (25, 200), (28, 0)), row((18, 5), (25, 100), (28, 0))]
         events, _ = feeder.parse_events(ate, None)

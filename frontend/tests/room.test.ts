@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readRoom, worst, plainName } from '../src/model/room.ts';
+import { readRoom, silence, worst, plainName } from '../src/model/room.ts';
 import { detail } from '../src/ui/room-words.ts';
 import { translator } from '../src/i18n/index.ts';
 import type { Registry } from '../src/model/registry.ts';
@@ -35,7 +35,9 @@ function house(over: Record<string, string> = {}): Registry {
   } as unknown as Registry;
 }
 const t = translator('ru');
-const P = (reg: Registry) => ({ reg, lang: 'ru' as const, t, host: { call: async () => ({}) } as never, deviceOf: () => undefined, toggle: () => {} });
+// the room's commands go through the shell's runner: `ran` keeps what was handed to it, `acted` the device actions asked for by id
+const ran: Array<{ key: string; sent: unknown[] }> = [], acted: string[] = [];
+const P = (reg: Registry) => { const sent: unknown[] = []; return { reg, lang: 'ru' as const, t, host: { call: async (...a: unknown[]) => { sent.push(a); } } as never, commands: { run: async (key: string, work: () => Promise<unknown>) => { ran.push({ key, sent }); await work(); return true; } }, deviceOf: () => undefined, toggle: () => {}, act: (_d: unknown, id: string) => { acted.push(id); } }; };
 
 test('a device is one card: the kettle with its many switches, the plug that powers it adds its watts', () => {
   const m = readRoom(house({ 'sensor.kitchen_kettle_plug_power': '1840' }), 'kukhnia', 'Кухня', null, null);
@@ -81,4 +83,43 @@ test('the feeder card reads the bowl from the scale, as the feeder sheet does, n
   let d = detail(th, P(reg)); assert.ok(d.facts.some(f => f.text === 'Миска пустая'), JSON.stringify(d.facts)); assert.ok(!d.facts.some(f => /75/.test(f.text)));
   reg.states['sensor.kitchen_cat_feeder_eaten_p22'] = { ...reg.states['sensor.kitchen_cat_feeder_eaten_p22'], state: '12' };
   d = detail(th, P(reg)); assert.ok(d.facts.some(f => f.text === 'В миске 12 г'));
+});
+
+// ----- audit 2026-11-09: commands of the room page, the valve, silent sensors -----
+function withValve(state: string): Registry {
+  const r = house(); const R = r as unknown as { devices: unknown[]; entities: unknown[]; areas: unknown[] };
+  R.areas.push({ area_id: 'vannaia', name: 'Ванная', temperature_entity_id: null, humidity_entity_id: null });
+  R.devices.push({ id: 'valve', name: 'Ванная · Кран воды ванной', model: null, manufacturer: null, area_id: 'vannaia' });
+  R.entities.push({ entity_id: 'valve.bath_water', device_id: 'valve', area_id: null, name: null, original_name: null, platform: 'x', entity_category: null, disabled_by: null, hidden_by: null });
+  r.states['valve.bath_water'] = { state, attributes: { device_class: 'water' }, last_changed: '2026-11-09T12:00:00Z', last_updated: '' };
+  return r;
+}
+test('the valve on a room page: opening is its own «open» action (it asks), shutting is ONE tap through the command runner (owner: closing never asks); never a toggle; a state that is neither is said', async () => {
+  const dev = { key: 'dev:valve' } as never;
+  for (const [state, status, label, action] of [['closed', 'Вода перекрыта', 'Открыть воду', 'open'], ['open', 'Вода открыта', 'Перекрыть воду', 'close'], ['unknown', 'Нет данных о кране', 'Перекрыть воду', 'close']] as const) {
+    const reg = withValve(state), th = readRoom(reg, 'vannaia', 'Ванная', null, null).things.find(x => x.kind === 'valve')!;
+    let toggled = 0; acted.length = 0; ran.length = 0;
+    const d = detail(th, { ...P(reg), deviceOf: () => dev, toggle: () => { toggled++; } });
+    assert.equal(d.status, status); assert.equal(d.action?.label, label); d.action!.run(); await Promise.resolve();
+    // «open» goes to the sheet's runner, which asks; «close» is sent at once, through the shell's runner, under the valve's own key
+    if (action === 'open') { assert.deepEqual(acted, ['open']); assert.equal(ran.length, 0); }
+    else { assert.deepEqual(acted, [], 'closing never goes through the asking runner'); assert.equal(ran.length, 1); assert.equal(ran[0].key, `room:${th.main}`); assert.deepEqual(ran[0].sent, [['valve', 'close_valve', { entity_id: th.main }]]); assert.equal(d.action!.key, `room:${th.main}`); }
+    assert.equal(toggled, 0);
+  }
+  const moving = withValve('opening'), th = readRoom(moving, 'vannaia', 'Ванная', null, null).things.find(x => x.kind === 'valve')!;
+  const d = detail(th, { ...P(moving), deviceOf: () => dev }); assert.equal(d.status, 'Кран поворачивается'); assert.equal(d.action, null);
+});
+test('the TV button of a room goes through the command runner under its own key, not straight to the host', async () => {
+  const reg = house({ 'sensor.living_tv_active_app': 'YouTube' }), tv = readRoom(reg, 'gostinaia', 'Гостиная', null, null).things.find(x => x.kind === 'tv')!;
+  ran.length = 0; const p = P(reg), d = detail(tv, p);
+  assert.equal(d.action?.key, 'room:media_player.living_tv'); d.action!.run(); await new Promise(r => setTimeout(r, 0));
+  assert.equal(ran.length, 1); assert.equal(ran[0].key, 'room:media_player.living_tv');
+  assert.deepEqual(ran[0].sent, [['media_player', 'turn_off', { entity_id: 'media_player.living_tv' }]]);
+});
+test('a room whose sensors are all silent is not «in order»; one silent sensor is «part»', () => {
+  const dead = readRoom(house({ 'sensor.living_co2': 'unavailable', 'sensor.living_co2_humidity': 'unavailable', 'sensor.living_co2_temperature': 'unavailable' }), 'gostinaia', 'Гостиная', null, null);
+  assert.equal(silence(dead.readings), 'all'); assert.equal(worst(dead.readings), null);
+  const part = readRoom(house({ 'sensor.living_co2': '600', 'sensor.living_co2_humidity': 'unavailable' }), 'gostinaia', 'Гостиная', null, null);
+  assert.equal(silence(part.readings), 'part');
+  assert.equal(silence(readRoom(house({ 'sensor.living_co2': '600' }), 'gostinaia', 'Гостиная', null, null).readings), null);
 });

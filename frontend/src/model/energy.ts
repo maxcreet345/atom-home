@@ -34,7 +34,14 @@ export function feedToday(devices: HomeDevice[], grid?: ReadonlySet<string>): nu
 /** The counters the month is read from: the daily ones, whose statistics a first day or a meter restart cannot blow up (live check 09.11.2026). */
 export const feedTotalIds = (devices: HomeDevice[], grid?: ReadonlySet<string>): string[] => { const daily = feedEnergy(devices, /_energy_(today|day)(_\d+)?$/, grid); return (daily.length ? daily : feedEnergy(devices, /_energy_total(_\d+)?$/, grid)).map(m => m.id).sort(); };
 /** «7,3 kWh», «123 kWh», «1 234 kWh»: one decimal while it is small, whole numbers after. */
-export const energyText = (kwh: number, fmt: (v: number, digits: number) => string): { value: string; unit: string } => ({ value: fmt(kwh, kwh < 10 ? 1 : 0), unit: 'kWh' });
-/** «380 W», «2,4 kW»: watts up to a thousand, then kilowatts with one decimal (owner, 06.11.2026). */
-export const powerText = (watts: number, fmt: (v: number, digits: number) => string): { value: string; unit: string } => watts >= 1000 ? { value: fmt(watts / 1000, 1), unit: 'kW' } : { value: fmt(watts, 0), unit: 'W' };
+/** How many decimals a figure gets when it has `digits` of them below `limit` and none from there on — decided by the figure as it will be
+ * SHOWN (round 2 of the audit: 9,96 was below ten, so it kept its decimal and read «10,0» beside a «10»; 99,996 lei read «100,00»). */
+export const digitsBelow = (v: number, limit: number, digits: number): number => Math.round(Math.abs(v) * 10 ** digits) / 10 ** digits < limit ? digits : 0;
+/** A figure that is not a number is «—», never «0» (a NaN went through `toFixed` and came out as a measured zero). */
+export const DASH = '—';
+export const shown = (v: number, fmt: (v: number, digits: number) => string, digits: number): string => Number.isFinite(v) ? fmt(v, digits) : DASH;
+export const energyText = (kwh: number, fmt: (v: number, digits: number) => string): { value: string; unit: string } => ({ value: shown(kwh, fmt, digitsBelow(kwh, 10, 1)), unit: 'kWh' });
+/** «380 W», «2,4 kW»: watts up to a thousand, then kilowatts with one decimal (owner, 06.11.2026). By the figure as it is shown: 999,5 W rounds
+ * to a thousand and is «1,0 kW», never «1 000 W». The unit is a code (`W`, `kW`, `kWh`): the screen says it in its language (`ep.unit.*`). */
+export const powerText = (watts: number, fmt: (v: number, digits: number) => string): { value: string; unit: string } => !Number.isFinite(watts) ? { value: DASH, unit: 'W' } : Math.round(watts) >= 1000 ? { value: fmt(watts / 1000, 1), unit: 'kW' } : { value: fmt(watts, 0), unit: 'W' };
 export const isElectric = (m: EntityRef, d: HomeDevice, boilers: Set<string>): boolean => m.deviceClass === 'power' && (m.unit === 'W' || m.unit === 'kW') && !(d.haDeviceId !== null && boilers.has(d.haDeviceId));

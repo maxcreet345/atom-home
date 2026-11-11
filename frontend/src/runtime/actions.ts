@@ -2,6 +2,7 @@ import type { HomeDevice, EntityRef } from '../model/discover.ts';
 import type { CustomButton } from '../model/config.ts';
 import type { Key } from '../i18n/index.ts';
 import { AMBIENT_COLORS, nearestColor } from '../model/lights.ts';
+import { stepCore } from '../model/heating-step.ts';
 
 export type Risk = 'normal' | 'water' | 'security' | 'custom';
 export interface Action {
@@ -35,7 +36,8 @@ export function actionsFor(device: HomeDevice): Action[] {
     case 'fan': push({ id: 'toggle', label: 'action.toggle', kind: 'toggle', domain: tdom(e), service: 'toggle', current: e.state === 'on' }); if (supports(e, 1)) push({ id: 'percentage', label: 'action.percentage', kind: 'number', domain: 'fan', service: 'set_percentage', min: 0, max: 100, step: num(a.percentage_step, 1), unit: '%', current: a.percentage ?? null }); break;
     case 'cover': if (supports(e, 1)) push({ id: 'open', label: 'action.open', kind: 'button', domain: 'cover', service: 'open_cover' }); if (supports(e, 2)) push({ id: 'close', label: 'action.close', kind: 'button', domain: 'cover', service: 'close_cover' }); if (supports(e, 8)) push({ id: 'stop', label: 'action.stop', kind: 'button', domain: 'cover', service: 'stop_cover' }); if (supports(e, 4)) push({ id: 'position', label: 'action.position', kind: 'number', domain: 'cover', service: 'set_cover_position', min: 0, max: 100, step: 1, unit: '%', current: a.current_position ?? null }); break;
     case 'lock': push({ id: 'lock', label: 'action.lock', kind: 'button', domain: 'lock', service: 'lock', confirm: true, risk: 'security' }); push({ id: 'unlock', label: 'action.unlock', kind: 'button', domain: 'lock', service: 'unlock', confirm: true, risk: 'security' }); break;
-    case 'valve': push({ id: 'open', label: 'action.open', kind: 'button', domain: 'valve', service: 'open_valve', confirm: true, risk: 'water' }); push({ id: 'close', label: 'action.close', kind: 'button', domain: 'valve', service: 'close_valve', confirm: true, risk: 'water' }); break;
+    // a valve that is already open is not offered «Открыть» (and its question «Вода пойдёт сразу»), a closed one no «Закрыть»; a valve on its way, or one that says nothing, keeps both
+    case 'valve': if (e.state !== 'open') push({ id: 'open', label: 'action.open', kind: 'button', domain: 'valve', service: 'open_valve', confirm: true, risk: 'water' }); if (e.state !== 'closed') push({ id: 'close', label: 'action.close', kind: 'button', domain: 'valve', service: 'close_valve', risk: 'water' }); break;
     case 'vacuum': {
       if (supports(e, 8192) && e.state !== 'cleaning') push({ id: 'start', label: 'action.start', kind: 'button', domain: 'vacuum', service: 'start' });
       if (supports(e, 4) && e.state === 'cleaning') push({ id: 'pause', label: 'action.pause', kind: 'button', domain: 'vacuum', service: 'pause' });
@@ -67,7 +69,8 @@ export function actionsFor(device: HomeDevice): Action[] {
 }
 /** Service data for an action with a user-provided value; the entity is always the device's primary entity. */
 export function serviceCall(action: Action, value?: unknown): { domain: string; service: string; data: Record<string, unknown> } {
-  const data: Record<string, unknown> = { entity_id: action.entityId, ...(action.data ?? {}) };
+  // a button of the owner's without a target sends its own data only: `entity_id: ""` makes HA refuse services that take none (notify.*)
+  const data: Record<string, unknown> = { ...(action.entityId ? { entity_id: action.entityId } : {}), ...(action.data ?? {}) };
   switch (action.id) {
     case 'brightness': data.brightness_pct = value; break;
     case 'color_temp': data.color_temp_kelvin = value; break;
@@ -88,12 +91,34 @@ export function serviceCall(action: Action, value?: unknown): { domain: string; 
     case 'option': data.option = value; break;
     default: break;
   }
+  // A switch says where it wants to end up (on / off), never «the other way»: a second tap that lands before the new state has arrived
+  // then repeats the same command instead of turning the lamp back. Covers have no on/off: open / close.
+  if (action.service === 'toggle' && typeof value === 'boolean') return action.domain === 'cover' ? { domain: 'cover', service: value ? 'open_cover' : 'close_cover', data } : { domain: action.domain, service: value ? 'turn_on' : 'turn_off', data };
   return { domain: action.domain, service: action.service, data };
 }
-/** Owner-defined buttons: any HA service, always shown with their own confirm flag; the panel never invents data. */
+/** The services that always ask, whatever an owner's button says (CODEX-001; docs/UX-GUIDE.md «ошибка дороже»): water that would start to flow,
+ * a lock, the alarm system. The same things a device's own sheet asks about (`actionsFor`: lock, valve open, every alarm-panel action), aimed by
+ * domain or through `homeassistant.*` at such an entity. Closing the water is the safe way and is not on the list. `null` — the owner's flag decides. */
+export function mandatoryRisk(service: string, target: Record<string, unknown> = {}): Exclude<Risk, 'normal' | 'custom'> | null {
+  const [domain, verb] = service.split('.'), raw = target.entity_id;
+  const ids = (Array.isArray(raw) ? raw : typeof raw === 'string' ? raw.split(',') : []).filter((x): x is string => typeof x === 'string').map(x => x.trim());
+  const aims = (d: string) => ids.some(x => x.startsWith(d + '.'));
+  const opens = ['open_valve', 'set_valve_position', 'toggle', 'turn_on'];
+  if ((domain === 'valve' && verb !== 'close_valve' && verb !== 'stop_valve') || (domain === 'homeassistant' && aims('valve') && opens.includes(verb))) return 'water';
+  if (domain === 'lock' || domain === 'alarm_control_panel' || domain === 'alarmo') return 'security';
+  if (domain === 'homeassistant' && (aims('lock') || aims('alarm_control_panel')) && verb !== 'update_entity') return 'security';
+  return null;
+}
+/** Owner-defined buttons: any HA service, shown with their own confirm flag; the panel never invents data. The flag can ADD a question, never take
+ * away one the house always asks (`mandatoryRisk`, CODEX-001): opening the water during a leak names the leak, as everywhere (ui/shell-logic.ts). */
 export function customAction(b: CustomButton): Action {
   const [domain, service] = b.service.split('.');
-  return { id: `custom:${b.id}`, label: b.label, kind: 'button', domain, service, entityId: typeof b.target?.entity_id === 'string' ? b.target.entity_id : '', data: { ...(b.target ?? {}), ...(b.data ?? {}) }, confirm: b.confirm, risk: 'custom' };
+  // «Switch everything off» asks first, whatever the button's own flag says (the owner's rule for dangerous actions, docs/UX-GUIDE.md):
+  // a turn_off aimed at several things, or at all of a kind, an area or a floor.
+  const target = { ...(b.target ?? {}), ...(b.data ?? {}) } as Record<string, unknown>, ids = target.entity_id;
+  const many = (Array.isArray(ids) && ids.length > 1) || ids === 'all' || (typeof ids === 'string' && ids.includes(',')) || 'area_id' in target || 'floor_id' in target || 'label_id' in target || 'device_id' in target && Array.isArray(target.device_id) && target.device_id.length > 1;
+  const must = mandatoryRisk(b.service, target);
+  return { id: `custom:${b.id}`, label: b.label, kind: 'button', domain, service, entityId: typeof b.target?.entity_id === 'string' ? b.target.entity_id : '', data: { ...(b.target ?? {}), ...(b.data ?? {}) }, confirm: b.confirm || !!must || (service === 'turn_off' && many), risk: must ?? 'custom' };
 }
 
 /** Actions for a secondary entity of the device (settings: switch / number / select / button and their input_* twins). Read-only domains yield nothing. */
@@ -106,4 +131,26 @@ export function entityActions(e: EntityRef): Action[] {
     case 'button': case 'input_button': return [{ id: 'press', label: e.name, kind: 'button', domain: e.domain, service: 'press', entityId: id, confirm: false, risk: 'normal' }];
     default: return [];
   }
+}
+/** One step of a number (a target temperature), kept inside what the device accepts: a radiator at its 4° does not get 3,5°. At the limit
+ * the answer is the value it already has — nothing to send. */
+export const stepTarget = (action: Pick<Action, 'min' | 'max' | 'step'>, from: number, dir: 1 | -1) => { const v = Math.round((from + dir * (action.step ?? 0.5)) * 10) / 10; return Math.min(action.max ?? v, Math.max(action.min ?? v, v)); };
+/** The − / + of a plain thermostat (its tile on Home and in «Климат», the hero of its sheet) as plain logic: quick taps add up. Each tap moves a
+ * draft of the target that is shown at once; ONE command with the last value goes out after the pause (`stepCore`, the heating card's
+ * accumulator). The draft is dropped when the house shows that value, when it shows another one after the command was accepted (the device
+ * overruled it), or when the command is refused; leaving the screen sends what is waiting. */
+export interface TargetDraft {
+  /** A tap: `v` is the new target, `send` resolves true when the house accepted it (the runner's answer), `current` is the target the house holds. */
+  push(v: number, send: (v: number) => Promise<boolean>, current: number | null): void;
+  /** the house reports a target (also the same one again) */ seen(current: number | null): void;
+  /** leaving: the waiting tap is sent now */ flush(): void;
+}
+export function targetDraft(show: (v: number | null) => void, pause = 700, giveUp = 20000, clock?: Parameters<typeof stepCore>[3]): TargetDraft {
+  let local: number | null = null, accepted: number | null = null;
+  const put = (v: number | null) => { local = v; show(v); }, core = stepCore(put, pause, giveUp, clock);
+  return {
+    push(v, send, current) { core.push(v, { send: x => send(x).then(ok => { if (!ok) throw new Error('refused'); }), ok: () => { accepted = v; }, fail: () => { accepted = null; } }, current); },
+    seen(current) { core.settled(); if (local !== null && (current === local || accepted === local)) { accepted = null; put(null); } },
+    flush() { core.flush(); },
+  };
 }

@@ -1,6 +1,23 @@
 {
   "config": {
-    "step": { "user": { "title": "Atom Home", "description": "Adaugă panoul Atom Home în meniul lateral. Dispozitivele sunt descoperite din Home Assistant; ce se afișează se alege în ecranul „Configurare” al panoului." } },
-    "abort": { "single_instance_allowed": "Atom Home este deja configurat." }
+    "step": {
+      "user": {
+        "title": "Atom Home",
+        "description": "Adaugă panoul Atom Home în meniul lateral. Dispozitivele sunt descoperite din Home Assistant; ce se afișează se alege în ecranul „Configurare” al panoului."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Atom Home este deja configurat."
+    }
+  },
+  "issues": {
+    "missing_helpers": {
+      "title": "Atom Home: lipsesc entități ajutătoare",
+      "description": "Home Assistant nu are {helpers}. Fără `input_boolean.alarm_ringing` și `input_text.alarm_ringing` (lungime 255) alarma sună, dar panoul nu arată bannerul și butonul «Stop»; fără `input_text.atom_light_sleep` (lungime 255) fișa luminii nu arată «Se stinge la…» și temporizatorul nu poate fi anulat acolo. Creați-le în Setări → Dispozitive și servicii → Ajutoare exact cu aceste id-uri, apoi reporniți Home Assistant."
+    },
+    "short_helpers": {
+      "title": "Atom Home: o entitate text este prea scurtă",
+      "description": "Lungimea maximă pentru {helpers} este sub 255. Home Assistant refuză o valoare mai lungă, iar panoul arată temporizatoare vechi ale lămpilor sau nu arată bannerul alarmei. Deschideți entitatea în Setări → Dispozitive și servicii → Ajutoare, puneți lungimea maximă 255, apoi reporniți Home Assistant."
+    }
   }
 }

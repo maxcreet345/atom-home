@@ -20,6 +20,12 @@ export function parseFeederSchedule(raw: unknown): { raw: string; meals: FeederM
   if (new Set(meals.map(m => m.time)).size !== meals.length) return null;
   return { raw: compact, meals: meals.sort((a, b) => a.time.localeCompare(b.time)) };
 }
+/** What the panel knows of the plan: read; there, but in a form it does not know (a row switched off in Mi Home, two rows at one time…); or not reported at all. Only «ok» has meals to count. */
+export function planState(raw: unknown): 'ok' | 'unparsed' | 'missing' { return parseFeederSchedule(raw) ? 'ok' : typeof raw === 'string' && raw.trim() ? 'unparsed' : 'missing'; }
+/** A reading the feeder really gave: «unavailable» and «unknown» are not «off», «normal» or «enough food». */
+export const stateKnown = (state: string | undefined): state is string => state !== undefined && state !== 'unavailable' && state !== 'unknown';
+/** on / off / not known */
+export const onOff = (state: string | undefined): boolean | null => state === 'on' ? true : state === 'off' ? false : null;
 /** The next meal after `nowHHMM` (wraps to the first one tomorrow); null without meals. */
 export function nextMeal(meals: FeederMeal[], nowHHMM: string): FeederMeal | null {
   if (!meals.length) return null;
@@ -41,6 +47,14 @@ export function editFeederSchedule(original: string, meals: FeederMeal[]): strin
   if (new Set(meals.map(m => m.time)).size !== meals.length) throw new Error('schedule: duplicate time');
   const tokens = source.raw.slice(1, -1).split(',');
   return '[' + tokens[0] + ',' + meals.map((m, n) => m.time.replace(':', '') + String(m.portions).padStart(2, '0') + tokens[n + 1].slice(6)).join(',') + ']';
+}
+/** The sheet's own question (ST-15: «Сохранить план на каждый день: …?» was drawn under the screen's edge while the focus went into it): the sheet's new
+ * scrollTop so that the whole question — or, when it is taller than what is seen, its safe «Закрыть» — stands inside `area`, moving the least.
+ * Rects in screen px (`area` already inset by its margin); `scale` = screen px per sheet px (a zoomed TV panel); the result stays in 0…max. */
+export function askScroll(area: { top: number; bottom: number }, question: { top: number; bottom: number }, safe: { top: number; bottom: number }, scroll: { top: number; max: number; scale: number }): number {
+  const t = question.bottom - question.top <= area.bottom - area.top ? question : safe;
+  const d = t.top < area.top ? t.top - area.top : t.bottom > area.bottom ? Math.min(t.bottom - area.bottom, t.top - area.top) : 0;
+  return Math.max(0, Math.min(Math.max(0, scroll.max), scroll.top + d / (scroll.scale > 0 ? scroll.scale : 1)));
 }
 export const SCHEDULE_SIID = 5, SCHEDULE_AIID = 2;
 /** Service call that stores a daily plan on the feeder (MIOT action 5/2 with the schedule string as its only parameter). */

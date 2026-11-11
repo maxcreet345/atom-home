@@ -187,14 +187,16 @@ export const kettleSpec: ModuleSpec = {
     const heater = find('water_heater', /./) ?? find('switch', /_power$/);
     if (!heater) return null;
     // the socket: «switch.<stem>_plug» beside the kettle's own entities, with its power and today's energy
-    const stem = heater.split('.')[1].replace(/_(power|kettle)$/, '') || heater.split('.')[1];
-    const has = (id: string) => reg.states[id] ? id : undefined;
+    // the kettle's own name first («water_heater.kitchen_kettle» → «switch.kitchen_kettle_plug»), then without its last word
+    // («switch.kitchen_plug»): cutting «_kettle» off at once never found the socket of this house (audit 2026-11-09)
+    const object = heater.split('.')[1], stems = [...new Set([object.replace(/_power$/, ''), object.replace(/_(power|kettle)$/, ''), object])].filter(Boolean);
+    const has = (domain: string, tail: string) => stems.map(stem => `${domain}.${stem}${tail}`).find(id => !!reg.states[id]);
     return { label: dev.model ?? 'MIOT', entities: {
       heater, status: find('sensor', /_status$/), temp: find('sensor', /_temperature$/), power: find('switch', /_power$/), keepWarm: find('switch', /_auto_keep_warm$/),
       target: find('number', /_target_temperature$/), keepTemp: find('number', /_keep_warm_temperature$/), keepTime: find('number', /_keep_warm_time$/), lifted: find('binary_sensor', /_lift(ed|ing)$/),
       stop: find('button', /_stop$/), dnd: find('switch', /_no_disturb$/), liftRemember: find('switch', /_lift_remember_temp$/), boilRemind: find('switch', /_boiling_reminder$/), warmRemind: find('switch', /_keep_warm_reminder$/),
       knob: find('switch', /_custom_knob_temp$/), warming: find('sensor', /_warming_time$/), info: find('button', /_info$/), mode: find('number', /_target_mode$/),
-      plug: has(`switch.${stem}_plug`), plugPower: has(`sensor.${stem}_plug_power`), plugToday: has(`sensor.${stem}_plug_energy_today`),
+      plug: has('switch', '_plug'), plugPower: has('sensor', '_plug_power'), plugToday: has('sensor', '_plug_energy_today'),
       device: dev.id, rest: own.join(','),
     } };
   },
@@ -227,6 +229,7 @@ export const cameraImouSpec: ModuleSpec = {
 export const MODULE_SPECS: ModuleSpec[] = [boilerEbusSpec, doorbellSpec, cameraGo2rtcSpec, cameraOnvifSpec, cameraImouSpec, petFeederSpec, airSpec, clockSpec, kettleSpec];
 export interface ActiveSpec { spec: ModuleSpec; entities: ModuleEntities; label: string; options: ModuleOptions }
 /** Modules whose hardware is present (or that the owner configured by hand) and that are not disabled. */
+const roomOfEntity = (reg: Registry, id: string) => { const e = reg.entities.find(x => x.entity_id === id); return e ? e.area_id ?? reg.devices.find(d => d.id === e.device_id)?.area_id ?? null : null; };
 export function activeSpecs(registry: Registry, config: HouseConfig, specs: ModuleSpec[] = MODULE_SPECS): ActiveSpec[] {
   const out: ActiveSpec[] = [];
   for (const spec of specs) {
@@ -234,6 +237,10 @@ export function activeSpecs(registry: Registry, config: HouseConfig, specs: Modu
     if (cfg?.enabled === false) continue;
     const match = spec.detect(registry);
     const entities: ModuleEntities = { ...(match?.entities ?? {}), ...(cfg?.entities ?? {}) };
+    // A ring and a motion at the front door are events of a camera in the door's own room. `detect` can only ask this of the camera it found
+    // itself; the camera actually shown may be another one named in the settings (the C700 moved to the office, 09.11.2026) — asked again here.
+    // What the settings name themselves stays.
+    if (spec.id === 'camera_go2rtc' && entities.camera && entities.ring && !cfg?.entities?.ring && roomOfEntity(registry, entities.camera) !== roomOfEntity(registry, entities.ring)) { delete entities.ring; if (!cfg?.entities?.motionEvent) delete entities.motionEvent; }
     const options: ModuleOptions = { ...(match?.options ?? {}), ...(cfg?.options ?? {}) };
     if (!spec.roles.filter(r => r.required).every(r => entities[r.role] && registry.states[entities[r.role]!])) continue;
     if (!(spec.options ?? []).filter(o => o.required).every(o => options[o.key])) continue;

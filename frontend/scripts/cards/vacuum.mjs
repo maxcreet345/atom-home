@@ -16,12 +16,17 @@ function apply(snap, now, sc) {
   if (sc === 'returning') { set(`vacuum.${P}`, 'returning'); set(`sensor.${P}_status`, 'returning_home'); set(`sensor.${P}_battery`, '18'); }
   if (sc === 'warn') { set(`vacuum.${P}`, 'docked'); set(`sensor.${P}_status`, 'charging'); set(`binary_sensor.${P}_cleaning`, 'off'); set(`sensor.${P}_battery`, '82'); set(`binary_sensor.${P}_dock_dirty_water_box`, 'on'); set(`sensor.${P}_dock_error`, 'waste_water_tank_full'); set(`sensor.${P}_sensor_time_left`, '2.4'); }
   if (sc === 'error') { set(`vacuum.${P}`, 'error'); set(`sensor.${P}_status`, 'error'); set(`sensor.${P}_error`, 'robot_trapped'); set(`sensor.${P}_current_room`, 'спальню'); set(`sensor.${P}_cleaning_progress`, '61'); }
+  // audit 10.11.2026: the states the round found wrong
+  if (sc === 'washing') { set(`vacuum.${P}`, 'docked'); set(`sensor.${P}_status`, 'washing_the_mop'); set(`binary_sensor.${P}_cleaning`, 'on'); } // a trip to the dock in the middle of the job (91 %)
+  if (sc === 'leftover') { set(`vacuum.${P}`, 'docked'); set(`sensor.${P}_status`, 'charging'); set(`binary_sensor.${P}_cleaning`, 'off'); set(`sensor.${P}_error`, 'main_brush_jammed'); set(`sensor.${P}_filter_time_left`, '-12.5'); } // an error code left on a docked robot, a part past its life
+  if (sc === 'unknown') set(`vacuum.${P}`, 'unknown'); // HA has no state for the robot, its sensors still speak
+  if (sc === 'newcode') { set(`vacuum.${P}`, 'error'); set(`sensor.${P}_status`, 'error'); set(`sensor.${P}_error`, 'brand_new_fault_77'); } // a code the dictionary has never seen
   if (sc === 'offline') for (const id of Object.keys(S)) if (id.includes(P)) S[id] = { ...S[id], state: 'unavailable' };
   return snap;
 }
 export const card = {
   name: 'Пылесос', sheet: '#cleaning', home: '#home', sheetRoot: '.at-vac-panel', tileRoot: '.at-vac-tile', actionButton: null, darkScenarios: ['cleaning', 'docked', 'warn'], homeScenarios: ['cleaning', 'docked', 'warn'],
-  scenarios: { cleaning: {}, drawn: { sc: 'drawn' }, docked: { sc: 'docked' }, paused: { sc: 'paused' }, returning: { sc: 'returning' }, warn: { sc: 'warn' }, error: { sc: 'error' }, offline: { sc: 'offline' }, unlinked: { sc: 'unlinked' } },
+  scenarios: { cleaning: {}, drawn: { sc: 'drawn' }, docked: { sc: 'docked' }, paused: { sc: 'paused' }, returning: { sc: 'returning' }, warn: { sc: 'warn' }, error: { sc: 'error' }, offline: { sc: 'offline' }, unlinked: { sc: 'unlinked' }, washing: { sc: 'washing' }, leftover: { sc: 'leftover' }, unknown: { sc: 'unknown' }, newcode: { sc: 'newcode' } },
   build(base, scenario, now) {
     const out = heat.build(base, heat.scenarios.normal, now), snap = out.snapshot;
     for (const [id, name] of Object.entries(AREAS)) if (!snap.areas.some(a => a.area_id === id)) snap.areas.push({ area_id: id, name, icon: null, picture: null });

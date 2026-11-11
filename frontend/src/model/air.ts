@@ -110,7 +110,8 @@ export function airActions(room: AirRoom, reg: Registry, now = new Date()): AirA
   if (room.allowed.includes('purify') && pm !== null && toneOf('pm25', pm) !== 'ok') out.push({ kind: 'purify', roomId: room.id, device: vent, sensor: room.pm25!.entity, target: airTarget('purify'), blocked, value: pm });
   return out;
 }
-/** A refused command in the owner's language: HA's and the server's messages are English, and anything unknown stays in the console. Returns the key of module.air. */
+/** A refused command in the owner's language: HA's and the server's messages are English. Returns the key of module.air; for «failed» the card
+ * then asks `errorText` for the house's own reason (modules/air.tsx refusalText). */
 export function airErrorKey(e: unknown): 'deviceOffline' | 'err.busy' | 'err.starting' | 'err.denied' | 'failed' {
   const { code, message } = (e ?? {}) as { code?: unknown; message?: unknown }, text = String(message ?? e ?? '');
   if (code === 'unauthorized' || /^unauthorized/i.test(text)) return 'err.denied';

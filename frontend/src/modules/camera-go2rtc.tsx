@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import type { ModuleDef, ModuleSheetProps } from './types.ts';
 import { cameraGo2rtcSpec, CAMERA_CONTROL_ROLES } from './catalog.ts';
-import { cameraClaims, cameraTileState, sdStatusLabel } from './camera-state.ts';
+import { cameraClaims, cameraTileState, sdStatusLabel, stageFullscreen, type StageFullscreen } from './camera-state.ts';
 import { Icon } from '../ui/primitives.tsx';
+import { ProductPhoto, usePhoto } from '../ui/photo.tsx';
 import { Switch } from '../ui/cards.tsx';
 import { SettingRow, SliderRow, type Runner } from '../ui/sheet.tsx';
 import { entityActions, type Action } from '../runtime/actions.ts';
@@ -33,6 +34,7 @@ const KV = ({ k, v }: { k: string; v: ComponentChildren }) => <div className="at
 
 /** The camera sheet, shared by the Xiaomi C700 (MIoT roles) and the Imou Ranger (cloud roles: shutter, pan and tilt, presets, switches): one layout, the roles a camera has decide its rows. */
 export function CameraSheet({ device: shown, registry, entities, options, host, t, lang, runner: baseRunner, onClose, room, stage, wide }: ModuleSheetProps) {
+  const own = usePhoto(shown.primary.id), shot = shown.photo ?? own; // the camera's own product photo in the head, when the house has set one
   const [page, setPage] = useState<'main' | 'settings' | 'archive'>('main');
   const [note, setNote] = useState('');
   const stageRef = useRef<HTMLDivElement>(null);
@@ -46,9 +48,24 @@ export function CameraSheet({ device: shown, registry, entities, options, host, 
     const a = entityActions(r)[0] ?? (r.domain === 'light' ? ({ id: 'toggle', label, kind: 'toggle', domain: 'light', service: 'toggle', entityId: r.id, confirm: false, risk: 'normal', current: r.state === 'on' } satisfies Action) : null);
     return a ? { ...a, label } : null;
   };
-  // Imou's cloud is not polled (a quota of 30 000 requests a month): after a command its entity is read once a few seconds later, and once more for a confirmed one
+  // Imou's cloud is not polled (a quota of 30 000 requests a month): its entity is read 3 s and 12 s after a command HAS GONE OUT — not after the tap.
+  // A command that waits for «Выполнить», was cancelled or was dropped as a double tap asks the cloud nothing; the confirmed one is read after it is sent
+  // (the shell sends it past this wrapper, so the moment is the device's busy mark going out).
   const cloud = new Set(registry.entities.filter(e => e.platform === 'imou').map(e => e.entity_id));
-  const runner: Runner = { busy: baseRunner.busy, async run(d, a, v) { await baseRunner.run(d, a, v); if (cloud.has(a.entityId)) for (const ms of [3000, 12000]) setTimeout(() => void host.call('homeassistant', 'update_entity', { entity_id: a.entityId }).catch(() => undefined), ms); } };
+  const awaited = useRef<string | null>(null), wasBusy = useRef(false), hostRef = useRef(host); hostRef.current = host;
+  const pollCloud = (id: string) => { for (const ms of [3000, 12000]) setTimeout(() => void hostRef.current.call('homeassistant', 'update_entity', { entity_id: id }).catch(() => undefined), ms); };
+  const runner: Runner = { busy: baseRunner.busy, async run(d, a, v) {
+    if (!cloud.has(a.entityId)) { awaited.current = null; return baseRunner.run(d, a, v); }
+    if (a.confirm) { awaited.current = a.entityId; return baseRunner.run(d, a, v); } // only the question opens now
+    awaited.current = null;
+    if (!baseRunner.busy.has(d.key) && hostRef.current.online) pollCloud(a.entityId); // not for a second tap that is dropped, nor off the line
+    return baseRunner.run(d, a, v);
+  } };
+  const sheetBusy = baseRunner.busy.has(shown.key);
+  useEffect(() => {
+    if (!wasBusy.current && sheetBusy && awaited.current) { pollCloud(awaited.current); awaited.current = null; } // the confirmed command is going out now
+    wasBusy.current = sheetBusy;
+  }, [sheetBusy]);
   const privacy = ref('privacy'), power = ref('power');
   // the shutter (Imou: on = lens closed) or the power switch (C700: off = lens closed)
   const closed = privacy ? privacy.state === 'on' : !!power && power.state === 'off', off = privacy ? !privacy.available : !power || !power.available;
@@ -72,7 +89,10 @@ export function CameraSheet({ device: shown, registry, entities, options, host, 
       setNote(tx('module.camera.snapshotSaved'));
     } catch { setNote(tx('module.camera.snapshotFail')); }
   };
-  const fullscreen = () => { const el = stageRef.current; if (!el) return; const v = el.querySelector('video') as (HTMLVideoElement & { webkitEnterFullscreen?: () => void }) | null; if (el.requestFullscreen) el.requestFullscreen().catch(() => v?.webkitEnterFullscreen?.()); else v?.webkitEnterFullscreen?.(); };
+  // ST-08: the stage full screen; the first Escape leaves only it (the shell), and the keyboard comes back to «Во весь экран»
+  const full = useRef<StageFullscreen | null>(null);
+  useEffect(() => () => full.current?.stop(), []);
+  const fullscreen = (e: Event) => { const el = stageRef.current; if (el) (full.current ??= stageFullscreen()).open(el, e.currentTarget as HTMLElement | null); };
   useEffect(() => { if (!note) return; const id = setTimeout(() => setNote(''), 4000); return () => clearTimeout(id); }, [note]);
   const toggleRow = (role: string, label: string, icon: string, color: string, sub?: string) => { const a = act(role, label); return a ? <SettingRow device={device} action={a} runner={runner} t={t} lang={lang} icon={icon} color={color} /> : null; };
   const selectRow = (role: string, label: string, labels: (o: string) => string, icon = 'more'): ComponentChildren => { const a = act(role, label); return a && a.kind === 'select' ? <SelectRow action={a} labels={labels} device={device} runner={runner} disabled={busy || off} icon={icon} color="#8e8e93" /> : null; };
@@ -90,9 +110,9 @@ export function CameraSheet({ device: shown, registry, entities, options, host, 
   const sd = ref('sdStatus'), sdFree = ref('sdFree'), sdUsed = ref('sdUsed'), hasCard = !!sd && sd.state.toLowerCase() === 'normal';
   const mb = (r: EntityRef | null) => r && Number.isFinite(Number(r.state)) && Number(r.state) > 0 ? `${num(Number(r.state) / 1024, lang, 1)} GB` : '—';
 
-  const headBtns = <div className="at-cam-head-btns">{page !== 'main' && wide && <button type="button" className="hm-icon-btn" aria-label={t('ui.back')} onClick={() => setPage('main')}><Icon name="back" size={22} /></button>}{hasControls && page === 'main' && <button type="button" className="hm-icon-btn at-cam-gear" aria-label={tx('module.camera.settings')} onClick={() => setPage('settings')}><Icon name="gear" size={20} /></button>}<button type="button" className="hm-icon-btn" aria-label={t('ui.close')} onClick={onClose}>×</button></div>;
+  const headBtns = <div className="at-cam-head-btns">{page !== 'main' && wide && <button type="button" className="hm-icon-btn" aria-label={t('ui.back')} onClick={() => setPage('main')}><Icon name="back" size={22} /></button>}{hasControls && page === 'main' && <button type="button" className="hm-icon-btn at-cam-gear" aria-label={tx('module.camera.settings')} onClick={() => setPage('settings')}><Icon name="gear" size={20} /></button>}<button type="button" className="hm-icon-btn" aria-label={t('ui.closeSheet')} onClick={onClose}>×</button></div>;
   const head = page === 'main' || wide
-    ? <div className="hm-sheet-head"><span className="hm-sheet-photo"><Icon name="camera" size={30} /></span><div><small>{t('kind.camera')}{roomShown ? ` · ${roomShown}` : ''}</small><h2>{device.name}</h2></div>{!wide && headBtns}</div>
+    ? <div className="hm-sheet-head"><span className="hm-sheet-photo"><ProductPhoto src={shot} eager><Icon name="camera" size={30} /></ProductPhoto></span><div><small>{t('kind.camera')}{roomShown ? ` · ${roomShown}` : ''}</small><h2>{device.name}</h2></div>{!wide && headBtns}</div>
     : <div className="hm-sheet-head"><button type="button" className="hm-icon-btn" aria-label={t('ui.back')} onClick={() => setPage('main')}><Icon name="back" size={22} /></button><div><small>{device.name}</small><h2>{tx('module.camera.settings')}</h2></div>{headBtns}</div>;
   const cycle = (a: Action) => { const opts = a.options ?? []; const i = opts.indexOf(String(a.current ?? '')); return opts[(i + 1) % opts.length]; };
   const nightNowLabel = night && night.kind === 'select' && night.current ? nightLabel(String(night.current)) : null, hdrNowLabel = hdr && hdr.kind === 'select' && hdr.current ? onOffAuto(String(hdr.current)) : null;
@@ -150,5 +170,5 @@ export const cameraGo2rtc: ModuleDef = {
   claims: cameraClaims,
   tileState: (registry, entities, t) => cameraTileState(registry.states, entities, k => t(k as Key)),
   Sheet: CameraSheet,
-  Player: ({ entities, options, host, t, mode, poster }) => <Go2rtcView options={options} host={host} t={t} mode={mode} poster={poster} webrtcEntity={entities.camera} />,
+  Player: ({ entities, options, host, t, mode, poster, camera, paused }) => <Go2rtcView options={options} host={host} t={t} mode={mode} poster={poster} webrtcEntity={entities.camera} camera={camera} paused={paused} />,
 };

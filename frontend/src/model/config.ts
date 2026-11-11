@@ -84,16 +84,63 @@ export function normaliseAlarms(raw: unknown): Alarm[] {
 }
 
 const DAY_KEY = /^(\d{4})-(\d{2})-(\d{2})$/;
-/** The tariff history, sorted by day; a malformed entry is dropped, two on the same day keep the later one, a price is 0,0001–1000 lei. */
-export function normaliseTariffs(raw: unknown): Tariff[] {
+/** The tariff history, sorted by day; a malformed entry is dropped, two on the same day keep the later one, a price is 0,0001–1000 lei.
+ * With `today` (the house's day, `dayKey`) an entry dated after it is dropped too: the configurator takes no price «from tomorrow», and a
+ * pasted configuration must not bring in what the editor itself refuses (audit 2026-11-09, round 2). */
+export function normaliseTariffs(raw: unknown, today?: string): Tariff[] {
   if (!Array.isArray(raw)) return [];
   const byDay = new Map<string, number>();
   for (const t of raw.slice(0, 64)) {
     if (!plain(t) || typeof t.from !== 'string' || typeof t.lei !== 'number' || !Number.isFinite(t.lei) || t.lei <= 0 || t.lei > 1000) continue;
-    const m = DAY_KEY.exec(t.from); if (!m) continue;
+    const m = DAY_KEY.exec(t.from); if (!m || (today && t.from > today)) continue;
     const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])], date = new Date(y, mo - 1, d);
     if (date.getFullYear() !== y || date.getMonth() !== mo - 1 || date.getDate() !== d) continue;
     byDay.set(t.from, Math.round(t.lei * 10000) / 10000);
   }
   return [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([from, lei]) => ({ from, lei }));
+}
+/** A tariff day typed in the configurator, before it may replace the stored one: a date still being typed (empty, or a year that is not
+ * one yet — «0002-11-09» while 2026 is typed) is `incomplete`, never «no date»; a day after today or before 2000 is out of `range`;
+ * a day another row already holds is `taken` (two rows on one day would silently merge). null = fine. */
+export function tariffDayProblem(value: string, today: string, others: string[]): 'incomplete' | 'range' | 'taken' | null {
+  const m = DAY_KEY.exec(value); if (!m) return 'incomplete';
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])], date = new Date(y, mo - 1, d);
+  if (y < 1000 || date.getFullYear() !== y || date.getMonth() !== mo - 1 || date.getDate() !== d) return 'incomplete';
+  if (y < 2000 || value > today) return 'range';
+  return others.includes(value) ? 'taken' : null;
+}
+/** A price typed in the configurator: lei per kWh, 0,01–1000, a comma or a point; null = not a price (nothing is saved). Digits only:
+ * `Number()` also reads «1e2» as 100 and «0x10» as 16, which nobody means by a price. */
+export function tariffPrice(text: string): number | null {
+  const s = text.trim(); if (!/^\d{1,4}(?:[.,]\d{1,4})?$/.test(s)) return null;
+  const v = Number(s.replace(',', '.'));
+  return Number.isFinite(v) && v >= 0.01 && v <= 1000 ? Math.round(v * 10000) / 10000 : null;
+}
+/** `YYYY-MM-DD` of a Date by its LOCAL getters: give it the house's wall date (`houseDate()` of runtime/zone.ts) and it is the house's day,
+ * whatever zone the browser is in. */
+export const dayKey = (d: Date): string => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+/** The list after «Добавить изменение тарифа». The first own record must not re-price the past, so the history starts from what the panel
+ * was counting by: Home Assistant's own energy price when the house has one (`haPrice` — one row from today at that price: the time before
+ * the first row is counted at the first row's price, so nothing changes until the owner types the new figure), otherwise the regulator's
+ * figures (`fallback`, ANRE) and then today's row. A day that already has a price gets no second row. */
+export function withNewTariff(list: Tariff[], today: string, fallback: Tariff[], haPrice?: number | null): Tariff[] {
+  if (list.some(x => x.from === today)) return list;
+  const ha = typeof haPrice === 'number' && Number.isFinite(haPrice) && haPrice >= 0.0001 && haPrice <= 1000 ? Math.round(haPrice * 10000) / 10000 : null;
+  if (!list.length && ha !== null) return [{ from: today, lei: ha }];
+  const base = list.length ? list : fallback.filter(x => x.from < today).map(x => ({ ...x }));
+  const now = list.length ? list.filter(x => x.from <= today).at(-1) ?? list[0] : fallback.filter(x => x.from <= today).at(-1) ?? fallback[0];
+  return [...base, { from: today, lei: now?.lei ?? 1 }].sort((a, b) => a.from.localeCompare(b.from));
+}
+/** What deleting a tariff row does to the money already counted, for the question asked before it: the `only` row — the panel goes back to
+ * the price it had before any own record; the `first` (earliest) of several — the time before the next row is counted at that next row's
+ * price (`next`), there is no «previous» one; any `other` — its time goes to the previous row's price. null: no such row. */
+export function tariffDeleteEffect(list: Tariff[], from: string): { kind: 'only' } | { kind: 'first'; next: Tariff } | { kind: 'other'; previous: Tariff } | null {
+  const sorted = [...list].sort((a, b) => a.from.localeCompare(b.from)), i = sorted.findIndex(x => x.from === from);
+  if (i < 0) return null; if (sorted.length === 1) return { kind: 'only' };
+  return i === 0 ? { kind: 'first', next: sorted[1] } : { kind: 'other', previous: sorted[i - 1] };
+}
+/** The switches «Настройка → Разделы» offers: the sections this house has (`present`, from the shell; undefined = not told, offer all) and
+ * any section that is hidden now — a hidden one may read as absent, and its switch is the only way back. */
+export function offeredSections<S extends string>(all: readonly S[], present: readonly string[] | undefined, hidden: Partial<Record<string, { hidden?: boolean }>>): S[] {
+  return all.filter(s => !present || present.includes(s) || !!hidden[s]?.hidden);
 }

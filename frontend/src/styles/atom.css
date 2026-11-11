@@ -5,9 +5,9 @@
 /* sidebar: many sections + setup must never spill over the connection button */
 /* thermostat and status cards wrap when the panel shares the screen with the HA sidebar */
 /* photos and modules */
-.hm-shell .at-boiler{display:flex;flex-direction:column;gap:12px;padding:14px 16px}.hm-shell .at-boiler-head{display:flex;align-items:center;gap:12px}.hm-shell .at-boiler-head>div{flex:1;min-width:0;display:grid}.hm-shell .at-boiler-head strong{font-size:16px}.hm-shell .at-boiler-head small{color:var(--hm-muted);font-size:13px}.hm-shell .at-boiler-head .hm-status-icon.is-on{color:var(--hm-amber);box-shadow:0 0 18px #e9a22455}
+.hm-shell .at-boiler{display:flex;flex-direction:column;gap:12px;padding:14px 16px}.hm-shell .at-boiler-head{display:flex;align-items:center;gap:12px}.hm-shell .at-boiler-head>div{flex:1;min-width:0;display:grid}.hm-shell .at-boiler-head strong{font-size:1rem}.hm-shell .at-boiler-head small{color:var(--hm-muted);font-size:.8125rem}.hm-shell .at-boiler-head .hm-status-icon.is-on{color:var(--hm-amber);box-shadow:0 0 18px #e9a22455}
 .hm-shell .at-boiler-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.is-narrow .at-boiler-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-.hm-shell .at-boiler-tile{display:grid;gap:2px;padding:10px 12px;border-radius:14px;background:var(--hm-inset,#ffffff0a);border:1px solid var(--hm-line)}.hm-shell .at-boiler-tile small{font-size:12px;color:var(--hm-muted)}.hm-shell .at-boiler-tile strong{font-size:19px;font-weight:650;white-space:nowrap}.hm-shell .at-boiler-tile>span{font-size:12px;color:var(--hm-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hm-shell .at-boiler-tile.is-warning{background:#fff8ec;border-color:#f3d6a3}.hm-shell .at-boiler-tile.is-warning strong,.hm-shell .at-boiler-tile.is-warning>span{color:#b8781a}
+.hm-shell .at-boiler-tile{display:grid;gap:2px;padding:10px 12px;border-radius:14px;background:var(--hm-inset,#ffffff0a);border:1px solid var(--hm-line)}.hm-shell .at-boiler-tile small{font-size:.75rem;color:var(--hm-muted)}.hm-shell .at-boiler-tile strong{font-size:1.1875rem;font-weight:650;white-space:nowrap}.hm-shell .at-boiler-tile>span{font-size:.75rem;color:var(--hm-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hm-shell .at-boiler-tile.is-warning{background:#fff8ec;border-color:#f3d6a3}.hm-shell .at-boiler-tile.is-warning strong,.hm-shell .at-boiler-tile.is-warning>span{color:#b8781a}
 .hm-shell .at-spark{display:block;width:100%;height:28px;margin-top:4px}.hm-shell .at-spark-line{fill:none;stroke:var(--hm-blue);stroke-width:1.8}.hm-shell .at-spark-area{fill:#3d6ef21f}.hm-shell .at-spark-band{fill:#1fa86614}.hm-shell .at-spark.is-empty path{stroke:#1b2a4a26;stroke-dasharray:3 3;fill:none}
 /* overview with a module status card: four columns on a landscape tablet so two rows still fit */
 /* with a module status card the light card steps aside: thermostat on its own row, then a 2×2 of statuses */
@@ -18,12 +18,12 @@
 .hm-shell .at-go2rtc video{width:100%;height:100%;display:block}
 .hm-shell button.at-camera-q:disabled{opacity:.45;cursor:default}
 /* pet feeder module */
-.hm-shell .at-feeder{display:flex;flex-direction:column;gap:12px;padding:14px 16px;flex:none}.hm-shell .at-feeder-head{display:flex;align-items:center;gap:12px}.hm-shell .at-feeder-head>div{flex:1;min-width:0;display:grid}.hm-shell .at-feeder-head small{color:var(--hm-muted);font-size:13px}
+.hm-shell .at-feeder{display:flex;flex-direction:column;gap:12px;padding:14px 16px;flex:none}.hm-shell .at-feeder-head{display:flex;align-items:center;gap:12px}.hm-shell .at-feeder-head>div{flex:1;min-width:0;display:grid}.hm-shell .at-feeder-head small{color:var(--hm-muted);font-size:.8125rem}
 .hm-shell .at-feeder-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.is-narrow .at-feeder-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-.hm-shell .at-feeder-warn{display:flex;flex-wrap:wrap;gap:8px}.hm-shell .at-feeder-warn span{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#ffb02e22;color:var(--hm-amber,#ffb02e);font-size:13px;font-weight:600}
-.hm-shell .at-feeder-feed{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.hm-shell .at-feeder-feed .hm-stepper{justify-content:flex-start;gap:10px}.hm-shell .at-feeder-feed .hm-round{width:44px;height:44px}.hm-shell .at-feeder-dose{min-width:110px;display:grid;text-align:center}.hm-shell .at-feeder-dose strong{font-size:20px}.hm-shell .at-feeder-dose small{color:var(--hm-muted);font-size:12px}
-.hm-shell .at-feeder-confirm{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border-radius:14px;background:var(--hm-inset,#ffffff0a);border:1px solid var(--hm-line)}.hm-shell .at-feeder-note{font-size:13px;color:var(--hm-muted)}
-.hm-shell .at-feeder-plan strong{font-size:15px;line-height:1.3;white-space:normal}
+.hm-shell .at-feeder-warn{display:flex;flex-wrap:wrap;gap:8px}.hm-shell .at-feeder-warn span{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#ffb02e22;color:var(--hm-amber,#ffb02e);font-size:.8125rem;font-weight:600}
+.hm-shell .at-feeder-feed{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.hm-shell .at-feeder-feed .hm-stepper{justify-content:flex-start;gap:10px}.hm-shell .at-feeder-feed .hm-round{width:44px;height:44px}.hm-shell .at-feeder-dose{min-width:110px;display:grid;text-align:center}.hm-shell .at-feeder-dose strong{font-size:1.25rem}.hm-shell .at-feeder-dose small{color:var(--hm-muted);font-size:.75rem}
+.hm-shell .at-feeder-confirm{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border-radius:14px;background:var(--hm-inset,#ffffff0a);border:1px solid var(--hm-line)}.hm-shell .at-feeder-note{font-size:.8125rem;color:var(--hm-muted)}
+.hm-shell .at-feeder-plan strong{font-size:.9375rem;line-height:1.3;white-space:normal}
 /* stock device illustrations */
 .hm-shell .at-device-art{display:block;border-radius:inherit}.hm-shell .at-device-art.is-fill{position:absolute;inset:0;width:100%;height:100%}
 .hm-shell .hm-thumb,.hm-shell .hm-sheet-photo,.hm-shell .at-light-art{position:relative}.hm-shell .at-light-art .at-device-art{opacity:.9}.hm-shell .at-light.is-on .at-light-art .at-device-art{opacity:1}
@@ -42,42 +42,28 @@
 .hm-shell .at-cam-stage{margin:0}
 .hm-shell .at-cam-tools{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
 .is-narrow .at-cam-tools{grid-template-columns:repeat(3,minmax(0,1fr));row-gap:14px}
-.hm-shell .at-cam-tool small{font-size:12px;color:var(--ah-accent-ink);line-height:1.1}
+.hm-shell .at-cam-tool small{font-size:.75rem;color:var(--ah-accent-ink);line-height:1.1}
 .hm-shell .at-cam-tool.is-on b{background:var(--ah-accent);color:#fff}.hm-shell .at-cam-tool.at-cam-lens.is-on b{background:#ff7a3d}
-.hm-shell .at-cam-tool b{font-size:14px;font-weight:700}
+.hm-shell .at-cam-tool b{font-size:.875rem;font-weight:700}
 /* the camera burns its clock into the top-left corner: LIVE goes to the bottom */
 .hm-shell .at-cam-stage .hm-live{top:auto;bottom:10px}
-.hm-shell button.at-cam-tool{display:flex;flex-direction:column;align-items:center;gap:6px;padding:4px 0;color:var(--ah-muted);font-size:12px;text-align:center;background:none;border:0;cursor:pointer}
+.hm-shell button.at-cam-tool{display:flex;flex-direction:column;align-items:center;gap:6px;padding:4px 0;color:var(--ah-muted);font-size:.75rem;text-align:center;background:none;border:0;cursor:pointer}
 .hm-shell .at-cam-tool b{display:grid;place-items:center;width:52px;height:52px;border-radius:50%;background:var(--ah-group);color:var(--ah-ink);box-shadow:0 1px 2px #00000010;transition:transform .32s var(--ah-spring)}
 .hm-shell .at-cam-tool:active:not(:disabled) b{transform:scale(.95)}
 .hm-shell button.at-cam-tool:disabled{opacity:.45;cursor:default}
-.hm-shell .at-cam-title{min-height:40px;padding:12px 16px 2px;font-size:13px;color:var(--ah-muted)}
-.hm-shell .at-cam-kv{display:flex;justify-content:space-between;gap:10px;min-height:44px;padding:10px 16px;background:var(--ah-group);font-size:14px;color:var(--ah-ink)}.hm-shell .at-cam-kv small{font-size:14px;color:var(--ah-muted);text-align:right}
-.hm-shell .at-cam-h3{margin:0;font-size:18px;font-weight:650}
+.hm-shell .at-cam-title{min-height:40px;padding:12px 16px 2px;font-size:.8125rem;color:var(--ah-muted)}
+.hm-shell .at-cam-kv{display:flex;justify-content:space-between;gap:10px;min-height:44px;padding:10px 16px;background:var(--ah-group);font-size:.875rem;color:var(--ah-ink)}.hm-shell .at-cam-kv small{font-size:.875rem;color:var(--ah-muted);text-align:right}
+.hm-shell .at-cam-h3{margin:0;font-size:1.125rem;font-weight:650}
 .hm-shell .at-cam-note{margin:0}
-.hm-shell .at-cam-stage-closed{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:6px;color:#9fb1c5;font-size:14px;background:linear-gradient(160deg,#2a3245,#141a26)}
+.hm-shell .at-cam-stage-closed{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:6px;color:#9fb1c5;font-size:.875rem;background:linear-gradient(160deg,#2a3245,#141a26)}
 .hm-shell .hm-camera-tile.is-closed .hm-camera-frame{background:linear-gradient(160deg,#2a3245,#141a26)}
 .hm-shell .at-cam-badge{position:absolute;top:10px;right:10px;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#000a;color:#fff}
 .hm-shell .at-cam-stage:fullscreen{background:#000}.hm-shell .at-cam-stage:fullscreen video{object-fit:contain}
-/* laptops and monitors: the face grows with the screen instead of sitting in a 1280px column; tiles stay square and get a little bigger type */
-@media (min-width:1500px){
-  .hm-shell.is-wide .hm-page{max-width:1440px}
-  .hm-shell.is-wide.is-landscape .ah-grid,.hm-shell.is-wide .ah-grid{grid-template-columns:repeat(auto-fill,minmax(162px,1fr))}
-  .hm-shell.is-wide.is-landscape .ah-rooms-strip .hm-room-grid,.hm-shell.is-wide .ah-rooms-strip .hm-room-grid{grid-template-columns:repeat(auto-fill,minmax(224px,1fr))}
-}
-@media (min-width:2000px){
-  .hm-shell.is-wide .hm-page{max-width:1680px}
-  .hm-shell.is-wide.is-landscape .ah-grid,.hm-shell.is-wide .ah-grid{grid-template-columns:repeat(auto-fill,minmax(184px,1fr))}
-  .hm-shell.is-wide.is-landscape .ah-rooms-strip .hm-room-grid,.hm-shell.is-wide .ah-rooms-strip .hm-room-grid{grid-template-columns:repeat(auto-fill,minmax(252px,1fr))}
-  .hm-shell .hm-sheet.is-split{width:min(1200px,100%);max-width:1200px}
-  .hm-shell .hm-sheet.is-split .at-cam{grid-template-columns:minmax(0,1.2fr) 420px}
-}
-@media (min-width:3000px){
-  .hm-shell.is-wide .hm-page{max-width:1920px}
-  .hm-shell.is-wide.is-landscape .ah-grid,.hm-shell.is-wide .ah-grid{grid-template-columns:repeat(auto-fill,minmax(206px,1fr))}
-  .hm-shell.is-wide.is-landscape .ah-rooms-strip .hm-room-grid,.hm-shell.is-wide .ah-rooms-strip .hm-room-grid{grid-template-columns:repeat(auto-fill,minmax(284px,1fr))}
-}
-@container (min-width:185px){.hm-shell .ah-tile-text strong{font-size:16px}.hm-shell .ah-tile-text small{font-size:13px}.hm-shell .ah-tile .hm-status-text strong,.hm-shell .ah-tile .ah-value-num{font-size:26px}}
+/* laptops and monitors: the face grows with the panel — the page column, the module and the room card sizes are the shell's tokens (apple.css, section 1) */
+/* panel (min-width:2000px) */
+  .hm-shell:where(.pw-2000) .hm-sheet.is-split{width:min(1200px,100%);max-width:1200px}
+  .hm-shell:where(.pw-2000) .hm-sheet.is-split .at-cam{grid-template-columns:minmax(0,1.2fr) 420px}
+@container (min-width:185px){.hm-shell .ah-tile-text strong{font-size:1rem}.hm-shell .ah-tile-text small{font-size:.8125rem}.hm-shell .ah-tile .hm-status-text strong,.hm-shell .ah-tile .ah-value-num{font-size:1.625rem}}
 /* the split sheet's columns scroll; their blocks must never be squeezed to fit (flex-shrink clipped the groups) */
 .hm-shell .hm-sheet.is-split .at-cam-left>*,.hm-shell .hm-sheet.is-split .at-cam-right>*{flex:none}
 .hm-shell .hm-sheet.is-split{max-height:calc(var(--hm-height,100dvh) - 48px)}
@@ -85,7 +71,7 @@
 /* last frame as a poster behind the live video; small spinner while connecting */
 .hm-shell .at-cam-poster{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;filter:brightness(.6) saturate(.8)}
 .hm-shell .at-go2rtc.is-live~.at-cam-poster{display:none}
-.hm-shell .hm-camera-wait.is-poster{background:none;color:#fff;text-shadow:0 1px 4px #000;font-size:14px}
+.hm-shell .hm-camera-wait.is-poster{background:none;color:#fff;text-shadow:0 1px 4px #000;font-size:.875rem}
 .hm-shell .at-cam-spin{width:22px;height:22px;border:2.5px solid #ffffff55;border-top-color:#fff;border-radius:50%;animation:at-spin 1s linear infinite}
 @keyframes at-spin{to{transform:rotate(360deg)}}
 .hm-shell button.at-cam-sound{right:auto;left:auto;top:auto;bottom:10px;right:10px;width:34px;padding:0;display:grid;place-items:center}.hm-shell button.at-cam-sound.is-on{background:var(--ah-accent)}
@@ -93,17 +79,17 @@
 /* doorbell: red tile line while it rings, the ring badge, the auto-close banner in the sheet, events, the cross-sheet banner */
 .hm-shell .hm-camera-tile.is-danger{outline:3px solid var(--ah-red,#ff3b30);outline-offset:-1px}.hm-shell .hm-camera-tile.is-danger .hm-camera-caption small{color:#ff6b61;font-weight:700;opacity:1}
 .hm-shell .hm-camera-tile.is-warning .hm-camera-caption small{color:#ffb02e;opacity:1}
-.hm-shell .at-cam-badge.is-ring{width:auto;padding:0 10px 0 8px;gap:6px;border-radius:999px;background:var(--ah-red,#ff3b30);font-size:12px;font-weight:700;animation:at-ring 1.4s ease-out infinite}
-@keyframes at-ring{0%{box-shadow:0 0 0 0 #ff3b3080}100%{box-shadow:0 0 0 12px #ff3b3000}}
+.hm-shell .at-cam-badge.is-ring{width:auto;padding:0 10px 0 8px;gap:6px;border-radius:999px;background:#d70015;font-size:.75rem;font-weight:700}.hm-shell .at-cam-badge.is-ring::after{content:'';position:absolute;inset:0;border-radius:inherit;border:2px solid #ff3b30;animation:at-ring 1.4s ease-out infinite;will-change:transform,opacity;pointer-events:none}
+@keyframes at-ring{0%{transform:scale(1);opacity:.8}100%{transform:scale(1.5,1.9);opacity:0}}
 .hm-shell .at-door-banner{position:relative;display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:12px;padding:12px 14px 14px;border-radius:18px;background:var(--ah-red,#ff3b30);color:#fff;overflow:hidden}
-.hm-shell .at-door-banner b{display:block;font-size:16px}.hm-shell .at-door-banner small{opacity:.9;font-size:13px}
-.hm-shell .at-door-banner .at-door-cnt{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
-.hm-shell button.at-door-stay{padding:8px 12px;border-radius:999px;border:0;background:#ffffff2e;color:#fff;font:inherit;font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer}
+.hm-shell .at-door-banner b{display:block;font-size:1rem}.hm-shell .at-door-banner small{opacity:.9;font-size:.8125rem}
+.hm-shell .at-door-banner .at-door-cnt{font-size:1.625rem;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.hm-shell button.at-door-stay{padding:8px 12px;border-radius:999px;border:0;background:#ffffff2e;color:#fff;font:inherit;font-size:.8125rem;font-weight:600;white-space:nowrap;cursor:pointer}
 .hm-shell .at-door-bar{position:absolute;left:0;bottom:0;height:4px;width:calc(100% * var(--p,1));background:#fff;transition:width 1s linear}
 .hm-shell .at-door-seg{display:flex;gap:4px;padding:8px 16px 6px;background:var(--ah-group)}
-.hm-shell .at-door-seg button{flex:1;padding:7px 4px;border-radius:10px;border:0;background:var(--ah-inset,#0000000a);font:inherit;font-size:13px;font-weight:560;color:var(--ah-muted);cursor:pointer}.hm-shell .at-door-seg button.is-on{background:var(--ah-accent);color:#fff}
+.hm-shell .at-door-seg button{flex:1;padding:7px 4px;border-radius:10px;border:0;background:var(--ah-inset,#0000000a);font:inherit;font-size:.8125rem;font-weight:560;color:var(--ah-muted);cursor:pointer}.hm-shell .at-door-seg button.is-on{background:var(--ah-accent);color:#fff}
 .hm-shell .at-door-ev.is-ring strong{color:var(--ah-red,#ff3b30)}
-.hm-shell .at-door-when{color:var(--ah-muted);font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hm-shell .at-door-when{color:var(--ah-muted);font-size:.8125rem;font-variant-numeric:tabular-nums;white-space:nowrap}
 .hm-shell button.at-door-row-btn{width:100%;text-align:left;font:inherit;color:inherit;border:0;cursor:pointer}.hm-shell button.at-door-row-btn:disabled{opacity:.5;cursor:default}
 .hm-shell .at-door-pills{display:flex;gap:6px;padding:4px 16px 12px;background:var(--ah-group)}.hm-shell .at-door-pills .hm-pill:disabled{opacity:.5}
 .hm-shell .at-door-ring{position:fixed;top:max(12px,env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:10px;padding:10px 10px 10px 14px;border-radius:999px;background:var(--ah-red,#ff3b30);color:#fff;font-weight:700;box-shadow:0 10px 30px #0006;max-width:calc(100% - 24px)}
@@ -117,17 +103,17 @@
 
 /* stage 2: thumbnails in the events list, clip playback on the stage, the archive grid */
 .hm-shell .at-door-th{position:relative;width:64px;height:40px;flex:none;border-radius:8px;overflow:hidden;background:#05090f}.hm-shell .at-door-th img{width:100%;height:100%;object-fit:cover;display:block}
-.hm-shell .at-door-th b{position:absolute;right:3px;bottom:3px;padding:1px 5px;border-radius:6px;background:#000a;color:#fff;font-size:10px;font-weight:600}
+.hm-shell .at-door-th b{position:absolute;right:3px;bottom:3px;padding:1px 5px;border-radius:6px;background:#000a;color:#fff;font-size:.625rem;font-weight:600}
 .hm-shell .at-door-ev.is-playing{background:color-mix(in srgb,var(--ah-accent) 12%,var(--ah-group))}
 .hm-shell .at-door-stage.is-clip{background:#000}.hm-shell .at-door-clip{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;background:#000}
-.hm-shell .at-door-clip-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:10px;padding:10px;background:linear-gradient(180deg,#000c,transparent);color:#fff;font-size:13px;font-variant-numeric:tabular-nums}
-.hm-shell .at-door-clip-kind{padding:3px 8px;border-radius:8px;background:#0a84ff;font-weight:700;font-size:12px}.hm-shell .at-door-clip-kind.is-ring{background:var(--ah-red,#ff3b30)}
+.hm-shell .at-door-clip-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:10px;padding:10px;background:linear-gradient(180deg,#000c,transparent);color:#fff;font-size:.8125rem;font-variant-numeric:tabular-nums}
+.hm-shell .at-door-clip-kind{padding:3px 8px;border-radius:8px;background:#0a84ff;font-weight:700;font-size:.75rem}.hm-shell .at-door-clip-kind.is-ring{background:var(--ah-red,#ff3b30)}
 .hm-shell .at-door-clip-top .at-door-live-btn{margin-left:auto;background:#fff;color:#000;min-height:32px;padding:0 12px}
 .hm-shell .at-door-days{display:flex;gap:6px;overflow-x:auto;padding:4px 0 8px;scrollbar-width:none}.hm-shell .at-door-days .hm-pill{flex:none}
 .hm-shell .at-door-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
 .hm-shell button.at-door-cell{position:relative;display:block;aspect-ratio:16/10;border:0;border-radius:12px;overflow:hidden;background:#05090f;padding:0;cursor:pointer;font:inherit;color:#fff}
 .hm-shell .at-door-cell img{width:100%;height:100%;object-fit:cover;display:block}.hm-shell .at-door-cell-empty{position:absolute;inset:0;display:grid;place-items:center;color:#9fb1c5}
-.hm-shell .at-door-cell small{position:absolute;left:0;right:0;bottom:0;padding:14px 8px 6px;background:linear-gradient(0deg,#000b,transparent);font-size:12px;font-weight:600;text-align:left;font-variant-numeric:tabular-nums}
+.hm-shell .at-door-cell small{position:absolute;left:0;right:0;bottom:0;padding:14px 8px 6px;background:linear-gradient(0deg,#000b,transparent);font-size:.75rem;font-weight:600;text-align:left;font-variant-numeric:tabular-nums}
 .hm-shell .at-door-cell.is-ring::before{content:"";position:absolute;left:8px;top:8px;width:10px;height:10px;border-radius:50%;background:var(--ah-red,#ff3b30);box-shadow:0 0 0 2px #fff8}
 .hm-shell .at-door-seg.is-head{padding:0;background:none;gap:4px;flex:none}.hm-shell .at-door-seg.is-head button{flex:none;padding:7px 10px}
 .is-narrow .at-door-seg.is-head{display:none}
@@ -142,54 +128,54 @@
 .hm-shell .ah-hand-cap{fill:var(--ah-red,#ff3b30)}
 .hm-shell .ah-clock-ring-bg{fill:none;stroke:var(--ah-inset,#0000000f);stroke-width:4}.hm-shell .ah-clock-ring{fill:none;stroke:var(--ah-accent);stroke-width:4;stroke-linecap:round;transition:stroke-dashoffset 1s linear}
 .hm-shell .ah-clock-big{position:absolute;inset:0 0 18px;display:grid;place-content:center;text-align:center;animation:ah-pop .4s var(--ah-spring)}
-.hm-shell .ah-clock-big b{font-size:26px;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums;line-height:1}.hm-shell .ah-clock-big small{font-size:12px;color:var(--ah-muted)}
+.hm-shell .ah-clock-big b{font-size:1.625rem;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums;line-height:1}.hm-shell .ah-clock-big small{font-size:.75rem;color:var(--ah-muted)}
 @keyframes ah-pop{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
-.hm-shell .ah-clock .ah-clock-date{display:block;position:absolute;left:0;right:0;bottom:7px;font-size:12px;font-weight:600;color:var(--ah-muted)}.hm-shell .ah-clock .ah-clock-date::first-letter{text-transform:uppercase}
-.hm-shell .ah-clock-digital{display:flex;align-items:baseline;justify-content:center;gap:4px;height:100%}.hm-shell .ah-clock-digital b{font-size:34px;font-weight:700;letter-spacing:-1px;font-variant-numeric:tabular-nums}.hm-shell .ah-clock-digital span{font-size:14px;color:var(--ah-muted);font-variant-numeric:tabular-nums}
-@container (min-width:185px){.hm-shell .ah-clock-digital b{font-size:42px}.hm-shell .ah-clock-big b{font-size:32px}}
+.hm-shell .ah-clock .ah-clock-date{display:block;position:absolute;left:0;right:0;bottom:7px;font-size:.75rem;font-weight:600;color:var(--ah-muted)}.hm-shell .ah-clock .ah-clock-date::first-letter{text-transform:uppercase}
+.hm-shell .ah-clock-digital{display:flex;align-items:baseline;justify-content:center;gap:4px;height:100%}.hm-shell .ah-clock-digital b{font-size:2.125rem;font-weight:700;letter-spacing:-1px;font-variant-numeric:tabular-nums}.hm-shell .ah-clock-digital span{font-size:.875rem;color:var(--ah-muted);font-variant-numeric:tabular-nums}
+@container (min-width:185px){.hm-shell .ah-clock-digital b{font-size:2.625rem}.hm-shell .ah-clock-big b{font-size:2rem}}
 .hm-shell .at-clock-photo{color:var(--ah-accent)}
 .hm-shell .at-clock-face-wrap{width:min(260px,70%);margin:0 auto;aspect-ratio:1}
-.hm-shell .at-clock-big{display:flex;align-items:baseline;justify-content:center;gap:8px;padding:4px 0 0}.hm-shell .at-clock-big b{font-size:52px;font-weight:700;letter-spacing:-2px;font-variant-numeric:tabular-nums;line-height:1}.hm-shell .at-clock-big span{font-size:20px;color:var(--ah-muted);font-variant-numeric:tabular-nums}
-.hm-shell .at-clock-date{text-align:center;color:var(--ah-muted);font-size:15px}.hm-shell .at-clock-date b{color:var(--ah-ink);font-weight:600}.hm-shell .at-clock-date b::first-letter{text-transform:uppercase}
+.hm-shell .at-clock-big{display:flex;align-items:baseline;justify-content:center;gap:8px;padding:4px 0 0}.hm-shell .at-clock-big b{font-size:3.25rem;font-weight:700;letter-spacing:-2px;font-variant-numeric:tabular-nums;line-height:1}.hm-shell .at-clock-big span{font-size:1.25rem;color:var(--ah-muted);font-variant-numeric:tabular-nums}
+.hm-shell .at-clock-date{text-align:center;color:var(--ah-muted);font-size:.9375rem}.hm-shell .at-clock-date b{color:var(--ah-ink);font-weight:600}.hm-shell .at-clock-date b::first-letter{text-transform:uppercase}
 .hm-shell .at-clock-sun{display:grid;gap:6px;padding:14px 16px;border-radius:18px;background:var(--ah-group)}
-.hm-shell .at-clock-sun-row{display:flex;justify-content:space-between;gap:8px;font-size:14px;color:var(--ah-muted);flex-wrap:wrap}.hm-shell .at-clock-sun-row b{color:var(--ah-ink);font-weight:600}
+.hm-shell .at-clock-sun-row{display:flex;justify-content:space-between;gap:8px;font-size:.875rem;color:var(--ah-muted);flex-wrap:wrap}.hm-shell .at-clock-sun-row b{color:var(--ah-ink);font-weight:600}
 .hm-shell .at-clock-arc{width:100%;height:64px;display:block}.hm-shell .at-clock-arc .bg{fill:none;stroke:var(--ah-inset,#0000000f);stroke-width:3}.hm-shell .at-clock-arc .fg{fill:none;stroke:#e9a224;stroke-width:3;stroke-linecap:round;transition:stroke-dashoffset 1s ease}.hm-shell .at-clock-arc .dot{fill:#e9a224;stroke:#fff;stroke-width:2}.hm-shell .at-clock-arc .base{stroke:var(--ah-line);stroke-width:1}
-.hm-shell .at-clock-timers{display:grid;gap:10px;padding:14px 16px;border-radius:18px;background:var(--ah-group)}.hm-shell .at-clock-timers h4{margin:0;font-size:13px;font-weight:600;color:var(--ah-muted)}
+.hm-shell .at-clock-timers{display:grid;gap:10px;padding:14px 16px;border-radius:18px;background:var(--ah-group)}.hm-shell .at-clock-timers h4{margin:0;font-size:.8125rem;font-weight:600;color:var(--ah-muted)}
 .hm-shell .at-clock-presets,.hm-shell .at-clock-labels{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.hm-shell .hm-pill.at-clock-preset{min-width:52px;font-size:15px;font-weight:600}
+.hm-shell .hm-pill.at-clock-preset{min-width:52px;font-size:.9375rem;font-weight:600}
 .hm-shell .at-clock-trow{display:flex;align-items:center;gap:14px;animation:ah-pop .4s var(--ah-spring)}
 .hm-shell .at-clock-ring{position:relative;width:64px;height:64px;flex:none}.hm-shell .at-clock-ring svg{width:64px;height:64px;transform:rotate(-90deg)}.hm-shell .at-clock-ring circle{fill:none;stroke-width:5}.hm-shell .at-clock-ring .bg{stroke:var(--ah-inset,#0000000f)}.hm-shell .at-clock-ring .fg{stroke:var(--ah-accent);stroke-linecap:round;transition:stroke-dashoffset 1s linear}
 .hm-shell .at-clock-trow.is-paused .at-clock-ring .fg{stroke:var(--ah-muted)}
-.hm-shell .at-clock-ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
-.hm-shell .at-clock-tt{flex:1;display:grid;min-width:0}.hm-shell .at-clock-tt strong{font-size:16px}.hm-shell .at-clock-tt small{color:var(--ah-muted);font-size:13px}
-.hm-shell button.at-clock-ctl{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;border:0;background:var(--ah-inset,#0000000f);color:var(--ah-ink);font:inherit;font-size:20px;cursor:pointer;transition:transform .32s var(--ah-spring)}.hm-shell button.at-clock-ctl:active{transform:scale(.9)}.hm-shell button.at-clock-ctl.is-stop{background:#ff3b3022;color:#ff3b30}
-.hm-shell .at-clock-wheel{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:4px 0;animation:ah-pop .35s var(--ah-spring)}.hm-shell .at-clock-wheel>div{display:grid;justify-items:center;gap:2px;width:84px;padding:6px 0;border-radius:14px;background:var(--ah-inset,#0000000f);font-variant-numeric:tabular-nums}.hm-shell .at-clock-wheel>div b{font-size:28px}.hm-shell .at-clock-wheel>div small{font-size:12px;color:var(--ah-muted)}.hm-shell .at-clock-wheel .hm-icon-btn{width:40px;height:32px;font-size:20px}
+.hm-shell .at-clock-ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:.8125rem;font-weight:700;font-variant-numeric:tabular-nums}
+.hm-shell .at-clock-tt{flex:1;display:grid;min-width:0}.hm-shell .at-clock-tt strong{font-size:1rem}.hm-shell .at-clock-tt small{color:var(--ah-muted);font-size:.8125rem}
+.hm-shell button.at-clock-ctl{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;border:0;background:var(--ah-inset,#0000000f);color:var(--ah-ink);font:inherit;font-size:1.25rem;cursor:pointer;transition:transform .32s var(--ah-spring)}.hm-shell button.at-clock-ctl:active{transform:scale(.9)}.hm-shell button.at-clock-ctl.is-stop{background:#ff3b3022;color:#ff3b30}
+.hm-shell .at-clock-wheel{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:4px 0;animation:ah-pop .35s var(--ah-spring)}.hm-shell .at-clock-wheel>div{display:grid;justify-items:center;gap:2px;width:84px;padding:6px 0;border-radius:14px;background:var(--ah-inset,#0000000f);font-variant-numeric:tabular-nums}.hm-shell .at-clock-wheel>div b{font-size:1.75rem}.hm-shell .at-clock-wheel>div small{font-size:.75rem;color:var(--ah-muted)}.hm-shell .at-clock-wheel .hm-icon-btn{width:40px;height:32px;font-size:1.25rem}
 .hm-shell .at-clock-go{min-width:150px}
-.hm-shell .at-clock-label-input{flex:1;min-width:120px;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--ah-line);background:var(--ah-inset,#0000000f);color:var(--ah-ink);font:inherit;font-size:14px}
+.hm-shell .at-clock-label-input{flex:1;min-width:120px;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--ah-line);background:var(--ah-inset,#0000000f);color:var(--ah-ink);font:inherit;font-size:.875rem}
 .hm-shell .at-clock-people{display:flex;gap:12px;padding:14px 16px;border-radius:18px;background:var(--ah-group);overflow-x:auto;scrollbar-width:none}
-.hm-shell .at-clock-person{display:grid;justify-items:center;gap:4px;font-size:12px;color:var(--ah-muted);text-align:center;width:76px;flex:none}.hm-shell .at-clock-person b{display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:var(--ah-inset,#0000000f);font-size:16px;font-weight:700;color:var(--ah-ink);box-shadow:0 0 0 3px #8e8e93;transition:box-shadow .4s ease}.hm-shell .at-clock-person.is-home b{box-shadow:0 0 0 3px #30d158}.hm-shell .at-clock-person strong{color:var(--ah-ink);font-weight:600}
+.hm-shell .at-clock-person{display:grid;justify-items:center;gap:4px;font-size:.75rem;color:var(--ah-muted);text-align:center;width:76px;flex:none}.hm-shell .at-clock-person b{display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:var(--ah-inset,#0000000f);font-size:1rem;font-weight:700;color:var(--ah-ink);box-shadow:0 0 0 3px #8e8e93;transition:box-shadow .4s ease}.hm-shell .at-clock-person.is-home b{box-shadow:0 0 0 3px #30d158}.hm-shell .at-clock-person strong{color:var(--ah-ink);font-weight:600}
 .hm-shell .at-house-banner{background:var(--ah-accent)}.hm-shell .at-house-banner .hm-pill{color:var(--ah-accent)}.hm-shell .at-house-banner small{font-weight:500;opacity:.9}
 .hm-shell .at-door-ring{animation:at-drop .45s var(--ah-spring)}
 @keyframes at-drop{from{transform:translate(-50%,-24px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
 .hm-shell .at-cam .at-clock-sun,.hm-shell .at-cam .at-clock-timers,.hm-shell .at-cam .at-clock-people{flex:none}
 @media (prefers-reduced-motion:reduce){.hm-shell .ah-hand.is-sec{transition:none}}
 .hm-shell .at-door-seg.at-clock-seg{padding:0;background:none;gap:4px;flex:none}.hm-shell .at-door-seg.at-clock-seg button{flex:none;padding:7px 12px}
-.hm-shell .at-door-ring>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw}
+.hm-shell .at-door-ring>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(60*var(--ah-vw))}
 
 /* timers, redesigned: preset tiles (Apple Watch), named kitchen presets with icons, a dial you turn with a finger */
 .hm-shell .at-clock-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px}
 .hm-shell .at-clock-grid.is-named{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
 .hm-shell button.at-clock-tile{display:grid;place-items:center;gap:0;min-height:64px;padding:8px 4px;border:0;border-radius:16px;background:var(--ah-inset,#0000000f);color:var(--ah-ink);font:inherit;cursor:pointer;transition:transform .32s var(--ah-spring),background-color .22s ease}
 .hm-shell button.at-clock-tile:active:not(:disabled){transform:scale(.94)}.hm-shell button.at-clock-tile:disabled{opacity:.5;cursor:default}
-.hm-shell .at-clock-tile b{font-size:24px;font-weight:700;letter-spacing:-.5px;line-height:1}.hm-shell .at-clock-tile small{font-size:12px;color:var(--ah-muted);text-transform:uppercase;letter-spacing:.04em}
-.hm-shell button.at-clock-tile.is-named{min-height:92px;gap:4px;padding:10px 6px}.hm-shell .at-clock-tile strong{font-size:14px;font-weight:600}.hm-shell .at-clock-tile.is-named small{text-transform:none;letter-spacing:0}
+.hm-shell .at-clock-tile b{font-size:1.5rem;font-weight:700;letter-spacing:-.5px;line-height:1}.hm-shell .at-clock-tile small{font-size:.75rem;color:var(--ah-muted);text-transform:uppercase;letter-spacing:.04em}
+.hm-shell button.at-clock-tile.is-named{min-height:92px;gap:4px;padding:10px 6px}.hm-shell .at-clock-tile strong{font-size:.875rem;font-weight:600}.hm-shell .at-clock-tile.is-named small{text-transform:none;letter-spacing:0}
 .hm-shell .at-clock-tile-icon{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:#ff9f0a22;color:#e08a16}
 .hm-shell .at-clock-tile.is-dial .at-clock-tile-icon{background:color-mix(in srgb,var(--ah-accent) 18%,transparent);color:var(--ah-accent)}.hm-shell button.at-clock-tile.is-dial.is-on{background:var(--ah-accent);color:#fff}.hm-shell .at-clock-tile.is-dial.is-on small,.hm-shell .at-clock-tile.is-dial.is-on .at-clock-tile-icon{color:#fff;background:#ffffff2e}
 .hm-shell .at-clock-dial-wrap{display:grid;justify-items:center;gap:10px;animation:ah-pop .35s var(--ah-spring)}
 .hm-shell .at-clock-dial{width:min(220px,70%);aspect-ratio:1;touch-action:none;cursor:grab;user-select:none}
 .hm-shell .at-clock-dial .track{fill:none;stroke:var(--ah-inset,#0000000f);stroke-width:14}.hm-shell .at-clock-dial .fill{fill:none;stroke:var(--ah-accent);stroke-width:14;stroke-linecap:round;transition:stroke-dashoffset .12s ease}
 .hm-shell .at-clock-dial .tick{stroke:var(--ah-muted);stroke-width:1.5;opacity:.5}.hm-shell .at-clock-dial .knob{fill:#fff;stroke:var(--ah-accent);stroke-width:4;filter:drop-shadow(0 2px 4px #0003);transition:cx .12s ease,cy .12s ease}
-.hm-shell .at-clock-dial .value{font-size:30px;font-weight:700;fill:var(--ah-ink);font-variant-numeric:tabular-nums;font-family:inherit;letter-spacing:-1px}.hm-shell .at-clock-dial .unit{font-size:10px;fill:var(--ah-muted);font-family:inherit}
+.hm-shell .at-clock-dial .value{font-size:1.875rem;font-weight:700;fill:var(--ah-ink);font-variant-numeric:tabular-nums;font-family:inherit;letter-spacing:-1px}.hm-shell .at-clock-dial .unit{font-size:.625rem;fill:var(--ah-muted);font-family:inherit}
 .hm-shell .at-clock-dial-ctl{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
 .hm-shell .at-clock-trow-icon{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#ff9f0a22;color:#e08a16;flex:none}
 .hm-shell .at-clock-person b{position:relative;overflow:hidden}.hm-shell .at-clock-person b img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%}
@@ -197,47 +183,51 @@
 /* alarms: list rows with a switch, the editor, the mandatory station choice for timers, the room-page row */
 .hm-shell .at-alarm-row{padding-right:12px}.hm-shell .at-alarm-row.is-off .ah-row-text{opacity:.55}
 .hm-shell button.at-alarm-main{display:flex;align-items:center;gap:12px;flex:1;min-width:0;border:0;background:none;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
-.hm-shell .at-alarm-add .ah-row-icon{font-size:22px;font-weight:600}
+.hm-shell .at-alarm-add .ah-row-icon{font-size:1.375rem;font-weight:600}
 .hm-shell .at-alarm-editor{display:grid;gap:10px;padding:14px 16px;border-radius:18px;background:var(--ah-group);animation:ah-pop .35s var(--ah-spring)}
-.hm-shell .at-alarm-editor h4,.hm-shell .at-alarm-editor .at-h4{margin:0;font-size:13px;font-weight:600;color:var(--ah-muted)}
+.hm-shell .at-alarm-editor h4,.hm-shell .at-alarm-editor .at-h4{margin:0;font-size:.8125rem;font-weight:600;color:var(--ah-muted)}
 .hm-shell .at-alarm-editor .ah-row{padding-left:0;padding-right:0;background:none}
 .hm-shell .at-alarm-time{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.hm-shell .at-alarm-time input[type=time]{font:inherit;font-size:34px;font-weight:700;letter-spacing:-1px;font-variant-numeric:tabular-nums;padding:6px 14px;border-radius:14px;border:1px solid var(--ah-line);background:var(--ah-inset,#0000000f);color:var(--ah-ink);min-width:150px}
+.hm-shell .at-alarm-time input[type=time]{font:inherit;font-size:2.125rem;font-weight:700;letter-spacing:-1px;font-variant-numeric:tabular-nums;padding:6px 14px;border-radius:14px;border:1px solid var(--ah-line);background:var(--ah-inset,#0000000f);color:var(--ah-ink);min-width:150px}
 .hm-shell .hm-pill.is-day{min-width:44px;justify-content:center;padding:0 10px}
 .hm-shell .at-alarm-actions{display:flex;gap:8px;flex-wrap:wrap;padding-top:4px}.hm-shell .at-alarm-save{flex:1;justify-content:center;min-width:140px}.hm-shell .at-alarm-delete{color:#ff3b30}
+/* a chosen weekday is marked by a bar under its name as well as by the fill (the choice is also said in words under the chips) */
+.hm-shell .at-alarm-days .hm-pill.is-day{position:relative}.hm-shell .at-alarm-days .hm-pill.is-day[aria-pressed="true"]::after{content:"";position:absolute;left:50%;bottom:5px;width:14px;height:2px;margin-left:-7px;border-radius:2px;background:currentColor}
+.hm-shell .at-alarm-when{margin:0;font-size:.8125rem;color:var(--ah-muted)}.hm-shell .at-alarm-ask>span{flex:1 1 100%;font-weight:600}.hm-shell .at-alarm-note{margin:0}
+.hm-shell .at-clock-label-input::placeholder{color:var(--ah-muted);opacity:1}
 .hm-shell .at-clock-stations{display:grid;gap:6px;padding:10px 12px;border-radius:14px;border:1px solid var(--ah-line);transition:border-color .3s ease,background-color .3s ease}
 .hm-shell .at-clock-stations.is-required{border-color:var(--ah-accent);background:color-mix(in srgb,var(--ah-accent) 8%,transparent)}
-.hm-shell .at-clock-stations-label{font-size:13px;color:var(--ah-muted)}.hm-shell .at-clock-stations-label b{color:var(--ah-accent-ink)}.hm-shell .at-clock-stations small{font-size:12px;color:var(--ah-accent)}
+.hm-shell .at-clock-stations-label{font-size:.8125rem;color:var(--ah-muted)}.hm-shell .at-clock-stations-label b{color:var(--ah-accent-ink)}.hm-shell .at-clock-stations small{font-size:.75rem;color:var(--ah-accent)}
 .hm-shell .at-clock-grid.is-waiting{opacity:.45}
 .hm-shell button.at-room-alarms{display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;margin:0 0 14px;border:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
-.hm-shell .at-room-alarms .ah-row-text{flex:1;display:grid;min-width:0}.hm-shell .at-room-alarms strong{font-size:15px;font-weight:600}.hm-shell .at-room-alarms small{color:var(--ah-muted);font-size:13px}
+.hm-shell .at-room-alarms .ah-row-text{flex:1;display:grid;min-width:0}.hm-shell .at-room-alarms strong{font-size:.9375rem;font-weight:600}.hm-shell .at-room-alarms small{color:var(--ah-muted);font-size:.8125rem}
 
 /* the Time sheet, compact: summary cards on the main screen, everything else in windows over the sheet */
 .hm-shell .at-clock{position:relative}
 .hm-shell .at-clock-card{display:grid;gap:10px;padding:12px 14px;border-radius:18px;background:var(--ah-group);flex:none}
-.hm-shell .at-clock-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.hm-shell .at-clock-card-head .at-h4{margin:0;font-size:13px;font-weight:600;color:var(--ah-muted)}
-.hm-shell .hm-pill.is-small.at-clock-new,.hm-shell .hm-pill.is-small.at-alarm-add{min-height:32px;padding:0 12px;font-size:13px}
-.hm-shell .at-clock-empty{margin:0;font-size:14px;color:var(--ah-muted)}
+.hm-shell .at-clock-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.hm-shell .at-clock-card-head .at-h4{margin:0;font-size:.8125rem;font-weight:600;color:var(--ah-muted)}
+.hm-shell .hm-pill.is-small.at-clock-new,.hm-shell .hm-pill.is-small.at-alarm-add{min-height:32px;padding:0 12px;font-size:.8125rem}
+.hm-shell .at-clock-empty{margin:0;font-size:.875rem;color:var(--ah-muted)}
 .hm-shell .at-clock-alarms{gap:6px}
 .hm-shell button.at-alarm-chip{display:flex;align-items:baseline;gap:8px;min-height:40px;padding:4px 10px;border:0;border-radius:12px;background:var(--ah-inset,#0000000f);font:inherit;color:var(--ah-ink);text-align:left;cursor:pointer}
-.hm-shell .at-alarm-chip b{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.5px}.hm-shell .at-alarm-chip span{font-size:14px;font-weight:600}.hm-shell .at-alarm-chip small{margin-left:auto;font-size:12px;color:var(--ah-muted)}
-.hm-shell .at-clock-all{justify-self:end;display:inline-flex;align-items:center;gap:2px;font-size:13px}
+.hm-shell .at-alarm-chip b{font-size:1.25rem;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.5px}.hm-shell .at-alarm-chip span{font-size:.875rem;font-weight:600}.hm-shell .at-alarm-chip small{margin-left:auto;font-size:.75rem;color:var(--ah-muted)}
+.hm-shell .at-clock-all{justify-self:end;display:inline-flex;align-items:center;gap:2px;font-size:.8125rem}
 .hm-shell .at-clock-card.is-rows{padding:0;gap:1px}.hm-shell .at-clock-card.is-rows .ah-row{min-height:50px}
-.hm-shell .at-clock-people{display:flex;gap:10px}.hm-shell .at-clock-person{width:64px}.hm-shell .at-clock-person b{width:44px;height:44px;font-size:15px}.hm-shell .at-clock-person small{font-size:12px}
-.hm-shell .at-clock-timers .at-clock-trow .at-clock-ring{width:52px;height:52px}.hm-shell .at-clock-timers .at-clock-trow .at-clock-ring svg{width:52px;height:52px}.hm-shell .at-clock-timers .at-clock-ring b{font-size:12px}
-.is-narrow .at-clock .at-clock-big b{font-size:44px}.is-narrow .at-clock .at-clock-sun{padding:10px 14px;gap:4px}.is-narrow .at-clock .at-clock-arc{height:48px}.is-narrow .at-clock .at-clock-sun-row{font-size:13px}
+.hm-shell .at-clock-people{display:flex;gap:10px}.hm-shell .at-clock-person{width:64px}.hm-shell .at-clock-person b{width:44px;height:44px;font-size:.9375rem}.hm-shell .at-clock-person small{font-size:.75rem}
+.hm-shell .at-clock-timers .at-clock-trow .at-clock-ring{width:52px;height:52px}.hm-shell .at-clock-timers .at-clock-trow .at-clock-ring svg{width:52px;height:52px}.hm-shell .at-clock-timers .at-clock-ring b{font-size:.75rem}
+.is-narrow .at-clock .at-clock-big b{font-size:2.75rem}.is-narrow .at-clock .at-clock-sun{padding:10px 14px;gap:4px}.is-narrow .at-clock .at-clock-arc{height:48px}.is-narrow .at-clock .at-clock-sun-row{font-size:.8125rem}
 .hm-shell .at-win-scrim{position:absolute;inset:0;z-index:6;display:grid;place-items:center;padding:12px;background:#0f172080;animation:at-fade .25s ease}
 @keyframes at-fade{from{opacity:0}to{opacity:1}}
 .hm-shell .at-win{display:flex;flex-direction:column;width:min(440px,100%);max-height:100%;border-radius:22px;background:var(--ah-sheet);color:var(--ah-ink);box-shadow:0 18px 48px #00000045;overflow:hidden;contain:paint;will-change:transform;animation:at-rise .38s var(--ah-spring),at-fade .16s ease}
 .hm-shell .at-win.is-wide{width:min(560px,100%)}
 @keyframes at-rise{from{transform:translateY(32px)}to{transform:none}}
-.hm-shell .at-win-head{display:flex;align-items:center;gap:8px;padding:10px 10px 6px}.hm-shell .at-win-head h3{flex:1;margin:0;font-size:17px;font-weight:650;text-align:center}
+.hm-shell .at-win-head{display:flex;align-items:center;gap:8px;padding:10px 10px 6px}.hm-shell .at-win-head h3{flex:1;margin:0;font-size:1.0625rem;font-weight:650;text-align:center}
 .hm-shell .at-win-body{display:flex;flex-direction:column;gap:10px;padding:4px 14px 16px;overflow:auto;min-height:0}
 .hm-shell .at-win-body>*{flex:none}
 .hm-shell .at-win .at-alarm-editor{padding:0;background:none;animation:none}.hm-shell .at-win .at-alarms{border-radius:16px}
 .is-narrow .at-win-scrim{padding:0;align-items:stretch}.is-narrow .at-win{width:100%;max-height:100%;border-radius:22px 22px 0 0;margin-top:auto}
 .hm-shell .at-clock .at-clock-sun,.hm-shell .at-clock .at-clock-card{flex:none}
-.hm-shell .at-clock:not(.is-split){gap:8px}.hm-shell .at-clock:not(.is-split) .at-clock-sun-row:last-child{display:none}.hm-shell .at-clock:not(.is-split) .at-clock-arc{height:40px}.hm-shell .at-clock:not(.is-split) .at-clock-date{font-size:14px}.hm-shell .at-clock:not(.is-split) .at-clock-big b{font-size:44px}
+.hm-shell .at-clock:not(.is-split){gap:8px}.hm-shell .at-clock:not(.is-split) .at-clock-sun-row:last-child{display:none}.hm-shell .at-clock:not(.is-split) .at-clock-arc{height:40px}.hm-shell .at-clock:not(.is-split) .at-clock-date{font-size:.875rem}.hm-shell .at-clock:not(.is-split) .at-clock-big b{font-size:2.75rem}
 
 /* light card: the lit tile glows by brightness; the sheet has the tall brightness slider, quick levels, the temperature strip, effects and the ambient light */
 .hm-shell .ah-tile.kind-light.is-on .ah-glyph{background:#fff;color:#f0b400;box-shadow:0 0 calc(8px + 22px * var(--glow,1)) 0 #ffcc0099;animation:ah-glyph .45s var(--ah-spring),at-glow .9s ease-out}
@@ -249,27 +239,27 @@
 .hm-shell .at-vs.is-disabled{opacity:.5;cursor:default}
 .hm-shell .at-vs-fill{position:absolute;left:0;right:0;bottom:0;height:var(--p,0%);background:linear-gradient(180deg,#fff3dc,var(--k,#ffe9c7));transition:height .35s var(--ah-spring),background .3s ease}
 .hm-shell .at-vs.is-drag .at-vs-fill{transition:background .3s ease}
-.hm-shell .at-vs-pct{position:absolute;left:0;right:0;top:22px;text-align:center;font-size:30px;font-weight:700;letter-spacing:-1px;color:var(--ah-ink);font-variant-numeric:tabular-nums;pointer-events:none}.hm-shell .at-vs-pct i{font-style:normal;font-size:16px;font-weight:600}
+.hm-shell .at-vs-pct{position:absolute;left:0;right:0;top:22px;text-align:center;font-size:1.875rem;font-weight:700;letter-spacing:-1px;color:var(--ah-ink);font-variant-numeric:tabular-nums;pointer-events:none}.hm-shell .at-vs-pct i{font-style:normal;font-size:1rem;font-weight:600}
 .hm-shell .at-vs:not(.is-on) .at-vs-pct{color:var(--ah-muted)}
 .hm-shell .at-vs-bulb{position:absolute;left:0;right:0;bottom:18px;display:grid;place-items:center;color:var(--ah-muted);pointer-events:none;transition:color .3s}.hm-shell .at-vs.is-on .at-vs-bulb{color:#6b4e12}
 .hm-shell .at-light-side{display:flex;flex-direction:column;justify-content:space-between;gap:10px;min-width:0}
-.hm-shell .at-light-state b{display:block;font-size:22px;font-weight:600;letter-spacing:-.4px;line-height:1.15}.hm-shell .at-light-state small{display:block;color:var(--ah-muted);font-size:13px;font-variant-numeric:tabular-nums}
+.hm-shell .at-light-state b{display:block;font-size:1.375rem;font-weight:600;letter-spacing:-.4px;line-height:1.15}.hm-shell .at-light-state small{display:block;color:var(--ah-muted);font-size:.8125rem;font-variant-numeric:tabular-nums}
 .hm-shell .at-light-levels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
-.hm-shell button.at-light-level{display:grid;place-items:center;gap:0;min-height:44px;border:0;border-radius:14px;background:var(--ah-tile);color:var(--ah-ink);font:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:transform .32s var(--ah-spring),background-color .22s ease,color .22s ease;line-height:1.1;white-space:nowrap}
-.hm-shell button.at-light-level small{font-size:12px;font-weight:500;opacity:.75}
+.hm-shell button.at-light-level{display:grid;place-items:center;gap:0;min-height:44px;border:0;border-radius:14px;background:var(--ah-tile);color:var(--ah-ink);font:inherit;font-size:.875rem;font-weight:600;cursor:pointer;transition:transform .32s var(--ah-spring),background-color .22s ease,color .22s ease;line-height:1.1;white-space:nowrap}
+.hm-shell button.at-light-level small{font-size:.75rem;font-weight:500;opacity:.75}
 .hm-shell button.at-light-level.is-on{background:var(--ah-accent);color:#fff}.hm-shell button.at-light-level:active{transform:scale(.95)}.hm-shell button.at-light-level:disabled{opacity:.5;cursor:default}
 .hm-shell button.at-light-level.is-off{grid-column:span 2;grid-auto-flow:column;gap:6px;background:#ff7a3d22;color:#c24a1a}
 .hm-shell .at-light-right{display:grid;gap:12px;align-content:start}
 .hm-shell .at-light-temp{display:grid;gap:10px;padding:14px 16px;border-radius:18px;background:var(--ah-group)}
-.hm-shell .at-light-title{display:flex;justify-content:space-between;font-size:13px;color:var(--ah-muted)}.hm-shell .at-light-title b{color:var(--ah-ink);font-weight:600;font-variant-numeric:tabular-nums}
+.hm-shell .at-light-title{display:flex;justify-content:space-between;font-size:.8125rem;color:var(--ah-muted)}.hm-shell .at-light-title b{color:var(--ah-ink);font-weight:600;font-variant-numeric:tabular-nums}
 .hm-shell .at-temp-strip{position:relative;height:30px;border-radius:999px;background:linear-gradient(90deg,#ffb257,#ffe9c7 45%,#fff 60%,#dfeeff);touch-action:none;cursor:pointer;user-select:none;-webkit-user-select:none;margin:3px 0}
 .hm-shell .at-temp-strip.is-disabled{opacity:.5;cursor:default}
 .hm-shell .at-temp-strip i{position:absolute;top:-3px;left:var(--x,50%);width:36px;height:36px;margin-left:-18px;border-radius:50%;background:#fff;box-shadow:0 1px 6px #0005,inset 0 0 0 3px #fff;transition:left .25s var(--ah-ease)}
 .hm-shell .at-temp-presets{display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:6px}
-.hm-shell button.at-temp-preset{display:grid;place-items:center;min-height:40px;padding:0 6px;border:0;border-radius:12px;background:var(--ah-tile);color:var(--ah-ink);font:inherit;font-size:13px;font-weight:600;line-height:1.1;text-align:center;cursor:pointer;transition:transform .32s var(--ah-spring),background-color .22s ease,color .22s ease}
-.hm-shell button.at-temp-preset small{font-size:12px;font-weight:500;opacity:.75}.hm-shell button.at-temp-preset.is-on{background:var(--ah-accent);color:#fff}.hm-shell button.at-temp-preset:active{transform:scale(.95)}
+.hm-shell button.at-temp-preset{display:grid;place-items:center;min-height:40px;padding:0 6px;border:0;border-radius:12px;background:var(--ah-tile);color:var(--ah-ink);font:inherit;font-size:.8125rem;font-weight:600;line-height:1.1;text-align:center;cursor:pointer;transition:transform .32s var(--ah-spring),background-color .22s ease,color .22s ease}
+.hm-shell button.at-temp-preset small{font-size:.75rem;font-weight:500;opacity:.75}.hm-shell button.at-temp-preset.is-on{background:var(--ah-accent);color:#fff}.hm-shell button.at-temp-preset:active{transform:scale(.95)}
 .hm-shell .at-light-seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;padding:4px;border-radius:14px;background:var(--ah-tile)}
-.hm-shell .at-light-seg button{min-height:38px;border:0;border-radius:11px;background:none;color:var(--ah-muted);font:inherit;font-weight:600;font-size:14px;cursor:pointer;transition:background-color .22s ease,color .22s ease}
+.hm-shell .at-light-seg button{min-height:38px;border:0;border-radius:11px;background:none;color:var(--ah-muted);font:inherit;font-weight:600;font-size:.875rem;cursor:pointer;transition:background-color .22s ease,color .22s ease}
 .hm-shell .at-light-seg button.is-on{background:var(--ah-group);color:var(--ah-ink);box-shadow:0 1px 3px #0002}
 .hm-shell .at-amb-row{flex-wrap:wrap;gap:10px}
 .hm-shell .at-amb-colors{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -282,11 +272,13 @@
 .hm-shell .hm-sheet.is-roomy{width:min(860px,100%);max-width:860px}
 .hm-shell .hm-sheet.is-roomy .at-light-body{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .is-narrow .at-vs{width:110px;height:250px}
+.hm-shell :is(.at-vs,.at-temp-strip):focus-visible{outline:3px solid var(--ah-blue);outline-offset:3px}/* the sliders are role=slider on a div: the shell's focus rule for buttons does not reach them */
+.hm-shell.is-narrow button.at-temp-preset{font-size:.75rem;padding:0 2px}/* «Нейтральный» in a 93 px cell of a 360 px phone */
 @media (prefers-reduced-motion:reduce){.hm-shell .ah-tile.kind-light.is-on .ah-glyph,.hm-shell .at-relay-glyph.is-on{animation:none}}
 
 /* light rows in a room, the lights page by rooms, «turn off in» */
 .hm-shell .at-lights-bar{margin-bottom:2px}
-.hm-shell .at-lights-room .hm-section-head h2{font-size:16px;font-weight:650}
+.hm-shell .at-lights-room .hm-section-head h2{font-size:1rem;font-weight:650}
 .hm-shell .at-light-rows{border-radius:18px}
 .hm-shell .at-light-row{padding:8px 12px 8px 14px;gap:10px}
 .hm-shell .at-light-row-hit{flex:1;display:flex;align-items:center;gap:12px;min-width:0;padding:4px 0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
@@ -303,8 +295,8 @@
 .hm-shell .ah-tile.kind-light .ah-tile-hit{align-items:flex-start;justify-content:space-between;text-align:left;padding:12px;min-height:120px;gap:8px}
 .hm-shell .ah-tile.kind-light .ah-glyph{width:42px;height:42px;background:#ffffffaa;color:#6e6e73}.hm-shell .ah-tile.kind-light .ah-glyph svg{width:24px;height:24px}
 .hm-shell .ah-tile.kind-light.is-on .ah-glyph{background:#fff;color:#f0b400}
-.hm-shell .ah-tile.kind-light .ah-tile-text strong{font-size:15px;font-weight:620;-webkit-line-clamp:2}
-.hm-shell .ah-tile.kind-light .ah-tile-text small{font-size:13px;opacity:.85}
+.hm-shell .ah-tile.kind-light .ah-tile-text strong{font-size:.9375rem;font-weight:620;-webkit-line-clamp:2}
+.hm-shell .ah-tile.kind-light .ah-tile-text small{font-size:.8125rem;opacity:.85}
 .hm-shell .ah-tile.kind-light .ah-tile-more{opacity:.5;top:8px;right:8px}
 .hm-shell.ah-shell[data-theme="dark"] .ah-tile.kind-light .ah-glyph{background:#ffffff2e;color:#fff}.hm-shell.ah-shell[data-theme="dark"] .ah-tile.kind-light.is-on .ah-glyph{background:#fff;color:#f0b400}
 /* the tablet sheet as in the mock: slider centred with the five levels under it on the left, temperature and ambient on the right */
@@ -318,29 +310,35 @@
 .hm-shell .at-light-level .at-short{display:none}.hm-shell .hm-sheet.is-roomy .at-light-level .at-long{display:none}.hm-shell .hm-sheet.is-roomy .at-light-level .at-short{display:inline}
 
 /* the lights page: room blocks side by side, a block as wide as its lamps (up to three), no long single column */
-.hm-shell .at-lights-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px var(--ah-gap);align-items:start}
-.is-wide .at-lights-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.is-wide.is-landscape .at-lights-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+.hm-shell .at-lights-grid{display:grid;grid-template-columns:var(--ah-cols);gap:14px var(--ah-gap);align-items:start}
 .hm-shell .at-lights-room.span-2{grid-column:span 2}.hm-shell .at-lights-room.span-3{grid-column:span 3}
 .hm-shell .at-lights-room .ah-grid{grid-template-columns:repeat(1,minmax(0,1fr))}.hm-shell .at-lights-room.span-2 .ah-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hm-shell .at-lights-room.span-3 .ah-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
-.hm-shell .at-lights-room .hm-section-head h2{font-size:14px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-shell .at-lights-room .hm-section-head h2{font-size:.875rem;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hm-shell .at-lights-room .hm-section-head{gap:6px;min-width:0}
 
 /* audit 04.11.2026: H2 room pills wrap on phones; H3 room sub-blocks in Systems; H5 no hyphenation in tile names; H7 visible «···»; C2 no native play overlay, «no connection» state; N5 empty states */
 .is-narrow .ah-room-pills{flex-wrap:wrap;overflow:visible;margin-inline:0;padding-inline:0}
 .hm-shell .at-sys-rooms{display:grid;gap:14px}
-.hm-shell .at-sys-room{display:grid;gap:8px}.hm-shell .at-sys-room h3{margin:0;font-size:14px;font-weight:650;color:var(--ah-muted)}
+/* with the rail (a tablet, a computer) the rooms of a group stand side by side on the page's own columns, as on «Свет»: one room per row left four fifths of the row empty (audit 2026-11-09). A phone keeps one room per row. */
+.hm-shell.is-wide .at-sys-rooms{grid-template-columns:var(--ah-cols);gap:14px var(--ah-gap);align-items:start}.hm-shell.is-wide .at-sys-room{min-width:0;align-content:start}
+.hm-shell.is-wide .at-sys-room.span-2{grid-column:span 2}.hm-shell.is-wide .at-sys-room.span-3{grid-column:span 3}
+.hm-shell.is-wide .at-sys-room .ah-grid{grid-template-columns:repeat(1,minmax(0,1fr))}.hm-shell.is-wide .at-sys-room.span-2 .ah-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hm-shell.is-wide .at-sys-room.span-3 .ah-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.hm-shell.is-wide .at-sys-room h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-shell .at-sys-room{display:grid;gap:8px}.hm-shell .at-sys-room h3{margin:0;font-size:.875rem;font-weight:650;color:var(--ah-muted)}
 .hm-shell .ah-tile-text strong{hyphens:manual;-webkit-hyphens:manual;overflow-wrap:anywhere}
 .hm-shell .ah-tile-more{opacity:.7;width:30px;height:30px;background:#00000012}.hm-shell.ah-shell[data-theme="dark"] .ah-tile-more{background:#ffffff1f}
 .hm-shell .ah-tile.kind-light .ah-tile-more{opacity:.7}
 .hm-shell video::-webkit-media-controls,.hm-shell video::-webkit-media-controls-overlay-play-button,.hm-shell video::-webkit-media-controls-start-playback-button{display:none!important;-webkit-appearance:none}
 .hm-shell .hm-camera-wait.is-down{color:#fff;background:#00000066}.hm-shell .hm-camera-wait.is-down span{font-weight:600}
-.hm-shell .at-cam-retry{margin-top:6px;background:#ffffff2e;color:#fff}
+.hm-shell .at-cam-retry{margin-top:6px;background:#ffffff2e;color:#fff;position:relative;z-index:4;min-height:36px}/* above the tile's own hit area (.at-cams-hit, z-index 3): «Повторить» on a tile is its own button */
+.hm-shell .hm-camera-tile>.at-cams-hit:focus-visible{outline:3px solid var(--ah-blue);outline-offset:-3px}
+.hm-shell :is(.at-cams-fail,.at-feed-fail){display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .hm-shell .at-empty{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
 .hm-shell .ah-thermo-value small{font-variant-numeric:tabular-nums}
-.hm-shell .at-lights-room .hm-section-head h2{font-size:16px}
+.hm-shell .at-lights-room .hm-section-head h2{font-size:1rem}
 /* AUTO-2: automations of HA in the device sheet (read-only) */
 .hm-shell .at-auto-row{align-items:center}.hm-shell .at-auto-icon{--tile:#7b74d8}.hm-shell .at-auto-row .ah-row-text strong,.hm-shell .at-auto-row .ah-row-text small{white-space:normal;line-height:1.25}
-.hm-shell .at-auto-when{display:inline-flex;align-items:center;gap:7px;flex:none;color:var(--ah-muted);font-size:13px;white-space:nowrap}.hm-shell .at-auto-dot{width:9px;height:9px;border-radius:50%;background:#30d158;box-shadow:0 0 0 3px #30d15826}
+.hm-shell .at-auto-when{display:inline-flex;align-items:center;gap:7px;flex:none;color:var(--ah-muted);font-size:.8125rem;white-space:nowrap}.hm-shell .at-auto-dot{width:9px;height:9px;border-radius:50%;background:#30d158;box-shadow:0 0 0 3px #30d15826}
 .hm-shell .at-auto-row.is-off .at-auto-dot{background:transparent;border:2px solid var(--ah-muted);box-shadow:none}.hm-shell .at-auto-row.is-off .ah-row-text strong{color:var(--ah-muted)}
 /* ---------- Cameras: the home card and the panel (owner, 09.11.2026) ---------- */
 .hm-shell .ah-grid>.at-cams-tile{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}
@@ -352,14 +350,14 @@
 .hm-shell .at-cams-main .hm-camera-frame{position:absolute;inset:0;display:block}
 .hm-shell .at-cams-main:focus-visible,.hm-shell .at-cams-thumb:focus-visible,.hm-shell .at-cams-caption:focus-visible,.hm-shell .at-cams-hit:focus-visible{outline:3px solid var(--ah-blue);outline-offset:2px}
 .hm-shell .at-cams-name{position:absolute;left:8px;right:8px;bottom:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;pointer-events:none}
-.hm-shell .at-cams-name b{padding:3px 9px;border-radius:999px;background:#000000a6;backdrop-filter:blur(8px);font-size:13px;font-weight:700}
-.hm-shell .at-cams-name i,.hm-shell .at-cams-flag{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-style:normal;font-size:12px;font-weight:700;color:#fff;background:#000000a6}
+.hm-shell .at-cams-name b{padding:3px 9px;border-radius:999px;background:#000000a6;backdrop-filter:blur(8px);font-size:.8125rem;font-weight:700}
+.hm-shell .at-cams-name i,.hm-shell .at-cams-flag{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-style:normal;font-size:.75rem;font-weight:700;color:#fff;background:#000000a6}
 .hm-shell :is(.at-cams-name i,.at-cams-flag).tone-danger{background:var(--ah-red)}.hm-shell :is(.at-cams-name i,.at-cams-flag).tone-warning{background:#c26a00}.hm-shell :is(.at-cams-name i,.at-cams-flag).tone-active{background:#0a64c2}
 .hm-shell .at-cams-main .hm-live{top:8px;left:8px}
 .hm-shell .at-cams-strip{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:6px;flex:none}
 .hm-shell .at-cams-thumb{all:unset;position:relative;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#141c2a;cursor:pointer}
 .hm-shell .at-cams-thumb.is-off{opacity:.55}
-.hm-shell .at-cams-thumb small{position:absolute;left:0;right:0;bottom:0;padding:10px 6px 3px;font-size:11px;font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:linear-gradient(transparent,#000000b3)}
+.hm-shell .at-cams-thumb small{position:absolute;left:0;right:0;bottom:0;padding:10px 6px 3px;font-size:.6875rem;font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:linear-gradient(transparent,#000000b3)}
 .hm-shell .at-cams-thumb.tone-danger{box-shadow:inset 0 0 0 2px var(--ah-red)}.hm-shell .at-cams-thumb.tone-warning{box-shadow:inset 0 0 0 2px #ff9f0a}
 .hm-shell .at-cams-dot{position:absolute;top:4px;right:4px;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#0a64c2;color:#fff}
 .hm-shell .at-cams-thumb.tone-danger .at-cams-dot{background:var(--ah-red)}.hm-shell .at-cams-thumb.tone-warning .at-cams-dot{background:#c26a00}
@@ -367,15 +365,15 @@
 .hm-shell .at-cams-none{display:grid;place-items:center;width:100%;height:100%;color:#ffffff73}
 .hm-shell .at-cams-caption{all:unset;display:flex;align-items:center;gap:8px;padding:2px 6px 2px 8px;min-height:44px;cursor:pointer;flex:none}
 .hm-shell .at-cams-caption>span{display:flex;flex-direction:column;min-width:0;flex:1}
-.hm-shell .at-cams-caption strong{font-size:15px;font-weight:700}
-.hm-shell .at-cams-caption small{font-size:13px;color:#ffffffc7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-shell .at-cams-caption strong{font-size:.9375rem;font-weight:700}
+.hm-shell .at-cams-caption small{font-size:.8125rem;color:#ffffffc7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hm-shell .at-cams-tile.is-danger .at-cams-caption small{color:#ff6b61;font-weight:700}.hm-shell .at-cams-tile.is-warning .at-cams-caption small{color:#ffb02e;font-weight:600}
 .hm-shell .at-cams-tile .at-cam-fake{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 /* the panel */
 .hm-shell .at-cams{display:flex;flex-direction:column;gap:14px}
 .hm-shell .at-cams-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:12px 16px;border-radius:16px;background:var(--ah-tile);backdrop-filter:blur(var(--ah-tile-blur));color:var(--ah-ink)}
-.hm-shell .at-cams-state{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:15px}
-.hm-shell .at-cams-summary small{color:var(--ah-muted);font-size:13px}
+.hm-shell .at-cams-state{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:.9375rem}
+.hm-shell .at-cams-summary small{color:var(--ah-muted);font-size:.8125rem}
 .hm-shell .at-cams-summary.is-danger{background:#ff3b301f;box-shadow:inset 0 0 0 1.5px var(--ah-red)}.hm-shell .at-cams-summary.is-danger .at-cams-state{color:#d70015}
 .hm-shell .at-cams-summary.is-warning .at-cams-state{color:#b25000}
 .hm-shell.ah-shell[data-theme="dark"] .at-cams-summary.is-danger .at-cams-state{color:#ff6b61}.hm-shell.ah-shell[data-theme="dark"] .at-cams-summary.is-warning .at-cams-state{color:#ffb02e}
@@ -388,23 +386,23 @@
 .hm-shell .at-cams-cell.tone-danger{box-shadow:inset 0 0 0 3px var(--ah-red)}.hm-shell .at-cams-cell.tone-warning{box-shadow:inset 0 0 0 3px #ff9f0a}
 .hm-shell .at-cams-hit{all:unset;position:absolute;inset:0;z-index:3;cursor:pointer;border-radius:inherit}
 .hm-shell .at-cams-cap{position:absolute;left:0;right:0;bottom:0;z-index:2;display:flex;flex-direction:column;padding:28px 12px 10px;background:linear-gradient(transparent,#000000b8);pointer-events:none}
-.hm-shell .at-cams-cap strong{font-size:15px;font-weight:700}.hm-shell .at-cams-cap small{font-size:13px;color:#ffffffd1}
+.hm-shell .at-cams-cap strong{font-size:.9375rem;font-weight:700}.hm-shell .at-cams-cap small{font-size:.8125rem;color:#ffffffd1}
 .hm-shell .at-cams-cell .hm-live{z-index:2}
 .hm-shell .at-cams-flag{position:absolute;top:8px;right:8px;z-index:2}
 .hm-shell .at-cams-events{display:flex;flex-direction:column;gap:10px;padding:14px 16px;border-radius:18px;background:var(--ah-tile);backdrop-filter:blur(var(--ah-tile-blur));color:var(--ah-ink)}
-.hm-shell .at-cams-events header{display:flex;align-items:baseline;gap:8px}.hm-shell .at-cams-events h2{margin:0;font-size:18px}.hm-shell .at-cams-events header small{color:var(--ah-muted);font-size:13px}
+.hm-shell .at-cams-events header{display:flex;align-items:baseline;gap:8px}.hm-shell .at-cams-events h2{margin:0;font-size:1.125rem}.hm-shell .at-cams-events header small{color:var(--ah-muted);font-size:.8125rem}
 .hm-shell .at-cams-filter{align-self:flex-start;max-width:100%;overflow-x:auto}
-.hm-shell .at-cams-filter b{margin-left:6px;font-weight:600;opacity:.7;font-size:12px}
+.hm-shell .at-cams-filter b{margin-left:6px;font-weight:600;opacity:.7;font-size:.75rem}
 .hm-shell .at-cams-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
-.hm-shell .at-cams-day{padding:10px 4px 4px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ah-muted)}
+.hm-shell .at-cams-day{padding:10px 4px 4px;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ah-muted)}
 .hm-shell .at-cams-ev{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:12px;width:100%;min-height:48px;padding:6px 4px;border-bottom:1px solid var(--ah-line);cursor:pointer}
 .hm-shell .at-cams-ev:focus-visible{outline:3px solid var(--ah-blue);outline-offset:-3px;border-radius:10px}
 .hm-shell .at-cams-ev-icon{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;flex:none;color:#fff;background:#0a64c2}
 .hm-shell .at-cams-ev.tone-danger .at-cams-ev-icon{background:var(--ah-red)}.hm-shell .at-cams-ev.tone-warning .at-cams-ev-icon{background:#c26a00}
-.hm-shell .at-cams-ev-text{display:flex;flex-direction:column;flex:1;min-width:0}.hm-shell .at-cams-ev-text strong{font-size:15px}.hm-shell .at-cams-ev-text small{font-size:13px;color:var(--ah-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hm-shell .at-cams-ev time{font-variant-numeric:tabular-nums;font-size:14px;color:var(--ah-muted)}
-.hm-shell .at-cams-empty{margin:4px 0;color:var(--ah-muted);font-size:14px}
-@media (min-width:1300px){.hm-shell.is-wide.is-landscape .at-cams{display:grid;grid-template-columns:minmax(0,1fr) 360px;grid-template-rows:auto 1fr;align-items:start}.hm-shell.is-wide.is-landscape .at-cams-summary{grid-column:1/-1}.hm-shell.is-wide.is-landscape .at-cams-events{grid-column:2;grid-row:2;max-height:calc(var(--hm-height) - 220px);overflow:auto}}
+.hm-shell .at-cams-ev-text{display:flex;flex-direction:column;flex:1;min-width:0}.hm-shell .at-cams-ev-text strong{font-size:.9375rem}.hm-shell .at-cams-ev-text small{font-size:.8125rem;color:var(--ah-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-shell .at-cams-ev time{font-variant-numeric:tabular-nums;font-size:.875rem;color:var(--ah-muted)}
+.hm-shell .at-cams-empty{margin:4px 0;color:var(--ah-muted);font-size:.875rem}
+/* panel (min-width:1300px) */.hm-shell:where(.pw-1300).is-wide.is-landscape .at-cams{display:grid;grid-template-columns:minmax(0,1fr) 360px;grid-template-rows:auto 1fr;align-items:start}.hm-shell:where(.pw-1300).is-wide.is-landscape .at-cams-summary{grid-column:1/-1}.hm-shell:where(.pw-1300).is-wide.is-landscape .at-cams-events{grid-column:2;grid-row:2;max-height:calc(var(--hm-height) - 220px);overflow:auto}
 @media (prefers-reduced-motion:reduce){.hm-shell .at-cams-tile *{animation:none!important}}
 .hm-shell .at-cams-events>*{flex-shrink:0}
 .hm-shell .at-cams-filter{align-self:stretch;display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));overflow:visible}
@@ -414,7 +412,7 @@
 @container (max-width:330px){.hm-shell .at-cams-thumb small{display:none}.hm-shell .at-cams-name i{font-size:0;gap:0;padding:4px 6px}}
 
 /* 09.11.2026 after the first QA: live thumbnails, 44 px targets, the line wraps instead of losing its end, AA contrast on the event pills */
-.hm-shell .at-cams-thumb{min-height:44px}
+.hm-shell .at-cams-thumb{min-height:44px;width:100%;min-width:0;box-sizing:border-box}
 .hm-shell .at-cams-thumb .hm-camera-frame{position:absolute;inset:0}
 .hm-shell .at-cams-thumb :is(.hm-live,.hm-camera-q,.hm-camera-wait span,.at-cam-retry){display:none}
 .hm-shell .at-cams-thumb .hm-camera-wait{padding:0}
@@ -436,7 +434,308 @@
 .hm-shell .at-cam-pad-btn.is-right{grid-area:2/3}
 .hm-shell .at-cam-pad-btn.is-down{grid-area:3/2}.hm-shell .at-cam-pad-btn.is-down svg{transform:rotate(90deg)}
 .hm-shell .at-cam-pad-hub{grid-area:2/2;display:grid;place-items:center;color:var(--ah-muted)}
-.hm-shell .at-cam-hint{margin:2px 4px 8px;font-size:13px;color:var(--ah-muted);text-align:center}
+.hm-shell .at-cam-hint{margin:2px 4px 8px;font-size:.8125rem;color:var(--ah-muted);text-align:center}
 /* five cameras: four small ones under the big picture; a thumbnail narrower than its name shows the picture only (the name stays in its label) */
 .hm-shell .at-cams-thumb{container-type:inline-size}
 @container (max-width:110px){.hm-shell .at-cams-thumb small{display:none}}
+
+/* =====================================================================================================
+   Audit of 09.11.2026 — one layout over the whole device envelope (evidence/…/DEVICES-2026.md):
+   the rail, the tabs, safe areas, touch targets, the focus ring, dark-theme contrast, a television.
+   The size tokens (--ah-tile-min, --ah-page-max, --ah-rail …) are in apple.css, section 1.
+   ===================================================================================================== */
+
+/* ---- the rail: fits five entries from 320 px of height, keeps clear of a notch ---- */
+.hm-shell .hm-sidebar{padding-left:calc(8px + var(--ah-safe-l));padding-bottom:max(12px,var(--ah-safe-b));scrollbar-width:none}
+.hm-shell .hm-sidebar::-webkit-scrollbar{display:none}
+.hm-shell .hm-sidebar nav button{padding-inline:0}.hm-shell .hm-sidebar nav button span{letter-spacing:-.15px}
+.hm-shell.is-short .hm-sidebar{gap:6px;padding-top:8px;padding-bottom:max(8px,var(--ah-safe-b))}
+.hm-shell.is-short .hm-sidebar nav{gap:2px}
+.hm-shell.is-short .hm-sidebar nav button{min-height:clamp(44px,calc((var(--hm-height) - 150px)/5),60px);padding-block:3px;gap:2px}
+.hm-shell:where(:not(.ph-461)) .hm-clock small{display:none}
+.hm-shell:where(:not(.ph-461)) .hm-sidebar nav button svg{width:22px;height:22px}
+.hm-shell:where(:not(.ph-461)) .hm-conn{min-height:28px}
+
+/* ---- safe areas on every side (viewport-fit=cover): the content, the tab bar, the sheets ---- */
+.hm-shell.is-wide .hm-main{padding-right:max(var(--ah-pad),var(--ah-safe-r));padding-bottom:calc(var(--ah-pad) + 8px + var(--ah-safe-b))}
+.hm-shell.is-narrow .hm-main{padding-left:max(12px,var(--ah-safe-l));padding-right:max(12px,var(--ah-safe-r))}
+.hm-shell .hm-tabbar{padding-left:max(8px,var(--ah-safe-l));padding-right:max(8px,var(--ah-safe-r))}
+.hm-shell .hm-tabbar button{font-size:min(.75rem,calc(3.75*var(--ah-vw)))} /* five labels share the phone's width: a large system font stops growing them where they would touch */
+.hm-shell.is-wide .hm-scrim,.hm-shell .hm-scrim.is-top{padding:24px max(24px,var(--ah-safe-r)) max(24px,var(--ah-safe-b)) max(24px,var(--ah-safe-l))}
+.hm-shell.is-narrow .hm-scrim:not(.is-top){padding-left:var(--ah-safe-l);padding-right:var(--ah-safe-r)}
+
+/* ---- section tabs ---- */
+/* a phone with five or six «Системы» tabs: two rows of three instead of tabs hidden behind the edge */
+.hm-shell.is-narrow .ah-segments.is-sys:has(>button:nth-child(5)){flex-wrap:wrap;overflow:visible}
+.hm-shell.is-narrow .ah-segments.is-sys:has(>button:nth-child(5))>button{flex:1 1 30%;min-width:0;padding:0 6px;overflow:hidden;text-overflow:ellipsis}
+/* any other row of tabs that does not fit scrolls, and says so: its edges fade while there is more that way */
+.hm-shell :is(.hm-range-tabs,.ah-segments){scroll-padding-inline:28px}
+@supports (animation-timeline:scroll()){
+  .hm-shell :is(.hm-range-tabs,.ah-segments){--ah-fade:linear-gradient(90deg,#0000,#000 var(--ah-fade-l,0px),#000 calc(100% - var(--ah-fade-r,0px)),#0000);-webkit-mask-image:var(--ah-fade);mask-image:var(--ah-fade);animation:ah-fade-l linear both,ah-fade-r linear both!important;animation-timeline:scroll(self inline),scroll(self inline)!important;animation-range:0px 24px,calc(100% - 24px) 100%!important}
+  @keyframes ah-fade-l{from{--ah-fade-l:0px}to{--ah-fade-l:28px}}
+  @keyframes ah-fade-r{from{--ah-fade-r:28px}to{--ah-fade-r:0px}}
+}
+
+/* ---- touch targets of 44 px where the finger is the pointer (drawn sizes stay where the layout would move) ---- */
+@media (any-pointer:coarse){
+  .hm-shell .ah-segments button,.hm-shell .hm-range-tabs button{min-height:44px}
+  .hm-shell .ah-segments.is-small button{min-height:40px}
+  .hm-shell .hm-pill,.hm-shell .hm-chips>button,.hm-shell .at-field :is(input,select),.hm-shell .at-search input,.hm-shell .at-kt-seg button{min-height:44px}
+  .hm-shell :is(.hm-back,.hm-text-btn,.rm-tile-act,.hm-pill.is-small,.at-temp-strip,.hm-camera-q,.at-cam-retry){position:relative}
+  .hm-shell :is(.hm-back,.hm-text-btn)::after{content:'';position:absolute;inset:-6px 0}
+  .hm-shell .hm-pill.is-small{min-height:32px}.hm-shell .hm-pill.is-small::after{content:'';position:absolute;inset:-6px 0}
+  .hm-shell .rm-tile-act::after,.hm-shell .at-cam-retry::after{content:'';position:absolute;inset:-4px 0}
+  .hm-shell .at-temp-strip::after{content:'';position:absolute;inset:-7px 0}
+  .hm-shell .hm-camera-q::after{content:'';position:absolute;inset:-9px -12px}
+}
+
+/* ---- the focus ring is drawn inside whatever fills a clipping box, so `overflow:hidden` cannot cut it off ---- */
+.hm-shell :is(.ah-tile-hit,.at-module-hit,.at-osec-dev-hit,.at-osec-key,.at-cams-hit,.at-cams-main,.at-cams-thumb,.ah-mode,.ah-row.is-button,.hm-row,.hm-fold>summary,.ah-segments button,.hm-range-tabs button,.hm-room,.rm-tile-open,.rm-q,.at-light-row-hit,.hm-chips>button,.at-vac-seg button,.at-kt-seg button,.at-door-seg button,.hm-sidebar nav button,.hm-tabbar button):focus-visible{outline-offset:-3px}
+.hm-shell.is-tv :is(button,input,select,summary,[tabindex]):focus-visible{outline-width:4px}
+
+/* ---- unavailable and hidden devices are muted, not erased: the glyph fades, the words stay readable ---- */
+.hm-shell .ah-tile.is-off{opacity:1;background:color-mix(in srgb,var(--ah-tile) 62%,transparent)}
+.hm-shell .ah-tile.is-off .ah-tile-hit:disabled{opacity:1}
+.hm-shell .ah-tile.is-off :is(.ah-glyph,.ah-value-head,.ah-tile-more){opacity:.5}
+.hm-shell .ah-tile.is-off .ah-tile-text strong{color:var(--ah-muted)}
+.hm-shell .ah-tile.kind-light .ah-tile-text small{opacity:1}
+.hm-shell .hm-row.is-off{opacity:1}.hm-shell .hm-row.is-off :is(.hm-thumb,.ah-glyph,.hm-row-icon,img){opacity:.5}.hm-shell .hm-row.is-off :is(strong,b){color:var(--ah-muted)}
+.hm-shell button:disabled{opacity:.6}
+.hm-shell .hm-chips>button:disabled,.hm-shell .hm-pill:disabled,.hm-shell .at-kt-go:disabled{opacity:.6}
+.hm-shell.ah-shell[data-theme="dark"] .at-vac-seg button:disabled{color:inherit}
+.hm-shell .at-osec-key:disabled:not(.is-now){opacity:.55}.hm-shell .at-osec-key.is-now:disabled{opacity:1}
+.hm-shell .at-vac-times.is-off{opacity:.7}
+.hm-shell .at-cams-filter b{opacity:1;color:var(--ah-muted)}
+
+/* ---- dark theme: words that carry a state reach 4.5:1 ---- */
+.hm-shell.ah-shell[data-theme="dark"] .hm-pill.is-primary,.hm-shell.ah-shell[data-theme="dark"] .at-skip,.hm-shell.ah-shell[data-theme="dark"] .at-sys-attn.is-active,.hm-shell.ah-shell[data-theme="dark"] .at-door-seg button.is-on,.hm-shell.ah-shell[data-theme="dark"] .hm-chips>button.is-active{color:#1c1c1e}
+.hm-shell .at-door-seg button.is-on{background:var(--ah-accent-ink)}
+.hm-shell.ah-shell[data-theme="dark"] :is(.ah-segments,.hm-range-tabs){background:#00000047}
+.hm-shell.ah-shell[data-theme="dark"] .ah-segments button.is-active,.hm-shell.ah-shell[data-theme="dark"] .hm-range-tabs button.is-active{background:#ffffffeb;color:#1c1c1e;box-shadow:none}
+.hm-shell.ah-shell[data-theme="dark"] :is(.hm-back,.hm-text-btn){color:var(--ah-ink)}
+.hm-shell.ah-shell[data-theme="dark"] .hm-head p{color:var(--ah-ink)}
+.hm-shell.ah-shell[data-theme="dark"],.hm-shell.ah-shell[data-theme="dark"] .at-sec-panel{--os-teal:#7fe8c4;--os-armed:#a9d4ff}
+.hm-shell.ah-shell[data-theme="dark"] .at-osec-wrap,.hm-shell.ah-shell[data-theme="dark"] .at-osec-tile:not(.at-house-tile){--os-teal-ink:#9ff0d2;--os-armed-ink:#c4e1ff;--os-warn-ink:#ffdca3;--os-alarm-ink:#ffd6d0}
+.hm-shell.ah-shell[data-theme="dark"] .at-house-tile .at-sec-tile-word{color:#7fe8c4}.hm-shell.ah-shell[data-theme="dark"] .at-house-tile.is-st-armed .at-sec-tile-word{color:#a9d4ff}.hm-shell.ah-shell[data-theme="dark"] .at-house-tile.is-warn .at-sec-tile-word{color:#ffd591}.hm-shell.ah-shell[data-theme="dark"] .at-house-tile.is-alarm .at-sec-tile-word,.hm-shell.ah-shell[data-theme="dark"] .at-osec-tile.is-alarm .at-sec-tile-word,.hm-shell.ah-shell[data-theme="dark"] .at-sec-tile.is-alarm .at-sec-tile-word{color:#ffc2ba}
+.hm-shell.ah-shell[data-theme="dark"] .at-sec-panel .at-osec-control.is-st-arming .at-osec-state,.hm-shell.ah-shell[data-theme="dark"] .at-sec-panel .at-osec-control.is-st-pending .at-osec-state,.hm-shell.ah-shell[data-theme="dark"] .at-osec-control.is-st-arming .at-osec-state,.hm-shell.ah-shell[data-theme="dark"] .at-osec-control.is-st-pending .at-osec-state{color:#ffd591}
+.hm-shell.ah-shell[data-theme="dark"] .at-sec-panel .at-osec-control.is-alarm .at-osec-state{color:#ffd6d0}
+.hm-shell.ah-shell[data-theme="dark"] .at-sec-err{color:#ffb4ab}
+/* cards that lie on the wallpaper itself (lists, the security console, search) are smoked glass too; inside a sheet a group stays a lighter step */
+.hm-shell.ah-shell[data-theme="dark"] .hm-main{--ah-group:#06161a59}
+.hm-shell.ah-shell[data-theme="dark"] .at-cams-summary.is-danger .at-cams-state{color:#ffc9c2}.hm-shell.ah-shell[data-theme="dark"] .at-cams-summary.is-warning .at-cams-state{color:#ffd9a3}
+/* the system red as text: darker on light surfaces, lighter on dark ones; white figures sit on the darker red */
+.hm-shell .at-door-ev.is-ring strong{color:#d70015}.hm-shell.ah-shell[data-theme="dark"] .at-door-ev.is-ring strong{color:#ff8a80}
+.hm-shell .at-osec-badge,.hm-shell .at-vac-badge.is-warn{background:#d70015}
+.hm-shell.ah-shell:not([data-theme="dark"]) .hm-badge.tone-danger{color:#c4271d}
+
+/* ---- names on narrow modules: a long word takes a real hyphen instead of breaking anywhere; short words are never hyphenated ---- */
+.hm-shell .ah-tile-text strong{hyphens:auto;-webkit-hyphens:auto;hyphenate-limit-chars:11 4 4;-webkit-hyphenate-limit-before:4;-webkit-hyphenate-limit-after:4;overflow-wrap:break-word}
+.hm-shell .at-sec-tile-word{overflow-wrap:normal}
+@container (max-width:130px){.hm-shell .at-sec-tile-word{font-size:clamp(.8125rem,13cqw,1.25rem);overflow-wrap:normal;hyphens:auto;-webkit-hyphens:auto}}
+
+/* ---- a module is square when its words fit and as tall as they need when they do not (a name in two lines and the state on a 92 px module):
+        the square is the minimum height of the module's own button, no longer a fixed box that cuts the last line off ---- */
+.hm-shell .ah-grid>:is(.ah-tile[class*="kind-"],.ah-value,.ah-scene):not(.ah-thermo,.is-wide,.ah-tile-stack){aspect-ratio:auto}
+.hm-shell .ah-grid>:is(.ah-tile[class*="kind-"],.ah-value,.ah-scene):not(.ah-thermo,.is-wide,.ah-tile-stack)>.ah-tile-hit{min-height:100cqw}
+.hm-shell .ah-grid>.ah-tile.kind-light:not(.is-wide)>.ah-tile-hit{min-height:max(120px,100cqw)}
+@container (max-width:100px){.hm-shell .ah-value .ah-tile-hit{padding:10px 8px}}
+@container (max-width:118px){.hm-shell .ah-tile.kind-light .ah-tile-hit{padding:10px;gap:6px}.hm-shell .ah-tile.kind-light .ah-glyph{width:36px;height:36px}.hm-shell .ah-tile.kind-light .ah-tile-text strong{font-size:.875rem}.hm-shell .ah-tile.kind-light .ah-tile-text small{font-size:.75rem}.hm-shell .ah-tile.kind-light .ah-tile-more{top:6px;right:6px}}
+.hm-shell .at-lights-room{min-width:0}
+.hm-shell.is-narrow .at-lights-room .hm-section-head h2{font-size:clamp(.6875rem,calc(4.1*var(--ah-vw) - .125rem),1rem);letter-spacing:-.2px} /* a room's name fits above a single lamp on a 320 px phone («Компьютерная») */
+
+/* ---- the robot on the room page never outgrows its window ---- */
+.hm-shell .at-vac-tile-buddy svg{max-width:100%}
+
+/* ---- motion: the pulses stop with the rest ---- */
+@media (prefers-reduced-motion:reduce){.hm-shell .hm-live.is-live i::after,.hm-shell .rm-live-dot::after,.hm-shell .at-cam-badge.is-ring::after{animation:none}}
+
+/* ---- a television (ui/panel-size.ts draws the panel enlarged): nothing depends on hover ---- */
+.hm-shell.is-tv .ah-tile-more{opacity:.75}
+
+/* ---- wide screens: lists keep a readable measure inside the page column ---- */
+.hm-shell .at-setup>:not(.at-setup-tabs,.at-setup-devices){max-width:960px}
+.hm-shell:where(.pw-1300) .at-setup-devices{display:block;columns:2 480px;column-gap:16px}
+.hm-shell:where(.pw-1300) .at-setup-devices>.hm-toolbar{column-span:all;margin-bottom:12px}
+.hm-shell:where(.pw-1300) .at-setup-devices>.hm-section{break-inside:avoid;margin-bottom:16px}
+.hm-shell .at-boiler-head .hm-badge{margin-left:0}.hm-shell .at-boiler-head>div{flex:0 1 auto}
+
+/* ---- native form controls follow the theme (a white calendar glyph on a white field in the light theme) ---- */
+.hm-shell.ah-shell:not([data-theme="dark"]){color-scheme:light}.hm-shell.ah-shell[data-theme="dark"]{color-scheme:dark}
+
+/* ---- a short, wide panel: the vacuum's hero does not stick when it is taller than the screen (its buttons could not be reached) ---- */
+.hm-shell:where(:not(.ph-641)) .at-vac-panel:not(.is-settings)>.at-vac-hero{position:static}
+
+/* ---- the thermostat's sheet: the degree sign is raised like everywhere else, the figure's line is not shaved ---- */
+.hm-shell .ah-hero-climate .ah-hero-main b{line-height:1.2}.hm-shell .ah-hero-climate .ah-hero-main b i{font-size:.5em;vertical-align:.7em;margin-left:0}
+
+/* ---- the clock's date stays on one line under the dial in every language ---- */
+.hm-shell .ah-clock .ah-clock-date{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 6px}
+.hm-shell .ah-module .at-module-body small{overflow:hidden;text-overflow:ellipsis}
+
+/* ===================================================================================================
+   Product photos (ui/photo.tsx, model/photos.ts; docs/CONFIGURATOR.md «Фото прибора»). A device whose `photo` slot is set shows its own picture
+   in the spot of its drawing or glyph: a cut-out (PNG / WebP) stands whole on a neutral plate, a photograph (JPEG) fills it. The plate takes the
+   spot's own size and rounding — a photo never changes the size of a tile or a head. Without a photo, or when the picture does not load,
+   ProductPhoto renders the old drawing / glyph and nothing below applies (every rule keys on `.ah-photo`).
+   Plate: light #9aa0a8 — 2.64:1 against white, 7.97:1 against black (its sheen's top #b0b5bb: 2.06 / 10.2);
+          dark  #7e848d — 3.77:1 against white, 5.57:1 against black (sheen top #959aa2: 2.83 / 7.42). A white kettle and a black doorbell both stand out.
+   =================================================================================================== */
+.hm-shell.ah-shell{--ah-plate:#9aa0a8;--ah-plate-sheen:radial-gradient(120% 90% at 50% 0%,#ffffff38,#ffffff00 72%);--ah-plate-edge:#0000001a}
+.hm-shell.ah-shell[data-theme="dark"]{--ah-plate:#7e848d;--ah-plate-sheen:radial-gradient(120% 90% at 50% 0%,#ffffff2e,#ffffff00 72%);--ah-plate-edge:#ffffff24}
+.hm-shell .ah-photo{position:relative;display:block;min-width:0;min-height:0;overflow:hidden;border-radius:inherit;background:var(--ah-plate-sheen),var(--ah-plate);box-shadow:inset 0 0 0 1px var(--ah-plate-edge)}
+/* the picture never sizes its plate: the plate is the spot's size, the picture is laid over it */
+.hm-shell .ah-photo img{display:block;position:absolute;inset:0;width:100%;height:100%;max-width:none;margin:0;border-radius:0;opacity:1;filter:none}
+.hm-shell .ah-photo.is-cutout img{object-fit:contain;padding:10%}
+.hm-shell .ah-photo.is-opaque img{object-fit:cover;padding:0}
+/* a round spot: the cut-out stays inside the circle */
+.hm-shell :is(.ah-glyph,.rm-tile-ic)>.ah-photo.is-cutout img{padding:15%}
+
+/* the device tile's glyph circle (44 px, 46 in the dark theme, 42 / 36 for a lamp) */
+.hm-shell .ah-glyph:has(>.ah-photo){background:none}
+.hm-shell .ah-glyph>.ah-photo{width:100%;height:100%}
+/* a list row's and «Настройка»'s thumb (44 px, rounded 12), the device sheet's head (56 px, rounded 16), the boiler's head (44 px, rounded 14), the lamp card's art */
+.hm-shell :is(.hm-thumb,.hm-sheet-photo,.at-module-art)>.ah-photo{position:absolute;inset:0}
+.hm-shell .at-light-art>.ah-photo{width:72px;height:72px;border-radius:18px}
+/* the room page's device card: its glyph circle (40 px) */
+.hm-shell.ah-shell .rm-tile .rm-tile-ic:has(>.ah-photo){background:none}
+.hm-shell .rm-tile-ic>.ah-photo{width:100%;height:100%}
+/* «Настройка»: a device's (or an appliance module's) picture is shown whole, on the plate */
+.hm-shell :is([data-device-key],[data-module-id]) .at-photo-field img.at-photo-thumb{object-fit:contain;padding:4px;background:var(--ah-plate-sheen),var(--ah-plate)}
+
+/* the kettle: the tile's picture (44…72 px square, 34 px on a small tile), the sheet's head (40 px), the hero beside the water's temperature */
+.hm-shell .at-kt-tile-art>.ah-photo{width:100%;height:100%;border-radius:24%}
+.hm-shell .at-kt-face>.ah-photo{width:100%;height:100%;border-radius:12px}
+/* the hero: the photo stands left of «Температура воды» and the number (no taller than those two lines, so the hero keeps its height);
+   the state, the bar, «Остановить» and the socket's figures stay centred under them across the whole hero */
+.hm-shell .at-kt-hero:has(>.at-kt-hero-pic){grid-template-columns:min(30%,7.5rem) minmax(0,1fr);column-gap:12px}
+.hm-shell .at-kt-hero:has(>.at-kt-hero-pic)>*{grid-column:1/-1}
+.hm-shell .at-kt-hero:has(>.at-kt-hero-pic)>:is(.at-kt-hero-pic+small,.at-kt-temp){grid-column:2}
+.hm-shell .at-kt-hero>.at-kt-hero-pic{grid-column:1;grid-row:1/3;align-self:center;width:100%;aspect-ratio:1;border-radius:22px;box-shadow:inset 0 0 0 1px #ffffff33,0 6px 18px #00000026}
+
+/* the feeder shows no product photo: the owner keeps the drawn cat on its tile, in its sheet's head and hero (11.11.2026) */
+
+/* ===================================================================================================
+   The house status strip on Home (ui/house-status.tsx, model/house-status.ts; release «classic» 11.11.2026, from design 2026 phase 2).
+   One line above Home's cards, which keep their order and layout: «Всё в порядке» with a green tick, or «Нужно внимание: N» with one chip per
+   problem that opens its place. Drawn as one of Home's own modules: the tile's fill and rounding, the classic status colours, a word with every
+   colour (never colour alone). Ink on the soft fills: light #8a4006 / #b3221a, dark #ffc266 / #ffd6d0 (≥ 4.5:1, checked by qa-status).
+   =================================================================================================== */
+.hm-shell .ah-status{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;min-height:64px;padding:10px 14px;border-radius:var(--ah-radius);background:var(--ah-tile);box-shadow:var(--ah-tile-shadow);color:var(--ah-ink);backdrop-filter:blur(var(--ah-tile-blur));-webkit-backdrop-filter:blur(var(--ah-tile-blur))}
+.hm-shell .ah-status-head{display:flex;align-items:center;gap:12px;flex:0 1 auto;min-width:0}
+.hm-shell .ah-status-glyph{flex:none;display:grid;place-items:center;width:44px;height:44px;border-radius:50%}
+.hm-shell .ah-status-title{margin:0;font-size:1.125rem;font-weight:700;line-height:1.25;letter-spacing:-.2px;overflow-wrap:anywhere}
+.hm-shell .ah-status.tone-ok .ah-status-title{font-weight:600}
+.hm-shell .ah-status.tone-ok .ah-status-glyph{background:#30d15829;color:#1f8a49}
+.hm-shell .ah-status.tone-warn .ah-status-glyph{background:#ff9f0a2e;color:#b25c00}
+.hm-shell .ah-status.tone-danger{background:#ffd9d6;box-shadow:inset 0 0 0 2px #ff3b30}
+.hm-shell .ah-status.tone-danger .ah-status-title{color:#b3221a}
+.hm-shell .ah-status.tone-danger .ah-status-glyph{background:#c4271d;color:#fff}
+.hm-shell .ah-status-chips{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px;flex:1 1 auto;min-width:0}
+.hm-shell .ah-status-chips>li{display:flex;min-width:0;max-width:100%}
+.hm-shell .ah-status-chip{display:inline-flex;align-items:center;gap:6px;min-height:44px;max-width:100%;padding:4px 12px 4px 6px;border-radius:999px;border:0;background:var(--ah-group);color:var(--ah-ink);font:inherit;font-size:.9375rem;font-weight:600;line-height:1.25;text-align:left;cursor:pointer}
+.hm-shell .ah-status-chip-ic{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:50%}
+.hm-shell .ah-status-chip-text{min-width:0;overflow-wrap:anywhere}
+.hm-shell .ah-status-chip>svg{flex:none;color:var(--ah-muted)}
+.hm-shell .ah-status-chip.tone-warn{background:#fff0d9;color:#8a4006}.hm-shell .ah-status-chip.tone-warn .ah-status-chip-ic{color:#b25c00}
+.hm-shell .ah-status-chip.tone-danger{background:#fff;color:#b3221a;box-shadow:inset 0 0 0 2px #ff3b30}.hm-shell .ah-status-chip.tone-danger .ah-status-chip-ic{background:#c4271d;color:#fff}.hm-shell .ah-status-chip.tone-danger .ah-status-chip-ic svg{width:18px;height:18px}
+.hm-shell .ah-status-chip.is-static{cursor:default}
+.hm-shell button.ah-status-chip:active{transform:scale(.97);transition:transform .08s var(--ah-ease)}
+@media (hover:hover){.hm-shell button.ah-status-chip:hover{filter:brightness(.97)}}
+.hm-shell button.ah-status-chip:focus-visible{outline:3px solid var(--ah-accent);outline-offset:2px}
+.hm-shell.ah-shell[data-theme="dark"] .ah-status.tone-ok .ah-status-glyph{background:#30d15833;color:#7ee2a4}
+.hm-shell.ah-shell[data-theme="dark"] .ah-status.tone-warn .ah-status-glyph{background:#ff9f0a33;color:#ffc266}
+.hm-shell.ah-shell[data-theme="dark"] .ah-status.tone-danger{background:#5c1712cc;box-shadow:inset 0 0 0 2px #ff6b61}
+.hm-shell.ah-shell[data-theme="dark"] .ah-status.tone-danger .ah-status-title{color:#ffd6d0}
+.hm-shell.ah-shell[data-theme="dark"] .ah-status-chip{background:#ffffff1f}
+.hm-shell.ah-shell[data-theme="dark"] .ah-status-chip.tone-warn{background:#ff9f0a33;color:#ffc266}.hm-shell.ah-shell[data-theme="dark"] .ah-status-chip.tone-warn .ah-status-chip-ic{color:#ffc266}
+.hm-shell.ah-shell[data-theme="dark"] .ah-status-chip.tone-danger{background:#ff3b3033;color:#ffd6d0;box-shadow:inset 0 0 0 2px #ff6b61}
+.hm-shell.ah-shell[data-theme="dark"] .ah-status-chip>svg{color:#ffffffb3}
+/* a phone: each chip a full-width row under the sentence */
+.hm-shell.is-narrow .ah-status{padding:10px 12px}
+.hm-shell.is-narrow .ah-status-chips{flex-basis:100%}
+.hm-shell.is-narrow .ah-status-chips>li{flex:1 1 100%}
+.hm-shell.is-narrow .ah-status-chip{width:100%}
+.hm-shell.is-narrow .ah-status-chip>svg:last-child{margin-left:auto}
+
+/* ===================================================================================================
+   The alarm and the doorbell take over the screen (ui/shell-banner.tsx; release «classic» 11.11.2026, from design 2026 phase 2): one real column
+   at the top over every page and every sheet — the alarm, a ring at the door, a module's notice (timer, alarm clock), in that order. It covers
+   nothing: the rail, the page and a sheet's backdrop start under it (`--ah-banners-h`, its height, written by the shell). It replaces the three
+   floating pills (`.at-door-ring`, stacked by margins); their old rules are undone inside the column. Classic shapes and colours: the module's
+   rounding, the alarm in the deep classic red with white words (#c4271d: 5.6:1), the ring on the sheet's surface with a blue edge, the notice in
+   the accent's ink (#5a52bf: 6.4:1; the dark theme's light accent carries dark words).
+   =================================================================================================== */
+.hm-shell .ah-banners{position:absolute;z-index:40;top:0;left:0;right:0;display:flex;flex-direction:column;gap:8px;padding:max(10px,env(safe-area-inset-top,0px)) max(12px,var(--ah-safe-r)) 0 max(12px,var(--ah-safe-l));pointer-events:none}
+.hm-shell .ah-banners:empty{display:none}
+.hm-shell.has-banners>:is(.hm-main,.hm-sidebar){margin-top:var(--ah-banners-h)}
+.hm-shell.has-banners .hm-scrim{top:var(--ah-banners-h)}
+.hm-shell.has-banners .hm-scrim>.hm-sheet{max-height:calc(var(--hm-height) - var(--ah-banners-h) - 24px)}
+.hm-shell.has-banners.is-wide .hm-scrim>.hm-sheet{max-height:calc(var(--hm-height) - var(--ah-banners-h) - 48px)}
+.hm-shell .ah-banners .ah-take{pointer-events:auto;position:relative;inset:auto;transform:none;left:auto;top:auto;z-index:auto;max-width:none;width:auto;min-width:0;margin:0;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px 16px;padding:12px 14px 12px 12px;border-radius:var(--ah-radius);box-shadow:0 10px 30px #00000040;font-weight:400;font-size:1rem;animation:ah-take-in .3s var(--ah-ease) backwards}
+.hm-shell .ah-banners .ah-take>*{white-space:normal;overflow:visible;max-width:none;text-overflow:clip}
+.hm-shell .ah-take-text{min-width:0;display:grid;gap:2px}
+.hm-shell .ah-take-text p{margin:0;overflow-wrap:anywhere}
+.hm-shell .ah-take-title{font-size:1.375rem;font-weight:700;line-height:1.2;letter-spacing:-.2px}
+.hm-shell .ah-take-title b[role=timer]{font-variant-numeric:tabular-nums;font-weight:700}
+.hm-shell .ah-take-sub{font-size:.9375rem;line-height:1.3}
+.hm-shell .ah-take-eyebrow{font-size:.875rem;font-weight:600}
+.hm-shell .ah-take-glyph{display:grid;place-items:center;width:56px;height:56px;border-radius:50%;flex:none}
+.hm-shell .ah-take-acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.hm-shell .ah-banners .ah-take .hm-pill{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 16px;font-size:.9375rem;font-weight:600;white-space:nowrap;box-shadow:none;border:0}
+.hm-shell .ah-banners .ah-take .ah-take-main{min-height:56px;padding:0 22px;font-size:1.0625rem}
+.hm-shell .ah-banners .ah-take :is(.hm-pill)[aria-busy="true"]{animation:ah-breathe 1.2s ease-in-out infinite}
+.hm-shell .ah-banners .ah-take .hm-pill:focus-visible{outline:3px solid currentColor;outline-offset:3px}
+/* the alarm: deep red, white words, the main key white with red words */
+.hm-shell .ah-banners .ah-take.tone-danger{background:#c4271d;color:#fff;box-shadow:0 10px 30px #c4271d59,inset 0 0 0 2px #ffffff59}
+.hm-shell .ah-take.tone-danger .ah-take-glyph{background:#fff;color:#c4271d;animation:ah-take-pulse 1.6s ease-in-out infinite}
+.hm-shell .ah-banners .ah-take.tone-danger .ah-take-main{background:#fff;color:#b3221a}
+.hm-shell .ah-banners .ah-take.tone-danger .ah-take-second{background:transparent;color:#fff;box-shadow:inset 0 0 0 2px #fff}
+/* the doorbell: the sheet's surface, a blue edge, the door's frame */
+.hm-shell .ah-banners .ah-take.tone-info{background:var(--ah-sheet);color:var(--ah-ink);box-shadow:0 10px 30px #00000040,inset 0 0 0 2px #0a84ff}
+.hm-shell .ah-take.tone-info .ah-take-eyebrow{color:#0a5fb8}
+.hm-shell .ah-take.tone-info .ah-take-glyph{background:#0a84ff26;color:#0a5fb8}
+.hm-shell .ah-banners .ah-take.tone-info .ah-take-main{background:var(--ah-accent-ink);color:#fff}
+.hm-shell .ah-banners .ah-take.tone-info .ah-take-second{background:var(--ah-tile);color:var(--ah-ink)}
+.hm-shell.ah-shell[data-theme="dark"] .ah-take.tone-info .ah-take-eyebrow{color:#8cc4ff}
+.hm-shell.ah-shell[data-theme="dark"] .ah-take.tone-info .ah-take-glyph{background:#0a84ff33;color:#8cc4ff}
+.hm-shell.ah-shell[data-theme="dark"] .ah-banners .ah-take.tone-info .ah-take-main{background:var(--ah-accent);color:#1c1c1e}
+.hm-shell.ah-shell[data-theme="dark"] .ah-banners .ah-take.tone-info .ah-take-second{background:#ffffff1f}
+.hm-shell .ah-take-frame{position:relative;isolation:isolate;width:10rem;aspect-ratio:16/9;border-radius:14px;overflow:hidden;background:#1b2433;flex:none}
+.hm-shell .ah-take-frame>.hm-camera-frame{position:absolute;inset:0;display:block;overflow:hidden}
+.hm-shell .ah-take-frame :is(img,video){position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.hm-shell .ah-take-frame :is(.hm-live,.at-cam-badge,.hm-camera-caption){display:none}
+/* a module's notice (a timer, the alarm clock): the accent, its words whole, its keys beside them */
+.hm-shell .ah-banners .ah-take.is-notice{background:var(--ah-accent-ink);color:#fff;padding-block:8px}
+.hm-shell .ah-take.is-notice .ah-take-glyph{width:44px;height:44px;background:#fff;color:var(--ah-accent-ink)}
+.hm-shell .ah-take.is-notice .ah-take-title{font-size:1.0625rem;font-weight:600}
+.hm-shell .ah-take.is-notice .ah-take-sub{font-size:.9375rem;opacity:.92}
+.hm-shell .ah-banners .ah-take.is-notice .hm-pill{background:transparent;color:#fff;box-shadow:inset 0 0 0 2px #fff}
+.hm-shell .ah-banners .ah-take.is-notice .hm-pill.is-main{background:#fff;color:var(--ah-accent-ink);box-shadow:none}
+.hm-shell.ah-shell[data-theme="dark"] .ah-banners .ah-take.is-notice{background:var(--ah-accent);color:#1c1c1e}
+.hm-shell.ah-shell[data-theme="dark"] .ah-take.is-notice .ah-take-glyph{background:#1c1c1e;color:var(--ah-accent)}
+.hm-shell.ah-shell[data-theme="dark"] .ah-banners .ah-take.is-notice .hm-pill{color:#1c1c1e;box-shadow:inset 0 0 0 2px #1c1c1e}
+.hm-shell.ah-shell[data-theme="dark"] .ah-banners .ah-take.is-notice .hm-pill.is-main{background:#1c1c1e;color:#fff;box-shadow:none}
+/* a phone: the words beside the glyph, the keys across the whole width under them */
+.hm-shell.is-narrow .ah-banners .ah-take{grid-template-columns:auto minmax(0,1fr);padding:12px}
+.hm-shell.is-narrow .ah-take .ah-take-acts{grid-column:1/-1;justify-content:stretch}
+.hm-shell.is-narrow .ah-banners .ah-take .hm-pill{flex:0 0 auto;min-width:0;white-space:normal;padding:0 14px}
+.hm-shell.is-narrow .ah-banners .ah-take .hm-pill.is-main{flex:1 1 auto}
+.hm-shell.is-narrow:not(.pw-381) .ah-banners .ah-take .hm-pill>svg{display:none}
+.hm-shell.is-narrow .ah-take-title{font-size:1.1875rem}
+.hm-shell.is-narrow .ah-take-glyph{width:44px;height:44px}
+.hm-shell.is-narrow .ah-banners .ah-take.has-frame{grid-template-columns:minmax(0,1fr)}
+.hm-shell.is-narrow .ah-take-frame{width:100%}
+.hm-shell.is-narrow .ah-banners .ah-take.is-notice .hm-pill{flex:1 1 auto}
+@keyframes ah-take-in{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+@keyframes ah-take-pulse{0%,100%{box-shadow:0 0 0 0 #ffffffb3}50%{box-shadow:0 0 0 8px #ffffff00}}
+@media (prefers-reduced-motion:reduce){.hm-shell .ah-banners .ah-take{animation:none}.hm-shell .ah-take.tone-danger .ah-take-glyph{animation:none}}
+
+/* ---- release classic, cameras (11.11.2026): the stage's own buttons stand on the picture ---- */
+/* The sound button had no position of its own (only the offsets above): with a mouse it lay under the video in the stage's top left corner, where no
+   pointer reached it; on a touch screen the shell's `position:relative` for small targets moved it — and the SD/HD button — to that corner, half
+   outside the frame. The stage in the selector outweighs that rule; the sound button takes the SD button's dark chip, lower right (CODEX-015). */
+.hm-shell .at-cam-stage button.hm-camera-q{position:absolute}
+.hm-shell .at-cam-stage button.at-cam-sound{background:#000a;color:#fff;cursor:pointer;min-height:28px}
+.hm-shell .at-cam-stage button.at-cam-sound.is-on{background:var(--ah-accent)}
+/* on: the dark theme's light accent takes the dark ink, as the banners on it do (white on #b9b3ff is under 2:1) */
+.hm-shell.ah-shell[data-theme="dark"] .at-cam-stage button.at-cam-sound.is-on{color:#1c1c1e}

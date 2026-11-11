@@ -2,15 +2,18 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import type { ModuleDef, ModuleSheetProps } from './types.ts';
 import { doorbellSpec } from './catalog.ts';
-import { doorbellClaims, doorbellTileState, autoOpenSeconds, posterEnabled, when, clock, readFrame, AUTO_OPEN_CHOICES } from './doorbell-state.ts';
+import { doorbellClaims, doorbellTileState, autoOpenSeconds, posterEnabled, when, clock, readFrame, lastMotionAt, AUTO_OPEN_CHOICES } from './doorbell-state.ts';
 import { useEventFeed, ClipStage, FeedList, ArchiveGrid, ArchiveHead } from './event-feed.tsx';
 import { SettingRow } from '../ui/sheet.tsx';
 import { Go2rtcView, DualView } from './go2rtc-view.tsx';
+import { stageFullscreen, type StageFullscreen } from './camera-state.ts';
 import { Icon } from '../ui/primitives.tsx';
+import { ProductPhoto, usePhoto } from '../ui/photo.tsx';
 import { Switch } from '../ui/cards.tsx';
 import { entityActions, type Action } from '../runtime/actions.ts';
 import type { EntityRef } from '../model/discover.ts';
 import { domainOf, type Registry } from '../model/registry.ts';
+import { houseTime } from '../model/cameras.ts';
 import type { Key } from '../i18n/index.ts';
 
 function refOf(registry: Registry, id: string | undefined): EntityRef | null {
@@ -25,6 +28,7 @@ const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '
 
 /** The doorbell sheet: live video with sound, six tools, the last week of rings and motion from HA's logbook, battery and identify; settings page with auto-open and diagnostics. */
 function DoorbellSheet({ device, registry, entities, options, host, t, lang, runner, onClose, room, stage, wide, setOption, autoClose }: ModuleSheetProps) {
+  const own = usePhoto(device.primary.id), shot = device.photo ?? own; // the doorbell's own product photo in the head (also while it rings), when the house has set one
   const [page, setPage] = useState<'main' | 'settings' | 'archive'>('main');
   const [note, setNote] = useState('');
   const mediaDir = options.mediaDir && /^[\w-]{1,40}$/.test(options.mediaDir) ? options.mediaDir : 'doorbell';
@@ -44,7 +48,10 @@ function DoorbellSheet({ device, registry, entities, options, host, t, lang, run
       setNote(tx('module.camera.snapshotSaved'));
     } catch { setNote(tx('module.camera.snapshotFail')); }
   };
-  const fullscreen = () => { const el = stageRef.current; if (!el) return; const v = el.querySelector('video') as (HTMLVideoElement & { webkitEnterFullscreen?: () => void }) | null; if (el.requestFullscreen) el.requestFullscreen().catch(() => v?.webkitEnterFullscreen?.()); else v?.webkitEnterFullscreen?.(); };
+  // ST-08: the stage full screen; the first Escape leaves only it (the shell), and the keyboard comes back to «Во весь экран»
+  const full = useRef<StageFullscreen | null>(null);
+  useEffect(() => () => full.current?.stop(), []);
+  const fullscreen = (e: Event) => { const el = stageRef.current; if (el) (full.current ??= stageFullscreen()).open(el, e.currentTarget as HTMLElement | null); };
   useEffect(() => { if (!note) return; const id = setTimeout(() => setNote(''), 4000); return () => clearTimeout(id); }, [note]);
   // The week of rings and motion from HA's recorder (history, the same call the energy sparklines use); refreshed a moment after a new ring arrives.
   const ringState = ring?.state;
@@ -62,11 +69,11 @@ function DoorbellSheet({ device, registry, entities, options, host, t, lang, run
   const secs = autoOpenSeconds(options), frame = readFrame(options.addon ?? '', options.stream);
 
   const alarm = !!autoClose; // opened by the ring: one column, video and tools across the whole sheet, nothing else
-  const headBtns = <div className="at-cam-head-btns">{page === 'settings' && wide && <button type="button" className="hm-icon-btn" aria-label={t('ui.back')} onClick={() => setPage('main')}><Icon name="back" size={22} /></button>}{page === 'main' && !alarm && <button type="button" className="hm-icon-btn at-cam-gear" aria-label={tx('module.doorbell.settings')} onClick={() => setPage('settings')}><Icon name="gear" size={20} /></button>}<button type="button" className="hm-icon-btn" aria-label={t('ui.close')} onClick={onClose}>×</button></div>;
+  const headBtns = <div className="at-cam-head-btns">{page === 'settings' && wide && <button type="button" className="hm-icon-btn" aria-label={t('ui.back')} onClick={() => setPage('main')}><Icon name="back" size={22} /></button>}{page === 'main' && !alarm && <button type="button" className="hm-icon-btn at-cam-gear" aria-label={tx('module.doorbell.settings')} onClick={() => setPage('settings')}><Icon name="gear" size={20} /></button>}<button type="button" className="hm-icon-btn" aria-label={t('ui.closeSheet')} onClick={onClose}>×</button></div>;
   const head = page === 'main' || wide
-    ? <div className="hm-sheet-head"><span className="hm-sheet-photo"><Icon name="bell" size={30} /></span><div><small>{tx('module.doorbell.kind')}{roomShown ? ` · ${roomShown}` : ''}</small><h2>{device.name}</h2></div>{!wide && headBtns}</div>
+    ? <div className="hm-sheet-head"><span className="hm-sheet-photo"><ProductPhoto src={shot} eager><Icon name="bell" size={30} /></ProductPhoto></span><div><small>{tx('module.doorbell.kind')}{roomShown ? ` · ${roomShown}` : ''}</small><h2>{device.name}</h2></div>{!wide && headBtns}</div>
     : <div className="hm-sheet-head"><button type="button" className="hm-icon-btn" aria-label={t('ui.back')} onClick={() => setPage('main')}><Icon name="back" size={22} /></button><div><small>{device.name}</small><h2>{tx('module.doorbell.settings')}</h2></div>{headBtns}</div>;
-  const banner = autoClose && <div className="at-door-banner" role="status"><Icon name="bell" size={22} /><div><b>{tx('module.doorbell.ringing')}</b><small>{tx('module.doorbell.autoCloseNote')}</small></div><button type="button" className="at-door-stay" onClick={autoClose.keep}>{tx('module.doorbell.keep')}</button><span className="at-door-cnt">{fmt(Math.max(0, autoClose.left))}</span><i className="at-door-bar" style={`--p:${secs ? Math.max(0, Math.min(1, autoClose.left / secs)) : 0}`} /></div>;
+  const banner = autoClose && <div className="at-door-banner"><Icon name="bell" size={22} />{/* the live region is the words only: the countdown next to it changes every second and would be read out again and again */}<div role="status"><b>{tx('module.doorbell.ringing')}</b><small>{tx('module.doorbell.autoCloseNote')}</small></div><button type="button" className="at-door-stay" onClick={autoClose.keep}>{tx('module.doorbell.keep')}</button><span className="at-door-cnt" role="timer" aria-live="off">{fmt(Math.max(0, autoClose.left))}</span><i className="at-door-bar" style={`--p:${secs ? Math.max(0, Math.min(1, autoClose.left / secs)) : 0}`} /></div>;
   const video = <>
     {banner}
     <div className={`hm-camera-frame at-camera-stage at-cam-stage at-door-stage ${playing ? 'is-clip' : ''}`} ref={stageRef}>{playing
@@ -102,7 +109,7 @@ function DoorbellSheet({ device, registry, entities, options, host, t, lang, run
       {(device.manufacturer || device.model) && <KV k={t('ui.model')} v={[device.manufacturer, device.model].filter(Boolean).join(' · ')} />}
       {battery && <KV k={tx('module.doorbell.battery')} v={bat === null ? '—' : `${bat} %`} />}
       {ring && <KV k={tx('module.doorbell.lastRing')} v={Number.isFinite(Date.parse(ring.state)) ? when(Date.parse(ring.state), now, tx, lang) : '—'} />}
-      {motion && <KV k={tx('module.doorbell.lastMotion')} v={Number.isFinite(Date.parse(motion.lastChanged)) ? when(Date.parse(motion.lastChanged), now, tx, lang) : '—'} />}
+      {motion && <KV k={tx('module.doorbell.lastMotion')} v={(at => at === null ? '—' : when(at, now, tx, lang))(lastMotionAt(registry.states, entities))} />}
       <KV k={tx('module.camera.diag.stream')} v={`${options.stream ?? 'auto'} · go2rtc`} />
       <KV k={tx('module.doorbell.lastFrame')} v={frame ? clock(frame.at, lang) : '—'} />
       <p className="at-feeder-note at-cam-note">{tx('module.doorbell.aqaraNote')}</p>
@@ -110,7 +117,7 @@ function DoorbellSheet({ device, registry, entities, options, host, t, lang, run
   </>;
   const archive = <ArchiveGrid feed={feed} t={t} lang={lang} onPlayed={() => { if (!wide) setPage('main'); }} />;
   const archiveHead = <ArchiveHead feed={feed} t={t} title={device.name} onBack={() => setPage('main')} onClose={wide ? undefined : onClose} />;
-  if (alarm) return <div className="hm-sheet-body ah-sheet at-cam at-door is-alarm" data-kind="camera" data-page="alarm"><div className="hm-sheet-head"><span className="hm-sheet-photo"><Icon name="bell" size={30} /></span><div><small>{tx('module.doorbell.kind')}{roomShown ? ` · ${roomShown}` : ''}</small><h2>{device.name}</h2></div>{headBtns}</div>{video}</div>;
+  if (alarm) return <div className="hm-sheet-body ah-sheet at-cam at-door is-alarm" data-kind="camera" data-page="alarm"><div className="hm-sheet-head"><span className="hm-sheet-photo"><ProductPhoto src={shot} eager><Icon name="bell" size={30} /></ProductPhoto></span><div><small>{tx('module.doorbell.kind')}{roomShown ? ` · ${roomShown}` : ''}</small><h2>{device.name}</h2></div>{headBtns}</div>{video}</div>;
   if (wide) return <div className="hm-sheet-body ah-sheet at-cam at-door is-split" data-kind="camera" data-page={page}>
     <div className="at-cam-left">{head}{video}</div>
     <div className="at-cam-right">{page === 'archive' ? <>{archiveHead}{archive}</> : <>{headBtns}{page === 'main' ? main : <><h3 className="at-cam-h3">{tx('module.doorbell.settings')}</h3>{settings}</>}</>}</div>
@@ -124,12 +131,13 @@ export const doorbell: ModuleDef = {
   ...doorbellSpec,
   Card: () => null,
   claims: doorbellClaims,
-  tileState: (registry, entities, t, lang) => doorbellTileState(registry.states, entities, (k, p) => t(k as Key, p), lang),
+  // «Звонок в …» lasts a minute by the HOUSE's clock: the ring's stamp is the house's, a wall tablet's own clock may be minutes off
+  tileState: (registry, entities, t, lang) => doorbellTileState(registry.states, entities, (k, p) => t(k as Key, p), lang, houseTime(registry.states)),
   alarm: (entities, options) => entities.ring ? { entityId: entities.ring, seconds: autoOpenSeconds(options) } : null,
   Sheet: DoorbellSheet,
   // the G4 runs on mains since 08.11.2026: the tile and the Cameras panel stream it like any camera (it no longer drains a battery)
   sensors: e => [e.ring, e.motion].filter((x): x is string => !!x),
   // tiles: the repeater's 720p (a keyframe every 2 s, held open by go2rtc); the sheet starts on it and moves to 1080p (a keyframe every 7–8 s) once that has a frame
-  Player: ({ entities, options, host, t, mode, poster }) => { const light = { ...options, streamHd: undefined }; const low = { options: light, host, t, mode, poster, webrtcEntity: entities.fast ?? entities.video };
+  Player: ({ entities, options, host, t, mode, poster, camera, paused }) => { const light = { ...options, streamHd: undefined }; const low = { options: light, host, t, mode, poster, webrtcEntity: entities.fast ?? entities.video, camera, paused };
     return mode === 'tile' || !options.streamHd ? <Go2rtcView {...low} /> : <DualView low={low} high={{ options: { ...light, stream: options.streamHd }, host, t, mode, poster, webrtcEntity: entities.video }} />; },
 };

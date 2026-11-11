@@ -17,3 +17,21 @@ let remembered;
 export function rememberSkeletonTheme(theme) { if (theme === remembered) return; remembered = theme; try { localStorage.setItem(THEME_KEY, theme); } catch { /* private mode: the next skeleton is light, a convenience only */ } }
 /** @param {string} [text] @param {'light' | 'dark'} [theme] */
 export const skeletonHtml = (text = 'Подключаемся к дому…', theme = 'light') => '<div class="hm-skeleton' + (theme === 'dark' ? ' is-dark' : '') + '" role="status" aria-busy="true" aria-live="polite"><div class="hm-skeleton-head is-bone"></div><div class="hm-skeleton-grid">' + '<div class="hm-skeleton-tile is-bone"></div>'.repeat(8) + '</div><p>' + text + '</p></div>';
+// The words under the skeleton in the panel's language (audit 2026-11-09): the language is left here by the panel like the theme, and until
+// then Home Assistant's own language decides. `fail` stands while a load that did not work is being tried again.
+export const LANG_KEY = 'atom-home-lang';
+export const SKELETON_TEXT = {
+  ru: { wait: 'Подключаемся к дому…', fail: 'Не удалось загрузить дом. Пробуем снова…' },
+  en: { wait: 'Connecting to the home…', fail: 'Could not load the home. Retrying…' },
+  ro: { wait: 'Ne conectăm la casă…', fail: 'Casa nu a putut fi încărcată. Reîncercăm…' },
+};
+/** @param {string} [fallback] Home Assistant's language @returns {'ru' | 'en' | 'ro'} */
+export function readSkeletonLang(fallback) {
+  let v = null; try { v = localStorage.getItem(LANG_KEY); } catch { /* private mode */ }
+  const pick = (/** @type {unknown} */ x) => { const l = String(x ?? '').slice(0, 2).toLowerCase(); return l === 'ru' || l === 'en' || l === 'ro' ? l : null; };
+  return pick(v) ?? pick(fallback) ?? 'ru';
+}
+/** @type {string | undefined} */
+let rememberedLang;
+/** @param {'ru' | 'en' | 'ro'} lang */
+export function rememberSkeletonLang(lang) { if (lang === rememberedLang) return; rememberedLang = lang; try { localStorage.setItem(LANG_KEY, lang); } catch { /* a convenience only */ } }

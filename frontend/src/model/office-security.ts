@@ -1,5 +1,6 @@
 import type { Registry } from './registry.ts';
 import type { HouseConfig } from './config.ts';
+import type { Key, T } from '../i18n/index.ts';
 /** Security of an office building (Atom + Okapi, owner 09.11.2026, atom-okapi/SECURITY.md): Alarmo's master over several areas (zones),
  * the whole building armed and disarmed at once, every sensor of the building's rooms shown by state (doors, windows, motion, glass break,
  * presence, smoke, tamper), the Ajax hub's health. Only the service's staff arm and disarm: the people HA labels «Охрана: сотрудник сервиса». */
@@ -14,6 +15,14 @@ export interface OsecItem {
   /** a glass-break sensor in the same device (Ajax Combi Protect): null when it has none */
   glass: boolean | null;
   offline: boolean; problem: boolean; battery: boolean;
+  /** CODEX-010: the device does not answer — its own sensor has no state (`unknown` / `unavailable`: `on` null), or its glass break, case switch
+   * or link is `unavailable`. It guards nothing the panel can vouch for: the building is never calm, «Двери и окна закрыты» or «Всё закрыто» with
+   * it, and arming says so first. */
+  quiet: boolean;
+  /** the parts that have not said their state (`unknown` / `unavailable`): their rows say «Нет данных», never «Норма», «Закрыт», «В сети».
+   * A part that is only `unknown` (a Zigbee case switch that has never reported, as two of the building's door sensors on 09.11.2026) does not
+   * make the device `quiet` — like the house's leak sensor that waits for its first report (book SECURITY.md п. 7). */
+  nodata: Array<'glass' | 'tamper' | 'link'>;
   /** battery %, the device's own temperature, the radio signal (Ajax Jeweller: strong / normal / weak), the maker for the picture */
   level: number | null; temp: number | null; signal: 'strong' | 'normal' | 'weak' | null; maker: 'ajax' | 'zigbee' | 'other'; model: string | null;
 }
@@ -82,9 +91,14 @@ export function readOfficeSecurity(reg: Registry, config: HouseConfig, user: { i
     const dev = entOf(main)?.device_id ?? null, any = (f: (id: string) => boolean) => ids.some(id => f(id) && S[id].state === 'on');
     const glassId = ids.find(id => /_glass_break(_\d+)?$/.test(id));
     const d = dev ? devs.find(x => x.id === dev) : null, sens = dev ? Object.keys(S).filter(x => x.startsWith('sensor.') && entOf(x)?.device_id === dev) : [];
+    // a part (the glass break, the case switch, the link) has said nothing when none of its entities is on or off; it is lost when one is unavailable
+    const part = (f: (id: string) => boolean) => { const own = ids.filter(f), said = own.some(id => on(S[id].state) !== null); return { none: own.length > 0 && !said, lost: !said && own.some(id => S[id].state === 'unavailable') }; };
+    const glassP = part(id => id === glassId), tamperP = part(id => dc(id) === 'tamper'), linkP = part(id => dc(id) === 'connectivity' && entOf(id)?.entity_category === 'diagnostic');
     items.push({
       id: main, device: dev, area: areaOf(main)!, kind: isWindow(main, dev) ? 'window' : KIND[dc(main)], name: devName(dev, name(main)),
       on: on(S[main].state), since: ts(S[main].last_changed),
+      quiet: on(S[main].state) === null || glassP.lost || tamperP.lost || linkP.lost,
+      nodata: [...(glassP.none ? ['glass' as const] : []), ...(tamperP.none ? ['tamper' as const] : []), ...(linkP.none ? ['link' as const] : [])],
       tamper: any(id => dc(id) === 'tamper'), glass: glassId ? on(S[glassId].state) ?? false : null,
       offline: ids.some(id => dc(id) === 'connectivity' && S[id].state === 'off' && entOf(id)?.entity_category === 'diagnostic'),
       problem: any(id => /_device_problem(_\d+)?$/.test(id) || /_external_contact_broken(_\d+)?$/.test(id)), battery: any(id => dc(id) === 'battery'),
@@ -126,15 +140,55 @@ export type OsecTone = 'calm' | 'armed' | 'warn' | 'alarm' | 'off';
 export const osecMark = (s: OfficeSecurity): 'alert' | 'open' | 'check' => s.alarm.state === 'triggered' || allItems(s).some(i => i.kind === 'smoke' && i.on) ? 'alert' : ['armed', 'arming', 'pending'].includes(s.alarm.state) ? 'check' : 'open';
 export const allItems = (s: OfficeSecurity) => s.rooms.flatMap(r => r.items);
 const openings = (s: OfficeSecurity) => allItems(s).filter(i => (i.kind === 'door' || i.kind === 'window') && i.on);
-/** Red: an alarm or smoke; amber: glass break, a tamper, a delay running, the hub's lid or no link; blue: armed; grey: disarmed with something open. */
+/** The devices that do not answer (CODEX-010): a sensor without a state, or a glass break, case switch or link that is unavailable. */
+export const osecSilent = (s: OfficeSecurity): OsecItem[] => allItems(s).filter(i => i.quiet);
+/** Red: an alarm or smoke; amber: glass break, a tamper, a delay running, the hub's lid or no link, a device that does not answer (CODEX-010);
+ * blue: armed; grey: disarmed with something open. */
 export function osecTone(s: OfficeSecurity): OsecTone {
   const it = allItems(s);
   if (s.alarm.state === 'triggered' || it.some(i => i.kind === 'smoke' && i.on)) return 'alarm';
-  if (s.alarm.state === 'pending' || s.alarm.state === 'arming' || s.alarm.state === 'unknown' || it.some(i => i.glass || i.tamper) || s.hub?.lid || s.hub?.online === false) return 'warn';
+  if (s.alarm.state === 'pending' || s.alarm.state === 'arming' || s.alarm.state === 'unknown' || it.some(i => i.glass || i.tamper) || s.hub?.lid || s.hub?.online === false || osecSilent(s).length) return 'warn';
   if (s.alarm.state === 'armed') return 'armed';
   return openings(s).length ? 'off' : 'calm';
 }
 export { openings as osecOpenings };
+const ok = (t: T, k: string, p?: Record<string, string | number>) => t(`osec.${k}` as Key, p);
+const smokeNow = (s: OfficeSecurity) => allItems(s).some(i => i.kind === 'smoke' && i.on);
+/** The state in a word («Под охраной», «Дым!»). */
+export function osecStateWord(s: OfficeSecurity, t: T): string { return smokeNow(s) ? ok(t, 'st.smoke') : ok(t, `st.${s.alarm.state}`); }
+/** One sentence under the state: the worst thing first. A device that does not answer is said before «Двери и окна закрыты» / «Всё закрыто,
+ * здание под охраной», which are never said with one (CODEX-010); its words are the house's («Не отвечает: …»). */
+export function osecSentence(s: OfficeSecurity, t: T): string {
+  const it = allItems(s), roomOf = (i: OsecItem) => s.rooms.find(r => r.items.includes(i))?.name ?? '';
+  const smoke = it.find(i => i.kind === 'smoke' && i.on); if (smoke) return ok(t, 'say.smoke', { room: roomOf(smoke) });
+  if (s.alarm.state === 'triggered') { const last = it.filter(i => i.on && i.kind !== 'smoke').sort((x, y) => (y.since ?? 0) - (x.since ?? 0))[0]; return last ? ok(t, 'say.triggeredBy', { what: last.name }) : ok(t, 'say.triggered'); }
+  const glass = it.find(i => i.glass); if (glass) return ok(t, 'say.glass', { what: glass.name });
+  const tamper = it.find(i => i.tamper); if (tamper) return ok(t, 'say.tamper', { what: tamper.name });
+  if (s.alarm.state === 'pending') return ok(t, 'say.pending');
+  const open = openings(s);
+  if (s.alarm.state === 'arming') return open.length ? ok(t, 'say.armingOpen', { what: open[0].name }) : ok(t, 'say.arming');
+  if (s.alarm.refused.length) return ok(t, 'say.refused', { what: s.alarm.refused.join(', ') });
+  if (s.hub?.online === false) return ok(t, 'say.hubOff', { hub: s.hub.name });
+  if (s.hub?.lid) return ok(t, 'say.hubLid', { hub: s.hub.name });
+  if (open.length) return open.length === 1 ? ok(t, open[0].kind === 'window' ? 'say.open1w' : 'say.open1', { what: open[0].name }) : ok(t, 'say.openN', { n: open.length });
+  const silent = osecSilent(s);
+  if (silent.length) return silent.length === 1 ? t('sec.say.silent1', { what: silent[0].name }) : t('sec.say.silentN', { n: silent.length });
+  return s.alarm.state === 'armed' ? ok(t, 'say.armed') : ok(t, 'say.closed');
+}
+/** The devices' heading: what is open and what does not answer; «всё закрыто» only when every device answers and none is open. */
+export const osecDevicesWord = (s: OfficeSecurity, t: T): string => { const open = openings(s).length, silent = osecSilent(s).length;
+  return [open ? ok(t, 'openN', { n: open }) : '', silent ? t('sec.silentN', { n: silent }) : ''].filter(Boolean).join(' · ') || ok(t, 'allClosed'); };
+/** Arming is one tap, unless a device does not answer: then the panel says which one the guard will not see and asks (the house's rule). */
+export function osecArmWarning(s: OfficeSecurity, t: T): string | null {
+  const silent = osecSilent(s); if (!silent.length) return null;
+  return silent.length === 1 ? t('sec.ask.armSilent1', { what: silent[0].name }) : t('sec.ask.armSilentN', { n: silent.length });
+}
+/** «С охраны» asks first (CODEX-002), as the house's does; one tap stays only for cancelling an arming that has not finished (ROUND-2). */
+export const osecDisarmAsks = (s: OfficeSecurity): boolean => s.alarm.state !== 'arming';
+/** Does an open question still make sense? Disarmed from another device or from Ajax, armed meanwhile: it is withdrawn. */
+export function osecAskStands(kind: 'arm' | 'disarm', s: OfficeSecurity): boolean {
+  return kind === 'disarm' ? ['armed', 'pending', 'triggered'].includes(s.alarm.state) : s.alarm.state === 'disarmed';
+}
 
 /** One line of the Ajax-like feed: the building armed, disarmed, alarmed, and by whom (HA's logbook of the master panel). */
 export interface OsecEvent { when: number; kind: 'armed' | 'disarmed' | 'triggered' | 'pending'; by: string | null; via: 'user' | 'ajax' | 'automation' | null; /** Alarmo's armed mode («armed_away»…) */ mode?: string }

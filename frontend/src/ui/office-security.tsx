@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'preact/hooks';
+import type { ComponentChildren } from 'preact';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Host } from '../runtime/host.ts';
 import type { Key, T } from '../i18n/index.ts';
-import { locales, type Lang } from './format.ts';
-import { allItems, osecOpenings, osecTone, readOsecEvents, STAFF_LABEL, type LogRow, type OfficeSecurity, type OsecEvent, type OsecItem, type OsecState, type OsecTone } from '../model/office-security.ts';
+import { errorText, locales, type Lang } from './format.ts';
+import { allItems, osecArmWarning, osecAskStands, osecDevicesWord, osecDisarmAsks, osecSentence, osecStateWord, osecTone, readOsecEvents, STAFF_LABEL, type LogRow, type OfficeSecurity, type OsecEvent, type OsecItem, type OsecState, type OsecTone } from '../model/office-security.ts';
 /** Security of an office building (Atom + Okapi, owner 09.11.2026, atom-okapi/SECURITY.md), drawn after the Ajax app the building's staff
  * already use (owner: «посмотри как они сделали»): the state ring (open = disarmed, closed = armed, «!» = alarm), the two big buttons «Под охрану»
  * and «С охраны», the groups, the devices as cards with their picture, signal, battery and the red count of faults, the feed by day. */
@@ -40,26 +41,26 @@ export const Bars = ({ v }: { v: OsecItem['signal'] }) => { const n = v === 'str
 export const Battery = ({ v }: { v: number | null }) => <svg width="12" height="18" viewBox="0 0 12 18" aria-hidden="true" className={`at-osec-batt ${v !== null && v <= 20 ? 'is-low' : ''}`}><rect x="1" y="3" width="10" height="14" rx="2" className="is-case" /><rect x="4" y="1" width="4" height="2" rx=".5" className="is-cap" /><rect x="3" y={5 + 10 * (1 - (v ?? 0) / 100)} width="6" height={10 * (v ?? 0) / 100} rx="1" className="is-level" /></svg>;
 export const Chevron = () => <svg className="at-osec-chev" width="14" height="22" viewBox="0 0 14 22" aria-hidden="true"><path d="m3 3 8 8-8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>;
 export const Case = () => <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" className="at-osec-case"><path d="M4 3h6M4 3v12h10V8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>;
-function stateWord(s: OfficeSecurity, t: T): string { return smokeNow(s) ? ok(t, 'st.smoke') : ok(t, `st.${s.alarm.state}`); }
-/** One sentence under the state: the worst thing first. */
-function sentence(s: OfficeSecurity, t: T): string {
-  const it = allItems(s), roomOf = (i: OsecItem) => s.rooms.find(r => r.items.includes(i))?.name ?? '';
-  const smoke = it.find(i => i.kind === 'smoke' && i.on); if (smoke) return ok(t, 'say.smoke', { room: roomOf(smoke) });
-  if (s.alarm.state === 'triggered') { const last = it.filter(i => i.on && i.kind !== 'smoke').sort((x, y) => (y.since ?? 0) - (x.since ?? 0))[0]; return last ? ok(t, 'say.triggeredBy', { what: last.name }) : ok(t, 'say.triggered'); }
-  const glass = it.find(i => i.glass); if (glass) return ok(t, 'say.glass', { what: glass.name });
-  const tamper = it.find(i => i.tamper); if (tamper) return ok(t, 'say.tamper', { what: tamper.name });
-  if (s.alarm.state === 'pending') return ok(t, 'say.pending');
-  const open = osecOpenings(s);
-  if (s.alarm.state === 'arming') return open.length ? ok(t, 'say.armingOpen', { what: open[0].name }) : ok(t, 'say.arming');
-  if (s.alarm.refused.length) return ok(t, 'say.refused', { what: s.alarm.refused.join(', ') });
-  if (s.hub?.online === false) return ok(t, 'say.hubOff', { hub: s.hub.name });
-  if (s.hub?.lid) return ok(t, 'say.hubLid', { hub: s.hub.name });
-  if (open.length) return open.length === 1 ? ok(t, open[0].kind === 'window' ? 'say.open1w' : 'say.open1', { what: open[0].name }) : ok(t, 'say.openN', { n: open.length });
-  return s.alarm.state === 'armed' ? ok(t, 'say.armed') : ok(t, 'say.closed');
+/** the state and the sentence live in the model (CODEX-010: a device that does not answer is said there, tested under Node) */
+const stateWord = osecStateWord, sentence = osecSentence;
+/** A question before a dangerous action (docs/UX-GUIDE.md), the house's and the office's: the consequence in words, the safe choice first and
+ * focused, Escape cancels wherever the focus stands. */
+export function Ask({ text, yes, no, onYes, onNo, children, danger }: { text: string; yes: string; no: string; onYes: () => void; onNo: () => void; children?: ComponentChildren; /** the safe choice is also the prominent one (opening the water during a leak) */ danger?: boolean }) {
+  const safe = useRef<HTMLButtonElement>(null), box = useRef<HTMLDivElement>(null), cancel = useRef(onNo); cancel.current = onNo;
+  // Escape cancels wherever the focus stands while the question is open (it may have been moved off it), and the key ends here: the shell's
+  // own Escape (closing a sheet) sees it as handled
+  useEffect(() => { safe.current?.focus(); const root = box.current?.getRootNode(); if (!root) return;
+    const key = (e: Event) => { const k = e as KeyboardEvent; if (k.key !== 'Escape' || k.defaultPrevented) return; k.preventDefault(); k.stopPropagation(); cancel.current(); };
+    root.addEventListener('keydown', key); return () => root.removeEventListener('keydown', key); }, []);
+  return <div className="at-sec-ask" role="group" aria-label={text} ref={box}>
+    <p>{text}</p>{children}
+    <div className="at-sec-ask-btns"><button type="button" ref={safe} className={`hm-pill at-sec-ask-no ${danger ? 'is-primary' : ''}`} onClick={onNo}>{no}</button><button type="button" className={`hm-pill at-sec-ask-yes ${danger ? 'is-danger' : 'is-primary risk-security'}`} onClick={onYes}>{yes}</button></div>
+  </div>;
 }
-export function useBusy() {
+/** With the translator the refusal is one sentence in the user's language (`errorText`), never «[object Object]». */
+export function useBusy(t?: T) {
   const [busy, setBusy] = useState<string | null>(null), [err, setErr] = useState('');
-  const run = async (k: string, f: () => Promise<unknown>) => { setBusy(k); setErr(''); try { await f(); } catch (e) { setErr(e instanceof Error ? e.message : String(e)); } finally { setBusy(null); } };
+  const run = async (k: string, f: () => Promise<unknown>) => { setBusy(k); setErr(''); try { await f(); } catch (e) { setErr(t ? errorText(e, t) : e instanceof Error ? e.message : String(e)); } finally { setBusy(null); } };
   return { busy, err, run };
 }
 export function OfficeSecurityTile({ s, t, onOpen }: { s: OfficeSecurity; t: T; onOpen: () => void }) {
@@ -85,9 +86,17 @@ function devState(i: OsecItem, t: T, lang: Lang): { text: string; tone: '' | 'is
 }
 const faults = (i: OsecItem) => [i.tamper, !!i.glass, i.offline, i.problem && !i.offline, i.battery].filter(Boolean).length;
 export function OfficeSecurityPanel({ s, host, t, lang, now, admin, title }: { s: OfficeSecurity; host: Host; t: T; lang: Lang; now: number; admin: boolean; title: string }) {
-  const tone = osecTone(s), ui = useBusy(), st = s.alarm.state, armed = ARMED.includes(st);
+  const tone = osecTone(s), ui = useBusy(t), st = s.alarm.state, armed = ARMED.includes(st);
   const left = s.alarm.delayEnds ? Math.max(0, (s.alarm.delayEnds - now) / 1000) : null, total = s.alarm.delayEnds && s.alarm.since ? (s.alarm.delayEnds - s.alarm.since) / 1000 : 0;
   const act = (arm: boolean) => ui.run(arm ? 'arm' : 'disarm', () => host.call('alarm_control_panel', arm ? 'alarm_arm_away' : 'alarm_disarm', { entity_id: s.alarm.id }));
+  // the house's safety rules: «С охраны» asks first — one tap only cancels an arming that has not finished (CODEX-002); arming with a device that
+  // does not answer says which one and asks (CODEX-010). The safe choice has the focus, Escape cancels, the focus goes back to the key — or, when
+  // the key can no longer be pressed, to the state line; a question whose ground is gone (disarmed from Ajax) is withdrawn.
+  const [ask, setAsk] = useState<'arm' | 'disarm' | null>(null), opener = useRef<HTMLButtonElement | null>(null), stateLine = useRef<HTMLParagraphElement>(null);
+  const question = (k: 'arm' | 'disarm', el: HTMLButtonElement) => { opener.current = el; setAsk(k); };
+  const closeAsk = () => { setAsk(null); const el = opener.current; opener.current = null; requestAnimationFrame(() => { if (el?.isConnected && !el.disabled) el.focus(); else if (el) stateLine.current?.focus(); }); };
+  useEffect(() => { if (ask && !osecAskStands(ask, s)) closeAsk(); });
+  const armWarn = osecArmWarning(s, t);
   const [room, setRoom] = useState<string>('all'), [open, setOpen] = useState<string | null>(null);
   const items = s.rooms.filter(r => room === 'all' || r.id === room).flatMap(r => r.items.map(i => ({ i, room: r.name, guarded: !!r.zone })));
   // the container is the wrapper: a grid cannot query its own width (the tablet layout fell into one cell)
@@ -96,21 +105,23 @@ export function OfficeSecurityPanel({ s, host, t, lang, now, admin, title }: { s
         <Ring kind={ringOf(s)} size={104} progress={total && left !== null ? 1 - left / total : 0} tone={ringTone(s)} />
         <div className="at-osec-name">
           <h2>{title}</h2>
-          <p className="at-osec-state">{stateWord(s, t)}{left !== null && <span className="at-osec-count"> · {Math.floor(left / 60)}:{String(Math.round(left % 60)).padStart(2, '0')}</span>}</p>
+          <p className="at-osec-state" ref={stateLine} tabIndex={-1}>{stateWord(s, t)}{left !== null && <span className="at-osec-count"> · {Math.floor(left / 60)}:{String(Math.round(left % 60)).padStart(2, '0')}</span>}</p>
           <small>{sentence(s, t)}</small>
         </div>
         <div className="at-osec-pad" role="group" aria-label={ok(t, 'title')}>
-          <button type="button" className={`at-osec-key ${st === 'armed' ? 'is-now' : ''}`} disabled={!s.can || ui.busy !== null || st === 'unknown' || armed} onClick={() => act(true)}>
+          <button type="button" className={`at-osec-key ${st === 'armed' ? 'is-now' : ''}`} disabled={!s.can || ui.busy !== null || st === 'unknown' || armed} onClick={e => { if (armWarn) question('arm', e.currentTarget); else void act(true); }}>
             <b>{ok(t, 'arm')}</b><Ring kind="closed" size={52} tone="calm" /></button>
-          <button type="button" className={`at-osec-key ${st === 'disarmed' ? 'is-now' : ''}`} disabled={!s.can || ui.busy !== null || st === 'unknown' || !armed} onClick={() => act(false)}>
+          <button type="button" className={`at-osec-key ${st === 'disarmed' ? 'is-now' : ''}`} disabled={!s.can || ui.busy !== null || st === 'unknown' || !armed} onClick={e => { if (osecDisarmAsks(s)) question('disarm', e.currentTarget); else void act(false); }}>
             <b>{ok(t, 'disarm')}</b><Ring kind="open" size={52} tone="calm" /></button>
         </div>
+        {ask === 'disarm' && <Ask text={ok(t, 'ask.disarm')} yes={ok(t, 'disarm')} no={t('sec.ask.no')} onYes={() => { closeAsk(); void act(false); }} onNo={closeAsk} />}
+        {ask === 'arm' && <Ask text={armWarn ?? ''} yes={ok(t, 'arm')} no={t('sec.ask.no')} onYes={() => { closeAsk(); void act(true); }} onNo={closeAsk} />}
         {!s.can && <small className="at-osec-who">{ok(t, 'staffOnly')}</small>}
         {ui.err && <small className="at-sec-err" role="alert">{ok(t, 'fail')}: {ui.err}</small>}
         <div className="at-osec-groups">{s.zones.map(z => <span className={`at-osec-group is-${z.state}`}><Ring kind={z.state === 'triggered' ? 'alert' : z.state === 'armed' ? 'closed' : z.state === 'arming' || z.state === 'pending' ? 'count' : 'open'} size={22} progress={.5} tone={z.state === 'triggered' ? 'alarm' : z.state === 'armed' ? 'armed' : z.state === 'disarmed' ? 'calm' : 'warn'} /><b>{z.name}</b><small>{ok(t, `zone.${z.state}`)}</small></span>)}</div>
       </section>
     <section className="at-osec-devs">
-      <div className="hm-section-head"><h2>{ok(t, 'devices')}</h2><small>{osecOpenings(s).length ? ok(t, 'openN', { n: osecOpenings(s).length }) : ok(t, 'allClosed')}</small></div>
+      <div className="hm-section-head"><h2>{ok(t, 'devices')}</h2><small>{osecDevicesWord(s, t)}</small></div>
       <div className="at-osec-chips" role="tablist">{[{ id: 'all', name: ok(t, 'allRooms') }, ...s.rooms.map(r => ({ id: r.id, name: r.name }))].map(r => <button type="button" role="tab" aria-selected={room === r.id} className={room === r.id ? 'is-on' : ''} onClick={() => setRoom(r.id)}>{r.name}</button>)}</div>
       <div className="at-osec-list">
         {s.hub && room === 'all' && <HubCard s={s} t={t} open={open === 'hub'} onToggle={() => setOpen(open === 'hub' ? null : 'hub')} />}
@@ -137,9 +148,10 @@ function DevRows({ i, t, lang }: { i: OsecItem; t: T; lang: Lang }) {
   const ds = devState(i, t, lang);
   return <div className="at-osec-rows">
     <Row k={sensor} v={ds.text} bad={ds.tone === 'is-alarm' ? true : ds.tone === 'is-warn' ? 'warn' : false} />
-    {i.glass !== null && <Row k={ok(t, 'row.glass')} v={i.glass ? ok(t, 'glass') : ok(t, 'row.ok')} bad={i.glass} />}
-    <Row k={ok(t, 'row.case')} v={i.tamper ? ok(t, 'row.caseOpen') : ok(t, 'row.caseClosed')} bad={i.tamper} />
-    <Row k={ok(t, 'row.link')} v={i.offline ? ok(t, 'offline') : ok(t, 'row.online')} bad={i.offline} />
+    {/* CODEX-010: a part that has not said its state is «Нет данных», never «Норма», «Закрыт», «В сети» */}
+    {i.glass !== null && <Row k={ok(t, 'row.glass')} v={i.glass ? ok(t, 'glass') : i.nodata.includes('glass') ? ok(t, 'noData') : ok(t, 'row.ok')} bad={i.glass || (i.nodata.includes('glass') && 'warn')} />}
+    <Row k={ok(t, 'row.case')} v={i.tamper ? ok(t, 'row.caseOpen') : i.nodata.includes('tamper') ? ok(t, 'noData') : ok(t, 'row.caseClosed')} bad={i.tamper || (i.nodata.includes('tamper') && 'warn')} />
+    <Row k={ok(t, 'row.link')} v={i.offline ? ok(t, 'offline') : i.nodata.includes('link') ? ok(t, 'noData') : ok(t, 'row.online')} bad={i.offline || (i.nodata.includes('link') && 'warn')} />
     {i.signal && <Row k={ok(t, 'row.signal')} v={ok(t, `sig.${i.signal}`)} bad={i.signal === 'weak'} />}
     {i.level !== null && <Row k={ok(t, 'row.battery')} v={`${Math.round(i.level)} %`} bad={i.level <= 20 || i.battery} />}
     {i.temp !== null && <Row k={ok(t, 'row.temp')} v={`${Math.round(i.temp)} °C`} />}
@@ -172,17 +184,20 @@ function HubCard({ s, t, open, onToggle }: { s: OfficeSecurity; t: T; open: bool
 function Feed({ s, host, t, lang }: { s: OfficeSecurity; host: Host; t: T; lang: Lang }) { return <SecurityFeed alarmId={s.alarm.id} alarmState={s.alarm.state} people={s.people} host={host} t={t} lang={lang} />; }
 /** The feed of any Alarmo panel (the office's master, the house's own); `armed` names the mode («Не дома», «Отпуск») where the house has several. */
 export function SecurityFeed({ alarmId, alarmState, people, host, t, lang, armed }: { alarmId: string; alarmState: string; people: Array<{ user: string | null; name: string }>; host: Host; t: T; lang: Lang; armed?: (mode: string | undefined) => string }) {
-  const [rows, setRows] = useState<OsecEvent[] | null>(null), [kind, setKind] = useState<'all' | 'alarm' | 'mode'>('all');
+  const [rows, setRows] = useState<OsecEvent[] | null>(null), [kind, setKind] = useState<'all' | 'alarm' | 'mode'>('all'), online = host.online, canRead = !!host.ws;
+  // read again when the alarm changes and when the link to the house returns (what happened meanwhile is in the logbook); without the link
+  // nothing is asked and what was read stays; a host that cannot read the logbook at all says «нет данных» instead of waiting on «…» for ever
   useEffect(() => { let alive = true; const start = new Date(Date.now() - 7 * 864e5).toISOString();
-    host.ws?.<LogRow[]>({ type: 'logbook/get_events', start_time: start, entity_ids: [alarmId] }).then(r => { if (alive) setRows(readOsecEvents(Array.isArray(r) ? r : [], alarmId, people)); }, () => { if (alive) setRows([]); });
-    return () => { alive = false; }; }, [host, alarmId, alarmState]);
+    if (!host.ws || !online) return;
+    host.ws<LogRow[]>({ type: 'logbook/get_events', start_time: start, entity_ids: [alarmId] }).then(r => { if (alive) setRows(readOsecEvents(Array.isArray(r) ? r : [], alarmId, people)); }, () => { if (alive) setRows([]); });
+    return () => { alive = false; }; }, [host, alarmId, alarmState, online]);
   const list = (rows ?? []).filter(e => kind === 'all' || (kind === 'alarm' ? e.kind === 'triggered' || e.kind === 'pending' : e.kind === 'armed' || e.kind === 'disarmed')).slice(0, 12);
   const day = (ms: number) => { const d = new Date(ms), today = new Date(); const y = new Date(today); y.setDate(today.getDate() - 1); return d.toDateString() === today.toDateString() ? ok(t, 'today') : d.toDateString() === y.toDateString() ? ok(t, 'yesterday') : d.toLocaleDateString(locales[lang], { day: 'numeric', month: 'long' }); };
   let last = '';
   return <section className="at-osec-feed">
     <div className="hm-section-head"><h2>{ok(t, 'feed')}</h2></div>
-    <div className="at-osec-chips" role="tablist">{(['all', 'alarm', 'mode'] as const).map(k => <button type="button" role="tab" aria-selected={kind === k} className={kind === k ? 'is-on' : ''} onClick={() => setKind(k)}>{ok(t, `feed.${k}`)}</button>)}</div>
-    {rows === null ? <p className="at-osec-empty">…</p> : !list.length ? <p className="at-osec-empty">{ok(t, 'feed.none')}</p>
+    <div className="at-osec-chips" role="group" aria-label={ok(t, 'feed')}>{/* a filter of the list below, not tabs (tabs would owe the arrow keys and a tabpanel): buttons with a pressed one */}{(['all', 'alarm', 'mode'] as const).map(k => <button type="button" aria-pressed={kind === k} className={kind === k ? 'is-on' : ''} onClick={() => setKind(k)}>{ok(t, `feed.${k}`)}</button>)}</div>
+    {rows === null ? <p className="at-osec-empty">{canRead ? '…' : ok(t, 'noData')}</p> : !list.length ? <p className="at-osec-empty">{ok(t, 'feed.none')}</p>
       : <div className="at-osec-events">{list.map(e => { const d = day(e.when), head = d !== last; last = d; return <>
         {head && <h3>{d}</h3>}
         <div className={`at-osec-ev is-${e.kind}`}>
@@ -194,7 +209,7 @@ export function SecurityFeed({ alarmId, alarmState, people, host, t, lang, armed
 }
 /** Who arms and disarms (HA admins only): a switch per person, the label «Охрана: сотрудник сервиса» on the person in HA. */
 function StaffSettings({ s, host, t }: { s: OfficeSecurity; host: Host; t: T }) {
-  const ui = useBusy(), [mine, setMine] = useState<Record<string, boolean>>({});
+  const ui = useBusy(t), [mine, setMine] = useState<Record<string, boolean>>({});
   const staff = (id: string, was: boolean) => mine[id] ?? was;
   const flip = (id: string, was: boolean) => ui.run(id, async () => {
     if (!host.ws) throw new Error('no WebSocket');

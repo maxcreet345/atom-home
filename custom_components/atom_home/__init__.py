@@ -20,17 +20,21 @@ from homeassistant.components.http import HomeAssistantView, StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import Unauthorized
+from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers.start import async_at_started
 from homeassistant.helpers.storage import Store
 from aiohttp import web
 
-from .light_sleep import LightSleep
+from .light_sleep import MINUTES as SLEEP_MINUTES, LightSleep
 from .automations import automation_rows
 from .feeder import feeder_log
 from .air_tasks import AirTasks
-from .alarms import AlarmScheduler, normalise_alarms
+from .alarms import AlarmScheduler, normalise_alarms, switched_off
+from .bundle import GzipCache, accepts_gzip, etag_matches, etag_of
 from .config_state import ConfigState, ConfigWriteError
+from .helpers_check import missing_helpers, short_helpers
 from .const import (
-    CLIENT_FEATURE_COMPOSITION, CLIENT_FEATURE_ROOM_FEED, CLIENT_FEATURE_TARIFF, DOMAIN, FRONTEND_FILE, MAX_PHOTO_BYTES, PANEL_ICON, PANEL_TITLE, PANEL_URL_PATH, PHOTOS_DIR, PHOTOS_URL, STATIC_URL, STORAGE_KEY, STORAGE_VERSION,
+    DOMAIN, FRONTEND_FILE, MAX_PHOTO_BYTES, PANEL_ICON, PANEL_TITLE, PANEL_URL_PATH, PHOTOS_DIR, PHOTOS_URL, STATIC_URL, STORAGE_KEY, STORAGE_VERSION,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -44,6 +48,57 @@ def _version() -> str:
         return "0"
 
 
+def _alarm_targets(alarm: dict) -> set[str]:
+    """Only the targets the scheduler will actually command (even when the alarm is currently disabled)."""
+    targets = set()
+    if alarm.get("light") and alarm.get("lightEntity"):
+        targets.add(alarm["lightEntity"])
+    if alarm.get("alice") != "off" and alarm.get("station"):
+        targets.add(alarm["station"])
+    return targets
+
+
+def _alarm_auth_update(user):
+    """Validate changed records against the stored list while its write lock is held, and attribute them atomically."""
+    def update(before: list, after: list, authors: dict) -> dict:
+        previous = {a["id"]: a for a in normalise_alarms(before)}
+        updated = {}
+        for alarm in normalise_alarms(after):
+            aid = alarm["id"]
+            if previous.get(aid) == alarm:
+                if aid in authors:
+                    updated[aid] = authors[aid]
+                continue
+            targets = _alarm_targets(alarm)
+            if not user.is_admin:
+                for entity_id in targets:
+                    if not user.permissions.check_entity(entity_id, "control"):
+                        raise Unauthorized(entity_id=entity_id)
+                if targets:
+                    updated[aid] = {"user_id": getattr(user, "id", None)}
+            # An admin's changed alarm is explicitly authorized as integration-owned, like legacy saved alarms.
+        return updated
+    return update
+
+
+def _scheduled_alarms(state: ConfigState) -> list[dict]:
+    """Attach server-only author snapshots; an active ring must retain its author if its saved row is later removed."""
+    alarms = normalise_alarms((state.config or {}).get("alarms"))
+    auth = state.alarm_auth
+    if auth is None:
+        return alarms
+    authors = auth.get("authors")
+    if auth.get("version") != 1 or not isinstance(authors, dict):
+        return [{**alarm, "_author": None} for alarm in alarms]
+    return [{**alarm, "_author": authors[alarm["id"]]} if alarm["id"] in authors else alarm for alarm in alarms]
+
+
+# The version of the Python that runs, read once per run of Home Assistant. An update through HACS replaces manifest.json
+# at once, but the modules in memory stay the old ones until a restart; a plain reload of the entry must go on answering
+# with the old version, or the panel's «нужен перезапуск» note would go out while the old code still serves it.
+_RUNNING_VERSION: str | None = None
+
+
 BUNDLE_URL = "/atom_home/bundle.js"
 LOADER_URL = "/atom_home/loader.js"
 META_URL = "/atom_home/meta"
@@ -51,7 +106,10 @@ META_URL = "/atom_home/meta"
 # defeats proxies such as Cloudflare that rewrite Cache-Control) and imports the bundle under a URL unique to that build.
 LOADER_JS = """// ST-1 of the audit of 04.11.2026: the panel element gets a skeleton before the bundle arrives (a copy of frontend/src/ui/skeleton.js).
 const savedTheme = () => { try { return localStorage.getItem('atom-home-theme'); } catch (e) { return null; } }; // S2: the panel's own theme, left by the bundle on the previous load
-const SKELETON = '<style>:host{display:block;position:relative;width:100%;height:100vh;height:100dvh;overflow:hidden}' + '.hm-skeleton{position:absolute;inset:0;display:flex;flex-direction:column;gap:16px;padding:20px 24px;background:#f2f2f6;color:#6b6b70;font:500 15px/1.4 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif;overflow:hidden;box-sizing:border-box}.hm-skeleton-head{height:34px;width:42%;max-width:260px;border-radius:10px}.hm-skeleton-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(142px,1fr));gap:12px}.hm-skeleton-tile{aspect-ratio:1;border-radius:22px}.hm-skeleton .is-bone{background:linear-gradient(100deg,#e3e3ea 30%,#ededf2 50%,#e3e3ea 70%);background-size:200% 100%;animation:hm-shimmer 1.4s linear infinite}.hm-skeleton p{margin:auto 0 0;text-align:center}@keyframes hm-shimmer{to{background-position:-200% 0}}@media (max-width:599px){.hm-skeleton{padding:14px}.hm-skeleton-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media (prefers-reduced-motion:reduce){.hm-skeleton .is-bone{animation:none}}.hm-skeleton.is-dark{background:#0f1016;color:#ffffffcc}.hm-skeleton.is-dark .is-bone{background:linear-gradient(100deg,#232430 30%,#2c2d3a 50%,#232430 70%);background-size:200% 100%}' + '</style>' + '<div class="hm-skeleton' + (savedTheme() === 'dark' ? ' is-dark' : '') + '" role="status" aria-busy="true" aria-live="polite"><div class="hm-skeleton-head is-bone"></div><div class="hm-skeleton-grid"><div class="hm-skeleton-tile is-bone"></div><div class="hm-skeleton-tile is-bone"></div><div class="hm-skeleton-tile is-bone"></div><div class="hm-skeleton-tile is-bone"></div><div class="hm-skeleton-tile is-bone"></div><div class="hm-skeleton-tile is-bone"></div><div class="hm-skeleton-tile is-bone"></div><div class="hm-skeleton-tile is-bone"></div></div><p>Подключаемся к дому…</p></div>';
+// the words under the skeleton in the language the panel left on its previous load (frontend/src/ui/skeleton.js: LANG_KEY, SKELETON_TEXT), else Home Assistant's, else the browser's
+const WAIT = { ru: 'Подключаемся к дому…', en: 'Connecting to the home…', ro: 'Ne conectăm la casă…' };
+const savedLang = () => { const pick = v => { const l = String(v || '').replace(/"/g, '').slice(0, 2).toLowerCase(); return WAIT[l] ? l : null; }; try { return pick(localStorage.getItem('atom-home-lang')) || pick(localStorage.getItem('selectedLanguage')) || pick(navigator.language) || 'ru'; } catch (e) { return 'ru'; } };
+const SKELETON = '<style>:host{display:block;position:relative;width:100%;height:100vh;height:100dvh;overflow:hidden}' + '.hm-skeleton{position:absolute;inset:0;display:flex;flex-direction:column;gap:16px;padding:20px 24px;background:#f2f2f6;color:#6b6b70;font:500 15px/1.4 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif;overflow:hidden;box-sizing:border-box}.hm-skeleton-head{height:34px;width:42%;max-width:260px;border-radius:10px}.hm-skeleton-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(142px,1fr));gap:12px}.hm-skeleton-tile{aspect-ratio:1;border-radius:22px}.hm-skeleton .is-bone{background:linear-gradient(100deg,#e3e3ea 30%,#ededf2 50%,#e3e3ea 70%);background-size:200% 100%;animation:hm-shimmer 1.4s linear infinite}.hm-skeleton p{margin:auto 0 0;text-align:center}@keyframes hm-shimmer{to{background-position:-200% 0}}@media (max-width:599px){.hm-skeleton{padding:14px}.hm-skeleton-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media (prefers-reduced-motion:reduce){.hm-skeleton .is-bone{animation:none}}.hm-skeleton.is-dark{background:#0f1016;color:#ffffffcc}.hm-skeleton.is-dark .is-bone{background:linear-gradient(100deg,#232430 30%,#2c2d3a 50%,#232430 70%);background-size:200% 100%}' + '</style>' + '<div class="hm-skeleton' + (savedTheme() === 'dark' ? ' is-dark' : '') + '" role="status" aria-busy="true" aria-live="polite"><div class="hm-skeleton-head is-bone"></div><div class="hm-skeleton-grid"><div class="hm-skeleton-tile is-bone"></div><div class="hm-skeleton-tile is-bone"></div><div class="hm-skeleton-tile is-bone"></div><div class="hm-skeleton-tile is-bone"></div><div class="hm-skeleton-tile is-bone"></div><div class="hm-skeleton-tile is-bone"></div><div class="hm-skeleton-tile is-bone"></div><div class="hm-skeleton-tile is-bone"></div></div><p>' + WAIT[savedLang()] + '</p></div>';
 const deep = (root, sel) => { const hit = root.querySelector && root.querySelector(sel); if (hit) return hit; for (const n of root.querySelectorAll ? root.querySelectorAll('*') : []) if (n.shadowRoot) { const f = deep(n.shadowRoot, sel); if (f) return f; } return null; };
 const skeleton = () => { try { if (customElements.get('atom-home-panel')) return; const main = document.querySelector('home-assistant'); const el = main ? deep(main.shadowRoot || main, 'atom-home-panel') : null; if (el && !el.shadowRoot) el.attachShadow({ mode: 'open' }).innerHTML = SKELETON; } catch (e) { /* cosmetic */ } };
 skeleton();
@@ -65,8 +123,7 @@ clearInterval(retry);
 
 
 def _bundle_etag(path: Path) -> str:
-    stat = path.stat()
-    return f"{stat.st_mtime_ns:x}-{stat.st_size:x}"
+    return etag_of(path.stat())
 
 
 class LoaderView(HomeAssistantView):
@@ -88,28 +145,55 @@ class MetaView(HomeAssistantView):
             etag = await request.app["hass"].async_add_executor_job(_bundle_etag, FRONTEND_DIR / FRONTEND_FILE)
         except OSError:
             return web.Response(status=404)
-        return web.json_response({"etag": etag, "version": request.app["hass"].data.get(DOMAIN, {}).get("_version", "0")}, headers={"Cache-Control": "no-store"})
+        # Open to a browser that has not signed in yet (the loader runs before the panel has a token), so it says nothing
+        # but which bundle is current: no version of the integration for a stranger to read.
+        return web.json_response({"etag": etag}, headers={"Cache-Control": "no-store"})
 
 
 class BundleView(HomeAssistantView):
     """The panel bundle with revalidation: browsers keep it cached but ask every time, so a HACS update
-    (which replaces the file without a restart) reaches phones and tablets at the next page load."""
+    (which replaces the file without a restart) reaches phones and tablets at the next page load.
+    A megabyte of JavaScript goes out gzip-compressed to every client that accepts it (a quarter of the bytes on a phone
+    away from home); the compressed copy is made once per build, in a thread."""
 
     url = BUNDLE_URL
     name = "atom_home:bundle"
     requires_auth = False
 
+    def __init__(self) -> None:
+        self._gzip = GzipCache()
+
     async def get(self, request: web.Request) -> web.StreamResponse:
-        path = FRONTEND_DIR / FRONTEND_FILE
+        return await self._answer(request, body=True)
+
+    async def head(self, request: web.Request) -> web.StreamResponse:
+        """The same status and headers as GET without the file («curl -I», a proxy's or a monitor's check); Home Assistant
+        registers only the methods a view has, so without this a HEAD was answered 405."""
+        return await self._answer(request, body=False)
+
+    async def _answer(self, request: web.Request, body: bool) -> web.StreamResponse:
+        path, hass = FRONTEND_DIR / FRONTEND_FILE, request.app["hass"]
         try:
-            stat = await request.app["hass"].async_add_executor_job(path.stat)
+            stat = await hass.async_add_executor_job(path.stat)
         except OSError:
             return web.Response(status=404)
-        etag = f'"{stat.st_mtime_ns:x}-{stat.st_size:x}"'
-        if request.headers.get("If-None-Match") == etag:
-            return web.Response(status=304, headers={"ETag": etag, "Cache-Control": "no-cache"})
-        body = await request.app["hass"].async_add_executor_job(path.read_bytes)
-        return web.Response(body=body, content_type="text/javascript", charset="utf-8", headers={"ETag": etag, "Cache-Control": "public, max-age=31536000, immutable" if request.query.get("e") == etag.strip('"') else "no-cache"})
+        etag = f'"{etag_of(stat)}"'
+        if etag_matches(request.headers.get("If-None-Match"), etag):
+            return web.Response(status=304, headers={"ETag": etag, "Cache-Control": "no-cache", "Vary": "Accept-Encoding"})
+        headers = {"ETag": etag, "Vary": "Accept-Encoding", "Cache-Control": "public, max-age=31536000, immutable" if request.query.get("e") == etag.strip('"') else "no-cache"}
+        if not body:  # nothing is read or compressed for a question about the headers
+            if accepts_gzip(request.headers.get("Accept-Encoding")):
+                headers["Content-Encoding"] = "gzip"
+            return web.Response(status=200, content_type="text/javascript", charset="utf-8", headers=headers)
+        try:
+            if accepts_gzip(request.headers.get("Accept-Encoding")):
+                body = await self._gzip.get(hass.async_add_executor_job, path, etag)
+                headers["Content-Encoding"] = "gzip"
+            else:
+                body = await hass.async_add_executor_job(path.read_bytes)
+        except OSError:
+            return web.Response(status=404)
+        return web.Response(body=body, content_type="text/javascript", charset="utf-8", headers=headers)
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -120,22 +204,59 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     store: Store[dict] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
     data = await store.async_load() or {}
-    version = await hass.async_add_executor_job(_version)
-    scheduler = AlarmScheduler(hass)
-    scheduler.set_alarms(normalise_alarms((data.get("config") or {}).get("alarms")))
-    await scheduler.resume()  # a ringing flag restored across the restart is stale
+    global _RUNNING_VERSION
+    if _RUNNING_VERSION is None:
+        _RUNNING_VERSION = await hass.async_add_executor_job(_version)
+    version = _RUNNING_VERSION
+    state = ConfigState(data.get("config"), data.get("revision", 0), store.async_save,
+                        **({"alarm_auth": data["alarm_auth"]} if "alarm_auth" in data else {}))
+
+    async def alarm_authorized(alarm: dict) -> bool:
+        """Use the current author's permissions at execution, including after a restart or account removal."""
+        if "_author" not in alarm:
+            return True  # backward-compatible integration-owned legacy/admin alarms
+        author = alarm["_author"]
+        user_id = author.get("user_id") if isinstance(author, dict) else None
+        if not isinstance(user_id, str) or not user_id:
+            return False
+        user = await hass.auth.async_get_user(user_id)
+        return bool(user and user.is_active and all(user.permissions.check_entity(target, "control") for target in _alarm_targets(alarm)))
+
+    async def alarm_rang_once(alarm_id: str) -> None:
+        """An alarm with no weekdays has rung: store it switched off, so that it is «один раз» after a restart too and the panel shows it off."""
+        try:
+            await state.write_alarms(switched_off(alarm_id))
+        except ConfigWriteError as err:
+            _LOGGER.error("Atom Home: the alarm %s rang once and could not be stored switched off (%s); it stays off until a restart", alarm_id, err.code, exc_info=err.__cause__)
+
+    scheduler = AlarmScheduler(hass, alarm_rang_once, authorize=alarm_authorized)
+    scheduler.set_alarms(_scheduled_alarms(state))
+    scheduler.start()  # a ringing flag restored across the restart is stale; cleared once HA is up
     sleep = LightSleep(hass)
     await sleep.async_load()
     air_tasks = AirTasks(hass)
     await air_tasks.async_load()
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"air_tasks": air_tasks, "store": store, "state": ConfigState(data.get("config"), data.get("revision", 0), store.async_save), "alarms": scheduler, "light_sleep": sleep}
+
+    @callback
+    def check_helpers(_hass: HomeAssistant | None = None) -> None:
+        """Once HA is up (before that the helpers may not be loaded): a missing or too short helper goes to «Исправления»."""
+        for issue, found in (("missing_helpers", missing_helpers(hass.states.get)), ("short_helpers", short_helpers(hass.states.get))):
+            if found:
+                ir.async_create_issue(hass, DOMAIN, issue, is_fixable=False, severity=ir.IssueSeverity.WARNING, translation_key=issue, translation_placeholders={"helpers": ", ".join(found)})
+            else:
+                ir.async_delete_issue(hass, DOMAIN, issue)
+
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"air_tasks": air_tasks, "store": store, "state": state, "alarms": scheduler, "light_sleep": sleep, "helpers_unsub": async_at_started(hass, check_helpers)}
     hass.data[DOMAIN]["_version"] = version
 
     photos_dir = Path(hass.config.path(PHOTOS_DIR))
     await hass.async_add_executor_job(lambda: photos_dir.mkdir(parents=True, exist_ok=True))
     hass.data[DOMAIN]["_photos_dir"] = photos_dir
+    has_assets = await hass.async_add_executor_job((FRONTEND_DIR / "assets").is_dir)
     if not hass.data[DOMAIN].get("_http_registered"):  # the server takes a path or a view once per run, and a reload comes back here
         await hass.http.async_register_static_paths([
+            # the pictures of the build carry a hash in their names: they may be kept for good (PERF-6); listed first, the longer path wins
+            *([StaticPathConfig(f"{STATIC_URL}/assets", str(FRONTEND_DIR / "assets"), cache_headers=True)] if has_assets else []),
             StaticPathConfig(STATIC_URL, str(FRONTEND_DIR), cache_headers=False),
             StaticPathConfig(PHOTOS_URL, str(photos_dir), cache_headers=True),
         ])
@@ -164,13 +285,17 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     frontend.async_remove_panel(hass, PANEL_URL_PATH)
     bucket = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None) or {}
     if (sched := bucket.get("alarms")):
-        sched.shutdown()
+        await sched.async_shutdown()
     if (air := bucket.get("air_tasks")):
-        air.unload()
+        await air.async_unload()
         if entry.disabled_by:  # nothing will load the jobs again to stop them; a reload keeps them. After unload, so its own listeners do not write the file back
             await air.async_remove()
     if (sleep := bucket.get("light_sleep")):
         sleep.shutdown()
+    if (unsub := bucket.get("helpers_unsub")):
+        unsub()
+    for issue in ("missing_helpers", "short_helpers"):  # nothing reads the helpers any more; a reload judges them afresh
+        ir.async_delete_issue(hass, DOMAIN, issue)
     return True
 
 
@@ -194,7 +319,13 @@ def _register_ws(hass: HomeAssistant) -> None:
     @callback
     def ws_get(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
         state: ConfigState | None = (_entry_data(hass) or {}).get("state")
-        connection.send_result(msg["id"], {"config": state.config if state else None, "revision": state.revision if state else 0, "version": hass.data[DOMAIN].get("_version", "0"), "admin": connection.user.is_admin})
+        if state is None:
+            # The entry is being reloaded (or is switched off): there is nothing to read at this moment. «config: null,
+            # revision: 0» here was taken by the panel for a house with no settings, and it showed the factory set as real.
+            # An error makes it keep what it has and read again (runtime/loader.ts), like the two save commands below.
+            connection.send_error(msg["id"], "not_loaded", "Atom Home is not set up")
+            return
+        connection.send_result(msg["id"], {"config": state.config, "revision": state.revision, "version": hass.data[DOMAIN].get("_version", "0"), "admin": connection.user.is_admin})
 
     @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/capabilities/get"})
     @callback
@@ -216,15 +347,25 @@ def _register_ws(hass: HomeAssistant) -> None:
             connection.send_error(msg["id"], "not_loaded", "Atom Home is not set up")
             return
         try:
-            revision = await state.write(msg["config"], msg.get("expected_revision"), msg.get("client_features"))
+            revision = await state.write(msg["config"], msg.get("expected_revision"), msg.get("client_features"), alarm_auth_update=_alarm_auth_update(connection.user))
         except ConfigWriteError as err:
             if err.code == "save_failed":
                 _LOGGER.error("Atom Home: configuration could not be written", exc_info=err.__cause__)
             connection.send_error(msg["id"], err.code, err.message)
             return
         if (sched := (_entry_data(hass) or {}).get("alarms")):
-            sched.set_alarms(normalise_alarms((state.config or {}).get("alarms")))
+            sched.set_alarms(_scheduled_alarms(state))
         connection.send_result(msg["id"], {"saved": True, "revision": revision})
+
+    # Per socket: the revision whose alarms that panel holds from the answer to its own alarm save. Such an answer does not
+    # always carry a revision for the panel to keep (see below), and without this its second alarm in a row would be refused.
+    alarms_seen: dict[int, int] = {}
+
+    def saw_alarms(connection: websocket_api.ActiveConnection, revision: int) -> None:
+        key = id(connection)
+        if key not in alarms_seen:
+            connection.subscriptions[f"{DOMAIN}/alarms/seen"] = lambda: alarms_seen.pop(key, None)  # forgotten when the socket closes
+        alarms_seen[key] = revision
 
     @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/alarms/set", vol.Required("alarms"): list, vol.Optional("expected_revision"): vol.All(int, vol.Range(min=0))})
     @websocket_api.async_response
@@ -236,16 +377,21 @@ def _register_ws(hass: HomeAssistant) -> None:
             connection.send_error(msg["id"], "not_loaded", "Atom Home is not set up")
             return
         alarms = normalise_alarms(msg["alarms"])
-        config = dict(state.config or {"schemaVersion": 1, "home": {"name": "Мой дом", "language": "ru", "theme": "light"}, "rooms": {}, "devices": {}, "entities": {}, "buttons": [], "sections": {}, "modules": {}})
-        config["alarms"] = alarms
         try:
-            revision = await state.write(config, msg.get("expected_revision"), [CLIENT_FEATURE_COMPOSITION, CLIENT_FEATURE_ROOM_FEED, CLIENT_FEATURE_TARIFF])  # only `alarms` changes: every stored field is kept
+            # Only `alarms` changes: every other stored field is kept, whatever this panel's copy of it is.
+            revision, current, alarms = await state.write_alarms(lambda _stored: alarms, msg.get("expected_revision"), alarms_seen.get(id(connection)), alarm_auth_update=_alarm_auth_update(connection.user))
         except ConfigWriteError as err:
+            if err.code == "save_failed":
+                _LOGGER.error("Atom Home: the alarms could not be written", exc_info=err.__cause__)
             connection.send_error(msg["id"], err.code, err.message)
             return
+        saw_alarms(connection, revision)
         if (sched := bucket.get("alarms")):
-            sched.set_alarms(alarms)
-        connection.send_result(msg["id"], {"saved": True, "revision": revision, "alarms": alarms})
+            sched.set_alarms(_scheduled_alarms(state))
+        result = {"saved": True, "alarms": alarms}
+        if current:  # a panel whose copy of the rest is older keeps its old revision: its next config/set is refused and it reads afresh
+            result["revision"] = revision
+        connection.send_result(msg["id"], result)
 
     @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/alarm/stop"})
     @websocket_api.async_response
@@ -261,7 +407,7 @@ def _register_ws(hass: HomeAssistant) -> None:
             await sched.snooze(msg.get("minutes", 9))
         connection.send_result(msg["id"], {"snoozed": True})
 
-    @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/light/sleep", vol.Required("entity_id"): str, vol.Required("minutes"): vol.All(int, vol.Range(min=0, max=720))})
+    @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/light/sleep", vol.Required("entity_id"): str, vol.Required("minutes"): vol.In((0,) + SLEEP_MINUTES)})
     @websocket_api.async_response
     async def ws_light_sleep(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
         """Any user of the house may set «turn off in N minutes» on a lamp (0 cancels)."""
@@ -272,8 +418,10 @@ def _register_ws(hass: HomeAssistant) -> None:
         if hass.states.get(msg["entity_id"]) is None:
             connection.send_error(msg["id"], "not_found", "no such light")
             return
+        if not connection.user.permissions.check_entity(msg["entity_id"], "control"):
+            raise Unauthorized(entity_id=msg["entity_id"])
         try:
-            at = await sleep.schedule(msg["entity_id"], msg["minutes"])
+            at = await sleep.schedule(msg["entity_id"], msg["minutes"], context=connection.context(msg))
         except ValueError as err:
             connection.send_error(msg["id"], "invalid", str(err))
             return
@@ -390,8 +538,12 @@ def _register_ws(hass: HomeAssistant) -> None:
     @websocket_api.async_response
     async def ws_photo_delete(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
         name = msg["url"].rsplit("/", 1)[-1]
-        if not msg["url"].startswith(PHOTOS_URL + "/") or not PHOTO_NAME.match(name):
+        if msg["url"] != f"{PHOTOS_URL}/{name}" or not PHOTO_NAME.fullmatch(name):
             connection.send_error(msg["id"], "bad_url", "not an Atom Home photo")
+            return
+        state: ConfigState | None = (_entry_data(hass) or {}).get("state")
+        if state is None:
+            connection.send_error(msg["id"], "not_loaded", "Atom Home is not set up")
             return
         target = hass.data[DOMAIN]["_photos_dir"] / name
 
@@ -401,7 +553,7 @@ def _register_ws(hass: HomeAssistant) -> None:
                 return True
             return False
 
-        removed = await hass.async_add_executor_job(_remove)
+        removed = await state.remove_unreferenced(msg["url"], lambda: hass.async_add_executor_job(_remove))
         connection.send_result(msg["id"], {"removed": removed})
 
     websocket_api.async_register_command(hass, ws_get)

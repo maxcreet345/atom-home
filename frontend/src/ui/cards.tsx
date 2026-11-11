@@ -1,13 +1,28 @@
 import type { ComponentChildren } from 'preact';
-import { useRef } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { Icon } from './primitives.tsx';
 import type { HomeDevice, EntityRef, Room } from '../model/discover.ts';
 import type { T } from '../i18n/index.ts';
-import { stateText, isOn, num, iconOfKind, type Lang } from './format.ts';
+import { stepTarget, targetDraft, type Action, type TargetDraft } from '../runtime/actions.ts';
+import { stateText, isOn, num, iconOfKind, held, shownName, type Lang } from './format.ts';
 import { stockRoomArtSet } from './art.ts';
 import { DeviceArt, deviceArtType, DEVICE_ART_TYPES, type DeviceArtType } from './device-art.tsx';
 import { Tick } from './motion.tsx';
+import { ProductPhoto, usePhoto } from './photo.tsx';
+import { takesPhoto } from '../model/photos.ts';
 import { glowOf, ambientHex } from '../model/lights.ts';
+export { held, shownName };
+/** − / + of a plain thermostat: quick taps add up into one command (`targetDraft` of runtime/actions.ts). `shown` is the draft while there is one, else the house's target. */
+export function useTargetDraft(target: number | null) {
+  const [local, setLocal] = useState<number | null>(null), core = useRef<TargetDraft | null>(null);
+  core.current ??= targetDraft(setLocal);
+  useEffect(() => { core.current!.seen(target); }, [target]);
+  useEffect(() => () => core.current!.flush(), []); // leaving within the pause still sends the last value
+  return { shown: local ?? target, push: (v: number, send: (v: number) => Promise<boolean>) => core.current!.push(v, send, target) };
+}
+/** A step button that is about to reach the device's limit becomes `disabled`; when it holds the keyboard focus, the focus goes to its twin
+ * (the other direction is still possible) instead of falling to the page. */
+export const focusTwin = (b: HTMLElement, twin: string) => { if ((b.getRootNode() as Document | ShadowRoot).activeElement === b) b.parentElement?.querySelector<HTMLElement>(twin)?.focus({ preventScroll: true }); };
 /** Stock picture for a card: the owner's choice from the configurator, else guessed from kind and name; 'none' switches it off. */
 export function artOf(device: Pick<HomeDevice, 'kind' | 'name' | 'model' | 'art'>): DeviceArtType | null { if (device.art === 'none') return null; if (device.art && (DEVICE_ART_TYPES as string[]).includes(device.art)) return device.art as DeviceArtType; return deviceArtType(device.kind, device.name, device.model ?? ''); }
 
@@ -16,23 +31,27 @@ export function StatusCard({ icon, title, value, hint, tone, onClick, aside }: {
     <span className="hm-status-icon"><Icon name={icon} size={20} /></span><span className="hm-status-text"><small>{title}</small><strong>{value}</strong><em>{hint}</em></span>{aside ? <span className="hm-status-aside">{aside}</span> : null}
   </div>;
 }
-export function Switch({ on, pending, disabled, label, onToggle, large }: { on: boolean; pending?: boolean; disabled?: boolean; label: string; onToggle: () => void; large?: boolean }) {
-  return <button type="button" role="switch" aria-checked={on} aria-label={label} className={`hm-switch ${on ? 'is-on' : ''} ${pending ? 'is-pending' : ''} ${large ? 'is-large' : ''}`} disabled={disabled} onClick={e => { e.stopPropagation(); onToggle(); }}><span className="hm-switch-knob" /></button>;
+export function Switch({ on, pending, disabled, label, onToggle, large, offline }: { on: boolean; pending?: boolean; disabled?: boolean; label: string; onToggle: () => void; large?: boolean; /** the house is unreachable: marked `aria-disabled`, the press still tells why */ offline?: boolean }) {
+  return <button type="button" role="switch" aria-checked={on} aria-label={label} className={`hm-switch ${on ? 'is-on' : ''} ${pending ? 'is-pending' : ''} ${large ? 'is-large' : ''}`} aria-busy={pending || undefined} aria-disabled={offline || undefined} disabled={disabled} onClick={e => { e.stopPropagation(); onToggle(); }}><span className="hm-switch-knob" /></button>;
 }
 /** Photo-less room tile: dark surface with the room's climate summary and lit lamps. */
 export function RoomTile({ room, temperature, humidity, co2, lightsOn, onClick, t, lang, label }: { room: Room; temperature: number | null; humidity: number | null; co2: number | null; lightsOn: number; onClick: () => void; t: T; lang: Lang; label: string }) {
-  const art = room.photo ? null : stockRoomArtSet(room.name), src = room.photo ?? art?.src ?? null; // F13: two sizes of the stock photo, lazy below the fold
+  // a photo that does not load (the house was unreachable when it was asked for, the file is gone) gives way to the stock picture, then to the plain tile — never the browser's broken-image mark
+  const [failed, setFailed] = useState<string[]>([]);
+  const stock = stockRoomArtSet(room.name), own = room.photo && !failed.includes(room.photo) ? room.photo : null, art = own || !stock || failed.includes(stock.src) ? null : stock, src = own ?? art?.src ?? null; // F13: two sizes of the stock photo, lazy below the fold
   return <button type="button" className="hm-card hm-room at-room" data-room-id={room.id} onClick={onClick} title={label}>
-    {src ? <img className="hm-photo" src={src} srcSet={art?.srcset} sizes={art ? '(max-width: 599px) 50vw, 300px' : undefined} width={960} height={640} alt="" decoding="async" loading="lazy" /> : <span className="at-room-art" aria-hidden="true"><Icon name="rooms" size={40} /></span>}
+    {src ? <img className="hm-photo" key={src} src={src} srcSet={art?.srcset} sizes={art ? '(max-width: 599px) 43vw, (max-width: 1199px) 230px, 300px' : undefined} width={960} height={640} alt="" decoding="async" loading="lazy" onError={() => setFailed(f => f.includes(src) ? f : [...f, src])} /> : <span className="at-room-art" aria-hidden="true"><Icon name="rooms" size={40} /></span>}
     <span className="hm-room-top"><strong>{room.name || t('room.none')}</strong>{lightsOn > 0 && <span className="hm-lit"><Icon name="light" size={14} />{lightsOn}</span>}</span>
     <span className="hm-room-bottom">{temperature !== null && <b>{num(temperature, lang)}<i>°</i></b>}<small>{humidity === null ? '' : `${num(humidity, lang, 0)}%`}{co2 !== null ? ` · CO₂ ${num(co2, lang, 0)}` : ''}</small></span>
   </button>;
 }
 export function LightTile({ device, photo, pending, onToggle, onOpen, t, lang }: { device: HomeDevice; photo?: string | null; pending: boolean; onToggle: () => void; onOpen: () => void; t: T; lang: Lang }) {
   const e = device.primary, on = isOn(e), off = !e.available;
+  // the lamp's own product photo stands on its plate in place of the drawing (not while it has no connection); a picture handed in (`photo`) still fills the card
+  const own = usePhoto(e.id), shot = off ? null : device.photo ?? own, art = artOf(device);
   return <div className={`hm-card hm-light at-light ${on ? 'is-on' : ''} ${off ? 'is-off' : ''} ${pending ? 'is-pending' : ''}`} data-device-key={device.key}>
-    <button type="button" className="hm-light-hit" disabled={pending || off} onClick={onToggle}>
-      {(device.photo ?? photo) ? <img className="hm-photo" src={(device.photo ?? photo)!} width={960} height={640} alt="" loading="lazy" /> : <span className="at-light-art" aria-hidden="true">{artOf(device) ? <DeviceArt type={artOf(device)!} fill /> : <Icon name="light" size={56} />}</span>}
+    <button type="button" className="hm-light-hit" {...held(pending)} disabled={off} onClick={() => { if (!pending) onToggle(); }}>
+      {photo && !shot ? <img className="hm-photo" src={photo} width={960} height={640} alt="" loading="lazy" /> : <span className="at-light-art" aria-hidden="true"><ProductPhoto src={shot}>{art ? <DeviceArt type={art} fill /> : <Icon name="light" size={56} />}</ProductPhoto></span>}
       <span className="hm-light-bulb"><Icon name="light" size={26} /></span>
       <span className="hm-light-text"><strong>{device.name}</strong><small>{stateText(e, t, lang)}</small></span>
     </button>
@@ -41,9 +60,11 @@ export function LightTile({ device, photo, pending, onToggle, onOpen, t, lang }:
 }
 export function DeviceRow({ device, name, pending, onToggle, onOpen, t, lang }: { device: HomeDevice; name?: string; pending: boolean; onToggle?: () => void; onOpen: () => void; t: T; lang: Lang }) {
   const e = device.primary, on = isOn(e), tone = !e.available ? 'is-off' : (device.kind === 'leak' && e.state === 'on') || (device.kind === 'alarm' && e.state === 'on') ? 'is-danger' : on ? 'is-on' : '';
+  // the appliance's own photo on its plate; «нет связи» and an alarm keep their pictogram (a product photo there would say «всё хорошо»)
+  const own = usePhoto(e.id), shot = tone === 'is-off' || tone === 'is-danger' || !takesPhoto(device) ? null : device.photo ?? own; // a sensor, a relay, a plug keeps its pictogram (owner, 11.11.2026)
   return <div className={`hm-row ${tone}`} data-device-key={device.key}>
     <button type="button" className="hm-row-open" onClick={onOpen}>
-      <span className="hm-thumb">{device.photo ? <img src={device.photo} width={44} height={44} alt="" loading="lazy" /> : artOf(device) ? <DeviceArt type={artOf(device)!} fill /> : <Icon name={iconOfKind[device.kind] ?? 'generic'} size={22} />}</span>
+      <span className="hm-thumb"><ProductPhoto src={shot}>{artOf(device) ? <DeviceArt type={artOf(device)!} fill /> : <Icon name={iconOfKind[device.kind] ?? 'generic'} size={22} />}</ProductPhoto></span>
       <span className="hm-row-text"><strong>{name ?? device.name}</strong><small>{stateText(e, t, lang)}</small></span>
     </button>
     {onToggle ? <Switch on={on} pending={pending} disabled={!e.available} label={`${name ?? device.name}: ${on ? t('action.off') : t('action.on')}`} onToggle={onToggle} /> : <Icon name="more" size={20} />}
@@ -76,37 +97,50 @@ const READ_KINDS = ['environment', 'measurement', 'leak', 'opening', 'motion', '
 export function AccessoryTile({ device, name, sub, room, pending, onToggle, onOpen, t, lang, wide }: { device: HomeDevice; name?: string; sub?: string; room?: string; pending: boolean; onToggle?: () => void; onOpen: () => void; t: T; lang: Lang; wide?: boolean }) {
   const e = device.primary, on = isOn(e) || (device.kind === 'climate' && e.state !== 'off' && e.available), active = e.available && on && !READ_KINDS.includes(device.kind);
   const alert = e.available && (device.kind === 'leak' || device.kind === 'alarm') && e.state === 'on';
-  const color = tileColor(device), label = name ?? device.name;
+  const color = tileColor(device), ownName = shownName(device.name, device.kind, t), label = shownName(name ?? device.name, device.kind, t);
   // second line: the room for things you switch; the state (plus the room unless the name already ends with it) for everything else
   const roomShown = room && !label.trim().toLowerCase().endsWith(room.trim().toLowerCase()) ? room : '';
-  const line2 = sub ?? (device.kind === 'climate' || device.kind === 'light' ? tileStatus(device, t, lang) : onToggle ? (roomShown || tileStatus(device, t, lang)) : [tileStatus(device, t, lang), roomShown].filter(Boolean).join(' · '));
+  // a thing you switch says «Вкл · Ванная» / «Выкл · Ванная»: on or off is never told by the glyph's colour alone, and an unknown state is not «off»
+  const switched = !e.available ? t('state.unavailable') : e.state === 'on' ? t('mode.on') : e.state === 'off' ? t('mode.off') : tileStatus(device, t, lang);
+  const line2 = sub ?? (device.kind === 'climate' || device.kind === 'light' ? tileStatus(device, t, lang) : onToggle ? [switched, roomShown].filter(Boolean).join(' · ') : [tileStatus(device, t, lang), roomShown].filter(Boolean).join(' · '));
+  // where the page's heading carries the room («Свет» under «Ванная»), assistive tech gets the device's full name: eight buttons «Свет» tell nothing apart
+  const full = label !== ownName && ownName ? ownName : label;
   // long press (500 ms) opens details, like a press-and-hold on a HomeView module
-  const hold = useRef<ReturnType<typeof setTimeout> | null>(null), held = useRef(false);
-  const down = () => { held.current = false; hold.current = setTimeout(() => { held.current = true; onOpen(); }, 500); };
+  const hold = useRef<ReturnType<typeof setTimeout> | null>(null), longPress = useRef(false);
+  const down = () => { longPress.current = false; hold.current = setTimeout(() => { longPress.current = true; onOpen(); }, 500); };
   const up = () => { if (hold.current) clearTimeout(hold.current); hold.current = null; };
-  const click = () => { if (held.current) { held.current = false; return; } (onToggle ?? onOpen)(); };
+  const click = () => { if (longPress.current) { longPress.current = false; return; } if (pending && onToggle) return; /* its command is on its way: the press is ignored, the focus stays */ (onToggle ?? onOpen)(); };
   const ambient = device.kind === 'light' ? device.controls.find((c, i) => i > 0 && c.domain === 'light' && c.available && isOn(c)) : undefined; // the lamp's lit ambient light: a coloured dot on the tile
+  // the appliance's own photo (its device's `photo` slot) on a plate in the glyph's place; «нет связи» and an alarm keep their glyph — a product photo there would say «всё хорошо»
+  const own = usePhoto(e.id), shot = e.available && !alert && takesPhoto(device) ? device.photo ?? own : null; // a sensor, a relay, a plug keeps its pictogram (owner, 11.11.2026)
   return <div className={`ah-tile hm-card ${active ? 'is-on' : ''} ${alert ? 'is-alert' : ''} ${e.available ? '' : 'is-off'} ${pending ? 'is-pending' : ''} ${wide ? 'is-wide' : ''} kind-${device.kind}`} data-device-key={device.key} style={`--tile:${color}${device.kind === 'light' ? `;--glow:${glowOf(e.attributes).toFixed(2)}` : ''}`}>
     {ambient && <i className="at-tile-amb" style={`--amb:${ambientHex(ambient.attributes)}`} aria-hidden="true" />}
-    <button type="button" className="ah-tile-hit hm-light-hit" disabled={pending || !e.available && !!onToggle} onClick={click} onPointerDown={down} onPointerUp={up} onPointerLeave={up} onPointerCancel={up} onContextMenu={ev => { ev.preventDefault(); if (!held.current) onOpen(); }}>
-      <span className="ah-glyph">{device.photo ? <img src={device.photo} width={68} height={68} alt="" loading="lazy" /> : <Icon name={device.icon ?? (device.kind === 'light' && artOf(device) === 'chandelier' ? 'chandelier' : iconOfKind[device.kind]) ?? 'generic'} size={34} />}</span>
+    <button type="button" className="ah-tile-hit hm-light-hit" aria-label={full !== label ? `${full}${line2 ? `: ${line2}` : ''}` : undefined} aria-pressed={onToggle && e.available && (e.state === 'on' || e.state === 'off') ? e.state === 'on' : undefined} {...held(pending && !!onToggle)} disabled={!e.available && !!onToggle} onClick={click} onPointerDown={down} onPointerUp={up} onPointerLeave={up} onPointerCancel={up} onContextMenu={ev => { ev.preventDefault(); if (!longPress.current) onOpen(); }}>
+      <span className="ah-glyph"><ProductPhoto src={shot}><Icon name={device.icon ?? (device.kind === 'light' && artOf(device) === 'chandelier' ? 'chandelier' : iconOfKind[device.kind]) ?? 'generic'} size={34} /></ProductPhoto></span>
       <span className="ah-tile-text"><strong>{label}</strong>{line2 && <small><Tick value={line2} /></small>}</span>
     </button>
-    <button type="button" className="ah-tile-more hm-light-more" aria-label={`${t('ui.details')}: ${label}`} onClick={onOpen}><Icon name="more" size={16} /></button>
+    {/* a tile with nothing to switch opens its sheet itself: «Подробнее» would be a second Tab stop for the same action, so it stays for the pointer only */}
+    <button type="button" className="ah-tile-more hm-light-more" aria-label={`${t('ui.details')}: ${full}`} tabIndex={onToggle ? undefined : -1} aria-hidden={onToggle ? undefined : 'true'} onClick={onOpen}><Icon name="more" size={16} /></button>
   </div>;
 }
 /** 2×2 thermostat module: big target number, chevrons at the bottom corners, name and room underneath. */
-export function ThermostatTile({ device, name, sub, target, current, onStep, onOpen, t, lang, disabled }: { device: HomeDevice; name?: string; sub?: string; target: number | null; current: number | null; onStep?: (dir: 1 | -1) => void; onOpen: () => void; t: T; lang: Lang; disabled?: boolean }) {
+export function ThermostatTile({ device, name, sub, target: houseTarget, current, steps, onOpen, t, lang }: { device: HomeDevice; name?: string; sub?: string; target: number | null; current: number | null; /** − / +: the device's range and step, `send` (resolves true when the house accepted the target); `ask` instead of the draft for a thermostat that is off — the tap asks «Включить нагрев до N°?» */ steps?: { range: Pick<Action, 'min' | 'max' | 'step'>; send: (v: number) => Promise<boolean>; ask?: (v: number) => void }; onOpen: () => void; t: T; lang: Lang }) {
   const e = device.primary, on = e.available && e.state !== 'off';
-  // C3 of the audit: the big number is always the room temperature; the mode and the target are the second line
-  const big = current ?? target, mode = !e.available ? t('state.unavailable') : on ? stateText(e, t, lang).split(' · ')[0] : t('mode.off');
+  // C3 of the audit: the big number is always the room temperature; the mode and the target are the second line.
+  // A head with no reading says «нет данных»: its setpoint (a frost-guard 4°) is never shown as if it were the room's temperature.
+  // quick taps add up: the draft is shown at once, one command with the last value goes out after a pause; a command on its way never blocks the next tap
+  const draft = useTargetDraft(houseTarget), target = draft.shown;
+  const stepped = useRef(0), own = name ?? device.name, label = sub && !own.trim().toLowerCase().endsWith(sub.trim().toLowerCase()) ? `${own} · ${sub}` : own; // five «Радиатор» are told apart by their rooms
+  const big = current, mode = !e.available ? t('state.unavailable') : on ? stateText(e, t, lang).split(' · ')[0] : t('mode.off');
   const line = target === null ? mode : `${mode} · ${t('ui.target')} ${num(target, lang)}°`;
   return <div className={`ah-tile ah-thermo kind-climate hm-card ${on ? 'is-on' : ''} ${e.available ? '' : 'is-off'}`} data-device-key={device.key} style={`--tile:${tileColor(device)}`}>
     <button type="button" className="ah-tile-hit" onClick={onOpen}>
-      <span className="ah-thermo-value">{big === null ? <b className="is-text">{e.available ? t('mode.off') : '—'}</b> : <b><Tick value={num(big, lang, big % 1 ? 1 : 0)} /></b>}<small><Tick value={line} /></small></span>
+      <span className="ah-thermo-value" data-reading={big === null ? 'none' : 'room'}>{big === null ? <b className="is-text">{e.available ? t('state.unknown') : '—'}</b> : <b><Tick value={num(big, lang, big % 1 ? 1 : 0)} />°</b>}<small><Tick value={line} /></small></span>
       <span className="ah-tile-text"><strong>{name ?? device.name}</strong><small>{sub && !(name ?? device.name).trim().toLowerCase().endsWith(sub.trim().toLowerCase()) ? sub : ''}</small></span>
     </button>
-    {onStep && <><button type="button" className="ah-chev is-down" aria-label="−" disabled={disabled || !e.available} onClick={ev => { (ev.currentTarget as HTMLElement).classList.remove('is-bump'); void (ev.currentTarget as HTMLElement).offsetWidth; (ev.currentTarget as HTMLElement).classList.add('is-bump'); onStep(-1); }}><Icon name="back" size={22} /></button><button type="button" className="ah-chev is-up" aria-label="+" disabled={disabled || !e.available} onClick={ev => { (ev.currentTarget as HTMLElement).classList.remove('is-bump'); void (ev.currentTarget as HTMLElement).offsetWidth; (ev.currentTarget as HTMLElement).classList.add('is-bump'); onStep(1); }}><Icon name="back" size={22} /></button></>}
+    {steps && <>{([[-1, 'is-down', 'ui.tempLower'], [1, 'is-up', 'ui.tempRaise']] as const).map(([dir, cls, key]) => { const next = target === null ? null : stepTarget(steps.range, target, dir), end = next === null || next === target; /* at the device's limit (a radiator at its 4°) there is nothing to do: off, as in the sheet */
+      return <button type="button" className={`ah-chev ${cls}`} aria-label={t(key, { name: label })} disabled={!e.available || end} onClick={ev => { if (next === null || end) return; const b = ev.currentTarget as HTMLElement; b.classList.remove('is-bump'); void b.offsetWidth; b.classList.add('is-bump'); stepped.current = Date.now(); if (steps.ask) { steps.ask(next); return; } if (stepTarget(steps.range, next, dir) === next) focusTwin(b, dir < 0 ? '.ah-chev.is-up' : '.ah-chev.is-down'); draft.push(next, steps.send); }}><Icon name="back" size={22} /></button>; })}
+      <span className="at-vh" aria-live="polite">{target !== null && Date.now() - stepped.current < 8000 ? `${t('ui.target')} ${num(target, lang)}°` : null}</span></>}
   </div>;
 }
 /** 1×1 analog clock module with numerals (homeOS clock face). */
@@ -127,8 +161,8 @@ export function ClockTile({ now, lang }: { now: Date; lang: Lang }) {
   </div>;
 }
 /** 1×1 scene module (owner's quick button). */
-export function SceneTile({ icon, label, onClick, t }: { icon: string; label: string; onClick: () => void; t: T }) {
-  return <div className="ah-tile ah-scene hm-card hm-scene hm-scene-custom"><button type="button" className="ah-tile-hit hm-scene-hit" onClick={onClick}><span className="ah-glyph hm-scene-icon"><Icon name={icon} size={34} /></span><span className="ah-tile-text"><strong>{label}</strong><small>{t('ui.scene')}</small></span></button></div>;
+export function SceneTile({ icon, label, onClick, t, busy, done }: { icon: string; label: string; onClick: () => void; t: T; /** the house has just accepted the command: «Готово» for a moment (a refusal is the shell's toast) */ done?: boolean; /** the command is on its way: the tile waits like a lamp's does, and a second tap sends nothing */ busy?: boolean }) {
+  return <div className={`ah-tile ah-scene hm-card hm-scene hm-scene-custom ${busy ? 'is-pending' : ''} ${done && !busy ? 'is-done' : ''}`}><button type="button" className="ah-tile-hit hm-scene-hit" {...held(busy)} onClick={() => { if (!busy) onClick(); }}><span className="ah-glyph hm-scene-icon"><Icon name={icon} size={34} /></span><span className="ah-tile-text"><strong>{label}</strong><small aria-live="polite">{busy ? t('ui.sending') : done ? t('ui.done') : t('ui.scene')}</small></span></button></div>;
 }
 /** 1×1 reading module: big value, label underneath (energy, weather, air). */
 export function ValueTile({ icon, value, unit, label, sub, color, onClick, className = '' }: { icon: string; value: string; unit?: string; label: string; sub?: string; color: string; onClick?: () => void; className?: string }) {
@@ -138,3 +172,5 @@ export function Pill({ icon, color, label, value, onClick, className = '' }: { i
   return <button type="button" className={`ah-pill ${className}`} style={`--tile:${color}`} onClick={onClick}><span className="ah-glyph is-small"><Icon name={icon} size={16} /></span><span><small>{label}</small><strong>{value}</strong></span></button>;
 }
 export const metricLabel = (m: EntityRef, t: T) => { const key = `metric.${m.deviceClass ?? ''}`; const v = t(key as never); return v === key ? m.name : v; };
+/** A device model as text, or null for an integration's technical id («roborock.vacuum.s5e», «chuangmi.camera.…»): tiles and sheets never print that. */
+export { readableModel as modelText } from '../model/vacuum.ts';

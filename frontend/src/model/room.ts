@@ -8,7 +8,10 @@ import type { Vacuum } from './vacuum.ts';
 
 export type Metric = 'temperature' | 'humidity' | 'co2' | 'pm25';
 export interface Num { id: string; value: number | null; tone: Tone }
-export interface Binary { ids: string[]; on: string[]; unknown: boolean; since: number | null }
+/** `silent` — the sensors that do not answer (`unavailable`; `unknown` too, except a leak sensor); `waiting` — leak sensors in `unknown`: they have
+ * no state until their first alarm (the owner's rule, book SECURITY.md п. 7: «ждёт первого срабатывания», calm, never «не на связи»);
+ * `unknown` — not one sensor of the kind says anything. */
+export interface Binary { ids: string[]; on: string[]; silent: string[]; waiting: string[]; unknown: boolean; since: number | null }
 export interface Readings { temperature: Num | null; humidity: Num | null; co2: Num | null; pm25: Num | null; lux: Num | null; motion: Binary | null; windows: Binary | null; door: Binary | null; leak: Binary | null; gas: Binary | null; scale: HumidityScale }
 export type ThingKind = 'light' | 'kettle' | 'feeder' | 'fountain' | 'fridge' | 'tv' | 'speaker' | 'player' | 'vacuum' | 'washer' | 'dryer' | 'camera' | 'purifier' | 'humidifier' | 'vent' | 'airfryer' | 'boiler' | 'valve' | 'socket' | 'other';
 export interface Thing {
@@ -31,7 +34,8 @@ const GEN: Record<string, string> = { 'холодильника': 'Холоди�
 /** what a plug or a meter powers, from its own name: «Розетка холодильника», «Счётчик энергии (телевизор)» */
 const poweredBy = (raw: string): string | null => { const m = raw.match(/\(([^)]*)\)\s*$/); if (/счётчик|счетчик|meter/i.test(raw) && m) return m[1]; const p = raw.replace(/^.*·\s*/, '').match(/^(?:розетка|реле)\s+(.+?)(?:\s*\(.*)?$/i); if (p && m && /^(xiaomi|sonoff|tapo|tuya|aqara)$/i.test(p[1])) return m[1]; /* «Розетка Xiaomi (Apple TV)» */ return p ? p[1] : null; };
 const stem = (w: string) => w.toLowerCase().replace(/ё/g, 'е').slice(0, 5);
-const kindOf = (name: string, ids: string[], model: string): ThingKind => {
+/** What a device of the room is, by its name, model and entities (an air fryer on a plain switch is an air fryer); model/photos.ts asks it too. */
+export const kindOf = (name: string, ids: string[], model: string): ThingKind => {
   const s = `${name} ${model} ${ids.join(' ')}`;
   if (ids.some(i => i.startsWith('vacuum.'))) return 'vacuum';
   if (ids.some(i => i.startsWith('valve.'))) return 'valve';
@@ -62,7 +66,9 @@ export function readRoom(reg: Registry, roomId: string, roomName: string, heatin
   // readings: the Air card's own choice of sensor per room (docs/AIR.md), so the strip and «Воздух» never disagree
   const air = airRooms(reg, [{ id: roomId, name: roomName }])[0];
   const num = (m: Metric, r: { entity: string; value: number | null } | null): Num | null => r ? { id: r.entity, value: r.value, tone: r.value === null ? 'ok' : toneOf(m, r.value, air?.scale ?? 'room') } : null;
-  const bin = (test: (e: EntityRow, dc: string | null) => boolean): Binary | null => { const list = rows.filter(e => e.entity_id.startsWith('binary_sensor.') && test(e, dcOf(reg, e))); if (!list.length) return null; const st = list.map(e => reg.states[e.entity_id]); const on = list.filter(e => reg.states[e.entity_id].state === 'on').map(e => e.entity_id); const since = Math.max(...st.map(s => Date.parse(s.last_changed) || 0)); return { ids: list.map(e => e.entity_id), on, unknown: st.every(s => s.state === 'unknown' || s.state === 'unavailable'), since: since || null }; };
+  const bin = (test: (e: EntityRow, dc: string | null) => boolean): Binary | null => { const list = rows.filter(e => e.entity_id.startsWith('binary_sensor.') && test(e, dcOf(reg, e))); if (!list.length) return null; const st = list.map(e => reg.states[e.entity_id]); const on = list.filter(e => reg.states[e.entity_id].state === 'on').map(e => e.entity_id); const since = Math.max(...st.map(s => Date.parse(s.last_changed) || 0));
+    const waiting = list.filter(e => reg.states[e.entity_id].state === 'unknown' && dcOf(reg, e) === 'moisture').map(e => e.entity_id), silent = list.filter(e => !['on', 'off'].includes(reg.states[e.entity_id].state) && !waiting.includes(e.entity_id)).map(e => e.entity_id);
+    return { ids: list.map(e => e.entity_id), on, silent, waiting, unknown: silent.length === list.length, since: since || null }; };
   const luxRow = rows.find(e => e.entity_id.startsWith('sensor.') && dcOf(reg, e) === 'illuminance');
   const readings: Readings = {
     temperature: num('temperature', air?.temperature ?? null), humidity: num('humidity', air?.humidity ?? null), co2: num('co2', air?.co2 ?? null), pm25: num('pm25', air?.pm25 ?? null),
@@ -112,6 +118,13 @@ export function readRoom(reg: Registry, roomId: string, roomName: string, heatin
     air: sorted.filter(t => airKinds.includes(t.kind)), things: sorted.filter(t => !airKinds.includes(t.kind)),
     consumers, total, vacuum: vacuum ? { linked: vacuum.rooms.some(r => r.areaId === roomId) } : null,
   };
+}
+/** Do the room's own readings answer: 'all' — the room has sensors and none of them says anything, 'part' — some do not, null — every one answers (or there are none). */
+export function silence(r: Readings): 'all' | 'part' | null {
+  const nums = [r.temperature, r.humidity, r.co2, r.pm25, r.lux].filter((x): x is Num => !!x), bins = [r.motion, r.windows, r.door, r.leak, r.gas].filter((x): x is Binary => !!x);
+  // one silent window of three is «part» too: the kind still reads «Закрыты», but not every sensor stands behind that word
+  const total = nums.length + bins.length, quiet = nums.filter(n => n.value === null).length + bins.filter(b => b.unknown).length, some = bins.some(b => b.silent.length > 0 && !b.unknown);
+  return !total || (!quiet && !some) ? null : quiet === total ? 'all' : 'part';
 }
 /** The worst reading of the room, red over yellow (owner, 06.11.2026): what the strip says first. */
 export function worst(r: Readings): { metric: Metric; tone: Tone; value: number } | null {

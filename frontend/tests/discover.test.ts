@@ -43,7 +43,7 @@ test('config normalisation drops malformed parts and keeps safe values', () => {
 
 test('translator handles plurals in three languages', () => {
   assert.equal(translator('ru')('rooms.count', { n: 8 }), '8 комнат'); assert.equal(translator('ru')('rooms.count', { n: 2 }), '2 комнаты'); assert.equal(translator('ru')('rooms.count', { n: 21 }), '21 комната');
-  assert.equal(translator('en')('rooms.count', { n: 1 }), '1 room'); assert.equal(translator('ro')('rooms.count', { n: 2 }), '2 camere');
+  assert.equal(translator('en')('rooms.count', { n: 1 }), '1 room'); assert.equal(translator('ro')('rooms.count', { n: 2 }), '2 încăperi'); assert.equal(translator('ro')('rooms.count', { n: 20 }), '20 de încăperi'); // «Camere» is the cameras' word (audit 2026-11-09)
   assert.equal(translator('en')('confirm.text', { action: 'Lock', device: 'Door' }), 'Run “Lock” for “Door”?');
 });
 

@@ -16,6 +16,6 @@ export const cameraImou: ModuleDef = {
     return { line: closed ? t('module.camera.closed' as Key) : on('motionTracking') ? t('module.imou.motionTracking' as Key) : null, closed, icon: !closed && on('motionTracking') ? 'motion' : null };
   },
   Sheet: CameraSheet,
-  Player: ({ entities, host, t, mode, poster }) => { const low = { options: {}, host, t, mode, poster, webrtcEntity: entities.camera };
+  Player: ({ entities, host, t, mode, poster, camera, paused }) => { const low = { options: {}, host, t, mode, poster, webrtcEntity: entities.camera, camera, paused };
     return mode === 'tile' || !entities.hd ? <Go2rtcView {...low} /> : <DualView low={low} high={{ ...low, webrtcEntity: entities.hd }} />; },
 };

@@ -10,16 +10,18 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from datetime import datetime, timedelta
-from typing import Any, Callable
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
+from typing import Any, Awaitable, Callable
 
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.event import async_track_point_in_time, async_track_state_change_event
+from homeassistant.helpers.start import async_at_started
 from homeassistant.util import dt as dt_util
 
+from .helpers_check import RING_FLAG, RING_TEXT
+
 _LOGGER = logging.getLogger(__name__)
-RING_FLAG = "input_boolean.alarm_ringing"
-RING_TEXT = "input_text.alarm_ringing"
 AUTO_STOP = timedelta(minutes=10)
 FADE_STEP = 30  # seconds between brightness steps
 ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
@@ -63,12 +65,17 @@ def normalise_alarms(raw: Any) -> list[dict]:
 
 
 def next_fire(alarm: dict, now: datetime) -> datetime | None:
-    """The next moment this alarm rings: today at `time` if still ahead and the weekday fits, else the next fitting day."""
+    """Next local calendar occurrence, strictly in the future as an absolute instant.
+
+    Autumn's ambiguous time rings once, at its first occurrence. A missing spring time
+    moves forward by the DST gap (03:30 becomes 04:30), never into an immediate loop.
+    """
     hh, mm = (int(x) for x in alarm["time"].split(":"))
     for d in range(0, 8):
-        day = (now + timedelta(days=d)).date()
+        day = now.date() + timedelta(days=d)
         cand = datetime.combine(day, datetime.min.time(), tzinfo=now.tzinfo).replace(hour=hh, minute=mm)
-        if cand <= now:
+        cand = cand.astimezone(timezone.utc).astimezone(now.tzinfo)
+        if cand.astimezone(timezone.utc) <= now.astimezone(timezone.utc):
             continue
         if alarm["days"] and cand.isoweekday() not in alarm["days"]:
             continue
@@ -76,91 +83,227 @@ def next_fire(alarm: dict, now: datetime) -> datetime | None:
     return None
 
 
+def switched_off(alarm_id: str) -> Callable[[list], list | None]:
+    """The change to the stored alarms once an alarm with no weekdays has rung: that alarm off, the rest untouched (None: nothing to write)."""
+    def change(alarms: list) -> list | None:
+        if not any(isinstance(a, dict) and a.get("id") == alarm_id and a.get("enabled") is not False for a in alarms):
+            return None
+        return [{**a, "enabled": False} if isinstance(a, dict) and a.get("id") == alarm_id else a for a in alarms]
+    return change
+
+
+@dataclass(eq=False)
+class _Ring:
+    alarm: dict
+    repeat_left: int
+    stop_unsub: Callable[[], None] | None = None
+    task: asyncio.Task | None = None
+    ringing: bool = False
+    speaker_started: bool = False
+
+
 class AlarmScheduler:
-    def __init__(self, hass: HomeAssistant) -> None:
+    def __init__(self, hass: HomeAssistant, on_once: Callable[[str], Awaitable[None]] | None = None,
+                 authorize: Callable[[dict], Awaitable[bool]] | None = None) -> None:
         self.hass = hass
         self._alarms: list[dict] = []
         self._unsubs: list[Callable[[], None]] = []
-        self._fade_task: asyncio.Task | None = None
-        self._ring_task: asyncio.Task | None = None
-        self._stop_unsub: Callable[[], None] | None = None
-        self._ringing: dict | None = None
-        self._repeat_left = 0
-        self._ignore_flag_off = False
+        self._on_once = on_once  # told the id of an alarm with no weekdays once it has rung: the caller stores it switched off
+        self._spent: set[str] = set()  # rang once, and the caller has not finished storing it switched off yet
+        self._fades: dict[str, tuple[asyncio.Task, tuple[datetime, str]]] = {}  # one sunrise per alarm: id → (task, (ring time, light))
+        self._started_unsub: Callable[[], None] | None = None
+        self._scheduled: dict[str, tuple[dict, datetime]] = {}
+        # An editable alarm id can ring again on a different speaker while its previous
+        # occurrence is still active. Keep the occurrences, not just the latest id.
+        self._active: list[_Ring] = []
+        self._tasks: set[asyncio.Task] = set()
+        self._writes: set[asyncio.Task] = set()
+        self._closed = False
+        self._authorize = authorize
         self._flag_unsub = async_track_state_change_event(hass, [RING_FLAG], self._flag_changed)
 
     # ---- scheduling -------------------------------------------------------------------------
     def set_alarms(self, alarms: list[dict]) -> None:
-        self._alarms = alarms
+        # A list that was on its way to the disk when a «один раз» alarm rang still has it switched on (the panel sent it a
+        # moment before the ring). Until the switch-off of that alarm is stored it stays off here, or it would ring again tomorrow.
+        self._alarms = [{**a, "enabled": False} if a["id"] in self._spent else a for a in alarms]
         self._reschedule()
 
     def _clear(self) -> None:
         for u in self._unsubs:
             u()
         self._unsubs = []
+        self._scheduled = {}
 
     def _reschedule(self) -> None:
         self._clear()
+        if self._closed:
+            return
         now = dt_util.now()
+        fading: dict[str, tuple[dict, datetime]] = {}  # the alarms whose sunrise is under way at this moment
         for alarm in self._alarms:
             if not alarm["enabled"]:
                 continue
             at = next_fire(alarm, now)
             if at is None:
                 continue
-            self._unsubs.append(async_track_point_in_time(self.hass, self._make(alarm, "ring"), at))
+            self._scheduled[alarm["id"]] = (alarm, at)
+            self._unsubs.append(async_track_point_in_time(self.hass, self._make(alarm, "ring", at), at))
             if alarm["light"] and alarm["fadeMin"]:
-                fade_at = at - timedelta(minutes=alarm["fadeMin"])
-                if fade_at > now:
-                    self._unsubs.append(async_track_point_in_time(self.hass, self._make(alarm, "fade"), fade_at))
+                fade_at = at.astimezone(timezone.utc) - timedelta(minutes=alarm["fadeMin"])
+                if fade_at > now.astimezone(timezone.utc):
+                    self._unsubs.append(async_track_point_in_time(self.hass, self._make(alarm, "fade", at), fade_at))
                 else:
-                    self.hass.async_create_task(self._fade(alarm, at))
+                    fading[alarm["id"]] = (alarm, at)
+        # Every save of the panel's settings comes here (a theme switched, another room's alarm). A sunrise already running
+        # for the same ring and the same lamp goes on from where it is; one whose alarm was changed, switched off or has rung stops.
+        for aid, (task, key) in list(self._fades.items()):
+            want = fading.get(aid)
+            if task.done() or want is None or key != (want[1], want[0]["lightEntity"]):
+                if not task.done():
+                    task.cancel()
+                del self._fades[aid]
+        for aid, (alarm, at) in fading.items():
+            if aid not in self._fades:
+                self._start_fade(alarm, at)
         _LOGGER.debug("Atom Home alarms: %d scheduled", len(self._unsubs))
 
-    def _make(self, alarm: dict, what: str):
+    def _start_fade(self, alarm: dict, ring_at: datetime) -> None:
+        self._cancel_fade(alarm["id"])
+        # A background task: a sunrise lasts up to half an hour and must not hold up Home Assistant's start-up or a reload.
+        task = self.hass.async_create_background_task(self._fade(alarm, ring_at), f"atom_home alarm sunrise {alarm['id']}")
+        self._fades[alarm["id"]] = (task, (ring_at, alarm["lightEntity"]))
+
+    def _cancel_fade(self, alarm_id: str) -> None:
+        task = self._fades.pop(alarm_id, (None, None))[0]
+        if task and not task.done():
+            task.cancel()
+
+    def _task(self, coro) -> asyncio.Task:
+        task = self.hass.async_create_task(coro)
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+        return task
+
+    def _make(self, alarm: dict, what: str, at: datetime):
         @callback
         def fire(_now: datetime) -> None:
+            if self._closed or self._scheduled.get(alarm["id"]) != (alarm, at):
+                return
+            now = dt_util.now().astimezone(timezone.utc)
             if what == "fade":
-                self.hass.async_create_task(self._fade(alarm, next_fire(alarm, dt_util.now()) or dt_util.now()))
+                if at.astimezone(timezone.utc) > now:
+                    self._start_fade(alarm, at)
             else:
-                self.hass.async_create_task(self._ring(alarm, first=True))
+                # One callback can arrive after several rooms are due. Consume every due
+                # occurrence before cancelling/rebuilding timers, including one-shot alarms.
+                due = [a for a, when in self._scheduled.values() if when.astimezone(timezone.utc) <= now]
+                for current in due:
+                    ring = _Ring(current, current["repeats"])
+                    self._active.append(ring)
+                    self._queue_ring(ring)
+                    if not current["days"]:
+                        self._spend(current)
                 self._reschedule()
         return fire
 
+    def _spend(self, alarm: dict) -> None:
+        """No weekdays means «один раз»: once it has rung the alarm is switched off, here at once and in the stored config.
+        The ring itself (repeats, snooze, stop) goes on with the copy it was given."""
+        self._alarms = [{**a, "enabled": False} if a["id"] == alarm["id"] else a for a in self._alarms]
+        if self._on_once:
+            self._spent.add(alarm["id"])
+            # A reload must finish this write, or the restored one-shot alarm rings again.
+            task = self.hass.async_create_task(self._store_spent(alarm["id"]))
+            self._writes.add(task)
+            task.add_done_callback(self._writes.discard)
+
+    async def _store_spent(self, alarm_id: str) -> None:
+        try:
+            await self._on_once(alarm_id)
+        except Exception as err:  # noqa: BLE001 — it stays off in this run either way
+            _LOGGER.error("Atom Home alarm: %s rang once and was not stored switched off: %s", alarm_id, err)
+        finally:
+            # Stored: a later save of the old list is refused as a conflict. Not stored: the owner may switch it on again.
+            self._spent.discard(alarm_id)
+
     def summary(self) -> dict:
         now = dt_util.now()
-        return {"count": len(self._alarms), "next": [{"id": a["id"], "at": (next_fire(a, now) or now).isoformat()} for a in self._alarms if a["enabled"] and next_fire(a, now)], "ringing": self._ringing["id"] if self._ringing else None, "repeatLeft": self._repeat_left}
+        latest = next(reversed(self._active), None)
+        return {"count": len(self._alarms), "next": [{"id": a["id"], "at": (next_fire(a, now) or now).isoformat()} for a in self._alarms if a["enabled"] and next_fire(a, now)], "ringing": latest.alarm["id"] if latest else None, "repeatLeft": latest.repeat_left if latest else 0}
+
+    async def _allowed(self, alarm: dict) -> bool:
+        if self._closed:
+            return False
+        try:
+            return self._authorize is None or await self._authorize(alarm)
+        except Exception as err:  # noqa: BLE001 — unavailable authorization must fail closed
+            _LOGGER.warning("Atom Home alarm: authorization failed for %s: %s", alarm["id"], err)
+            return False
 
     # ---- the light ----------------------------------------------------------------------------
     async def _fade(self, alarm: dict, ring_at: datetime) -> None:
-        if self._fade_task and not self._fade_task.done():
-            self._fade_task.cancel()
-        self._fade_task = asyncio.current_task()
-        total = max(1, int((ring_at - dt_util.now()).total_seconds()))
-        steps = max(1, total // FADE_STEP)
-        try:
-            for i in range(steps + 1):
-                pct = max(1, min(100, round(1 + 99 * i / steps)))
-                await self.hass.services.async_call("light", "turn_on", {"entity_id": alarm["lightEntity"], "brightness_pct": pct, "transition": min(FADE_STEP, total)}, blocking=False)
-                if i < steps:
-                    await asyncio.sleep(FADE_STEP)
-        except asyncio.CancelledError:
-            raise
-        except Exception as err:  # noqa: BLE001
-            _LOGGER.warning("Atom Home alarm: light fade failed: %s", err)
+        """1 % → 100 % from now to the ring, by the clock: a sunrise that did not begin exactly `fadeMin` before the ring
+        (Home Assistant started in the middle of it, the alarm was saved late) still ends at the ring and not up to half a
+        minute before it, so a save in that gap finds it running and does not begin it again from 1 %."""
+        ring_at = ring_at.astimezone(timezone.utc)
+        total = max(1.0, (ring_at - dt_util.now().astimezone(timezone.utc)).total_seconds())
+        warned = False
+        while True:
+            left = (ring_at - dt_util.now().astimezone(timezone.utc)).total_seconds()
+            if left <= 0:
+                return  # the ring itself puts the lamp at 100 %
+            if not await self._allowed(alarm) or self._closed:
+                return
+            step = min(FADE_STEP, left)
+            pct = max(1, min(100, round(1 + 99 * (1 - left / total))))
+            try:
+                await self.hass.services.async_call("light", "turn_on", {"entity_id": alarm["lightEntity"], "brightness_pct": pct, "transition": max(1, round(min(step, total)))}, blocking=False)
+            except asyncio.CancelledError:
+                raise
+            except Exception as err:  # noqa: BLE001
+                # Home Assistant is still starting and `light` has no service yet, or the lamp refused once: the next step
+                # tries again. Giving up here left the room dark until the ring.
+                if not warned:
+                    _LOGGER.warning("Atom Home alarm: a step of the sunrise on %s failed, the next one is tried: %s", alarm["lightEntity"], err)
+                    warned = True
+            await asyncio.sleep(step)
 
     # ---- ringing ------------------------------------------------------------------------------
-    async def _ring(self, alarm: dict, first: bool) -> None:
-        self._ringing = alarm
-        if first:
-            self._repeat_left = alarm["repeats"]
-        self._cancel_stop_timer()
+    def _queue_ring(self, ring: _Ring, quiet: bool = False) -> None:
+        if self._closed or ring not in self._active:
+            return
+        self._cancel_stop_timer(ring)
+        ring.task = self._task(self._ring(ring, quiet))
+
+    async def _ring_text(self, ring: _Ring) -> None:
+        alarm = ring.alarm
+        await self.hass.services.async_call("input_text", "set_value", {"entity_id": RING_TEXT, "value": f"{alarm['id']}|{alarm['room']}|{alarm['time']}|{alarm['label']}|{ring.repeat_left}"[:255]}, blocking=False)
+
+    async def _ring(self, ring: _Ring, quiet: bool = False) -> None:
+        alarm = ring.alarm
+        if quiet:
+            await self._quiet_ring(ring)
+        if not await self._allowed(alarm):
+            if ring in self._active:
+                self._active.remove(ring)
+                await self._refresh_banner()
+            return
+        if self._closed or ring not in self._active:
+            return
+        ring.ringing = True
         try:
             if alarm["light"] and alarm["lightEntity"]:
                 await self.hass.services.async_call("light", "turn_on", {"entity_id": alarm["lightEntity"], "brightness_pct": 100}, blocking=False)
-            await self.hass.services.async_call("input_text", "set_value", {"entity_id": RING_TEXT, "value": f"{alarm['id']}|{alarm['room']}|{alarm['time']}|{alarm['label']}|{self._repeat_left}"[:255]}, blocking=False)
+            await self._ring_text(ring)
             await self.hass.services.async_call("input_boolean", "turn_on", {"entity_id": RING_FLAG}, blocking=False)
             if alarm["alice"] != "off" and alarm["station"]:
+                # A speaker has one playback stream. Its newest command owns cleanup;
+                # an older occurrence's deadline must not stop this newer sound.
+                for previous in self._active:
+                    if previous.alarm["station"] == alarm["station"]:
+                        previous.speaker_started = False
+                ring.speaker_started = True
                 if alarm["alice"] == "tts":
                     await self.hass.services.async_call("media_player", "play_media", {"entity_id": alarm["station"], "media_content_type": "text", "media_content_id": alarm["phrase"] or "Доброе утро, пора вставать"}, blocking=False)
                 else:
@@ -169,77 +312,174 @@ class AlarmScheduler:
         except Exception as err:  # noqa: BLE001
             _LOGGER.warning("Atom Home alarm: ring failed: %s", err)
         # Without an answer: repeat after the interval while repeats remain, else stop after AUTO_STOP.
-        delay = timedelta(minutes=alarm["repeatEveryMin"]) if self._repeat_left > 0 else AUTO_STOP
-        self._stop_unsub = async_track_point_in_time(self.hass, self._auto_next, dt_util.now() + delay)
+        if not self._closed and ring in self._active:
+            delay = timedelta(minutes=alarm["repeatEveryMin"]) if ring.repeat_left > 0 else AUTO_STOP
+
+            @callback
+            def auto_next(_now: datetime) -> None:
+                self._auto_next(ring)
+
+            ring.stop_unsub = async_track_point_in_time(self.hass, auto_next, dt_util.now().astimezone(timezone.utc) + delay)
 
     @callback
-    def _auto_next(self, _now: datetime) -> None:
-        self._stop_unsub = None
-        alarm = self._ringing
-        if alarm is None:
+    def _auto_next(self, ring: _Ring) -> None:
+        ring.stop_unsub = None
+        if self._closed or ring not in self._active:
             return
-        if self._repeat_left > 0:
-            self._repeat_left -= 1
-            self.hass.async_create_task(self._quiet())
-            self.hass.async_create_task(self._ring(alarm, first=False))
+        if ring.repeat_left > 0:
+            ring.repeat_left -= 1
+            self._queue_ring(ring, quiet=True)
         else:
-            self.hass.async_create_task(self.stop())
+            self._task(self._stop_ring(ring))
 
-    def _cancel_stop_timer(self) -> None:
-        if self._stop_unsub:
-            self._stop_unsub()
-            self._stop_unsub = None
+    def _cancel_stop_timer(self, ring: _Ring) -> None:
+        if ring.stop_unsub:
+            ring.stop_unsub()
+            ring.stop_unsub = None
 
-    async def _quiet(self) -> None:
-        alarm = self._ringing
+    async def _quiet_ring(self, ring: _Ring) -> None:
+        # A pending authorization check has not granted ownership of the speaker.
+        # Cancelling that work must not send even a cleanup command to its target.
+        if ring.speaker_started and await self._quiet(ring.alarm):
+            ring.speaker_started = False
+
+    async def _quiet(self, alarm: dict | None = None) -> bool:
+        """Silence the speaker of the alarm that rings. When this run knows of none but the flag is up (HA restarted in the
+        middle of a ring), the alarm is found by the id the ringing text holds: the music it started is still playing."""
+        alarm = alarm or self._stale()
         if alarm and alarm["alice"] != "off" and alarm["station"]:
-            await self.hass.services.async_call("media_player", "media_stop", {"entity_id": alarm["station"]}, blocking=False)
+            try:
+                await self.hass.services.async_call("media_player", "media_stop", {"entity_id": alarm["station"]}, blocking=False)
+            except Exception as err:  # noqa: BLE001 — a speaker that is away must not keep the banner up
+                _LOGGER.warning("Atom Home alarm: %s was not stopped: %s", alarm["station"], err)
+                return False
+        return True
 
-    async def resume(self) -> None:
+    def _stale(self) -> dict | None:
+        flag, text = self.hass.states.get(RING_FLAG), self.hass.states.get(RING_TEXT)
+        if flag is None or flag.state != "on" or text is None or not isinstance(text.state, str):
+            return None
+        alarm_id = text.state.split("|", 1)[0]
+        return next((a for a in self._alarms if a["id"] == alarm_id), None)
+
+    def start(self) -> None:
+        """Clear what a restart left behind once Home Assistant is up: before that the two helpers may not be restored yet
+        and the speaker has no service to be stopped with."""
+        @callback
+        def started(_hass: Any) -> None:
+            if not self._closed:
+                self._task(self.resume())
+
+        if not self._closed and self._started_unsub is None:
+            self._started_unsub = async_at_started(self.hass, started)
+
+    async def resume(self, _hass: Any = None) -> None:
         """After a restart nothing rings: a flag restored as «on» (HA restarted mid-alarm, 04.11.2026 21:52) would leave a stale
-        «Будильник» banner on every screen, so it is lowered together with the ringing text."""
-        if self._ringing is not None:
+        «Будильник» banner on every screen, so it is lowered together with the ringing text, and the speaker is stopped."""
+        if self._closed or self._active:
             return
-        if (st := self.hass.states.get(RING_FLAG)) and st.state == "on":
-            await self.hass.services.async_call("input_boolean", "turn_off", {"entity_id": RING_FLAG}, blocking=False)
-        if (tx := self.hass.states.get(RING_TEXT)) and tx.state:
-            await self.hass.services.async_call("input_text", "set_value", {"entity_id": RING_TEXT, "value": ""}, blocking=False)
+        try:
+            await self._quiet()
+            if (st := self.hass.states.get(RING_FLAG)) and st.state == "on":
+                await self.hass.services.async_call("input_boolean", "turn_off", {"entity_id": RING_FLAG}, blocking=False)
+            if (tx := self.hass.states.get(RING_TEXT)) and tx.state not in ("", "unknown", "unavailable"):
+                await self.hass.services.async_call("input_text", "set_value", {"entity_id": RING_TEXT, "value": ""}, blocking=False)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Atom Home alarm: the ringing flag was not cleared after the restart: %s", err)
 
     async def stop(self) -> None:
-        """Stop the sound and the repeats; the light stays as it is."""
-        self._cancel_stop_timer()
-        if self._fade_task and not self._fade_task.done():
-            self._fade_task.cancel()
-        await self._quiet()
-        self._ringing = None
-        self._repeat_left = 0
-        if (st := self.hass.states.get(RING_FLAG)) and st.state == "on":
+        """Stop all active sounds and repeats; unrelated upcoming sunrises continue."""
+        active = list(self._active)
+        for ring in active:
+            self._drop_ring(ring)
+        if active:
+            for ring in active:
+                await self._quiet_ring(ring)
+        else:
+            await self._quiet()
+        await self._refresh_banner()
+
+    def _drop_ring(self, ring: _Ring) -> None:
+        self._cancel_stop_timer(ring)
+        if ring.task and not ring.task.done():
+            ring.task.cancel()
+        if ring in self._active:
+            self._active.remove(ring)
+        self._cancel_fade(ring.alarm["id"])
+
+    async def _stop_ring(self, ring: _Ring) -> None:
+        if ring not in self._active:
+            return
+        self._drop_ring(ring)
+        await self._quiet_ring(ring)
+        await self._refresh_banner()
+
+    async def _refresh_banner(self) -> None:
+        latest = next((ring for ring in reversed(self._active) if ring.ringing), None)
+        if latest:
+            await self._ring_text(latest)
+        elif (st := self.hass.states.get(RING_FLAG)) and st.state == "on":
             await self.hass.services.async_call("input_boolean", "turn_off", {"entity_id": RING_FLAG}, blocking=False)
 
     async def snooze(self, minutes: int = 9) -> None:
-        alarm = self._ringing
-        if alarm is None:
+        active = list(self._active)
+        if not active:
             return
-        self._cancel_stop_timer()
-        await self._quiet()
-        self._ignore_flag_off = True
-        if (st := self.hass.states.get(RING_FLAG)) and st.state == "on":
-            await self.hass.services.async_call("input_boolean", "turn_off", {"entity_id": RING_FLAG}, blocking=True)
-        self._stop_unsub = async_track_point_in_time(self.hass, lambda _n: self.hass.async_create_task(self._ring(alarm, first=False)), dt_util.now() + timedelta(minutes=minutes))
+        for ring in active:
+            self._cancel_stop_timer(ring)
+            if ring.task and not ring.task.done():
+                ring.task.cancel()
+            ring.ringing = False
+        for ring in active:
+            await self._quiet_ring(ring)
+            if not self._closed and ring in self._active:
+                @callback
+                def wake(_now: datetime, current: _Ring = ring) -> None:
+                    self._queue_ring(current)
+
+                ring.stop_unsub = async_track_point_in_time(self.hass, wake, dt_util.now().astimezone(timezone.utc) + timedelta(minutes=minutes))
+        await self._refresh_banner()
 
     @callback
     def _flag_changed(self, event) -> None:
         new = event.data.get("new_state")
-        if self._ignore_flag_off:
-            self._ignore_flag_off = False
-            return
-        if new is not None and new.state == "off" and self._ringing is not None and self._stop_unsub is not None:
+        if not self._closed and new is not None and new.state == "off" and any(ring.ringing for ring in self._active):
             # Someone switched the flag off (the panel's Stop button, HA UI): treat as stop.
-            self.hass.async_create_task(self.stop())
+            self._task(self.stop())
+
+    async def async_shutdown(self) -> None:
+        """Cancel pending work before awaiting cleanup of every speaker this run owns."""
+        active = list(self._active)
+        stale = self._stale() if not active else None
+        tasks = list(self._tasks) + [task for task, _key in self._fades.values()]
+        self.shutdown()
+        for task in tasks:
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+            except Exception as err:  # noqa: BLE001 — cleanup of the remaining speakers still runs
+                _LOGGER.warning("Atom Home alarm: task failed during unload: %s", err)
+        for ring in active:
+            await self._quiet_ring(ring)
+        if stale:
+            await self._quiet(stale)
+        await self._refresh_banner()
+        # Audible work is cancelled and the speakers are quiet. Complete durable one-shot
+        # bookkeeping before the next setup reads storage; do not cancel it with ring tasks.
+        for task in list(self._writes):
+            await task
 
     def shutdown(self) -> None:
+        self._closed = True
         self._clear()
-        self._cancel_stop_timer()
-        if self._fade_task and not self._fade_task.done():
-            self._fade_task.cancel()
+        for ring in list(self._active):
+            self._drop_ring(ring)
+        for task in list(self._tasks):
+            task.cancel()
+        for alarm_id in list(self._fades):
+            self._cancel_fade(alarm_id)
+        if self._started_unsub:
+            self._started_unsub()
+            self._started_unsub = None
         self._flag_unsub()

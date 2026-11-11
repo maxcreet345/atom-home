@@ -28,12 +28,18 @@ function apply(fx, now, sc) {
   if (sc === 'keep') { set(`sensor.${K}_status`, 'keep_warm'); set(`sensor.${K}_temperature`, '45'); set(`switch.${K}_auto_keep_warm`, 'on'); set(`number.${K}_keep_warm_temperature`, '45'); set(`sensor.${K}_warming_time`, '190'); set(`sensor.${K}_plug_power`, '42'); set(`sensor.${K}_plug_energy_today`, '0.18'); }
   if (sc === 'lifted') { set(`binary_sensor.${K}_lifted`, 'on'); set(`sensor.${K}_temperature`, '72'); }
   if (sc === 'knob') { set(`switch.${K}_custom_knob_temp`, 'on'); set(`switch.${K}_boiling_reminder`, 'on'); }
-  if (sc === 'offline') for (const id of Object.keys(S)) if (id.includes(`${K}`) && !id.includes('_plug')) S[id] = { ...S[id], state: 'unavailable' };
+  // the water cools to the keep-warm temperature while the kettle's own switch is still on (audit 2026-11-09)
+  if (sc === 'cooling') { set(`sensor.${K}_status`, 'cooling'); set(`sensor.${K}_temperature`, '88'); set(`switch.${K}_power`, 'on'); set(`switch.${K}_auto_keep_warm`, 'on'); set(`number.${K}_keep_warm_temperature`, '60'); set(`water_heater.${K}`, 'on', { current_temperature: 88, 'kettle.on': true }); }
+  // on the network, but the integration has not filled the attributes yet: nothing may read as 0
+  if (sc === 'bare') { S[`water_heater.${K}`] = { ...S[`water_heater.${K}`], attributes: { friendly_name: 'Кухня · Чайник', current_temperature: null, temperature: null, 'function.heat_mode': '', 'function.boil_mode': null } }; set(`sensor.${K}_temperature`, 'unknown'); set(`number.${K}_target_temperature`, 'unknown'); set(`number.${K}_keep_warm_temperature`, ''); set(`number.${K}_keep_warm_time`, 'unknown'); }
+  if (sc === 'offline' || sc === 'offlineBare') for (const id of Object.keys(S)) if (id.includes(`${K}`) && !id.includes('_plug')) S[id] = { ...S[id], state: 'unavailable' };
+  // as Home Assistant really leaves an unavailable entity: the name and nothing else
+  if (sc === 'offlineBare') for (const id of Object.keys(S)) if (id.includes(`${K}`) && !id.includes('_plug')) S[id] = { ...S[id], attributes: { friendly_name: S[id].attributes.friendly_name ?? 'Кухня · Чайник' } };
   return fx;
 }
 export const card = {
   name: 'Чайник', sheet: '#home?device=kettle', home: '#rooms?room=kukhnia', sheetRoot: '.at-kt-sheet', tileRoot: '[data-module-card="kettle"]', actionButton: '.at-kt-go',
-  scenarios: { idle: {}, heating: { sc: 'heating' }, boil: { sc: 'boil' }, keep: { sc: 'keep' }, lifted: { sc: 'lifted' }, knob: { sc: 'knob' }, offline: { sc: 'offline' } },
+  scenarios: { idle: {}, heating: { sc: 'heating' }, boil: { sc: 'boil' }, keep: { sc: 'keep' }, lifted: { sc: 'lifted' }, knob: { sc: 'knob' }, offline: { sc: 'offline' }, cooling: { sc: 'cooling' }, bare: { sc: 'bare' }, offlineBare: { sc: 'offlineBare' } },
   build(base, scenario, now) { const out = heat.build(base, heat.scenarios.normal, now); return { ...out, snapshot: apply(out.snapshot, now, scenario.sc) }; },
   config: (text, s) => heat.config(text, s),
 };

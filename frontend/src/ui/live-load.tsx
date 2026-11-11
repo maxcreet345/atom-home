@@ -9,7 +9,7 @@ import { rk, fmt, watts } from './room-words.ts';
 export interface LoadRow { key: string; name: string; /** the room, on the house's list */ sub?: string; watts: number; icon?: string; tint?: string }
 const COLORS = ['#ff9f0a', '#ff6b35', '#30d158', '#0a84ff', '#bf5af2', '#32ade6', '#ffcc00', '#5e5ce6', '#64d2ff', '#8e8e93'];
 
-export function LiveLoad({ rows, t, lang, title, today, limit = 99, className = '' }: { rows: LoadRow[]; t: T; lang: Lang; title: string; today?: number | null; limit?: number; className?: string }) {
+export function LiveLoad({ rows, t, lang, title, today, limit = 99, className = '', level = 3 }: { rows: LoadRow[]; t: T; lang: Lang; title: string; today?: number | null; limit?: number; className?: string; /** the heading's level: 2 where the list stands right under the page's title */ level?: 2 | 3 }) {
   const list = [...rows].filter(r => Number.isFinite(r.watts)).sort((a, b) => b.watts - a.watts || a.name.localeCompare(b.name, 'ru'));
   const live = list.filter(r => r.watts >= 0.5), idle = list.filter(r => r.watts < 0.5), shown = live.slice(0, limit), more = live.length - shown.length;
   const total = list.reduce((s, r) => s + Math.max(0, r.watts), 0), max = Math.max(1, ...shown.map(r => r.watts));
@@ -30,7 +30,7 @@ export function LiveLoad({ rows, t, lang, title, today, limit = 99, className = 
     last.current = next;
   });
   return <section className={`rm-card rm-live ${className}`} aria-label={title}>
-    <div className="rm-live-head"><h3>{title}</h3><span className="rm-live-dot" aria-hidden="true" /><small>{rk(t, 'liveNow')}</small></div>
+    <div className="rm-live-head">{level === 2 ? <h2 className="rm-live-title">{title}</h2> : <h3 className="rm-live-title">{title}</h3>}<span className="rm-live-dot" aria-hidden="true" /><small>{rk(t, 'liveNow')}</small></div>
     <div className="rm-pw-head"><span><b>{watts(total, t, lang)}</b> {rk(t, 'now')}</span>{today != null && today > 0 && <small>{rk(t, 'today', { v: fmt(today, lang, today < 10 ? 2 : 1) })}</small>}</div>
     <ol ref={box} className="rm-live-list">{shown.map(r => <li key={r.key} data-key={r.key} data-w={r.watts} style={`--c:${r.tint ?? color(r.key)}`}>
       <span className="rm-live-ic">{r.icon ? <Icon name={r.icon} size={15} /> : <i />}</span>

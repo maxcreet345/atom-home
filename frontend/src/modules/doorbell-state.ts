@@ -18,8 +18,8 @@ type Tx = (key: string, params?: Record<string, string | number>) => string;
 export function ago(at: number, now: number, tx: Tx, lang: string): string {
   const d = now - at;
   if (d < 90_000) return tx('time.justNow');
-  if (d < 3_600_000) return tx('time.minAgo', { n: Math.round(d / 60_000) });
-  if (d < 86_400_000) return tx('time.hoursAgo', { n: Math.round(d / 3_600_000) });
+  if (d < 3_600_000) return tx('time.minAgo', { n: Math.floor(d / 60_000) });
+  if (d < 86_400_000) return tx('time.hoursAgo', { n: Math.floor(d / 3_600_000) });
   return new Intl.DateTimeFormat(locale(lang), { day: 'numeric', month: 'short' }).format(at);
 }
 export const locale = (lang: string) => lang === 'ru' ? 'ru-RU' : lang === 'ro' ? 'ro-RO' : 'en-GB';
@@ -32,7 +32,20 @@ export function when(at: number, now: number, tx: Tx, lang: string): string {
   if (a.toDateString() === y.toDateString()) return `${tx('time.yesterday')} ${clock(at, lang)}`;
   return new Intl.DateTimeFormat(locale(lang), { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(at);
 }
-/** Tile line: a ring in the last minute (red, badge), motion right now, low battery, otherwise «Тихо · движение N мин назад». */
+/** When motion at the door last ended, or null when the row does not say: only an «off» carries that time, and not when the bell's other entities changed in the same
+ * second (HA restarted or the bell came back on the line: every row is stamped then, nobody walked by). */
+export function lastMotionAt(states: Record<string, StateRow>, entities: ModuleEntities): number | null {
+  const id = entities.motion, row = id ? states[id] : undefined; if (!row || row.state !== 'off') return null;
+  const at = ms(row.last_changed); if (at === null) return null;
+  for (const [role, other] of Object.entries(entities)) {
+    if (!other || other === id) continue; const r = states[other], t = ms(r?.last_changed); if (!r || t === null || Math.abs(t - at) > 2000) continue;
+    if (role === 'ring') { const rung = ms(r.state); if (rung !== null && Math.abs(rung - t) < 10_000) continue; } // a real ring as the visitor leaves
+    return null;
+  }
+  return at;
+}
+/** Tile line: a ring in the last minute (red, badge), motion right now, low battery, otherwise «Тихо · движение N мин назад».
+ * `now` is the house's clock where the caller has one (`houseTime` of model/cameras.ts): the ring's stamp is the house's. */
 export function doorbellTileState(states: Record<string, StateRow>, entities: ModuleEntities, tx: Tx, lang: string, now = Date.now()): TileState {
   const s = (role: string) => { const id = entities[role]; return id ? states[id] : undefined; };
   const ring = s('ring'), ringAt = ms(ring?.state);
@@ -41,7 +54,7 @@ export function doorbellTileState(states: Record<string, StateRow>, entities: Mo
   if (motion?.state === 'on') return { line: tx('module.doorbell.motionNow'), closed: false, icon: 'motion' };
   const bat = Number(s('battery')?.state);
   if (Number.isFinite(bat) && bat < 20) return { line: tx('module.doorbell.batteryLow', { n: bat }), closed: false, icon: null, tone: 'warning' };
-  const motionAt = ms(motion?.last_changed);
+  const motionAt = lastMotionAt(states, entities);
   return { line: motionAt !== null && now - motionAt < 86_400_000 ? tx('module.doorbell.quietMotion', { ago: ago(motionAt, now, tx, lang) }) : tx('module.doorbell.quiet'), closed: false, icon: null };
 }
 export interface DoorEvent { kind: 'ring' | 'motion'; at: number; /** media_source ids of the snapshot and the clip HA saved for this event (stage 2) */ snapshot?: string; clip?: string }
@@ -68,10 +81,20 @@ export function mergeEvents(events: DoorEvent[], files: DoorFile[], tolMs = 10_0
   for (const f of files) { if (used.has(f)) continue; const key = `${f.kind}:${Math.round(f.at / 1000)}`; const e = orphans.get(key) ?? { kind: f.kind, at: f.at }; if (f.type === 'jpg') e.snapshot = f.id; else e.clip = f.id; orphans.set(key, e); }
   return [...out, ...orphans.values()].sort((a, b) => b.at - a.at);
 }
+/** How many events a camera sheet lists (the rest is in HA's logbook). */
+export const FEED_LIMIT = 30;
+/** The sheet's list of the week's events under its filter: the first FEED_LIMIT of the chosen kind, and how many of that kind there are (studio ST-07:
+ * «Всего за неделю: N; остальное — в журнале HA» counts what the chosen filter hides, not the other kind's events, which the other filter shows). */
+export function feedPage(merged: DoorEvent[] | null, filter: 'all' | 'ring' | 'motion', limit = FEED_LIMIT): { list: DoorEvent[]; total: number } {
+  const chosen = (merged ?? []).filter(e => filter === 'all' || e.kind === filter);
+  return { list: chosen.slice(0, limit), total: chosen.length };
+}
 /** The day folders to read for the last `days` days, newest first. */
 export function dayFolders(now: number, days = 7): string[] {
   const p = (n: number) => String(n).padStart(2, '0');
-  return Array.from({ length: days }, (_, i) => { const d = new Date(now - i * 86_400_000); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; });
+  // by the calendar, not by 24 h: the day the clocks change is 23 or 25 hours long
+  const d0 = new Date(now);
+  return Array.from({ length: days }, (_, i) => { const d = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() - i, 12); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; });
 }
 /** HA `history/history_during_period` (minimal response: `{s, lc, lu}` rows per entity) → events, newest first. A ring is every new timestamp of the event entity, motion counts when it turns on; the first row (the state at the start of the window) is not an event. */
 export function parseHistory(raw: unknown, entities: ModuleEntities, startMs: number): DoorEvent[] {
@@ -79,9 +102,12 @@ export function parseHistory(raw: unknown, entities: ModuleEntities, startMs: nu
   const out: DoorEvent[] = [];
   const rowsOf = (id: string | undefined) => { const r = id ? (raw as Record<string, unknown>)[id] : undefined; return Array.isArray(r) ? r as Array<{ s?: unknown; lc?: unknown; lu?: unknown }> : []; };
   const at = (r: { lc?: unknown; lu?: unknown }) => { const v = typeof r.lc === 'number' ? r.lc : typeof r.lu === 'number' ? r.lu : NaN; return Number.isFinite(v) ? v * 1000 : NaN; };
+  // the first row is the state at the start of the window (stamped with the window's own start): never an event. A ring is a new timestamp, one not seen in this window and not older than it
+  // (coming back from «unavailable» repeats the old one); motion counts when it turns on after a real «off».
+  const real = (v: unknown): v is string => typeof v === 'string' && v !== 'unknown' && v !== 'unavailable', rung = new Set<string>();
+  for (const r of rowsOf(entities.ring)) { if (!real(r.s)) continue; const t = at(r), own = Date.parse(r.s); if (Number.isFinite(t) && t > startMs && !rung.has(r.s) && !(own <= startMs)) out.push({ kind: 'ring', at: t }); rung.add(r.s); }
   let prev: unknown;
-  for (const r of rowsOf(entities.ring)) { const t = at(r); if (Number.isFinite(t) && t >= startMs && typeof r.s === 'string' && r.s !== 'unknown' && r.s !== 'unavailable' && r.s !== prev) out.push({ kind: 'ring', at: t }); prev = r.s; }
-  for (const r of rowsOf(entities.motion)) { const t = at(r); if (Number.isFinite(t) && t >= startMs && r.s === 'on') out.push({ kind: 'motion', at: t }); }
+  for (const r of rowsOf(entities.motion)) { if (!real(r.s)) continue; const t = at(r); if (Number.isFinite(t) && t > startMs && r.s === 'on' && prev !== 'on') out.push({ kind: 'motion', at: t }); prev = r.s; }
   return out.sort((a, b) => b.at - a.at);
 }
 /** Where the panel keeps the last live frame of a stream (per browser). */

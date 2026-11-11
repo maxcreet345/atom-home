@@ -1486,7 +1486,7 @@ class Entry(unittest.TestCase):
     def setUp(self):
         from unittest.mock import AsyncMock, MagicMock, patch
         self.integration = load_integration()[0]
-        self.air = NS(async_load=AsyncMock(), unload=MagicMock(), async_remove=AsyncMock())
+        self.air = NS(async_load=AsyncMock(), async_unload=AsyncMock(), async_remove=AsyncMock())
         store = NS(async_load=AsyncMock(return_value={}), async_save=AsyncMock())
         self.integration.panel_custom.async_register_panel = AsyncMock()
 
@@ -1494,7 +1494,7 @@ class Entry(unittest.TestCase):
             return f(*a)
 
         self.hass = NS(data={}, async_add_executor_job=executor, config=NS(path=lambda p: "/tmp/atom-test-" + p), http=NS(async_register_static_paths=AsyncMock(), register_view=MagicMock()))
-        parts = dict(Store=lambda *_a: store, AirTasks=lambda _h: self.air, AlarmScheduler=lambda _h: NS(set_alarms=MagicMock(), resume=AsyncMock(), shutdown=MagicMock()), LightSleep=lambda _h: NS(async_load=AsyncMock(), shutdown=MagicMock()), ConfigState=MagicMock(), _version=lambda: "1", _register_ws=MagicMock(), normalise_alarms=lambda _x: [])
+        parts = dict(Store=lambda *_a: store, AirTasks=lambda _h: self.air, AlarmScheduler=lambda _h, _once=None, authorize=None: NS(set_alarms=MagicMock(), start=MagicMock(), async_shutdown=AsyncMock()), LightSleep=lambda _h: NS(async_load=AsyncMock(), shutdown=MagicMock()), ConfigState=MagicMock(), _version=lambda: "1", _register_ws=MagicMock(), normalise_alarms=lambda _x: [])
         patcher = patch.multiple(self.integration, **parts)
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -1505,7 +1505,7 @@ class Entry(unittest.TestCase):
             self.assertTrue(await i.async_setup_entry(self.hass, entry))
             self.assertTrue(await i.async_unload_entry(self.hass, entry), "panel_custom has no async_remove_panel in real HA; the stand-in has none either")
             i.frontend.async_remove_panel.assert_called_once_with(self.hass, i.PANEL_URL_PATH)
-            self.air.unload.assert_called_once_with()
+            self.air.async_unload.assert_awaited_once_with()
             self.air.async_remove.assert_not_awaited()  # a reload keeps the jobs
             self.assertNotIn("e", self.hass.data[i.DOMAIN])
             self.assertTrue(await i.async_setup_entry(self.hass, entry))
@@ -1518,7 +1518,7 @@ class Entry(unittest.TestCase):
         async def go():
             i, entry = self.integration, NS(entry_id="e", disabled_by="user")
             order = []
-            self.air.unload.side_effect = lambda: order.append("unload")
+            self.air.async_unload.side_effect = lambda: order.append("unload")
             self.air.async_remove.side_effect = lambda: order.append("finish")
             await i.async_setup_entry(self.hass, entry)
             self.assertTrue(await i.async_unload_entry(self.hass, entry))

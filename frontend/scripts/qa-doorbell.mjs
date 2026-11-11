@@ -4,7 +4,7 @@ import { chromium } from '../node_modules/playwright/index.mjs';
 import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
-const root = resolve(import.meta.dirname, '..'), dist = resolve(root, 'dist-preview');
+const root = resolve(import.meta.dirname, '..'), dist = process.env.QA_DIST ? resolve(process.env.QA_DIST) : resolve(root, 'dist-preview'); // QA_DIST: another build of the preview
 const out = resolve(process.argv[2] ?? resolve(root, 'evidence/doorbell-g4')); await mkdir(out, { recursive: true });
 const fixture = JSON.parse(await readFile(resolve(root, '../private/fixtures/criuleni-camera-20261104.json'), 'utf8'));
 const config = { schemaVersion: 1, home: { name: 'Мой дом', language: 'ru', theme: 'light' }, modules: { camera_go2rtc: { entities: { camera: 'camera.entrance_camera' }, options: { addon: 'a889bffc_go2rtc', stream: 'entrance_camera_h264', streamHd: 'entrance_camera_hd' } }, doorbell: { options: { addon: 'a889bffc_go2rtc' } } } };
@@ -31,6 +31,13 @@ try {
     check(`${label}: tools`, sheet.tools.join(',') === 'Снимок,Разговорв Aqara Home(off),Во весь экран,МелодияВключено,МикрофонВключено,ДинамикВключено', sheet.tools.join(','));
     check(`${label}: rows battery + identify, stream tried in the sheet`, sheet.rows.includes('Батарея') && sheet.rows.includes('Опознать') && sheet.kind.startsWith('Звонок') && sheet.status !== 'idle' && !sheet.banner, JSON.stringify(sheet));
     const expectSplit = w >= 800 && w > h; check(`${label}: layout ${expectSplit ? 'two columns' : 'one column'}`, sheet.wide === expectSplit, `is-split=${sheet.wide}`);
+    // ST-08, the sheets' half (release classic, 11.11.2026): «Во весь экран» puts the stage in the full screen; out of it (left here as the browser leaves it —
+    // headless Chromium does not leave it on Escape) the sheet stands as it was and the keyboard is on the button again (Chromium had dropped it to the page)
+    { await page.focus('.at-door .at-cam-full'); await page.keyboard.press('Enter'); await page.waitForTimeout(400);
+      const inFull = await page.evaluate(() => document.fullscreenElement === document.querySelector('.at-door .at-cam-stage'));
+      await page.evaluate(() => document.exitFullscreen().catch(() => {})); await page.waitForTimeout(400);
+      const back = await page.evaluate(() => ({ full: !!document.fullscreenElement, focus: !!document.activeElement?.classList.contains('at-cam-full'), sheet: !!document.querySelector('.at-door') && location.hash.includes('entrance_doorbell') }));
+      check(`${label}: ST-08 out of the full screen — the same sheet, the keyboard on «Во весь экран»`, inFull && !back.full && back.focus && back.sheet, JSON.stringify({ inFull, back })); }
     await page.click('.at-door .at-cam-gear'); await page.waitForTimeout(300); await shot('settings');
     const settings = await page.evaluate(() => { const s = document.querySelector('.at-door'); return { page: s.dataset.page, rows: [...s.querySelectorAll('.ah-row strong')].map(x => x.textContent), pills: [...s.querySelectorAll('.at-door-pills .hm-pill')].map(b => b.textContent + (b.classList.contains('is-primary') ? '*' : '')), kv: [...s.querySelectorAll('.at-cam-kv')].map(x => x.textContent) }; });
     check(`${label}: settings page`, settings.page === 'settings' && settings.rows.includes('Открывать лист при звонке') && settings.pills.join(',') === '30 с,60 с*,120 с' && settings.kv.some(x => x.includes('Aqara · SVD-C02')) && settings.kv.some(x => x.startsWith('Последний звонок')), `${settings.rows.join(' | ')} // ${settings.pills} // ${settings.kv.join(' | ')}`);
@@ -41,10 +48,21 @@ try {
     await page.click('[aria-label="Назад"]'); await page.waitForTimeout(200);
     // close the sheet, simulate a ring: the sheet opens by itself with the countdown
     await page.evaluate(() => { location.hash = '#home'; }); await page.waitForTimeout(400);
-    await page.evaluate(() => { window.fx.states['event.entrance_doorbell_ring'] = { ...window.fx.states['event.entrance_doorbell_ring'], state: new Date().toISOString(), last_changed: new Date().toISOString() }; window.atomPreview.redraw(); });
+    // what is NOT a ring (audit 10.11.2026): the bell's entity coming back from «unavailable» or «unknown» with its old ring (the G4 lost Wi-Fi, HA restarted), and the panel catching up with a ring that is twenty minutes old
+    const setRing = (state, extra) => page.evaluate(([st, ex]) => { const S = window.fx.states, id = 'event.entrance_doorbell_ring'; S[id] = { ...S[id], state: st, ...(ex ?? {}) }; const other = Object.keys(S).find(k => k.startsWith('sensor.')); S[other] = { ...S[other], last_updated: new Date().toISOString() }; /* the house's own clock is «now» */ window.atomPreview.redraw(); }, [state, extra]);
+    const oldRing = await page.evaluate(() => window.fx.states['event.entrance_doorbell_ring'].state), opened = () => page.evaluate(() => !!document.querySelector('.at-door') || !!document.querySelector('.at-door-ring') || location.hash.includes('entrance_doorbell'));
+    for (const gone of ['unavailable', 'unknown']) { await setRing(gone); await page.waitForTimeout(250); await setRing(oldRing); await page.waitForTimeout(600); check(`${label}: the bell back from «${gone}» with its old ring opens nothing`, !(await opened()), oldRing); }
+    await setRing(new Date(Date.now() - 20 * 60_000).toISOString()); await page.waitForTimeout(600); check(`${label}: a ring twenty minutes old (the panel was away) opens nothing`, !(await opened()));
+    await setRing('unavailable'); await page.waitForTimeout(250);
+    await page.evaluate(() => { window.fx.states['event.entrance_doorbell_ring'] = { ...window.fx.states['event.entrance_doorbell_ring'], state: new Date().toISOString(), last_changed: new Date().toISOString(), last_updated: new Date().toISOString() }; window.atomPreview.redraw(); }); // …and a real ring right after the bell came back still opens
     await page.waitForTimeout(900); await shot('ring');
     const ring = await page.evaluate(() => { const s = document.querySelector('.at-door'); const t = [...document.querySelectorAll('.hm-camera-tile')].find(x => x.classList.contains('is-danger')); return { open: !!s, cnt: s?.querySelector('.at-door-cnt')?.textContent, alarm: !!document.querySelector('.hm-sheet.is-alarm'), tileLine: t?.querySelector('.hm-camera-caption small')?.textContent ?? null, hash: location.hash }; });
     check(`${label}: ring opens the sheet with a 60 s countdown`, ring.open && /^0:5\d$/.test(ring.cnt ?? '') && ring.alarm && ring.hash.includes('entrance_doorbell'), JSON.stringify(ring));
+    // round 2, f2: the live region is the words only; the countdown ticks next to it as a timer and is not read out every second
+    const liveBefore = await page.evaluate(() => { const b = document.querySelector('.at-door-banner'), c = b?.querySelector('.at-door-cnt'), st = b?.querySelector('[role="status"]'); window.__said = st?.textContent; return { banner: b?.getAttribute('role'), words: st?.textContent ?? null, timer: c?.getAttribute('role'), live: c?.getAttribute('aria-live'), inside: !!c?.closest('[role="status"]'), cnt: c?.textContent }; });
+    await page.waitForTimeout(2200);
+    const liveAfter = await page.evaluate(() => ({ same: document.querySelector('.at-door-banner [role="status"]')?.textContent === window.__said, cnt: document.querySelector('.at-door-cnt')?.textContent }));
+    check(`${label}: the countdown is a timer outside the banner's live region, whose words do not change as it ticks`, liveBefore.banner === null && /Звонок/.test(liveBefore.words ?? '') && !/\d:\d\d/.test(liveBefore.words ?? '') && liveBefore.timer === 'timer' && liveBefore.live === 'off' && !liveBefore.inside && liveAfter.same && liveAfter.cnt !== liveBefore.cnt, JSON.stringify({ liveBefore, liveAfter }));
     const alarm = await page.evaluate(() => { const s = document.querySelector('.at-door'); const st = s.querySelector('.at-cam-stage'); return { alarm: s.classList.contains('is-alarm'), rows: s.querySelectorAll('.ah-rows').length, gear: !!s.querySelector('.at-cam-gear'), right: !!s.querySelector('.at-cam-right'), stageW: st.getBoundingClientRect().width, sheetW: s.getBoundingClientRect().width, tools: s.querySelectorAll('.at-cam-tool').length, fits: s.scrollHeight <= s.clientHeight + 1 }; });
     check(`${label}: ring mode — one column, video across the sheet, no groups, no gear`, alarm.alarm && alarm.rows === 0 && !alarm.gear && !alarm.right && alarm.tools === 6 && alarm.stageW >= alarm.sheetW - 40 && (alarm.fits || h < 600), JSON.stringify(alarm));
     await page.click('.at-door-stay'); await page.waitForTimeout(300);

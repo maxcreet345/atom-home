@@ -14,8 +14,9 @@ export function people(registry: Pick<Registry, 'states' | 'entities'>, config: 
     const pic = typeof s.attributes.entity_picture === 'string' && s.attributes.entity_picture ? s.attributes.entity_picture : null, since = Date.parse(s.last_changed);
     return { id, name, first: words[0] ?? name, initials: (words.slice(0, 2).map(w => w[0]).join('') || '?').toUpperCase(), picture: pic, state, zone: state === 'zone' ? raw : null, since: Number.isFinite(since) ? since : null };
   }).sort((a, b) => Number(b.state === 'home') - Number(a.state === 'home') || a.name.localeCompare(b.name));
-  const times = list.map(p => p.since).filter((t): t is number => t !== null);
-  return times.length >= 2 && Math.max(...times) - Math.min(...times) < 60000 ? list.map(p => ({ ...p, since: null })) : list;
+  // not only when everybody shares the minute: after a restart one person may have moved since, and the others would still show the restart's time
+  const shared = (p: Person) => p.since !== null && list.some(o => o !== p && o.since !== null && Math.abs(o.since - p.since!) < 60000);
+  return list.map(p => shared(p) ? { ...p, since: null } : p);
 }
 /** The header's one-line summary. Nobody known (after an HA restart) is not «nobody home»: it says there is no data. */
 export function summaryOf(list: Person[]): { key: 'allHome' | 'nobody' | 'unknown' | 'count'; n: number } | null {

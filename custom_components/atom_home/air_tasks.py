@@ -103,6 +103,8 @@ class AirTasks:
         self._track_rename = track_rename
         self._cancel_rename: Callable[[], None] | None = None
         self._closed = False  # unloaded: work still in flight must not arm anything, command the device or overwrite the next instance's file
+        self._starting: set[asyncio.Event] = set()  # the whole start, including its first save; unload waits before handing the file to a new instance
+        self._turning_on: set[int] = set()  # job identities survive entity renames; an earlier off cannot end a job while its on is pending
         self.jobs: dict[str, dict[str, Any]] = {}
         self._unsub: dict[str, list[Callable[[], None]]] = {}
         self._cancel_started: Callable[[], None] | None = None
@@ -176,6 +178,7 @@ class AirTasks:
 
     async def async_remove(self) -> None:
         """The integration is being removed: nothing will ever stop its jobs, so stop them now and leave no file behind."""
+        await self.async_unload()  # a delayed turn_on must settle before this last turn_off and removal of its job
         for job in (await self._stored())[0]:
             state = self.hass.states.get(job["device"])
             if job["wasOn"] or state is None or state.state == "unavailable":
@@ -209,6 +212,17 @@ class AirTasks:
         await self._save()
 
     async def start(self, kind: str, room: str, device: str, sensor: str, context: Any = None) -> None:
+        if self._closed:
+            raise ValueError("integration unloaded")
+        settled = asyncio.Event()
+        self._starting.add(settled)
+        try:
+            await self._start(kind, room, device, sensor, context)
+        finally:
+            self._starting.discard(settled)
+            settled.set()
+
+    async def _start(self, kind: str, room: str, device: str, sensor: str, context: Any) -> None:
         check(kind, device, sensor, room)
         running = self.jobs.get(device)
         if running is not None:
@@ -235,8 +249,14 @@ class AirTasks:
             await self._save()
             return
         await self._save()  # on disk before the device moves: a restart in between still finds a job to end
+        if self._closed:
+            return  # unload happened during the save; no command has begun, so leave it to removal/the next instance
+        self._turning_on.add(id(job))
         try:
-            await self._send("turn_on", device)
+            try:
+                await self._send("turn_on", device)
+            finally:
+                self._turning_on.discard(id(job))
         except Exception:  # noqa: BLE001 - a timeout, or a device that obeyed and then raised: it may have gone through, and nothing must run without a job
             if self.jobs.get(device) is job:
                 await self._finish(device, switch_off=True)
@@ -274,6 +294,12 @@ class AirTasks:
             self._disarm(device)
         for device in list(self._watches):
             self._unwatch(device)
+
+    async def async_unload(self) -> None:
+        """Close admission, then drain starts before a reload or final removal can overtake them."""
+        self.unload()
+        if self._starting:
+            await asyncio.gather(*(settled.wait() for settled in self._starting))
 
     def _disarm(self, device: str) -> None:
         for unsub in self._unsub.pop(device, []):
@@ -412,6 +438,9 @@ class AirTasks:
         self._disarm(device)
 
     async def _end(self, job: dict[str, Any]) -> None:
+        if id(job) in self._turning_on:
+            await self._hold(job)  # keep the durable stopping job: the pending on may reach the relay after this off
+            return
         if job.get("outcome"):
             self._outcomes[job["device"]] = {"job": dict(job), "at": self._now()}  # saved with the jobs: «Вытяжка не выключилась» outlives a restart
         self._drop(job["device"])

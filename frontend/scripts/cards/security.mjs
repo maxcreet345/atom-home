@@ -51,6 +51,10 @@ function apply(fx, now, sc) {
   const alarm = (state, attrs = {}, min = 20) => set('alarm_control_panel.alarmo', state, attrs, min);
   if (sc.state) alarm(sc.state, sc.alarmAttrs ?? {}, sc.alarmMin ?? 35);
   for (const [id, st, min] of sc.over ?? []) set(id, st, {}, min ?? 5);
+  // as in a living house: a state is never updated before it last changed, and something has always just reported — the panel tells how late it
+  // is in the house by the newest `last_updated` (the delay's countdown does not trust the device's clock)
+  for (const id of Object.keys(S)) if (Date.parse(S[id].last_updated) < Date.parse(S[id].last_changed)) S[id].last_updated = S[id].last_changed;
+  S['alarm_control_panel.alarmo'].last_updated = now.toISOString();
   return fx;
 }
 // the panel's week from HA's logbook (logbook/get_events) in the shape HA answers: «Не дома» set by its automation, disarmed by a person, one alarm
@@ -72,6 +76,8 @@ export const card = {
     leak: { people: 'one', over: [['binary_sensor.bath_leak_water_leak', 'on', 3], ['valve.bath_water', 'closed', 3]] },
     gas: { people: 'all', over: [['binary_sensor.kitchen_gas', 'on', 1]] },
     tamper: { people: 'all', over: [['binary_sensor.living_window_left_tamper', 'on', 7]] },
+    // audit 2026-11-09: a window and the gas sensor do not answer — never «закрыто» / «сухо», the card is not calm, arming warns
+    silent: { people: 'one', over: [['binary_sensor.living_window_left_contact', 'unavailable', 5], ['binary_sensor.kitchen_gas', 'unavailable', 5]] },
   },
   build: (base, s, now) => { const b = heating.build(base, heating.scenarios[Object.keys(heating.scenarios)[0]], now); return { ...b, snapshot: apply(b.snapshot, now, s), logbook: logFor(now) }; },
   config: (text, s) => heating.config(text, {}),

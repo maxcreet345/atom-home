@@ -62,7 +62,8 @@ export function addCameras(base, s = {}, off = []) {
 /** Recorded frames by the names the players ask for (go2rtc stream or HA entity). The G4 gave none on 09.11 (its RTSP lacks SPS/PPS). */
 export function frames() {
   const map = { entrance_camera_h264: 'entrance_camera_hd.jpg', 'camera.entrance_camera': 'entrance_camera_hd.jpg', [SONOFF.sd0]: 'camera.cam_c44he_ptz_hd.jpg', [SONOFF.ptz]: 'camera.cam_c44he_ptz_hd.jpg', [SONOFF.sd1]: 'camera.cam_c44he_fixed_hd.jpg', [SONOFF.fixed]: 'camera.cam_c44he_fixed_hd.jpg', entrance_doorbell: 'entrance_doorbell.jpg', entrance_doorbell_720: 'entrance_doorbell.jpg', 'camera.entrance_doorbell_fast': 'entrance_doorbell.jpg', 'camera.entrance_doorbell': 'entrance_doorbell.jpg', 'camera.entrance_doorbell_video': 'entrance_doorbell.jpg', 'camera.hall_camera_sd': 'hall_camera_sd.jpg', 'camera.hall_camera_hd': 'hall_camera_sd.jpg' };
-  return Object.fromEntries(Object.entries(map).filter(([, f]) => existsSync(resolve(FRAMES, f))).map(([k, f]) => [k, `/frames/${f}`]));
+  // a camera with no recorded frame (the hall's Imou) plays the preview server's drawn stand-in for its HA still: in the preview every camera that is «on» has a picture
+  return Object.fromEntries(Object.entries(map).map(([k, f]) => [k, existsSync(resolve(FRAMES, f)) ? `/frames/${f}` : k.startsWith('camera.hall_camera') ? '/api/camera_proxy/camera.hall_camera_sd?token=x' : null]).filter(([, f]) => f));
 }
 /** A day of rings and detections in HA's minimal history format, so the panel's list has something to read. */
 export function history(now) {

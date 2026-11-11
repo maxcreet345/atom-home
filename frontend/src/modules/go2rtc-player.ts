@@ -1,9 +1,21 @@
 import { ADDON_SLUG, AUDIO_CODECS, VIDEO_CODECS, STREAM_NAME, acceptMime, ingressPath, pickStream, validSession } from './go2rtc-protocol.ts';
-/** Live MSE player over the go2rtc add-on's ingress WebSocket (`api/ws?src=<stream>`). Muted, autoplay, reconnects with back-off, stops when hidden. */
+/** Live MSE player over the go2rtc add-on's ingress WebSocket (`api/ws?src=<stream>`). Muted (or with the sound the family turned on, while the browser allows it), autoplay, stops when hidden or held.
+ * It never gives up: quick retries (3, 6, 12, 24 s), then one a minute for as long as it is mounted; while the house is off the line it waits and starts the moment it is back. */
 export interface PlayerHost { ws<T = unknown>(message: Record<string, unknown>): Promise<T>; readonly online: boolean }
-export interface PlayerOptions { addon: string; stream?: string; host: PlayerHost; onStatus?(status: PlayerStatus): void; /** called once when the stream reports live but renders only black for ~3 s (an H.265 stream the device cannot really decode) */ onBlack?(): void; /** a small JPEG data URL of the live picture every few seconds (the panel keeps the last one as a poster) */ onFrame?(dataUrl: string): void; /** whether the negotiated stream carries audio */ onAudio?(has: boolean): void }
-export type PlayerStatus = 'connecting' | 'live' | 'stalled' | 'error';
-export interface Player { video: HTMLVideoElement; setStream(stream: string | undefined): void; dispose(): void }
+export interface PlayerOptions { addon: string; stream?: string; host: PlayerHost; onStatus?(status: PlayerStatus): void; /** called once when the stream reports live but renders only black for ~3 s (an H.265 stream the device cannot really decode) */ onBlack?(): void; /** a small JPEG data URL of the live picture every few seconds (the panel keeps the last one as a poster) */ onFrame?(dataUrl: string): void; /** whether the negotiated stream carries audio */ onAudio?(has: boolean): void; /** start with sound (the family turned it on before this player replaced the last one); default muted */ sound?: boolean; /** the browser refused sound without a tap: the picture plays muted */ onMuted?(): void }
+/** play(); a browser that refuses sound without a tap (NotAllowedError on an unmuted element) gets the picture muted instead, and `muted` is told —
+ * a new player that starts with the family's sound never leaves a paused frame, nor a «Звук» button over a silent one (CODEX-015). Other refusals are the caller's. */
+export const playVideo = (video: HTMLVideoElement, muted?: () => void): Promise<void> => video.play().catch((e: unknown) => {
+  if (video.muted || (e as { name?: unknown } | null)?.name !== 'NotAllowedError') throw e;
+  video.muted = true; muted?.(); return video.play();
+});
+/** `stalled`: connected, but no new frame for a while (the picture on screen is old); `paused`: held on purpose (the tile is off-screen or behind a sheet) */
+export type PlayerStatus = 'connecting' | 'live' | 'stalled' | 'error' | 'paused';
+export interface Player { video: HTMLVideoElement; setStream(stream: string | undefined): void; /** try again now (the «Повторить» button, the house back on the line) */ retry(): void; /** hold the stream while nobody can see it (after `graceMs`, so a short visit to a sheet reconnects nothing) and bring it back at once */ hold(on: boolean, graceMs?: number): void; dispose(): void }
+/** How long after a failure the next try comes: 3, 6, 12, 24 s, then every minute. */
+export const retryDelay = (retries: number) => Math.min(60_000, 3000 * 2 ** Math.min(retries, 10));
+/** No new frame for this long: the label says so (the connection itself is given longer before it is rebuilt). */
+export const FROZEN_MS = 6000;
 const MAX_PENDING = 4 * 1024 * 1024, MAX_PENDING_CHUNKS = 512;
 const MSE = (): typeof MediaSource | undefined => (globalThis as unknown as { ManagedMediaSource?: typeof MediaSource }).ManagedMediaSource ?? (typeof MediaSource !== 'undefined' ? MediaSource : undefined);
 const managed = () => !!(globalThis as unknown as { ManagedMediaSource?: unknown }).ManagedMediaSource;
@@ -15,10 +27,10 @@ export function mountGo2rtcPlayer(container: HTMLElement, opts: PlayerOptions): 
   let socket: WebSocket | null = null, buffer: SourceBuffer | null = null, objectUrl: string | null = null;
   let pending: Uint8Array<ArrayBuffer>[] = [], pendingBytes = 0, timer: ReturnType<typeof setInterval> | undefined, retry: ReturnType<typeof setTimeout> | undefined;
   let lastFrames = 0, lastTime = 0, lastProgress = 0, detach: Array<() => void> = [];
-  let liveSince = 0, blackChecked = false, lastFrameAt = 0;
+  let liveSince = 0, blackChecked = false, lastFrameAt = 0, held = false, holdTimer: ReturnType<typeof setTimeout> | undefined;
   const capture = () => { try { const w = 480, h = Math.max(1, Math.round(w * video.videoHeight / video.videoWidth)); const c = document.createElement('canvas'); c.width = w; c.height = h; const ctx = c.getContext('2d'); if (!ctx) return; ctx.drawImage(video, 0, 0, w, h); opts.onFrame?.(c.toDataURL('image/jpeg', 0.6)); } catch { /* tainted or detached */ } };
   const looksBlack = () => { try { const c = document.createElement('canvas'); c.width = 32; c.height = 18; const ctx = c.getContext('2d', { willReadFrequently: true }); if (!ctx) return false; ctx.drawImage(video, 0, 0, 32, 18); const d = ctx.getImageData(0, 0, 32, 18).data; let max = 0; for (let i = 0; i < d.length; i += 4) { const v = Math.max(d[i], d[i + 1], d[i + 2]); if (v > max) max = v; } return max < 12; } catch { return false; } };
-  const video = document.createElement('video'); video.muted = true; video.autoplay = true; video.playsInline = true; video.controls = false; container.append(video);
+  const video = document.createElement('video'); video.muted = !opts.sound; video.autoplay = true; video.playsInline = true; video.controls = false; container.append(video);
   const report = (s: PlayerStatus) => { if (status !== s) { status = s; opts.onStatus?.(s); } };
   const stop = () => {
     epoch++; if (timer) clearInterval(timer); timer = undefined; if (retry) clearTimeout(retry); retry = undefined;
@@ -29,13 +41,16 @@ export function mountGo2rtcPlayer(container: HTMLElement, opts: PlayerOptions): 
     video.pause(); video.removeAttribute('src'); video.srcObject = null; video.load();
     if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
   };
-  const allowed = () => !disposed && container.isConnected && !document.hidden && host.online;
+  const mounted = () => !disposed && !held && container.isConnected && !document.hidden;
+  const allowed = () => mounted() && host.online;
+  /** the house is off the line: look every 2 s and start the moment it is back */
+  const again = () => { retry = undefined; if (!mounted()) return; if (!host.online) { retry = setTimeout(again, 2000); return; } void start(); };
   const failed = (why: PlayerStatus = 'error') => {
     stop(); report(why);
-    if (allowed() && retries < 4) { const delay = 3000 * 2 ** retries++; retry = setTimeout(() => { retry = undefined; void start(); }, delay); }
+    if (mounted()) retry = setTimeout(again, host.online ? retryDelay(retries++) : 2000);
   };
   const start = async () => {
-    stop(); if (!allowed()) return; const current = epoch, active = () => allowed() && current === epoch;
+    stop(); if (!allowed()) { if (mounted()) { report('error'); retry = setTimeout(again, 2000); } return; } const current = epoch, active = () => allowed() && current === epoch;
     report('connecting'); lastProgress = performance.now();
     timer = setInterval(() => {
       if (disposed || current !== epoch) return;
@@ -44,7 +59,7 @@ export function mountGo2rtcPlayer(container: HTMLElement, opts: PlayerOptions): 
       const frames = video.getVideoPlaybackQuality?.().totalVideoFrames;
       const advanced = frames === undefined ? video.currentTime > lastTime : frames > lastFrames;
       if (video.readyState >= 2 && video.videoWidth > 0 && !video.paused && video.currentTime > lastTime && advanced) { lastProgress = performance.now(); lastTime = video.currentTime; if (frames !== undefined) lastFrames = frames; retries = 0; report('live'); if (!liveSince) liveSince = performance.now(); if (opts.onBlack && !blackChecked && performance.now() - liveSince > 3000) { blackChecked = true; if (looksBlack()) opts.onBlack(); } if (opts.onFrame && performance.now() - lastFrameAt > 5000 && performance.now() - liveSince > 1500) { lastFrameAt = performance.now(); capture(); } }
-      else if (performance.now() - lastProgress > 15000) failed('stalled');
+      else { const idle = performance.now() - lastProgress; if (idle > 15000) failed('stalled'); else if (idle > FROZEN_MS && status === 'live') report('stalled'); /* the frame on screen is old: no LIVE over it */ }
     }, 1000);
     try {
       const Source = MSE(); if (!Source) throw new Error('MSE unavailable');
@@ -70,7 +85,7 @@ export function mountGo2rtcPlayer(container: HTMLElement, opts: PlayerOptions): 
       let opened = false, negotiated = false, requested = false;
       const wsUrl = new URL('api/ws', ingress); wsUrl.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'; wsUrl.searchParams.set('src', stream);
       const ws = new WebSocket(wsUrl.href); socket = ws; ws.binaryType = 'arraybuffer';
-      const play = () => { void video.play().catch(() => { if (active()) failed(); }); };
+      const play = () => { void playVideo(video, opts.onMuted).catch(() => { if (active()) failed(); }); };
       const request = () => { if (active() && opened && !requested && ms.readyState === 'open') { requested = true; try { ws.send(JSON.stringify({ type: 'mse', value: codecs.join(',') })); } catch { if (active()) failed(); } } };
       const on = <K extends keyof MediaSourceEventMap>(target: MediaSource, type: K, fn: () => void) => { target.addEventListener(type, fn); detach.push(() => target.removeEventListener(type, fn)); };
       on(ms, 'sourceopen', request);
@@ -113,12 +128,20 @@ export function mountGo2rtcPlayer(container: HTMLElement, opts: PlayerOptions): 
       play();
     } catch { if (active()) failed(); }
   };
-  const visibility = () => { if (document.hidden) { stop(); report('connecting'); } else void start(); };
+  // hidden is «paused», not «connecting»: nobody waits for a picture in a hidden tab, and the eight seconds of «нет связи» start anew when it is shown again
+  const visibility = () => { if (held) return; if (document.hidden) { stop(); report('paused'); } else void start(); };
   const mediaError = () => { if (allowed() && socket) failed(); };
   document.addEventListener('visibilitychange', visibility); video.addEventListener('error', mediaError); void start();
   return {
     video,
     setStream(next) { if (next === stream) return; stream = next; retries = 0; void start(); },
-    dispose() { disposed = true; document.removeEventListener('visibilitychange', visibility); video.removeEventListener('error', mediaError); stop(); video.remove(); },
+    retry() { if (disposed || held || status === 'live') return; retries = 0; void start(); },
+    hold(on, graceMs = 0) {
+      if (holdTimer) { clearTimeout(holdTimer); holdTimer = undefined; }
+      if (disposed) return;
+      if (on) { if (held) return; const go = () => { holdTimer = undefined; held = true; stop(); report('paused'); }; if (graceMs > 0) holdTimer = setTimeout(go, graceMs); else go(); }
+      else if (held) { held = false; retries = 0; void start(); }
+    },
+    dispose() { disposed = true; if (holdTimer) clearTimeout(holdTimer); document.removeEventListener('visibilitychange', visibility); video.removeEventListener('error', mediaError); stop(); video.remove(); },
   };
 }

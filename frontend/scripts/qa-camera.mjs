@@ -4,7 +4,7 @@ import { chromium } from '../node_modules/playwright/index.mjs';
 import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
-const root = resolve(import.meta.dirname, '..'), dist = resolve(root, 'dist-preview');
+const root = resolve(import.meta.dirname, '..'), dist = process.env.QA_DIST ? resolve(process.env.QA_DIST) : resolve(root, 'dist-preview'); // QA_DIST: another build of the preview
 const out = resolve(process.argv[2] ?? resolve(root, 'evidence/camera-c700')); await mkdir(out, { recursive: true });
 const fixture = JSON.parse(await readFile(resolve(root, '../private/fixtures/criuleni-camera-20261104.json'), 'utf8'));
 const config = { schemaVersion: 1, home: { name: 'Мой дом', language: 'ru', theme: 'light' }, modules: { camera_go2rtc: { entities: { camera: 'camera.entrance_camera' }, options: { addon: 'a889bffc_go2rtc', stream: 'entrance_camera_h264', streamHd: 'entrance_camera_hd' } } } };
@@ -33,6 +33,13 @@ try {
     check(`${label}: rows`, sheet.rows.length >= 16 && sheet.rows.includes('Слежение за человеком') && sheet.rows.includes('Плач ребёнка') && sheet.rows.includes('Громкость динамика') && !sheet.rows.includes('Время на картинке'), `${sheet.rows.length} rows: ${sheet.rows.join(' | ')}`);
     check(`${label}: tools`, sheet.tools.join(',') === 'Снимок,Разговор(off),Во весь экран,Закрыть объектив,Ночное видениеАвто,HDRВыкл', sheet.tools.join(','));
     const expectSplit = w >= 800 && w > h; check(`${label}: layout ${expectSplit ? 'two columns' : 'one column'}`, sheet.wide === expectSplit, `is-split=${sheet.wide}`);
+    // ST-08, the sheets' half (release classic, 11.11.2026): «Во весь экран» puts the stage in the full screen; out of it (left here as the browser leaves it —
+    // headless Chromium does not leave it on Escape) the sheet stands as it was and the keyboard is on the button again (Chromium had dropped it to the page)
+    { await page.focus('.at-cam .at-cam-full'); await page.keyboard.press('Enter'); await page.waitForTimeout(400);
+      const inFull = await page.evaluate(() => document.fullscreenElement === document.querySelector('.at-cam .at-cam-stage'));
+      await page.evaluate(() => document.exitFullscreen().catch(() => {})); await page.waitForTimeout(400);
+      const back = await page.evaluate(() => ({ full: !!document.fullscreenElement, focus: !!document.activeElement?.classList.contains('at-cam-full'), sheet: !!document.querySelector('.at-cam') && location.hash.includes('entrance_camera') }));
+      check(`${label}: ST-08 out of the full screen — the same sheet, the keyboard on «Во весь экран»`, inFull && !back.full && back.focus && back.sheet, JSON.stringify({ inFull, back })); }
     await page.click('.at-cam-gear'); await page.waitForTimeout(300); await shot('settings');
     const settings = await page.evaluate(() => { const s = document.querySelector('.at-cam'); return { page: s.dataset.page, rows: [...s.querySelectorAll('.ah-row strong')].map(x => x.textContent), kv: [...s.querySelectorAll('.at-cam-kv')].map(x => x.textContent), title: s.querySelector('h2, .at-cam-h3')?.textContent }; });
     check(`${label}: settings page`, settings.page === 'settings' && settings.rows.includes('Время на картинке') && settings.rows.includes('Перевернуть изображение') && settings.kv.some(x => x.includes('Нет карты')) && settings.kv.some(x => x.includes('H.265')), `${settings.title}: ${settings.rows.join(' | ')} // ${settings.kv.join(' | ')}`);

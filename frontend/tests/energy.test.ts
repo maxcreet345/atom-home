@@ -26,7 +26,7 @@ test('the SPM channels: one per power with a running total, the charger last, th
   assert.equal(c[0].energy, 'sensor.entrance_spm_apt9_energy_today'); assert.equal(c[0].voltage?.id, 'sensor.entrance_spm_apt9_voltage'); assert.equal(c[0].pf?.id, 'sensor.entrance_spm_apt9_power_factor');
   assert.deepEqual(channels([dev('plug', [ref('sensor.p_power', 'power', '5', 'W')])], new Set()), [], 'no SPM, no channels');
 });
-test('meters: one counter per device, the total before today, never an estimate, a parent plug or the SPM', () => {
+test('meters: one counter per device, the daily counter before the running total, never an estimate, a parent plug or the SPM', () => {
   const tv = dev('tv', [ref('sensor.tv_energy_today', 'energy'), ref('sensor.tv_total_energy', 'energy')], { roomId: 'gostinaia' });
   const feeder = dev('feeder', [ref('sensor.cat_feeder_energy_est', 'energy')]), parent = dev('pow', [ref('sensor.kitchen_appliances_energy_total', 'energy')]), today = dev('appletv', [ref('sensor.appletv_energy_today', 'energy'), ref('sensor.appletv_energy_yesterday', 'energy')]);
   const m = meters([SPM, tv, feeder, parent, today], new Set(), { name: d => d.key, room: d => d.roomId, feed: d => d.roomId === 'gostinaia' ? 'apt9' : null, parents: new Set(['sensor.kitchen_appliances_energy_total']) });
@@ -94,10 +94,11 @@ test('liveHost asks the recorder only with unit classes HA knows, in units it ac
   const sent: Array<Record<string, unknown>> = [], hass = { states: {}, callWS: async (m: Record<string, unknown>) => { sent.push(m); return m.type === 'recorder/statistics_during_period' ? {} : { change: 1 }; }, callService: async () => {} } as unknown as Hass;
   const host = liveHost(() => hass);
   await host.statistics!(['sensor.a'], 0, 3600000, 'hour', ['change']); await host.statistic!('sensor.a', 0, 3600000, ['change']); await host.energyMonth!(['sensor.a']);
-  assert.equal(sent.length, 3);
+  assert.equal(sent.length, 4, 'the month is two reads for all the meters: its monthly rows and the running hour\'s 5-minute rows (round 2 of the audit)');
   for (const m of sent) { const u = m.units as Record<string, string> | undefined; assert.ok(u, `${m.type} asks for units`); for (const [k, v] of Object.entries(u)) { assert.ok(HA_UNIT_CLASSES.has(k), `${m.type}: unit class «${k}» is not in HA's UNIT_SCHEMA`); assert.ok(HA_UNITS[k]?.includes(v), `${m.type}: ${k} in ${v}`); } }
   assert.equal((sent[0].units as Record<string, string>).electric_current, 'A');
-  assert.deepEqual(sent[2].units, { energy: 'kWh' }, 'the calendar month in kWh too');
+  assert.deepEqual(sent[2].units, { energy: 'kWh' }, 'the calendar month in kWh too'); assert.deepEqual(sent[3].units, { energy: 'kWh' });
+  assert.deepEqual([sent[2].period, sent[3].period], ['month', '5minute']);
 });
 test('a plug HA names as parent stays out whole, whatever other counter it has; its children count', () => {
   const pow = dev('pow', [ref('sensor.kitchen_appliances_energy_total', 'energy'), ref('sensor.kitchen_appliances_energy_today', 'energy'), ref('sensor.kitchen_appliances_energy_period', 'energy')], { roomId: 'kukhnia' });
@@ -206,7 +207,7 @@ test('half a year from day rows: the statistics began on Sunday 1.11, not on Mon
   const now = D(2026, 10, 8, 12), chs = channels([SPM], new Set()), nov1 = D(2026, 10, 1), ids = chs.map(c => c.energy), s = dayRows(ids, nov1, D(2026, 10, 9), 19 / 3);
   const host = { registry: async () => ({ areas: [], devices: [], entities: [] }), states: () => ({}), call: async () => {}, statistics: (i: string[], a: number, b: number, p: StatPeriod, t: StatType[]) => withinPeriod(async (...x) => previewStatistics(s, ...x), i, a, b, p, t), statistic: async () => ({ change: null }) } as unknown as Host;
   const r = await loadReport(host, { channels: chs, meters: [], period: 'half', offset: 0, now, tariff: null, grouped: false, sessions: null, first: nov1 });
-  assert.equal(r.dataFrom, nov1, 'since 1 November'); assert.ok(Math.abs(daysElapsed(r) - 7.5) < 1e-9);
+  assert.equal(r.dataFrom, nov1, 'since 1 November'); assert.ok(Math.abs(daysElapsed(r) - (r.upTo! - nov1) / 86400000) < 1e-9 && Math.abs(daysElapsed(r) - 7.5) < 0.004, 'seven and a half days, up to the last counted 5 minutes');
   const t = totals(r), all = Object.values(t).reduce((a, v) => a + v, 0); assert.ok(all / daysElapsed(r) > 19, `per day over 7,5 days, not 12,5 from Monday 26.10 (${all / daysElapsed(r)})`);
   const avg = barAverage(r, b => Object.values(b.v).reduce((a, v) => a + v, 0)); assert.ok(Math.abs(avg - 19 * 7) < 1e-6, `the week of 26.10 held one day: counted for its whole length (${avg})`);
   // a month's row starts on the 1st: the first moment of the statistics holds the year's start back to the real day
@@ -316,7 +317,7 @@ test('the rooms hint names the panel\'s own tab and its Rooms page in each langu
   for (const d of [ru, en, ro] as Array<Record<string, string>>) {
     assert.match(d['ep.roomsHint'], /\{path\}$/, `the path is built from the tab names: «${d['ep.roomsHint']}»`); assert.doesNotMatch(d['ep.roomsHint'], /→/);
   }
-  assert.deepEqual([en, ro, ru].map(d => `${d['section.settings']} → ${d['setup.rooms']}`), ['Setup → Rooms', 'Configurare → Camere', 'Настройка → Комнаты']);
+  assert.deepEqual([en, ro, ru].map(d => `${d['section.settings']} → ${d['setup.rooms']}`), ['Setup → Rooms', 'Configurare → Încăperi', 'Настройка → Комнаты']); // ro: the tab is «Încăperi» since the audit of 09.11 («Camere» also meant the cameras)
 });
 
 // ── round 5 of the audit ──
@@ -334,8 +335,8 @@ test('a silence that began before the period is a gap: no carried mark lost, the
   const w = await loadReport(fakeHost(week([2, 3]), { statistic: () => null }), { channels: chs, meters: [], period: 'week', offset: 0, now, tariff: null, grouped: false, first: D(2026, 10, 1) });
   assert.equal(w.dataFrom, D(2026, 10, 2), 'no «Статистика есть с среды»: they began on 01.11');
   assert.deepEqual(w.buckets.map(b => [!!b.missing, !!b.carried]), [[true, false], [true, false], [false, true], [false, false], [false, false], [false, false], [false, false]]);
-  assert.ok(Math.abs(daysElapsed(w) - 6.5) < 1e-9, `the average over six and a half days, not from Wednesday (${daysElapsed(w)})`); assert.equal(counted(w).length, 7);
-  const tot = Object.values(totals(w)).reduce((a, v) => a + v, 0); assert.ok(Math.abs(barAverage(w, b => Object.values(b.v).reduce((a, v) => a + v, 0)) - tot / 6.5) < 1e-9);
+  assert.ok(Math.abs(daysElapsed(w) - (w.upTo! - w.start) / 86400000) < 1e-9 && Math.abs(daysElapsed(w) - 6.5) < 0.004, `the average over six and a half days (up to the last counted 5 minutes), not from Wednesday (${daysElapsed(w)})`); assert.equal(counted(w).length, 7);
+  const tot = Object.values(totals(w)).reduce((a, v) => a + v, 0); assert.ok(Math.abs(barAverage(w, b => Object.values(b.v).reduce((a, v) => a + v, 0)) - tot / daysElapsed(w)) < 1e-9);
   // the control: only Tuesday silent
   const c = await loadReport(fakeHost(week([3]), { statistic: () => null }), { channels: chs, meters: [], period: 'week', offset: 0, now, tariff: null, grouped: false, first: D(2026, 10, 1) });
   assert.deepEqual(c.buckets.map(b => [!!b.missing, !!b.carried]), [[false, false], [true, false], [false, true], [false, false], [false, false], [false, false], [false, false]]);
@@ -472,4 +473,146 @@ test('the tariff in the config: sorted, one per day, malformed dropped; an old c
   assert.deepEqual(normaliseConfig({ schemaVersion: 1, energy: { tariffs: [{ from: '2026-11-09', lei: 4.123456 }] } }).config.energy.tariffs, [{ from: '2026-11-09', lei: 4.1235 }]);
   const { ru } = await import('../src/i18n/ru.ts'), { en } = await import('../src/i18n/en.ts'), { ro } = await import('../src/i18n/ro.ts');
   for (const d of [ru, en, ro]) for (const k of ['ep.tariff', 'ep.tariff.set', 'ep.tariff.ha', 'ep.tariff.until', 'ep.tariff.from', 'setup.tariff.now', 'setup.tariff.item'] as const) assert.ok(!/\d? (лей|lei)/.test((d as Record<string, string>)[k]) && / (лей|lei)/.test((d as Record<string, string>)[k]), `${k}: the lei never part from their number`);
+});
+
+// ---- the audit of 09.11.2026 (round 1): each of these fails on the code as it was ----
+test('audit: 999,5 W is «1,0 kW», never «1 000 W»; the unit is a code the dictionary spells', async () => {
+  const { powerText, energyText } = await import('../src/model/energy.ts'), fmt = (v: number, d: number) => v.toFixed(d);
+  assert.deepEqual(powerText(999.4, fmt), { value: '999', unit: 'W' }); assert.deepEqual(powerText(999.5, fmt), { value: '1.0', unit: 'kW' }); assert.deepEqual(powerText(999.96, fmt), { value: '1.0', unit: 'kW' }); assert.deepEqual(powerText(1000, fmt), { value: '1.0', unit: 'kW' });
+  assert.equal(energyText(5, fmt).unit, 'kWh');
+  const dict = { ru, en, ro } as unknown as Record<string, Record<string, string>>;
+  assert.deepEqual(['w', 'kw', 'kwh', 'v'].map(u => dict.ru[`ep.unit.${u}`]), ['Вт', 'кВт', 'кВт·ч', 'В']);
+  for (const l of ['en', 'ro']) assert.deepEqual(['w', 'kw', 'kwh', 'v'].map(u => dict[l][`ep.unit.${u}`]), ['W', 'kW', 'kWh', 'V']);
+  // one spelling per language: what the rooms say (room.w, room.kw, room.today) is what the Energy panel and the tile say
+  for (const l of ['ru', 'en', 'ro']) { assert.equal(dict[l]['room.w'], `{v} ${dict[l]['ep.unit.w']}`); assert.equal(dict[l]['room.kw'], `{v} ${dict[l]['ep.unit.kw']}`); assert.ok(dict[l]['room.today'].includes(` ${dict[l]['ep.unit.kwh']} `)); }
+  const latin = Object.entries(dict.ru).filter(([k, v]) => /^(ep\.|overview\.energy|setup\.tariff)/.test(k) && /(^|[^A-Za-z])(kWh|kW|W|V|A)(?![A-Za-z])/.test(v.replace(/\{[a-z]+\}/gi, '')));
+  assert.deepEqual(latin.map(([k]) => k), [], 'no Latin unit left in the Russian energy texts');
+});
+test('audit: the first record of the tariff history is not a change; a later one inside the period is', async () => {
+  const { tariffSpan } = await import('../src/model/energy-report.ts'), { ratesOf } = await import('../src/model/energy-load.ts');
+  const nov = range('month', 0, new Date(2026, 10, 20, 12).getTime()), now = new Date(2026, 10, 20, 12).getTime(), base = { start: nov.start, end: nov.end, now, dataFrom: nov.start };
+  const one = tariffSpan({ ...base, tariff: { rates: ratesOf([{ from: '2026-11-09', lei: 4 }]), lei: 4, assumed: false, source: 'panel' } })!;
+  assert.equal(one.inside.length, 0, 'one record dated the 9th: «Тариф 4,00 с 9 ноября», not «менялся: 4,00 до 9 ноября, с 9 ноября — 4,00»'); assert.equal(one.at.lei, 4);
+  const two = tariffSpan({ ...base, tariff: { rates: ratesOf([{ from: '2026-04-02', lei: 3.56 }, { from: '2026-11-09', lei: 4 }]), lei: 4, assumed: false, source: 'panel' } })!;
+  assert.deepEqual([two.at.lei, two.inside.map(x => x.lei), two.cur.lei], [3.56, [4], 4]);
+  const three = tariffSpan({ ...base, tariff: { rates: ratesOf([{ from: '2026-11-05', lei: 3 }, { from: '2026-11-09', lei: 4 }]), lei: 4, assumed: false, source: 'panel' } })!;
+  assert.deepEqual([three.at.lei, three.inside.map(x => x.lei)], [3, [4]], 'the first record after the period began is the price of its start; the second is the change');
+});
+test('audit: a plug older than the feed\'s statistics counts from the day they began, as its apartment does', async () => {
+  const now = new Date(2026, 10, 9, 12).getTime(), chs = channels([SPM], new Set()), nov1 = new Date(2026, 10, 1).getTime(), wk = range('week', -1, now), D = 86400000;
+  const day = (from: number, n: number, change: number): StatRow[] => Array.from({ length: n }, (_, i) => ({ start: new Date(new Date(from).getFullYear(), new Date(from).getMonth(), new Date(from).getDate() + i).getTime(), end: new Date(new Date(from).getFullYear(), new Date(from).getMonth(), new Date(from).getDate() + i + 1).getTime(), change }));
+  const rows = { 'sensor.entrance_spm_apt9_energy_today@day': day(nov1, 8, 5.8), 'sensor.plug_energy@day': day(new Date(2026, 8, 1).getTime(), 69, 2.88),
+    'sensor.entrance_spm_apt9_energy_today@month': [{ start: nov1, end: new Date(2026, 11, 1).getTime(), change: 48.9 }], 'sensor.plug_energy@month': [{ start: new Date(2026, 8, 1).getTime(), end: new Date(2026, 9, 1).getTime(), change: 86.4 }, { start: new Date(2026, 9, 1).getTime(), end: nov1, change: 89.3 }, { start: nov1, end: new Date(2026, 11, 1).getTime(), change: 24.4 }] };
+  const meter = [{ key: 'plug', id: 'sensor.plug_energy', name: 'Розетка', room: 'Кухня', feed: 'entrance_spm_apt9' }];
+  assert.equal(range('week', -2, now).end, wk.start - 7 * D + 7 * D);
+  const week = await loadReport(fakeHost(rows, { statistic: () => null }), { channels: chs, meters: meter, period: 'week', offset: -2, now, tariff: null, grouped: true, first: nov1 });
+  assert.equal(week.dataFrom, nov1); const w = byRoom(week, 'entrance_spm_apt9');
+  assert.ok(Math.abs(w.rooms[0].kwh - 2.88) < 1e-9, `the week of 26.10: the plug's Sunday only, not its seven days (${w.rooms[0].kwh})`); assert.ok(w.rooms[0].kwh <= w.total && Math.abs(w.rest - (5.8 - 2.88)) < 1e-9);
+  const year = await loadReport(fakeHost(rows, { statistic: () => null }), { channels: chs, meters: meter, period: 'year', offset: 0, now, tariff: null, grouped: true, first: nov1 });
+  assert.ok(Math.abs(byRoom(year, 'entrance_spm_apt9').rooms[0].kwh - 24.4) < 1e-9, 'the year: November only, not September and October too');
+  // the statistics already ran when the period began: every row of the plug counts, as before
+  const whole = await loadReport(fakeHost(rows, { statistic: () => null }), { channels: chs, meters: meter, period: 'week', offset: -1, now, tariff: null, grouped: true, first: nov1 });
+  assert.ok(Math.abs(byRoom(whole, 'entrance_spm_apt9').rooms[0].kwh - 7 * 2.88) < 1e-9);
+});
+test('audit: a browser west of the house counts the house\'s days, weeks, months and years (HA cuts its rows by the house\'s calendar)', async () => {
+  const { houseZone, zone } = await import('../src/model/energy-report.ts'), { ratesOf, placeOf, readPlace } = await import('../src/model/energy-load.ts');
+  const was = process.env.TZ; process.env.TZ = 'Europe/Berlin';
+  try {
+    const tz = 'Europe/Chisinau', now = Date.UTC(2026, 10, 9, 10), H = 3600000;
+    assert.equal(houseZone(tz), tz, 'another zone than the browser\'s: counted in'); assert.equal(houseZone('Europe/Berlin'), undefined, 'the browser\'s own zone: nothing to do'); assert.equal(houseZone(null), undefined);
+    assert.deepEqual(range('day', 0, now, tz), { start: Date.UTC(2026, 10, 8, 22), end: Date.UTC(2026, 10, 9, 22) });
+    assert.notDeepEqual(range('day', 0, now), range('day', 0, now, tz), 'the browser\'s own midnight is an hour later');
+    assert.deepEqual(range('week', -1, now, tz), { start: Date.UTC(2026, 10, 1, 22), end: Date.UTC(2026, 10, 8, 22) }, 'Monday 2.11 to Monday 9.11 in Chisinau');
+    assert.deepEqual(range('month', -1, now, tz), { start: Date.UTC(2026, 8, 30, 21), end: Date.UTC(2026, 9, 31, 22) }, 'October: from summer time into winter time');
+    assert.deepEqual(range('half', 0, now, tz), { start: Date.UTC(2026, 5, 30, 21), end: Date.UTC(2026, 11, 31, 22) }); assert.deepEqual(range('year', 0, now, tz), { start: Date.UTC(2025, 11, 31, 22), end: Date.UTC(2026, 11, 31, 22) });
+    const oct = range('month', -1, now, tz), days = edges('month', oct.start, oct.end, tz);
+    assert.equal(days.length, 31); assert.equal(days[1], Date.UTC(2026, 9, 1, 21), 'the 2nd'); assert.equal(days[25], Date.UTC(2026, 9, 25, 22), 'the 26th, after the clocks went back'); assert.equal(days[25] - days[24], 25 * H);
+    const yr = range('year', 0, now, tz), months = edges('year', yr.start, yr.end, tz); assert.equal(months.length, 12); assert.equal(months[10], Date.UTC(2026, 9, 31, 22), 'November begins at the house\'s midnight'); assert.equal(months[3], Date.UTC(2026, 2, 31, 21));
+    const half = edges('half', range('half', 0, now, tz).start, range('half', 0, now, tz).end, tz); assert.equal(zone(tz).parts(half[1]).wd, 1, 'weeks from the house\'s Monday'); assert.equal(zone(tz).parts(half[1]).h, 0);
+    assert.equal(sameMoment('day', range('day', 0, now, tz).start, range('day', -1, now, tz).start, now, tz), now - 24 * H);
+    assert.equal(sameMoment('month', range('month', 0, now, tz).start, oct.start, now, tz), Date.UTC(2026, 9, 9, 9), 'the 9th of October at the same clock time (summer time then)');
+    assert.equal(ratesOf([{ from: '2026-11-09', lei: 4 }], tz)[0].from, Date.UTC(2026, 10, 8, 22), 'a tariff day begins at the house\'s midnight');
+    assert.equal(placeOf('day', -1, now, tz), 'day.2026-11-08'); assert.deepEqual(readPlace('day.2026-11-08', now, tz), { period: 'day', offset: -1 });
+    // the report reads those very stretches, and the rows HA cut by the house's days land in their own bars
+    const chs = channels([SPM], new Set()), wk = range('week', -1, now, tz), calls: Array<{ kind: string; ids: string[]; start: number; end: number; period?: string; types: string[] }> = [];
+    const rows = { 'sensor.entrance_spm_apt9_energy_today@day': Array.from({ length: 7 }, (_, i) => ({ start: wk.start + i * 24 * H, end: wk.start + (i + 1) * 24 * H, change: i + 1 })) };
+    const r = await loadReport(fakeHost(rows, { statistic: () => null, calls }), { channels: chs, meters: [], period: 'week', offset: -1, now, tariff: null, grouped: false, tz });
+    assert.deepEqual(r.buckets.map(b => b.v.entrance_spm_apt9), [1, 2, 3, 4, 5, 6, 7], 'Monday\'s row in Monday\'s bar'); assert.equal(r.start, wk.start); assert.equal(r.tz, tz);
+    assert.ok(calls.some(c => c.kind === 'statistics' && c.period === 'day' && c.start === wk.start && c.end === wk.end));
+  } finally { process.env.TZ = was; }
+});
+test('audit: HA\'s Energy settings pick the feeds, the car\'s charger stays; the tile and the panel read «now» with one function', async () => {
+  const { prefChannels, feedNow } = await import('../src/model/energy-load.ts'), all = channels([SPM], new Set());
+  const prefs = { energy_sources: [{ type: 'grid', stat_energy_from: 'sensor.entrance_spm_apt9_energy_total' }, { type: 'grid', stat_energy_from: 'sensor.entrance_spm_apt8_energy_total' }], device_consumption: [{ stat_consumption: 'sensor.entrance_spm_ev_energy_total' }] };
+  assert.deepEqual(prefChannels(all, prefs).map(c => c.name), ['Квартира 9', 'Квартира 8', 'Зарядка авто'], 'the charger listed under «devices» in HA is still a channel of the feed');
+  const spare = dev('spm2', [...spmMetrics('apt8', 'Квартира 8 (ввод)', '150'), ...spmMetrics('ch4', 'Канал 4', '0')], { model: 'Sonoff SPM' });
+  assert.deepEqual(prefChannels(channels([spare], new Set()), { energy_sources: [{ type: 'grid', stat_energy_from: 'sensor.entrance_spm_apt8_energy_total' }] }).map(c => c.name), ['Квартира 8'], 'a channel that is neither a grid connection nor the charger is still left out');
+  assert.deepEqual(prefChannels(all, { energy_sources: [{ type: 'grid', stat_energy_from: 'sensor.other_meter_energy' }] }).length, 3, 'a grid list that names none of them picks nothing');
+  assert.deepEqual(feedNow(all), { watts: 1250, split: { entrance_spm_apt9: 1100, entrance_spm_apt8: 150, entrance_spm_ev: 0 } });
+  const silent = dev('spm', [...spmMetrics('apt8', 'Квартира 8 (ввод)', '150'), ...spmMetrics('apt9', 'Квартира 9 (ввод)', 'unavailable')], { model: 'Sonoff SPM' });
+  assert.equal(feedNow(channels([silent], new Set())).watts, null, 'one silent channel: not known, never the sum of the rest'); assert.equal(feedNow([]).watts, null);
+  const kw = [{ key: 'a', power: ref('sensor.a_power', 'power', '2.5', 'kW') }]; assert.equal(feedNow(kw).watts, 2500);
+});
+test('audit: yesterday opened five seconds after midnight keeps its last hour, and is read once more', async () => {
+  const { settleDelay } = await import('../src/model/energy-report.ts');
+  const now = new Date(2026, 10, 9, 0, 0, 5).getTime(), chs = channels([SPM], new Set()), day = range('day', -1, now), calls: Array<{ kind: string; ids: string[]; start: number; end: number; period?: string; types: string[] }> = [];
+  // HA has not written the 23:00 row yet; statistic_during_period already holds 23:00–23:55 of it in its 5-minute tail
+  const rows = { 'sensor.entrance_spm_apt9_energy_today@hour': hourRows(day.start, 23, 0.5) };
+  const r = await loadReport(fakeHost(rows, { calls, statistic: (id, a, b) => id.includes('apt9') && a === day.start && b === day.end ? 23 * 0.5 + 0.46 : 0 }), { channels: chs, meters: [], period: 'day', offset: -1, now, tariff: null, grouped: false, first: day.start - 30 * 86400000 });
+  assert.ok(!r.buckets[23].missing, '23:00 is not «Счётчик не передавал данные»'); assert.ok(Math.abs(r.buckets[23].v.entrance_spm_apt9 - 0.46) < 1e-9); assert.ok(Math.abs(totals(r).entrance_spm_apt9 - 11.96) < 1e-9);
+  assert.equal(settleDelay(r), 85000, 'read again a minute and a half after the period ended'); assert.equal(settleDelay({ offset: -1, end: day.end, now: day.end + 90000 }), null); assert.equal(settleDelay({ offset: 0, end: day.end, now: day.end + 5 }), null, 'the running period refreshes itself');
+  // an older past period asks nothing more than before
+  const calls2: typeof calls = []; await loadReport(fakeHost(rows, { calls: calls2, statistic: () => 0 }), { channels: chs, meters: [], period: 'day', offset: -1, now: now + 3600000, tariff: null, grouped: false });
+  assert.equal(calls2.filter(c => c.kind === 'statistic' && c.start === day.start).length, 0);
+});
+test('audit: the panel\'s place in the address is the period and the day it starts on: a reload and midnight keep it', async () => {
+  const { placeOf, readPlace } = await import('../src/model/energy-load.ts');
+  const late = new Date(2026, 10, 9, 23, 50).getTime(), after = new Date(2026, 10, 10, 0, 10).getTime();
+  assert.equal(placeOf('day', 0, late), null, 'today is no filter'); assert.equal(placeOf('month', 0, late), 'month'); assert.equal(placeOf('day', -1, late), 'day.2026-11-08'); assert.equal(placeOf('week', -1, late), 'week.2026-11-02'); assert.equal(placeOf('half', -1, late), 'half.2026-01-01'); assert.equal(placeOf('year', -2, late), 'year.2024-01-01');
+  assert.deepEqual(readPlace('day.2026-11-08', late), { period: 'day', offset: -1 });
+  assert.deepEqual(readPlace('day.2026-11-08', after), { period: 'day', offset: -2 }, 'after midnight it is the same day, now two back: «Раньше» goes to the 7th, «Позже» to the 9th');
+  assert.equal(placeOf('day', readPlace('day.2026-11-08', after).offset - 1, after), 'day.2026-11-07'); assert.equal(placeOf('day', readPlace('day.2026-11-08', after).offset + 1, after), 'day.2026-11-09');
+  for (const [p, o] of [['day', -40], ['week', -7], ['month', -13], ['half', -3], ['year', -1]] as const) assert.deepEqual(readPlace(placeOf(p, o, late), late), { period: p, offset: o });
+  for (const bad of [null, undefined, '', 'now', 'day.2026-13-99x', 'decade', 'day.2027-01-01']) assert.deepEqual(readPlace(bad, late), { period: 'day', offset: 0 }, String(bad));
+  assert.deepEqual(readPlace('year', late), { period: 'year', offset: 0 });
+});
+test('audit: «в среднем за день» only once an hour of the period is counted, and over the counted stretch', async () => {
+  const { averageKnown } = await import('../src/model/energy-report.ts');
+  const chs = channels([SPM], new Set()), mon = new Date(2026, 10, 9).getTime(), first = mon - 30 * 86400000, perMin = 17.28 / 1440;
+  const at = async (now: number) => loadReport(fakeHost({}, { statistic: (id, a, b) => id.includes('apt9') && a === mon ? (b - a) / 60000 * perMin : id.includes('apt9') ? 17.28 * 7 : 0 }), { channels: chs, meters: [], period: 'week', offset: 0, now, tariff: null, grouped: false, first });
+  const early = await at(mon + 7 * 60000); assert.equal(averageKnown(early), false, '00:07 on a Monday: five counted minutes are no daily average'); assert.equal(barAverage(early, b => b.v.entrance_spm_apt9), 0, 'no dashed line either');
+  const later = await at(mon + 67 * 60000); assert.equal(averageKnown(later), true);
+  const perDay = totals(later).entrance_spm_apt9 / daysElapsed(later); assert.ok(Math.abs(perDay - 17.28) < 1e-6, `a level house reads its 17,28 kWh a day at 01:07 (${perDay})`); assert.ok(Math.abs(barAverage(later, b => b.v.entrance_spm_apt9) - 17.28) < 1e-6);
+});
+test('audit: the month\'s forecast paces from the day the statistics began; the running month asks no second month read', async () => {
+  const now = new Date(2026, 10, 30, 12).getTime(), nov = range('month', 0, now), first = new Date(2026, 10, 20).getTime(), D = 86400000;
+  const base = { period: 'day', offset: 0, start: 0, end: 0, now, feeds: [], network: [], power: null, buckets: [], previous: null, devices: [], grouped: false, sessions: null, dataFrom: null, tariff: { rates: [{ from: 0, lei: 3 }, { from: new Date(2026, 10, 25).getTime(), lei: 4 }], lei: 3.5, assumed: false, source: 'panel' } } as EnergyReport;
+  const f = forecast({ ...base, month: { ...nov, kwh: 181.4, from: first } })!; assert.ok(Math.abs(f.kwh - 181.4 / 10.5 * 30) < 1e-6, `ten and a half days of statistics, thirty of the month (${f.kwh})`); assert.ok(Math.abs(f.lei - f.kwh * 4) < 1e-6, 'the whole month at today\'s price');
+  assert.ok(Math.abs(forecast({ ...base, month: { ...nov, kwh: 181.4 } })!.kwh - 181.4 / 29.5 * 30) < 1e-6, 'statistics older than the month: from the 1st, as before');
+  assert.equal(forecast({ ...base, now: first + D / 4, month: { ...nov, kwh: 5, from: first } }), null, 'not before half a day of statistics');
+  // the report: the month's own figure is its running total (no energyMonth read), `from` set when the statistics began inside it
+  const chs = channels([SPM], new Set()); let months = 0;
+  const host = fakeHost({}, { statistic: (id, a) => a === nov.start ? (id.includes('apt9') ? 100 : id.includes('apt8') ? 50 : 31.4) : 0 }); host.energyMonth = async () => { months++; return 999; };
+  const m = await loadReport(host, { channels: chs, meters: [], period: 'month', offset: 0, now, tariff: null, grouped: false, first });
+  assert.equal(months, 0); assert.ok(Math.abs(m.month!.kwh - 181.4) < 1e-9); assert.equal(m.month!.from, first); assert.ok(forecast(m)!.kwh > 500);
+  const d = await loadReport(host, { channels: chs, meters: [], period: 'day', offset: 0, now, tariff: null, grouped: false, first: nov.start - D }); assert.equal(months, 1, 'another period still asks for the month'); assert.equal(d.month!.kwh, 999); assert.equal(d.month!.from, undefined);
+});
+test('audit: a month across a tariff change: the period\'s price is lei ÷ kWh, each day at its own', async () => {
+  const { ratesOf } = await import('../src/model/energy-load.ts'), { cost } = await import('../src/model/energy-report.ts');
+  const now = new Date(2026, 10, 20, 12).getTime(), nov = range('month', 0, now), chs = channels([SPM], new Set());
+  const days = Array.from({ length: 19 }, (_, i) => ({ start: new Date(2026, 10, 1 + i).getTime(), end: new Date(2026, 10, 2 + i).getTime(), change: 10 }));
+  const r = await loadReport(fakeHost({ 'sensor.entrance_spm_apt9_energy_today@day': days }, { statistic: () => null }), { channels: chs, meters: [], period: 'month', offset: 0, now, tariff: ratesOf([{ from: '2025-01-01', lei: 3 }, { from: '2026-11-11', lei: 4 }]), grouped: false, first: nov.start - 86400000 });
+  assert.equal(cost(r), 10 * 10 * 3 + 9 * 10 * 4); assert.ok(Math.abs(r.tariff.lei - 660 / 190) < 1e-6, `the average price is weighted by the energy (${r.tariff.lei})`);
+});
+test('audit: the day the clocks change: the axis says the hours where the clock shows them, a bar is named by its clock hour', async () => {
+  const { dayTicks, hourEnd, zone } = await import('../src/model/energy-report.ts'), H = 3600000;
+  const oct = range('day', 0, new Date(2026, 9, 25, 12).getTime()), mar = range('day', 0, new Date(2026, 2, 29, 12).getTime()), nov = range('day', 0, new Date(2026, 10, 9, 12).getTime());
+  assert.equal((oct.end - oct.start) / H, 25); assert.equal((mar.end - mar.start) / H, 23);
+  for (const d of [oct, mar, nov]) { const ticks = dayTicks(d.start, d.end); assert.deepEqual(ticks.map(x => x.h), [0, 6, 12, 18, 24]); assert.equal(ticks[0].at, d.start); assert.equal(ticks[4].at, d.end); for (const x of ticks.slice(0, 4)) assert.equal(new Date(x.at).getHours(), x.h); }
+  assert.equal(dayTicks(oct.start, oct.end)[2].at, oct.start + 13 * H, 'noon of the 25-hour day is 13 hours in, not in the middle'); assert.equal(dayTicks(mar.start, mar.end)[2].at, mar.start + 11 * H);
+  const names = (d: { start: number; end: number }) => edges('day', d.start, d.end).map(at => ({ from: new Date(at).getHours(), ...hourEnd(at) }));
+  const o = names(oct), twice = o.filter(x => x.twice); assert.equal(twice.length, 2); assert.equal(twice[0].from, twice[1].from, 'the repeated hour is marked both times');
+  for (const x of [...o, ...names(mar), ...names(nov)]) assert.equal(x.h, (x.from + 1) % 24, 'never «03:00–03:00» or «02:00–04:00»');
+  assert.equal(names(mar).filter(x => x.twice).length, 0); assert.equal(names(nov).filter(x => x.twice).length, 0);
+  assert.deepEqual(hourEnd(Date.UTC(2026, 9, 25, 0), 'Europe/Chisinau'), { h: 4, mi: 0, twice: true }); assert.equal(zone('Europe/Chisinau').parts(Date.UTC(2026, 9, 25, 0)).h, 3);
 });

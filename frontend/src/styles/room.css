@@ -1,23 +1,23 @@
 /* The room page (docs/ROOM.md, 09.11.2026): one family with «Воздух», «Отопление», «Пылесос». */
-.hm-shell{--rm-ok:#1f9d55;--rm-warn:#b86a00;--rm-bad:#d0302a;--rm-on:#0a7cff;--rm-muted:#8a8a90;--rm-ok-bg:#e3f6ea;--rm-warn-bg:#fff1dc;--rm-bad-bg:#fde5e3;--rm-on-bg:#e3efff;--rm-1:#dcecfb;--rm-2:#f4f9fe;--rm-ink:#0d5e86;--rm-card:var(--ah-group,#fff);--rm-chip:#f2f3f6}
+.hm-shell{--rm-ok:#1f9d55;--rm-warn:#8a4b00;--rm-bad:#d0302a;--rm-on:#0a7cff;--rm-muted:#8a8a90;--rm-ok-bg:#e3f6ea;--rm-warn-bg:#fff1dc;--rm-bad-bg:#fde5e3;--rm-on-bg:#e3efff;--rm-1:#dcecfb;--rm-2:#f4f9fe;--rm-ink:#0d5e86;--rm-card:var(--ah-group,#fff);--rm-chip:#f2f3f6}
 .hm-shell.ah-shell[data-theme="dark"]{--rm-ok:#4cd986;--rm-warn:#ffbe55;--rm-bad:#ff7a70;--rm-on:#5aa9ff;--rm-muted:#ffffff8c;--rm-ok-bg:rgba(76,217,134,.14);--rm-warn-bg:rgba(255,190,85,.15);--rm-bad-bg:rgba(255,122,112,.16);--rm-on-bg:rgba(90,169,255,.16);--rm-1:rgba(90,190,240,.2);--rm-2:rgba(90,190,240,.05);--rm-ink:#9fdcff;--rm-card:rgba(255,255,255,.075);--rm-chip:rgba(255,255,255,.07)}
 .hm-shell .rm-page{display:flex;flex-direction:column;gap:14px;padding-bottom:24px;container-type:inline-size}
-.hm-shell .rm-h{margin:6px 2px 0;font-size:20px;font-weight:700;letter-spacing:-.3px;color:var(--ah-ink)}
+.hm-shell .rm-h{margin:6px 2px 0;font-size:1.25rem;font-weight:700;letter-spacing:-.3px;color:var(--ah-ink)}
 .hm-shell .rm-card{background:var(--rm-card);border-radius:20px;padding:14px 16px}
-.hm-shell .rm-card h3{margin:0 0 8px;font-size:15px;font-weight:600;color:var(--ah-ink)}
-.hm-shell .rm-muted{color:var(--rm-muted);font-size:15px}
+.hm-shell .rm-card h3{margin:0 0 8px;font-size:.9375rem;font-weight:600;color:var(--ah-ink)}
+.hm-shell .rm-muted{color:var(--rm-muted);font-size:.9375rem}
 .hm-shell .rm-glyph{flex:none;display:grid;place-items:center;width:38px;height:38px;border-radius:12px;color:var(--rm-tint);background:color-mix(in srgb,var(--rm-tint) 15%,transparent)}
 .hm-shell .rm-glyph.is-on{color:#fff;background:var(--rm-tint)}
 .hm-shell .rm-row-tx{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:1px;background:none;border:0;padding:0;text-align:left;font:inherit;color:inherit;cursor:pointer}
-.hm-shell .rm-row-tx strong{font-size:15px;font-weight:600;color:var(--ah-ink);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hm-shell .rm-row-tx small{font-size:13px;color:var(--ah-muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hm-shell .rm-row-tx strong{font-size:.9375rem;font-weight:600;color:var(--ah-ink);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hm-shell .rm-row-tx small{font-size:.8125rem;color:var(--ah-muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* power */
 .hm-shell .rm-pw-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;margin-bottom:10px}
-.hm-shell .rm-pw-head span{font-size:14px;color:var(--ah-muted)}.hm-shell .rm-pw-head b{font-size:22px;font-weight:600;color:var(--ah-ink);font-variant-numeric:tabular-nums;margin-right:4px}
-.hm-shell .rm-pw-head small{font-size:13px;color:var(--ah-muted)}
+.hm-shell .rm-pw-head span{font-size:.875rem;color:var(--ah-muted)}.hm-shell .rm-pw-head b{font-size:1.375rem;font-weight:600;color:var(--ah-ink);font-variant-numeric:tabular-nums;margin-right:4px}
+.hm-shell .rm-pw-head small{font-size:.8125rem;color:var(--ah-muted)}
 .hm-shell .rm-pw-stack{display:flex;gap:3px;height:14px;border-radius:99px;overflow:hidden;margin-bottom:12px}.hm-shell .rm-pw-stack i{display:block;min-width:4px}
 .hm-shell .rm-pw-legend{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr;gap:7px}
-.hm-shell .rm-pw-legend li{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ah-ink)}
+.hm-shell .rm-pw-legend li{display:flex;align-items:center;gap:8px;font-size:.875rem;color:var(--ah-ink)}
 .hm-shell .rm-pw-legend li i{width:10px;height:10px;border-radius:3px;flex:none}.hm-shell .rm-pw-legend li b{margin-left:auto;font-weight:600;font-variant-numeric:tabular-nums}
 /* B */
 .hm-shell .rm-b-top{display:flex;flex-direction:column;gap:12px}
@@ -25,21 +25,22 @@
 .hm-shell .rm-hero.is-warn{--rm-1:#ffe2b8;--rm-2:#fff6e8;--rm-ink:#8a4b00}.hm-shell .rm-hero.is-bad{--rm-1:#fdd2cc;--rm-2:#fff0ee;--rm-ink:#a4241b}
 .hm-shell.ah-shell[data-theme="dark"] .rm-hero.is-warn{--rm-1:rgba(255,170,60,.24);--rm-2:rgba(255,170,60,.06);--rm-ink:#ffd08a}.hm-shell.ah-shell[data-theme="dark"] .rm-hero.is-bad{--rm-1:rgba(255,100,90,.26);--rm-2:rgba(255,100,90,.06);--rm-ink:#ffb0a8}
 .hm-shell .rm-hero-main{display:flex;align-items:center;gap:14px}
-.hm-shell .rm-hero-main > b{font-size:58px;font-weight:300;letter-spacing:-2px;line-height:1;font-variant-numeric:tabular-nums}.hm-shell .rm-hero-main > b i{font-style:normal;font-size:34px;vertical-align:top}
-.hm-shell .rm-hero-main strong{display:block;font-size:17px;font-weight:600}.hm-shell .rm-hero-main small{display:block;font-size:13px;opacity:.85;margin-top:2px}
+.hm-shell .rm-hero-main > b{font-size:3.625rem;font-weight:300;letter-spacing:-2px;line-height:1;font-variant-numeric:tabular-nums}.hm-shell .rm-hero-main > b i{font-style:normal;font-size:2.125rem;vertical-align:top}
+.hm-shell .rm-hero-main strong{display:block;font-size:1.0625rem;font-weight:600}.hm-shell .rm-hero-main small{display:block;font-size:.8125rem;opacity:.85;margin-top:2px}
 .hm-shell .rm-hero-cells{list-style:none;margin:14px 0 0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 @container (min-width:700px){.hm-shell .rm-hero-cells{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .hm-shell .rm-hero-cells li{display:flex;flex-direction:column;gap:1px;padding:8px 9px;border-radius:14px;background:#ffffffa6;min-width:0}
 .hm-shell.ah-shell[data-theme="dark"] .rm-hero-cells li{background:rgba(255,255,255,.08)}
 .hm-shell .rm-hero-cells svg{opacity:.8}
-.hm-shell .rm-hero-cells b{font-size:14px;font-weight:600;color:var(--ah-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hm-shell .rm-hero-cells small{font-size:11px;color:var(--ah-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-shell .rm-hero-cells b{font-size:.875rem;font-weight:600;color:var(--ah-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-shell .rm-hero-cells small{font-size:.75rem;color:var(--ah-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hm-shell .rm-hero-cells .is-warn b{color:var(--rm-warn)}.hm-shell .rm-hero-cells .is-bad b{color:var(--rm-bad)}
 .hm-shell .rm-quick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
 .hm-shell .rm-q{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:92px;padding:10px 4px;border:0;border-radius:20px;background:var(--rm-card);color:var(--rm-tint);font:inherit;cursor:pointer;text-align:center}
-.hm-shell .rm-q strong{font-size:13px;font-weight:600;color:var(--ah-ink);line-height:1.15;max-width:100%;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.hm-shell .rm-q small{font-size:12px;color:var(--ah-muted)}
-.hm-shell .rm-q.is-on{background:var(--rm-tint);color:#fff}.hm-shell .rm-q.is-on strong,.hm-shell .rm-q.is-on small{color:#fff}
+.hm-shell .rm-q strong{font-size:.8125rem;font-weight:600;color:var(--ah-ink);line-height:1.15;max-width:100%;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.hm-shell .rm-q small{font-size:.75rem;color:var(--ah-muted)}
+/* on a bright tint the words are dark: white on amber or sky blue was 1.7–2.5:1 */
+.hm-shell .rm-q.is-on{background:var(--rm-tint);color:#1c1c1e}.hm-shell .rm-q.is-on strong,.hm-shell .rm-q.is-on small{color:#1c1c1e}
 .hm-shell .rm-q.is-vac{background:linear-gradient(180deg,var(--vz-1),var(--vz-2));color:var(--vz-ink)}.hm-shell .rm-q.is-vac small{color:var(--vz-ink)}
 .hm-shell .rm-b-cols{display:flex;flex-direction:column;gap:14px}.hm-shell .rm-b-main,.hm-shell .rm-b-side{display:flex;flex-direction:column;gap:12px;min-width:0}
 .hm-shell .rm-tile-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
@@ -49,27 +50,27 @@
 @container (min-width:700px){.hm-shell .rm-tile-head{flex-direction:row;gap:10px}}
 .hm-shell .rm-tile-ic{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;color:var(--rm-tint);background:color-mix(in srgb,var(--rm-tint) 15%,transparent)}
 .hm-shell .rm-tile-name{display:flex;flex-direction:column;min-width:0;max-width:100%;padding-top:1px}
-.hm-shell .rm-tile-name strong{font-size:15px;font-weight:600;color:var(--ah-ink);line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.hm-shell .rm-tile-name small{font-size:13px;font-weight:500;color:var(--ah-muted);line-height:1.25;margin-top:2px}
+.hm-shell .rm-tile-name strong{font-size:.9375rem;font-weight:600;color:var(--ah-ink);line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.hm-shell .rm-tile-name small{font-size:.8125rem;font-weight:500;color:var(--ah-muted);line-height:1.25;margin-top:2px}
 .hm-shell .rm-facts{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:5px;pointer-events:none}
-.hm-shell .rm-facts li{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;line-height:1.2;color:var(--ah-ink);background:var(--rm-chip);padding:4px 8px;border-radius:8px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hm-shell .rm-facts li{display:inline-flex;align-items:center;gap:4px;font-size:.75rem;font-weight:500;line-height:1.2;color:var(--ah-ink);background:var(--rm-chip);padding:4px 8px;border-radius:8px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hm-shell .rm-facts li.is-warn{color:var(--rm-warn);background:var(--rm-warn-bg)}
-.hm-shell .rm-tile-act{position:relative;margin-top:auto;align-self:stretch;min-height:36px;border:0;border-radius:12px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;color:var(--rm-tint);background:color-mix(in srgb,var(--rm-tint) 14%,transparent)}
+.hm-shell .rm-tile-act{position:relative;margin-top:auto;align-self:stretch;min-height:36px;border:0;border-radius:12px;font:inherit;font-size:.875rem;font-weight:600;cursor:pointer;color:var(--rm-tint);background:color-mix(in srgb,var(--rm-tint) 14%,transparent)}
 .hm-shell .rm-tile.is-on{background:var(--rm-tint)}
-.hm-shell .rm-tile.is-on .rm-tile-name :is(strong,small){color:#fff}.hm-shell .rm-tile.is-on .rm-tile-ic{background:#ffffff33;color:#fff}
-.hm-shell .rm-tile.is-on .rm-facts li{background:#ffffff2e;color:#fff}.hm-shell .rm-tile.is-on .rm-tile-act{background:#fff;color:color-mix(in srgb,var(--rm-tint) 80%,#000)}
+.hm-shell .rm-tile.is-on .rm-tile-name :is(strong,small){color:#1c1c1e}.hm-shell .rm-tile.is-on .rm-tile-ic{background:#ffffff73;color:#1c1c1e}
+.hm-shell .rm-tile.is-on .rm-facts li{background:#ffffff66;color:#1c1c1e}.hm-shell .rm-tile.is-on .rm-tile-act{background:#fff;color:color-mix(in srgb,var(--rm-tint) 40%,#000)}
 .hm-shell .rm-tile.is-warn{box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--rm-warn) 55%,transparent)}.hm-shell .rm-tile.is-warn .rm-tile-name small{color:var(--rm-warn);font-weight:600}
 .hm-shell .rm-tile.is-muted .rm-tile-ic{color:var(--rm-muted);background:var(--rm-chip)}.hm-shell .rm-tile.is-muted .rm-tile-name strong{color:var(--ah-muted)}
 .hm-shell .rm-heatline{display:flex;align-items:center;gap:12px;padding:10px 12px 10px 14px}
-.hm-shell .rm-heatline .at-heat-step b{font-size:26px;letter-spacing:-.5px}
+.hm-shell .rm-heatline .at-heat-step b{font-size:1.625rem;letter-spacing:-.5px}
 @media (prefers-reduced-motion:reduce){.hm-shell .rm-page *{transition:none!important;animation:none!important}}
-.hm-shell.ah-shell[data-theme="dark"] .rm-tile:not(.is-on) .rm-tile-act{color:color-mix(in srgb,var(--rm-tint) 45%,#fff);background:color-mix(in srgb,var(--rm-tint) 30%,transparent)}
+.hm-shell.ah-shell[data-theme="dark"] .rm-tile:not(.is-on) .rm-tile-act{color:color-mix(in srgb,var(--rm-tint) 22%,#fff);background:color-mix(in srgb,var(--rm-tint) 22%,transparent)}
 
 .hm-shell .rm-alarms{display:flex;align-items:center;gap:12px;width:100%;border:0;text-align:left;font:inherit;color:var(--ah-muted);cursor:pointer;padding:10px 14px}
-.hm-shell .rm-tile:not(.is-on) .rm-tile-act{color:color-mix(in srgb,var(--rm-tint) 72%,#000)}
+.hm-shell .rm-tile:not(.is-on) .rm-tile-act{color:color-mix(in srgb,var(--rm-tint) 48%,#000)}
 .hm-shell .rm-heatline .rm-row-tx small{white-space:normal}
 .hm-shell .rm-hero-cells b{white-space:normal;overflow-wrap:anywhere}
-.hm-shell .rm-hero-main:not(:has(> b)) strong{font-size:19px}
+.hm-shell .rm-hero-main:not(:has(> b)) strong{font-size:1.1875rem}
 /* the page follows its own width, not the screen's: a phone on its side and a tablet standing up keep one column of content */
 @container (min-width:700px){.hm-shell .rm-b-top{display:grid;grid-template-columns:7fr 5fr;gap:16px;align-items:stretch}.hm-shell .rm-b-top .rm-quick{grid-template-columns:repeat(2,minmax(0,1fr))}.hm-shell .rm-tile-grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}}
 @container (min-width:1000px){.hm-shell .rm-b-cols{display:grid;grid-template-columns:7fr 5fr;gap:16px;align-items:start}}
@@ -77,26 +78,27 @@
 .hm-shell .rm-heat .at-heat-room{background:var(--rm-card)}
 /* a device's own card keeps the size it has on Home: rows at least as tall as a column is wide, so the cameras card's two rows stay two squares */
 .hm-shell .rm-b-main{container-type:inline-size}
-.hm-shell .rm-own{grid-auto-rows:minmax(calc((100cqw - 2 * var(--ah-gap)) / 3),auto)}
+/* the big cards are squares of two columns here, as on Home (the rows used to be a third of the page tall, whatever the columns were: the robot was cut in half on a tablet) */
+.hm-shell.is-wide:not(.is-compact) .rm-own>:is(.at-vac-tile,.at-heat-tile,.at-oc-tile),.hm-shell.is-wide .rm-own>.at-cams-tile{aspect-ratio:1}
 /* who draws the power now: the busiest on top, the rows travel to their new place */
-.hm-shell .rm-live-head{display:flex;align-items:center;gap:8px;margin-bottom:4px}.hm-shell .rm-live-head h3{margin:0}
-.hm-shell .rm-live-head small{margin-left:auto;font-size:12px;color:var(--ah-muted)}
-.hm-shell .rm-live-dot{width:8px;height:8px;border-radius:50%;background:#30d158;box-shadow:0 0 0 0 #30d15880;animation:rm-pulse 2s infinite}
-@keyframes rm-pulse{70%{box-shadow:0 0 0 8px #30d15800}to{box-shadow:0 0 0 0 #30d15800}}
+.hm-shell .rm-live-head{display:flex;align-items:center;gap:8px;margin-bottom:4px}.hm-shell .rm-live-head h3{margin:0}.hm-shell .rm-live-head h2.rm-live-title{margin:0;font-size:.9375rem;font-weight:600;color:var(--ah-ink)}
+.hm-shell .rm-live-head small{margin-left:auto;font-size:.75rem;color:var(--ah-muted)}
+.hm-shell .rm-live-dot{position:relative;width:8px;height:8px;border-radius:50%;background:#30d158}.hm-shell .rm-live-dot::after{content:'';position:absolute;inset:0;border-radius:50%;background:#30d15880;animation:rm-pulse 2s infinite;will-change:transform,opacity}
+@keyframes rm-pulse{0%{transform:scale(1);opacity:1}70%,to{transform:scale(3);opacity:0}}
 .hm-shell .rm-live-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;position:relative}
 .hm-shell .rm-live-list li{display:grid;grid-template-columns:28px minmax(0,1fr) minmax(56px,34%) auto;align-items:center;gap:10px;padding:7px 4px;border-radius:12px;background:var(--rm-card);will-change:transform}
 .hm-shell .rm-live-ic{display:grid;place-items:center;width:28px;height:28px;border-radius:9px;color:var(--c);background:color-mix(in srgb,var(--c) 16%,transparent)}
 .hm-shell .rm-live-ic i{width:8px;height:8px;border-radius:50%;background:var(--c)}
 .hm-shell .rm-live-name{display:flex;flex-direction:column;min-width:0}
-.hm-shell .rm-live-name strong{font-size:14px;font-weight:600;color:var(--ah-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hm-shell .rm-live-name small{font-size:12px;color:var(--ah-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-shell .rm-live-name strong{font-size:.875rem;font-weight:600;color:var(--ah-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-shell .rm-live-name small{font-size:.75rem;color:var(--ah-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hm-shell .rm-live-bar{height:8px;border-radius:99px;background:var(--rm-chip);overflow:hidden}
 .hm-shell .rm-live-bar i{display:block;height:100%;border-radius:inherit;background:var(--c);transition:width .6s cubic-bezier(.2,.8,.2,1)}
-.hm-shell .rm-live-w{min-width:64px;text-align:right;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ah-ink);border-radius:6px;padding:1px 4px}
+.hm-shell .rm-live-w{min-width:64px;text-align:right;font-size:.875rem;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ah-ink);border-radius:6px;padding:1px 4px}
 .hm-shell .rm-live-list li.is-up .rm-live-w{animation:rm-up 1.4s ease}.hm-shell .rm-live-list li.is-down .rm-live-w{animation:rm-down 1.4s ease}
 @keyframes rm-up{0%{background:#ff9f0a40;color:#c25e00}to{background:transparent}}
 @keyframes rm-down{0%{background:#30d15833;color:#1f8a4c}to{background:transparent}}
-.hm-shell .rm-live-rest{margin:8px 4px 0;font-size:13px;color:var(--ah-muted)}
+.hm-shell .rm-live-rest{margin:8px 4px 0;font-size:.8125rem;color:var(--ah-muted)}
 .hm-shell .rm-house-load{margin-bottom:16px}
 @media (prefers-reduced-motion:reduce){.hm-shell .rm-live-dot,.hm-shell .rm-live-list li .rm-live-w{animation:none}.hm-shell .rm-live-bar i{transition:none}}
 /* a narrow card: the bar goes under the name, the name keeps its width */
@@ -104,3 +106,60 @@
 @container (max-width:460px){.hm-shell .rm-live-list li{grid-template-columns:28px minmax(0,1fr) auto;grid-template-areas:"ic name w" "ic bar w";row-gap:5px}.hm-shell .rm-live-ic{grid-area:ic}.hm-shell .rm-live-name{grid-area:name;flex-direction:row;align-items:baseline;gap:6px}.hm-shell .rm-live-bar{grid-area:bar;height:6px}.hm-shell .rm-live-w{grid-area:w}}
 /* «Энергия»: Обзор | Сейчас */
 .hm-shell .rm-energy-tabs{width:auto;max-width:360px;margin:0 0 14px}.hm-shell .rm-energy-tabs button{flex:1 1 0}
+
+/* ==== Release classic, step 4 (11.11.2026): the logic fixes of design pass 3 in the classic look — «Настройка», the alarm editor, the vacuum's
+   settings and the feeder sheet at a large text size and on a 320 px phone (studio ST-12, ST-16, ST-14, ST-17; CODEX-001). Every rule here only
+   gives way where the content did not fit (it widened its card or the page panned sideways); where it fits — a 360 px phone or a tablet at the
+   usual text size — nothing moves (checked pixel for pixel against the build before). room.css loads last, so these win over apple.css/atom.css. ==== */
+/* CODEX-001: «Спрашивать подтверждение» held on for an action the house always asks about — the classic disabled switch (aria-disabled, it keeps its Tab stop) */
+.hm-shell .at-setup .hm-switch[aria-disabled="true"]{opacity:.4;cursor:default}
+/* ST-12: the device search keeps a width a finger can use; with large text (or a long counter) the counter goes under it */
+.hm-shell .at-setup-devices>.hm-toolbar{flex-wrap:wrap;row-gap:8px}
+.hm-shell .at-setup-devices>.hm-toolbar>.at-search-wrap{flex:1 1 9rem;min-width:min(100%,9rem)}
+.hm-shell .at-setup-devices>.hm-toolbar>[role="status"]{flex:0 1 auto;min-width:0;overflow-wrap:anywhere}
+/* ST-16: the alarm editor is its window's width at any text size — the time, the label, the days and each row stay inside; a row whose words and
+   control do not fit side by side puts the control under the words, at the right (Алиса: «Нет / Фраза / Музыка»), and its words wrap, never «Али…» */
+.hm-shell .at-alarm-editor{grid-template-columns:minmax(0,1fr);container-type:inline-size}
+.hm-shell .at-alarm-editor>*{min-width:0}
+.hm-shell .at-alarm-time input[type=time]{box-sizing:border-box;max-width:100%;min-width:min(150px,100%);font-size:min(2.125rem,12cqi)} /* the big time is never cut inside its field: on a narrow editor with large text it gets smaller (an engine without cq units keeps the 2.125rem of atom.css) */
+.hm-shell .at-alarm-time .at-clock-label-input{min-width:min(120px,100%);max-width:100%}
+.hm-shell .at-alarm-editor .ah-row{flex-wrap:wrap}
+.hm-shell .at-alarm-editor .ah-row>.ah-row-text{flex:1 1 4.5rem}
+.hm-shell .at-alarm-editor .ah-row>.ah-row-text :is(strong,small){white-space:normal;overflow-wrap:break-word}
+.hm-shell .at-alarm-editor .ah-row>:is(.at-clock-seg,.hm-switch){margin-left:auto;max-width:100%}
+.hm-shell .at-alarm-editor .ah-row>.at-door-seg.at-clock-seg{flex-wrap:wrap;justify-content:flex-end}
+.hm-shell .at-alarm-actions>.hm-pill{max-width:100%;white-space:normal}.hm-shell .at-alarm-actions>.at-alarm-save{min-width:min(140px,100%)}
+/* ST-14: the vacuum's time rows never widen their card — where «с [22:00] — до [08:00]» does not fit (a 320 / 344 px phone, large text), each field
+   gets its own line with its word beside it, the full width of the card; wider cards keep the one row */
+.hm-shell .at-vac-set{container:at-vac-set/inline-size}
+@container at-vac-set (max-width:18.9rem){
+  .hm-shell .at-vac-times{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:8px 10px}
+  .hm-shell .at-vac-times>span{display:none}
+  .hm-shell .at-vac-times>label{display:contents}
+  .hm-shell .at-vac-times input{box-sizing:border-box;width:100%}
+}
+/* ST-17: the feeder sheet at a large text size — its columns are the sheet's width (they used to take the widest word and pan the sheet sideways),
+   the bowl, the feed panel, the answers, the journal rows, the settings rows and the plan editor wrap instead; on a 320 / 344 px phone the seven
+   days of the journal share their row (today used to stand off the sheet) */
+.hm-shell .at-feeder-col,.hm-shell .at-feeder-sheet .ah-rows,.hm-shell .at-fd-editor{grid-template-columns:minmax(0,1fr)}
+.hm-shell .at-fd-bowl,.hm-shell .at-fd-card,.hm-shell .at-fd-feed{flex-wrap:wrap}
+.hm-shell .at-fd-bowl-text{flex:1 1 5rem;overflow-wrap:anywhere}
+.hm-shell .at-feeder-go{max-width:100%;margin-left:auto;white-space:normal;overflow-wrap:anywhere}
+.hm-shell .at-fd-ask-btns{flex-wrap:wrap}.hm-shell .at-fd-ask-btns .hm-pill{max-width:100%}
+.hm-shell .at-fd-line li{--at-fd-row:38px;flex-wrap:wrap;column-gap:12px;row-gap:0}
+.hm-shell:where(.pw-700:not(.ph-821)) .at-feeder-sheet.is-split .at-fd-line li{--at-fd-row:30px}
+.hm-shell .at-fd-line li>i{top:calc(max(var(--at-fd-row),1lh)/2)}
+.hm-shell .at-fd-line b{display:flex;align-items:center;align-self:flex-start;flex:none;min-height:var(--at-fd-row);white-space:nowrap}
+.hm-shell .at-fd-line span{flex:1 1 6rem;overflow-wrap:anywhere}
+.hm-shell .at-fd-line em{max-width:100%;box-sizing:border-box}
+.hm-shell .at-feeder-sheet .hm-setting{flex-wrap:wrap}
+.hm-shell .at-feeder-sheet .hm-setting>.ah-row-text{flex:1 1 5rem;overflow-wrap:anywhere}
+.hm-shell .at-feeder-sheet .hm-setting>:is(select,small,.hm-switch){margin-left:auto}
+.hm-shell .at-fd-edit-head,.hm-shell .at-fd-edit-row{flex-wrap:wrap}.hm-shell .at-fd-edit-row .hm-stepper{margin-left:auto}
+.hm-shell .at-fd-editor{container:at-fd-editor/inline-size}
+@container at-fd-editor (width < 17.5rem){.hm-shell .at-fd-edit-row{column-gap:8px}.hm-shell .at-fd-edit-row .hm-stepper{gap:4px}.hm-shell .at-fd-time select{min-width:54px}} /* a 320 px phone: the time and «− 1 +» still share their row (they used to spill into the card's edge) */
+.hm-shell .at-fd-days{container:at-fd-days/inline-size}
+@container at-fd-days (width < 318px){.hm-shell .at-fd-days button{min-width:0}.hm-shell .at-fd-days b{width:min(44px,100%);height:auto;aspect-ratio:1}}
+/* the hero on a narrow column with large text: the number on its own line, the picture (or the photo) and its word centred under it */
+.hm-shell .at-fd-left{container:at-fd-col/inline-size}
+@container at-fd-col (width < calc(12rem + 64px)){.hm-shell .at-fd-left .at-fd-hero{flex-wrap:wrap;justify-content:center}.hm-shell .at-fd-left .at-fd-hero-text{flex-basis:100%}.hm-shell .at-fd-left .at-fd-hero .at-cat{max-width:100%}}

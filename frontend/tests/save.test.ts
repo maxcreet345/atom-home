@@ -56,6 +56,7 @@ test('haStore sends the revision it read and advances it after each confirmed sa
 test('a room\'s apartment feed survives a load → save round trip through haStore', async () => {
   const f = fakeHass(), s = haStore(() => f.hass);
   const withFeed = { ...defaultConfig('Feeds'), rooms: { kukhnia: { feed: 'entrance_spm_apt9' } } };
+  await s.load(); // the round trip of the title: nothing is saved before the house's settings were read (see shell.test.ts)
   await s.save(withFeed);
   const set = f.calls.find(c => c.type === 'atom_home/config/set')!;
   assert.equal((set.config as { rooms: Record<string, { feed?: string }> }).rooms.kukhnia.feed, 'entrance_spm_apt9', 'the field the room_feed_v1 promise is about');

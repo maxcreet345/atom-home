@@ -4,6 +4,7 @@ import { people, summaryOf, type Person } from '../model/people.ts';
 import type { HouseConfig, Language } from '../model/config.ts';
 import type { Key, T } from '../i18n/index.ts';
 import { locales } from './format.ts';
+import { menuFit } from './panel-size.ts';
 import { Icon } from './primitives.tsx';
 /** The home page's header tools (owner, 09.11.2026): who is home, the dashboard's language, the settings. */
 const where = (p: Person, t: T) => p.state === 'home' ? t('people.home') : p.state === 'away' ? t('people.away') : p.state === 'zone' ? p.zone! : t('people.unknown');
@@ -30,6 +31,12 @@ function swallowClick() {
 function useMenu(id: MenuId, current: MenuId | null, set: (f: (c: MenuId | null) => MenuId | null) => void) {
   const open = current === id, box = useRef<HTMLDivElement>(null), btn = useRef<HTMLButtonElement>(null);
   const setOpen = (v: boolean) => set(c => v ? id : c === id ? null : c);
+  // opened from the keyboard (Enter or Space on its button: a click without a pointer), the menu takes the focus — its chosen item, its first
+  // one, or the list itself when it only tells («Кто дома») — so the next key acts inside it; Escape gives the focus back to the button
+  const byKeys = useRef(false);
+  useLayoutEffect(() => { if (!open || !byKeys.current) return; byKeys.current = false; const menu = box.current?.querySelector<HTMLElement>('.at-menu'); (menu?.querySelector<HTMLElement>('button.is-active, button[aria-pressed="true"]') ?? menu?.querySelector<HTMLElement>('button') ?? menu)?.focus({ preventScroll: true }); }, [open]);
+  /** The button's click: `detail` is 0 for a click made by the keyboard. */
+  const toggle = (e: MouseEvent) => { byKeys.current = !open && e.detail === 0; setOpen(!open); };
   // registered with the menu itself (layout effect): an Escape pressed the moment it shows still closes it. On `document` with the event's path,
   // so a tap on HA's own toolbar or sidebar (outside the panel's shadow root) closes it too; a tap on the catcher is the catcher's own (its click closes).
   // The panel's tab bar and sidebar sit above the catcher (it lives inside the page's layer): a tap there only closes the menu, its click is swallowed.
@@ -40,36 +47,43 @@ function useMenu(id: MenuId, current: MenuId | null, set: (f: (c: MenuId | null)
   // a menu stays on the screen: on a narrow phone the pill sits at the left edge and a right-aligned menu would start off it. Measured before the
   // first paint and without the opening animation, whose scale would shift the box by a few pixels.
   // Below the header there may be little room (a phone on its side): the menu then ends 12 px above the bottom and scrolls inside itself.
-  useLayoutEffect(() => { if (!open) return; const menu = box.current?.querySelector<HTMLElement>('.at-menu'); if (!menu) return; menu.style.setProperty('--dx', '0px'); menu.style.animation = 'none'; menu.style.maxHeight = '';
-    const r = menu.getBoundingClientRect(), w = document.documentElement.clientWidth, dx = r.left < 12 ? 12 - r.left : r.right > w - 12 ? w - 12 - r.right : 0; menu.style.animation = ''; menu.style.setProperty('--dx', `${dx}px`);
-    if (r.bottom > innerHeight - 12) menu.style.maxHeight = `${Math.max(96, innerHeight - r.top - 12)}px`; }, [open]);
+  // ST-09: the room below ends at the panel's own tab bar (when it is shown), at the panel's bottom and at the window's; refitted while open when
+  // the window or the panel changes size (a phone turned, HA's sidebar opened), keeping the list's own scroll.
+  useLayoutEffect(() => { if (!open) return; const fitNow = (first = false) => { const menu = box.current?.querySelector<HTMLElement>('.at-menu'); if (!menu) return; const kept = menu.scrollTop; menu.style.setProperty('--dx', '0px'); menu.style.setProperty('--dy', '0px'); if (first) menu.style.animation = 'none'; menu.style.maxHeight = '';
+    // measured in screen pixels, written in the shell's own: on a television or a 4K monitor the shell is zoomed (panel-size.ts)
+    const shell = menu.closest<HTMLElement>('.hm-shell'), sr = shell?.getBoundingClientRect(), bar = shell?.querySelector<HTMLElement>(':scope > .hm-tabbar'), br = bar?.getBoundingClientRect(), vv = globalThis.visualViewport;
+    const bottom = Math.min(vv ? vv.offsetTop + vv.height : innerHeight, sr ? sr.bottom : Infinity, br && br.width > 0 && br.height > 0 ? br.top : Infinity), top = Math.max(vv ? vv.offsetTop : 0, sr ? sr.top : 0);
+    const r = menu.getBoundingClientRect(), zoom = menu.offsetWidth > 0 ? r.width / menu.offsetWidth : 1, fit = menuFit(r, { width: document.documentElement.clientWidth, height: innerHeight, bottom, top }, zoom); if (first) menu.style.animation = ''; menu.style.setProperty('--dx', `${fit.dx}px`);
+    if (fit.dy) menu.style.setProperty('--dy', `${fit.dy}px`); if (fit.maxHeight !== null) menu.style.maxHeight = `${fit.maxHeight}px`; menu.scrollTop = kept; };
+    fitNow(true); const refit = () => fitNow(), shell = box.current?.closest<HTMLElement>('.hm-shell'); let seen = false; const ro = typeof ResizeObserver !== 'undefined' && shell ? new ResizeObserver(() => { if (seen) refit(); seen = true; /* its first call only reports the size it was opened at */ }) : null; ro?.observe(shell!); addEventListener('resize', refit);
+    return () => { ro?.disconnect(); removeEventListener('resize', refit); }; }, [open]);
   /** Focus moving to something outside closes it (Tab past the list); focus going nowhere, or to a box that holds the menu (a tap on plain text in the list hands it to the page), does not. */
   const onFocusOut = (e: FocusEvent) => { const to = e.relatedTarget as Node | null; if (to && box.current && !box.current.contains(to) && !to.contains(box.current)) setOpen(false); };
-  return { open, setOpen, box, btn, onFocusOut };
+  return { open, setOpen, toggle, box, btn, onFocusOut };
 }
-export function HeadTools({ registry, config, t, lang, now, admin, wide, blocked, onLanguage, onSettings }: { registry: Pick<Registry, 'states' | 'entities'>; config: HouseConfig; t: T; lang: Language; now: number; admin: boolean; wide: boolean; blocked: boolean; onLanguage: (l: Language) => void; onSettings: () => void }) {
+export function HeadTools({ registry, config, t, lang, now, admin, wide, blocked, chipsFit = true, onLanguage, onSettings }: { /** the panel has room for one chip per person (panel-size.ts: peopleChips) */ chipsFit?: boolean; registry: Pick<Registry, 'states' | 'entities'>; config: HouseConfig; t: T; lang: Language; now: number; admin: boolean; wide: boolean; blocked: boolean; onLanguage: (l: Language) => void; onSettings: () => void }) {
   const [menu, setMenu] = useState<MenuId | null>(null), who = useMenu('people', menu, setMenu), langs = useMenu('lang', menu, setMenu), uid = useId();
   useEffect(() => { if (blocked) setMenu(null); }, [blocked]); // a sheet or a confirmation opened over the page: its Escape, not ours
-  const list = people(registry, config), sum = summaryOf(list), chips = wide && list.length <= 4;
+  const list = people(registry, config), sum = summaryOf(list), chips = wide && chipsFit && list.length <= 4;
   const summary = sum ? (sum.key === 'count' ? t('people.count', { n: sum.n }) : t(`people.${sum.key}` as Key)) : '';
   // the accessible name starts with what the button shows (WCAG 2.5.3), then says where everyone is
   const shown = chips ? list.map(p => `${p.first} ${where(p, t)}`).join(', ') : summary, label = list.map(p => `${p.name}: ${where(p, t)}`).join(', ');
   return <div className="at-head-tools">
     {menu && <div className="at-menu-scrim" aria-hidden="true" onClick={() => setMenu(null)} />}
     {list.length > 0 && <div className="at-people" ref={who.box} onFocusOut={who.onFocusOut}>
-      <button type="button" ref={who.btn} className="at-people-btn" aria-expanded={who.open} aria-controls={who.open ? `${uid}-people` : undefined} aria-label={`${shown}. ${t('people.title')}: ${label}`} onClick={() => who.setOpen(!who.open)}>
+      <button type="button" ref={who.btn} className="at-people-btn" aria-expanded={who.open} aria-controls={who.open ? `${uid}-people` : undefined} aria-label={`${shown}. ${t('people.title')}: ${label}`} onClick={who.toggle}>
         {chips ? list.map(p => <span className="at-person-chip" key={p.id}><Avatar key={`${p.id}|${p.picture}`} p={p} size={32} /><span><b>{p.first}</b><small>{where(p, t)}</small></span></span>)
           : <><span className="at-people-stack">{list.slice(0, 4).map(p => <Avatar key={`${p.id}|${p.picture}`} p={p} size={30} />)}</span><span className="at-people-sum">{summary}</span></>}
       </button>
-      {who.open && <div className="at-menu at-people-menu" id={`${uid}-people`}>
+      {who.open && <div className="at-menu at-people-menu" id={`${uid}-people`} tabIndex={-1} role="group" aria-label={t('people.title')}>
         <strong className="at-menu-title">{t('people.title')}</strong>
         {list.map(p => <div className="at-person-row" key={p.id}><Avatar key={`${p.id}|${p.picture}`} p={p} size={40} /><span><b>{p.name}</b><small>{where(p, t)}{since(p, t, lang, now) ? ` · ${since(p, t, lang, now)}` : ''}</small></span></div>)}
       </div>}
     </div>}
     {admin && <div className="at-head-pill">
       <div className="at-lang" ref={langs.box} onFocusOut={langs.onFocusOut}>
-        <button type="button" ref={langs.btn} className="at-pill-btn" aria-expanded={langs.open} aria-controls={langs.open ? `${uid}-lang` : undefined} aria-label={`${lang.toUpperCase()}, ${t('setup.language')}: ${LANGS[lang]}`} onClick={() => langs.setOpen(!langs.open)}><Icon name="globe" size={18} /><b>{lang.toUpperCase()}</b><Icon name="chevronDown" size={14} /></button>
-        {langs.open && <div className="at-menu at-lang-menu" id={`${uid}-lang`}>{(Object.keys(LANGS) as Language[]).map(l => <button type="button" key={l} aria-pressed={l === lang} className={l === lang ? 'is-active' : ''} onClick={() => { langs.setOpen(false); langs.btn.current?.focus(); if (l !== lang) onLanguage(l); }}><b>{l.toUpperCase()}</b><span lang={l}>{LANGS[l]}</span>{l === lang && <Icon name="check" size={16} />}</button>)}</div>}
+        <button type="button" ref={langs.btn} className="at-pill-btn" aria-expanded={langs.open} aria-controls={langs.open ? `${uid}-lang` : undefined} aria-label={`${lang.toUpperCase()}, ${t('setup.language')}: ${LANGS[lang]}`} onClick={langs.toggle}><Icon name="globe" size={18} /><b>{lang.toUpperCase()}</b><Icon name="chevronDown" size={14} /></button>
+        {langs.open && <div className="at-menu at-lang-menu" id={`${uid}-lang`} role="group" aria-label={t('setup.language')}>{(Object.keys(LANGS) as Language[]).map(l => <button type="button" key={l} aria-pressed={l === lang} className={l === lang ? 'is-active' : ''} onClick={() => { langs.setOpen(false); langs.btn.current?.focus(); if (l !== lang) onLanguage(l); }}><b>{l.toUpperCase()}</b><span lang={l}>{LANGS[l]}</span>{l === lang && <Icon name="check" size={16} />}</button>)}</div>}
       </div>
       <span className="at-pill-sep" aria-hidden="true" />
       <button type="button" className="at-pill-btn is-icon" aria-label={t('section.settings')} onClick={onSettings}><Icon name="gear" size={20} /></button>

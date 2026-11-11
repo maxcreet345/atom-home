@@ -1,6 +1,23 @@
 {
   "config": {
-    "step": { "user": { "title": "Atom Home", "description": "Добавляет панель Atom Home в боковое меню. Устройства определяются из Home Assistant; что показывать — выбирается в разделе «Настройка» самой панели." } },
-    "abort": { "single_instance_allowed": "Atom Home уже настроен." }
+    "step": {
+      "user": {
+        "title": "Atom Home",
+        "description": "Добавляет панель Atom Home в боковое меню. Устройства определяются из Home Assistant; что показывать — выбирается в разделе «Настройка» самой панели."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Atom Home уже настроен."
+    }
+  },
+  "issues": {
+    "missing_helpers": {
+      "title": "Atom Home: не хватает помощников",
+      "description": "В Home Assistant нет {helpers}. Без `input_boolean.alarm_ringing` и `input_text.alarm_ringing` (длина 255) будильник звонит, но в панели нет баннера и кнопки «Стоп»; без `input_text.atom_light_sleep` (длина 255) лист света не показывает «Выключится в…» и таймер там не отменить. Создайте их в Настройки → Устройства и службы → Помощники ровно с такими id, затем перезапустите Home Assistant."
+    },
+    "short_helpers": {
+      "title": "Atom Home: текстовый помощник слишком короткий",
+      "description": "Максимальная длина у {helpers} меньше 255. Home Assistant отклоняет более длинное значение, и панель показывает старые таймеры ламп или не показывает баннер будильника. Откройте помощник в Настройки → Устройства и службы → Помощники, поставьте максимальную длину 255, затем перезапустите Home Assistant."
+    }
   }
 }

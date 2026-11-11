@@ -1,12 +1,12 @@
 import type { Host, StatPeriod, StatRow } from '../runtime/host.ts';
 import type { EntityRef, HomeDevice } from './discover.ts';
 import { isElectric, isMains } from './energy.ts';
-import { feedColors, priceAt, sum, type Bucket, type EnergyReport, type FeedNetwork, type MeteredDevice, type Period, type Rate, type Session, type Split } from './energy-report.ts';
+import { feedColors, priceAt, sum, zone, type Bucket, type EnergyReport, type FeedNetwork, type MeteredDevice, type Period, type Rate, type Session, type Split } from './energy-report.ts';
 import type { Tariff } from './config.ts';
 /** Reading the Energy panel's period out of HA's statistics (owner, 08.11.2026). Read-only: two recorder queries, nothing is written. */
 const HOUR = 3600000, DAY = 24 * HOUR, FIVE = 300000;
 /** The start of the statistics row of `period` just before `t` (an hour, a day, a month). */
-const unitBefore = (period: StatPeriod, t: number): number => { if (period === 'hour') return t - HOUR; if (period === '5minute') return t - FIVE; const d = new Date(t); if (period === 'month') d.setMonth(d.getMonth() - 1); else d.setDate(d.getDate() - (period === 'week' ? 7 : 1)); return d.getTime(); };
+const unitBefore = (period: StatPeriod, t: number, tz?: string | null): number => { if (period === 'hour') return t - HOUR; if (period === '5minute') return t - FIVE; const z = zone(tz), p = z.parts(t); return period === 'month' ? z.at(p.y, p.mo - 1, p.d, p.h, p.mi, p.s) : z.at(p.y, p.mo, p.d - (period === 'week' ? 7 : 1), p.h, p.mi, p.s); };
 /** One SPM channel: its power now, the running total the statistics count, and the network readings of the same input. */
 export interface Channel { key: string; name: string; short: string; charger: boolean; power: EntityRef; energy: string; /** the running total HA's Energy settings name */ total: string | null; /** the room of the meter: its floor is the building */ areaId: string | null; voltage: EntityRef | null; current: EntityRef | null; pf: EntityRef | null }
 const METRIC_WORD = /^(мощность|power|putere|energy|энергия|energie)$/i;
@@ -82,8 +82,17 @@ export function prefChannels(chs: Channel[], prefs: EnergyPrefs | null): Channel
   const grid = (prefs?.energy_sources ?? []).filter(s => s.type === 'grid' && s.stat_energy_from).map(s => s.stat_energy_from!);
   if (!grid.length) return chs;
   // the counter itself (a POW's running total) first: `tasmota_energy` would otherwise prefix every `tasmota_energy_total_N`
-  const picked = chs.filter(c => grid.some(id => id === c.energy || id === c.total)).length ? chs.filter(c => grid.some(id => id === c.energy || id === c.total)) : chs.filter(c => grid.some(id => id.startsWith(`sensor.${c.key}_`)));
-  return picked.length ? picked : chs;
+  const exact = (c: Channel) => grid.some(id => id === c.energy || id === c.total), named = (c: Channel) => grid.some(id => id.startsWith(`sensor.${c.key}_`)), by = chs.some(exact) ? exact : named;
+  // the car's charger stays whatever the grid list says (code review 09.11.2026: the owner keeps it under «devices» in HA's Energy settings, not
+  // as a grid connection, and it vanished from the panel while the tile still summed it: the house's total was short by the charging)
+  const picked = chs.filter(c => by(c) || c.charger);
+  return picked.some(by) ? picked : chs;
+}
+/** The feed's power now, by channel and in all: the one figure the tile's «сейчас» and the panel's «Сейчас» both show (visual QA 09.11.2026:
+ * they were counted apart). The channels live and die together: one that says nothing and the sum is not known (null), never the rest of them. */
+export function feedNow(chs: Array<Pick<Channel, 'key' | 'power'>>): { watts: number | null; split: Record<string, number> } {
+  const split = Object.fromEntries(chs.map(c => [c.key, c.power.available && Number.isFinite(Number(c.power.state)) ? Number(c.power.state) * (c.power.unit === 'kW' ? 1000 : 1) : NaN])), v = Object.values(split);
+  return { watts: v.length > 0 && v.every(Number.isFinite) ? v.reduce((a, x) => a + x, 0) : null, split };
 }
 export function prefTariff(prefs: EnergyPrefs | null, state: (id: string) => string | undefined): number | null {
   for (const s of prefs?.energy_sources ?? []) {
@@ -93,33 +102,54 @@ export function prefTariff(prefs: EnergyPrefs | null, state: (id: string) => str
   }
   return null;
 }
-/** The stretch a period covers, by the local calendar: offset 0 is the current one, −1 the one before. Halves are January–June and July–December. */
-export function range(period: Period, offset: number, now: number): { start: number; end: number } {
-  const n = new Date(now), y = n.getFullYear(), mo = n.getMonth(), d0 = new Date(y, mo, n.getDate());
-  if (period === 'day') return { start: new Date(y, mo, n.getDate() + offset).getTime(), end: new Date(y, mo, n.getDate() + offset + 1).getTime() };
-  if (period === 'week') { const mon = new Date(d0); mon.setDate(d0.getDate() - (d0.getDay() + 6) % 7 + 7 * offset); const e = new Date(mon); e.setDate(mon.getDate() + 7); return { start: mon.getTime(), end: e.getTime() }; }
-  if (period === 'month') return { start: new Date(y, mo + offset, 1).getTime(), end: new Date(y, mo + offset + 1, 1).getTime() };
-  if (period === 'half') { const h = mo < 6 ? 0 : 6; return { start: new Date(y, h + 6 * offset, 1).getTime(), end: new Date(y, h + 6 * offset + 6, 1).getTime() }; }
-  return { start: new Date(y + offset, 0, 1).getTime(), end: new Date(y + offset + 1, 0, 1).getTime() };
+/** The stretch a period covers, by the house's calendar (`tz`; the browser's own without one): offset 0 is the current one, −1 the one before.
+ * Halves are January–June and July–December. */
+export function range(period: Period, offset: number, now: number, tz?: string | null): { start: number; end: number } {
+  const z = zone(tz), n = z.parts(now), y = n.y, mo = n.mo;
+  if (period === 'day') return { start: z.at(y, mo, n.d + offset), end: z.at(y, mo, n.d + offset + 1) };
+  if (period === 'week') { const mon = n.d - (n.wd + 6) % 7 + 7 * offset; return { start: z.at(y, mo, mon), end: z.at(y, mo, mon + 7) }; }
+  if (period === 'month') return { start: z.at(y, mo + offset, 1), end: z.at(y, mo + offset + 1, 1) };
+  if (period === 'half') { const h = mo < 6 ? 0 : 6; return { start: z.at(y, h + 6 * offset, 1), end: z.at(y, h + 6 * offset + 6, 1) }; }
+  return { start: z.at(y + offset, 0, 1), end: z.at(y + offset + 1, 0, 1) };
+}
+/** The panel's place in the address (`#energy?filter=…`): the period, and for a past one the day it starts on by the house's calendar. A date,
+ * not a count of steps back: «yesterday» left open across midnight is still that day, and so is the address after a reload. The current day is
+ * no filter at all; «now» is the other tab of the section and never a place. */
+export const placeOf = (period: Period, offset: number, now: number, tz?: string | null): string | null => placeAt(period, range(period, offset, now, tz).start, now, tz);
+/** The place of the period that starts at `start`; the running one (or anything after it) has no date. */
+export function placeAt(period: Period, start: number, now: number, tz?: string | null): string | null {
+  if (start >= range(period, 0, now, tz).start) return period === 'day' ? null : period;
+  const p = zone(tz).parts(start), two = (n: number) => String(n).padStart(2, '0');
+  return `${period}.${p.y}-${two(p.mo + 1)}-${two(p.d)}`;
+}
+/** The period and the steps back an address means now; anything else (nothing, «now», a broken or a future date) is today. */
+export function readPlace(place: string | null | undefined, now: number, tz?: string | null): { period: Period; offset: number } {
+  const m = /^(day|week|month|half|year)(?:\.(\d{4})-(\d\d)-(\d\d))?$/.exec(place ?? ''); if (!m) return { period: 'day', offset: 0 };
+  const period = m[1] as Period; if (!m[2]) return { period, offset: 0 };
+  const t = zone(tz).at(Number(m[2]), Number(m[3]) - 1, Number(m[4]), 12); let o = 0; // noon of that day: inside its period
+  while (o > -4000 && range(period, o, now, tz).start > t) o--;
+  return { period, offset: o };
 }
 /** The rows each period's bars are summed from. Half a year reads days into its weeks: HA moves a week query's start back to a Monday, so the
  * week rows of July began in June, and the first week of the statistics (from 01.11.2026, a Sunday) began on Monday 26.10. */
 export const STAT_PERIOD: Record<Period, StatPeriod> = { day: 'hour', week: 'day', month: 'day', half: 'day', year: 'month' };
 /** The moment of the period before that matches `t` of this one by the calendar: the same clock time on the same day of the period (a day, a
  * week), or on the same day of the same month of it (a month, half a year, a year; a 31st where that month is shorter is the month's end). */
-export function sameMoment(period: Period, start: number, prevStart: number, t: number): number {
-  const a = new Date(start), p = new Date(prevStart), x = new Date(t), clock = [x.getHours(), x.getMinutes(), x.getSeconds(), x.getMilliseconds()] as const;
-  if (period === 'day' || period === 'week') { const days = Math.round((new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime() - start) / DAY); return new Date(p.getFullYear(), p.getMonth(), p.getDate() + days, ...clock).getTime(); }
-  const m = p.getMonth() + (x.getFullYear() - a.getFullYear()) * 12 + x.getMonth() - a.getMonth(), last = new Date(p.getFullYear(), m + 1, 0).getDate();
-  return x.getDate() > last ? new Date(p.getFullYear(), m + 1, 1).getTime() : new Date(p.getFullYear(), m, x.getDate(), ...clock).getTime();
+export function sameMoment(period: Period, start: number, prevStart: number, t: number, tz?: string | null): number {
+  const z = zone(tz), a = z.parts(start), p = z.parts(prevStart), x = z.parts(t), clock = [x.h, x.mi, x.s, ((t % 1000) + 1000) % 1000] as const;
+  // the hour the clock shows twice (the autumn change): in its second run the day is an hour older than the same clock time of the day before,
+  // which showed it once (round 2 of the audit: at the second 03:30 today's 4 h 30 min stood against yesterday's 3 h 30 min)
+  if (period === 'day' || period === 'week') { const days = Math.round((z.at(x.y, x.mo, x.d) - start) / DAY), b = z.parts(t - HOUR), again = b.h === x.h && b.d === x.d && b.mi === x.mi; return z.at(p.y, p.mo, p.d + days, ...clock) + (again ? HOUR : 0); }
+  const m = p.mo + (x.y - a.y) * 12 + x.mo - a.mo, last = z.parts(z.at(p.y, m + 1, 0, 12)).d;
+  return x.d > last ? z.at(p.y, m + 1, 1) : z.at(p.y, m, x.d, ...clock);
 }
 /** Where each bar starts: hours, days, weeks from Monday (the first one from the 1st), months. */
-export function edges(period: Period, start: number, end: number): number[] {
-  const e: number[] = [], d = new Date(start);
+export function edges(period: Period, start: number, end: number, tz?: string | null): number[] {
+  const e: number[] = [], z = zone(tz), s = z.parts(start);
   if (period === 'day') { for (let t = start; t < end; t += HOUR) e.push(t); return e; } // by the clock it would skip the repeated hour of the autumn change
-  if (period === 'week' || period === 'month') { while (d.getTime() < end) { e.push(d.getTime()); d.setDate(d.getDate() + 1); } return e; }
-  if (period === 'half') { e.push(start); d.setDate(d.getDate() + (7 - (d.getDay() + 6) % 7) % 7 || 7); while (d.getTime() < end) { e.push(d.getTime()); d.setDate(d.getDate() + 7); } return e; }
-  while (d.getTime() < end) { e.push(d.getTime()); d.setMonth(d.getMonth() + 1); } return e;
+  if (period === 'week' || period === 'month') { for (let k = 0, t = start; t < end; t = z.at(s.y, s.mo, s.d + ++k)) e.push(t); return e; }
+  if (period === 'half') { e.push(start); for (let k = (7 - (s.wd + 6) % 7) % 7 || 7, t = z.at(s.y, s.mo, s.d + k); t < end; k += 7, t = z.at(s.y, s.mo, s.d + k)) e.push(t); return e; }
+  for (let k = 0, t = start; t < end; t = z.at(s.y, s.mo + ++k, s.d)) e.push(t); return e;
 }
 const indexOf = (e: number[], t: number) => { let i = 0; while (i + 1 < e.length && e[i + 1] <= t) i++; return i; };
 const changeOf = (rows: StatRow[] | undefined) => (rows ?? []).reduce((a, r) => a + (r.change ?? 0), 0);
@@ -135,9 +165,9 @@ export function sessionsOf(rows: StatRow[], step: number): Session[] {
  * decision nr. 459 of 29.07.2025 (Monitorul Oficial 01.08.2025): 359 bani; nr. 222 of 31.03.2026 (Monitorul Oficial 02.04.2026): 356 bani.
  * The panel's figure until the owner writes his own in «Настройка → Энергия»; the request of 03.11.2026 for 464 bani is not approved. */
 export const ANRE_TARIFFS: Tariff[] = [{ from: '2025-08-01', lei: 3.59 }, { from: '2026-04-02', lei: 3.56 }];
-/** The config's tariff days as moments: each from its local midnight. */
-export const ratesOf = (tariffs: Tariff[]): Rate[] => tariffs.map(t => { const [y, m, d] = t.from.split('-').map(Number); return { from: new Date(y, m - 1, d).getTime(), lei: t.lei }; }).sort((a, b) => a.from - b.from);
-export interface LoadInput { /** the charger's parent feed (config modules.energy.options.chargerOf) */ chargerOf?: string | null; channels: Channel[]; meters: Meter[]; period: Period; offset: number; now: number; /** the price of a kWh: the panel's own history (config energy.tariffs), HA's Energy settings' one price, or null for ANRE's figures */ tariff: Rate[] | number | null; grouped: boolean; /** the last charging sessions of this period: half and year read the charger's hours once, not on every refresh */ sessions?: Session[] | null; /** the first moment of the statistics (firstStatistics): a month's or a week's row starts before it */ first?: number | null }
+/** The config's tariff days as moments: each from the house's midnight. */
+export const ratesOf = (tariffs: Tariff[], tz?: string | null): Rate[] => tariffs.map(t => { const [y, m, d] = t.from.split('-').map(Number); return { from: zone(tz).at(y, m - 1, d), lei: t.lei }; }).sort((a, b) => a.from - b.from);
+export interface LoadInput { /** the charger's parent feed (config modules.energy.options.chargerOf) */ chargerOf?: string | null; channels: Channel[]; meters: Meter[]; period: Period; offset: number; now: number; /** the price of a kWh: the panel's own history (config energy.tariffs), HA's Energy settings' one price, or null for ANRE's figures */ tariff: Rate[] | number | null; grouped: boolean; /** the last charging sessions of this period: half and year read the charger's hours once, not on every refresh */ sessions?: Session[] | null; /** the first moment of the statistics (firstStatistics): a month's or a week's row starts before it */ first?: number | null; /** the house's time zone when the browser's is another (houseZone): the periods are the house's days and months, as HA's rows are */ tz?: string | null }
 /** Network min/max per day for the short periods; a month per row for the long ones (only the lowest and highest count; half a year of days,
  * re-read every 5 minutes, was 0,5 MB, and a week's row began on the Monday before the half). */
 const NET: Record<Period, StatPeriod> = { day: 'day', week: 'day', month: 'day', half: 'month', year: 'month' };
@@ -147,24 +177,27 @@ const NET: Record<Period, StatPeriod> = { day: 'day', week: 'day', month: 'day',
  * yesterday is compared over the same span. All the reads start together; only the curve's hourly fill-in waits for the 5-minute answer. */
 export async function loadReport(host: Host, x: LoadInput): Promise<EnergyReport> {
   if (!host.statistics) throw new Error('no statistics');
-  const stats = host.statistics.bind(host), { start, end } = range(x.period, x.offset, x.now), until = Math.min(x.now, end), e = edges(x.period, start, end), chs = x.channels, colors = feedColors(chs);
+  const stats = host.statistics.bind(host), tz = x.tz ?? undefined, { start, end } = range(x.period, x.offset, x.now, tz), until = Math.min(x.now, end), e = edges(x.period, start, end, tz), chs = x.channels, colors = feedColors(chs);
   const feeds = chs.map((c, i) => ({ key: c.key, name: c.name, short: c.short, color: colors[i], charger: c.charger, ...(c.charger && x.chargerOf && x.chargerOf !== c.key && chs.some(o => o.key === x.chargerOf) ? { partOf: x.chargerOf } : {}) }));
   const zero = (): Split => Object.fromEntries(chs.map(c => [c.key, 0]));
   const stat = (id: string, a: number, b: number): Promise<number | null> => b <= a ? Promise.resolve(0) : host.statistic ? host.statistic(id, a, b, ['change']).then(r => typeof r.change === 'number' ? r.change : null, () => null) : Promise.resolve(null);
-  const energyIds = chs.map(c => c.energy), powerIds = chs.map(c => c.power.id), prev = range(x.period, x.offset - 1, x.now), running = until < end;
+  const energyIds = chs.map(c => c.energy), powerIds = chs.map(c => c.power.id), prev = range(x.period, x.offset - 1, x.now, tz), running = until < end;
   // statistic_during_period ends with the 5-minute slots that start before its end (recorder/statistics.py: `start_ts < end_time_ts`). Today's
   // slot of now is not compiled yet and yesterday's same slot is, so «up to now» took one slot more of yesterday (▼ 50 % at 00:07 on an
   // identical day). Both sides end at the last compiled boundary instead, a slot further back within 20 s of it (HA compiles just after it)
   const five0 = Math.floor(x.now / FIVE) * FIVE, upTo = running ? Math.max(start, Math.min(end, x.now - five0 < 20000 ? five0 - FIVE : five0)) : until;
   // the bar just before the period: whether the meter was silent then, so its first bar (today's 00:00 after a silent yesterday) is «carried»
-  const lead = unitBefore(STAT_PERIOD[x.period], start);
+  const lead = unitBefore(STAT_PERIOD[x.period], start, tz);
+  // a period that ended under a minute and a half ago: HA has not written its last hour's row yet, the 5-minute tail holds most of it (and the
+  // panel reads it once more, settleDelay); the month's own figure is the running month's total, not a second read of the same counters
+  const justEnded = !running && x.now - end < 90000, ownMonth = x.period === 'month' && x.offset === 0;
   const net = chs.filter(c => !c.charger && c.voltage), netIds = net.flatMap(c => [c.voltage!.id, ...(c.current ? [c.current.id] : [])]);
   // a finished period against the whole one before it; the running one against the same stretch of it by the calendar (February opened in
   // March was 1–28 January, a 24-hour day after the autumn change was 24 of the 25 hours)
-  const charger = chs.find(c => c.charger), fine = x.now - start <= 9 * DAY, prevAt = (t: number) => running ? Math.min(prev.end, sameMoment(x.period, start, prev.start, t)) : prev.end;
+  const charger = chs.find(c => c.charger), fine = x.now - start <= 9 * DAY, prevAt = (t: number) => running ? Math.min(prev.end, sameMoment(x.period, start, prev.start, t, tz)) : prev.end;
   const [main, whole, cover, prevWhole, five, mm, chargerRows, monthKwh, leadRows] = await Promise.all([
     stats([...energyIds, ...x.meters.map(m => m.id)], start, end, STAT_PERIOD[x.period], ['change']),
-    running ? Promise.all(chs.map(c => stat(c.energy, start, upTo))) : Promise.resolve(null),
+    running || justEnded ? Promise.all(chs.map(c => stat(c.energy, start, upTo))) : Promise.resolve(null),
     // for «the same stretch before»: an hour's row at or just before the previous period's start means the statistics already ran then, so it is
     // whole; without one it is partly before they began (01.11.2026: a week against its one last day, «▲ 706 %»). Hours, because HA keeps them
     // for good and does not move them to a day's or a month's boundary; and a first row right at the start is a whole period too
@@ -173,7 +206,7 @@ export async function loadReport(host: Host, x: LoadInput): Promise<EnergyReport
     x.period === 'day' ? stats(powerIds, start, end, '5minute', ['mean']) : Promise.resolve(null),
     netIds.length ? stats(netIds, start, until, NET[x.period], ['min', 'max']).catch(() => ({} as Record<string, StatRow[]>)) : Promise.resolve({} as Record<string, StatRow[]>),
     charger && x.sessions === undefined ? stats([charger.power.id], start, until, fine ? '5minute' : 'hour', ['mean', 'max']).catch(() => null) : Promise.resolve(null),
-    x.offset === 0 && host.energyMonth ? host.energyMonth(energyIds).catch(() => null) : Promise.resolve(null),
+    x.offset === 0 && host.energyMonth && !ownMonth ? host.energyMonth(energyIds).catch(() => null) : Promise.resolve(null),
     stats(energyIds, lead, start, STAT_PERIOD[x.period], ['change']).catch(() => null),
   ]);
   const buckets: Bucket[] = e.map(at => ({ at, future: at > x.now, v: zero() })), hit = new Set<number>();
@@ -197,7 +230,12 @@ export async function loadReport(host: Host, x: LoadInput): Promise<EnergyReport
   // before the period (the silence was yesterday, the catch-up in today's 00:00), counted only when the statistics already ran then
   const silentBefore = !!leadRows && typeof x.first === 'number' && x.first <= lead && !chs.some(c => (leadRows[c.energy] ?? []).length);
   buckets.forEach((b, i) => { if (hit.has(i) && (i ? buckets[i - 1].missing : silentBefore)) b.carried = true; });
-  const devices: MeteredDevice[] = x.meters.map(m => ({ key: m.key, feed: m.feed, room: m.room, name: m.name, kwh: Math.max(0, changeOf(main[m.id])) })).filter(d => d.kwh > 0.005);
+  // a plug older than the feed's own statistics (code review 09.11.2026): the apartment is counted from the day the SPM came, so its devices are
+  // too, or a room reads 350 % of its apartment and «Без своего датчика» 0. Only a period the statistics began inside; a row that began before
+  // them (the first month of a year) counts for the part of it after
+  const since = typeof x.first === 'number' && x.first > start ? dataFrom : null;
+  const meterKwh = (id: string) => (main[id] ?? []).reduce((a, r) => a + (since === null || r.start >= since ? r.change ?? 0 : r.end > since ? (r.change ?? 0) * (r.end - since) / (r.end - r.start) : 0), 0);
+  const devices: MeteredDevice[] = x.meters.map(m => ({ key: m.key, feed: m.feed, room: m.room, name: m.name, kwh: Math.max(0, meterKwh(m.id)) })).filter(d => d.kwh > 0.005);
   let curve: Bucket[] | undefined;
   if (five) {
     // HA keeps 5-minute statistics 10 days: an older day, or the morning of the day at that edge, is filled from the hourly means
@@ -242,28 +280,29 @@ export async function loadReport(host: Host, x: LoadInput): Promise<EnergyReport
   const network: FeedNetwork[] = net.map(c => ({ feed: c.key, volts: x.offset === 0 ? now(c.voltage) : null, voltsMin: lo(c.voltage!.id), voltsMax: hi(c.voltage!.id), amps: x.offset === 0 ? now(c.current) : null, ampsMax: hi(c.current?.id), pf: x.offset === 0 ? now(c.pf) : null }));
   const sessions: Session[] | null = !charger ? null : x.sessions !== undefined ? x.sessions : chargerRows ? sessionsOf(chargerRows[charger.power.id] ?? [], fine ? 300000 : HOUR) : null;
   let month: EnergyReport['month'];
-  if (typeof monthKwh === 'number') { const m = range('month', 0, x.now); month = { start: m.start, end: m.end, kwh: monthKwh }; }
+  const monthNow = ownMonth ? (host.energyMonth && tailOk ? (whole as number[]).reduce((a, w) => a + w, 0) : null) : monthKwh;
+  if (typeof monthNow === 'number') { const m = range('month', 0, x.now, tz); month = { start: m.start, end: m.end, kwh: monthNow, ...(typeof x.first === 'number' && x.first > m.start ? { from: Math.min(x.first, m.end) } : {}) }; }
   // the spare SPM channel (live check 08.11.2026: «Канал 4», nothing on it) is left out while it counts nothing and no room hangs on it; a charger stays
   const counted = (k: string) => buckets.reduce((a, b) => a + (b.v[k] ?? 0), 0), shownFeeds = feeds.filter(f => f.charger || counted(f.key) >= 0.005 || x.meters.some(m => m.feed === f.key));
   // the price of a kWh (owner, 09.11.2026): the panel's own history first, then HA's Energy settings (one price), then ANRE's figures for Premier
   // Energy until the owner writes his own. Each bar is billed at the price of its own start; `lei` is the period's average price for the shares
   // that have no bars of their own (devices, rooms, the daily average)
-  const own = Array.isArray(x.tariff) && x.tariff.length > 0, rates: Rate[] = own ? x.tariff as Rate[] : typeof x.tariff === 'number' ? [{ from: 0, lei: x.tariff }] : ratesOf(ANRE_TARIFFS);
+  const own = Array.isArray(x.tariff) && x.tariff.length > 0, rates: Rate[] = own ? x.tariff as Rate[] : typeof x.tariff === 'number' ? [{ from: 0, lei: x.tariff }] : ratesOf(ANRE_TARIFFS, tz); // from the HOUSE's midnight of ANRE's day, like the owner's own (a browser in Tokyo wrote «с 1 апреля»)
   const usedKwh = buckets.reduce((a, b) => a + sum(b.v), 0), spent = buckets.reduce((a, b) => a + priceAt(rates, b.at) * sum(b.v), 0);
   const tariff: EnergyReport['tariff'] = { rates, lei: usedKwh > 0.005 ? Math.round(spent / usedKwh * 1e6) / 1e6 : priceAt(rates, x.now), assumed: !own && typeof x.tariff !== 'number', source: own ? 'panel' : typeof x.tariff === 'number' ? 'ha' : 'anre' };
-  return { period: x.period, offset: x.offset, start, end, now: x.now, feeds: shownFeeds, network: network.filter(n => shownFeeds.some(f => f.key === n.feed)), tariff, power: null, buckets, curve, previous, devices, grouped: x.grouped, sessions, month, dataFrom, silentSince };
+  return { period: x.period, offset: x.offset, start, end, now: x.now, feeds: shownFeeds, network: network.filter(n => shownFeeds.some(f => f.key === n.feed)), tariff, power: null, buckets, curve, previous, devices, grouped: x.grouped, sessions, month, dataFrom, silentSince, upTo, ...(tz ? { tz } : {}) };
 }
 /** The charging sessions a refresh of half a year or a year keeps instead of reading the charger's hours again: only the same period that still
  * starts where it did (offset 0 is another year after 1 January, another half after 1 July: last year's sessions stood under «2027»). */
-export function keptSessions(l: Pick<EnergyReport, 'period' | 'offset' | 'start' | 'sessions'> | null, period: Period, offset: number, now: number): Session[] | undefined {
-  return (period === 'half' || period === 'year') && l && l.period === period && l.offset === offset && l.start === range(period, offset, now).start && l.sessions ? l.sessions : undefined;
+export function keptSessions(l: Pick<EnergyReport, 'period' | 'offset' | 'start' | 'sessions'> | null, period: Period, offset: number, now: number, tz?: string | null): Session[] | undefined {
+  return (period === 'half' || period === 'year') && l && l.period === period && l.offset === offset && l.start === range(period, offset, now, tz).start && l.sessions ? l.sessions : undefined;
 }
 /** The first moment the house feed has statistics (the SPM came on 01.11.2026): the first month, then the first day in it. The panel's
  * «Раньше» stops there. null: HA answered with no rows, and nothing is limited. HA not answering rejects: the panel asks again, it does not
  * take a failed read for «no statistics» for good. */
-export async function firstStatistics(host: Host, chs: Channel[], now: number): Promise<number | null> {
+export async function firstStatistics(host: Host, chs: Channel[], now: number, tz?: string | null): Promise<number | null> {
   if (!host.statistics || !chs.length) return null;
   const ids = chs.map(c => c.energy), first = (rows: Record<string, StatRow[]>) => { const s = Object.values(rows).flat().map(r => r.start); return s.length ? Math.min(...s) : null; };
-  const m = first(await host.statistics(ids, new Date(2000, 0, 1).getTime(), now, 'month', ['change'])); if (m === null) return null;
-  const d = new Date(m); return first(await host.statistics(ids, m, new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime(), 'day', ['change'])) ?? m;
+  const z = zone(tz), m = first(await host.statistics(ids, z.at(2000, 0, 1), now, 'month', ['change'])); if (m === null) return null;
+  const d = z.parts(m); return first(await host.statistics(ids, m, z.at(d.y, d.mo + 1, 1), 'day', ['change'])) ?? m;
 }

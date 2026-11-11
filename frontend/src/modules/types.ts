@@ -28,7 +28,7 @@ export interface ModuleDef {
   sheetKey?: string;
   Card: ComponentType<{ registry: Registry; entities: ModuleEntities; options: ModuleOptions; host: Host; t: T; lang: Lang; compact?: boolean; /** the tile opens the module's own sheet (see `sheetKey`) */ onOpen?: () => void; /** the house's rooms in dashboard order */ rooms?: Array<{ id: string; name: string }> }>;
   /** Optional live player that replaces the still image of the camera named by `entities.camera` (overview tile and the device sheet). */
-  Player?: ComponentType<{ entities: ModuleEntities; options: ModuleOptions; host: Host; t: T; lang: Lang; mode: 'tile' | 'stage'; /** the camera's HA still (entity_picture) as a fallback poster */ poster?: string | null; /** which of the module's cameras (see `cameras`) */ camera?: string }>;
+  Player?: ComponentType<{ entities: ModuleEntities; options: ModuleOptions; host: Host; t: T; lang: Lang; mode: 'tile' | 'stage'; /** the camera's HA still (entity_picture) as a fallback poster */ poster?: string | null; /** which of the module's cameras (see `cameras`) */ camera?: string; /** the tile is behind a sheet: the stream pauses and resumes, it is not torn down */ paused?: boolean }>;
   /** The HA cameras this module plays, when it serves more than `entities.camera` (a two-lens camera). */
   cameras?(entities: ModuleEntities): string[];
   /** Sensors that report what a camera sees (ring, person, motion…) for the Cameras card and panel. */
@@ -41,6 +41,8 @@ export interface ModuleDef {
   Sheet?: ComponentType<ModuleSheetProps>;
   /** A house-wide notice the shell shows on every device while it holds (a timer that ended): text, optional second line, whether the device should beep once, and what «Stop» does. */
   banner?(registry: Registry, entities: ModuleEntities, t: T, host: Host): { id: string; text: string; sub?: string; icon?: string; sound?: boolean; stop(): Promise<void>; /** a second button (snooze) */ extra?: { label: string; run(): Promise<void> } } | null;
+  /** The entity of the one appliance this module draws (the kettle, the feeder, the boiler): its device carries the product photo (`devices[<key>].photo`, model/photos.ts). */
+  photoEntity?(entities: ModuleEntities): string | undefined;
   /** Optional state for the camera tile (second line, closed lens, badge). */
   tileState?(registry: Registry, entities: ModuleEntities, t: T, lang: Lang): TileState;
 }

@@ -1,6 +1,23 @@
 {
   "config": {
-    "step": { "user": { "title": "Atom Home", "description": "Adds the Atom Home panel to the sidebar. Devices are discovered from Home Assistant; pick what to show in the panel's Setup screen." } },
-    "abort": { "single_instance_allowed": "Atom Home is already set up." }
+    "step": {
+      "user": {
+        "title": "Atom Home",
+        "description": "Adds the Atom Home panel to the sidebar. Devices are discovered from Home Assistant; pick what to show in the panel's Setup screen."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Atom Home is already set up."
+    }
+  },
+  "issues": {
+    "missing_helpers": {
+      "title": "Atom Home: helpers are missing",
+      "description": "Home Assistant has no {helpers}. Without `input_boolean.alarm_ringing` and `input_text.alarm_ringing` (length 255) an alarm rings, but the panel shows no banner and no Stop button; without `input_text.atom_light_sleep` (length 255) the light sheet does not show «turns off at…» and the timer cannot be cancelled there. Create them in Settings → Devices & services → Helpers with exactly these entity ids, then restart Home Assistant."
+    },
+    "short_helpers": {
+      "title": "Atom Home: a text helper is too short",
+      "description": "The maximum length of {helpers} is under 255. Home Assistant refuses a longer value, so the panel shows old lamp timers or no alarm banner. Open the helper in Settings → Devices & services → Helpers, set the maximum length to 255, then restart Home Assistant."
+    }
   }
 }

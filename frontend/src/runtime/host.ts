@@ -2,11 +2,14 @@ import type { Registry, StateRow, AreaRow, DeviceRow, EntityRow, FloorRow } from
 import type { FeederLog } from '../modules/feeder-log.ts';
 import type { AirTask } from '../model/air.ts';
 import { previewStatistic, previewStatistics, type PreviewStats } from './preview-stats.ts';
+import { houseIso, houseMonthStart } from './zone.ts';
 /** The slice of the HA frontend `hass` object the panel uses. Authentication stays with HA. */
 export interface Hass {
   states: Record<string, { state: string; attributes: Record<string, unknown>; last_changed: string; last_updated: string }>;
   user?: { id: string; is_admin: boolean; name?: string };
   connected?: boolean; language?: string;
+  /** Home Assistant's own settings; `time_zone` is the house's zone (IANA name) */
+  config?: { time_zone?: string };
   callWS<T = unknown>(message: Record<string, unknown>): Promise<T>;
   callService(domain: string, service: string, data?: Record<string, unknown>): Promise<unknown>;
   connection?: { subscribeEvents?(cb: (e: unknown) => void, type: string): Promise<() => void>; subscribeMessage?<T = unknown>(cb: (message: T) => void, message: Record<string, unknown>): Promise<() => void> };
@@ -55,6 +58,8 @@ export interface Host {
   airStart?(task: Omit<AirTask, 'startedAt'>): Promise<void>;
   airStop?(device: string): Promise<void>;
   readonly admin: boolean; readonly online: boolean;
+  /** The house's time zone (IANA name, Home Assistant's `config.time_zone`); undefined when not known — the browser's zone is used then (runtime/zone.ts). */
+  readonly timeZone?: string;
   /** the signed-in HA user (its person carries the staff label of an office's security); null in a preview without one */
   readonly userId?: string | null;
 }
@@ -72,11 +77,37 @@ function vacuumOptions(e: Record<string, unknown>): EntityRow['vacuum'] {
   const areas = Object.fromEntries(Object.entries(o.area_mapping as Record<string, unknown>).filter(([, v]) => Array.isArray(v)).map(([k, v]) => [k, (v as unknown[]).map(String)]));
   return { areas, segments: seg.map(x => ({ id: String(x.id), name: String(x.name ?? x.id) })) };
 }
+/** The month so far over several meters: each meter's latest monthly row; null as soon as one meter has no figure (a sum without it would lie).
+ * `since` (the house's 1st, round 2 of the audit): a row that began before it is LAST month's — in the first hour of a month, and for a meter
+ * silent since last month, the latest row was the whole of the month before, shown under the new month's name. `tail`: what each meter counted
+ * after its monthly row ends (monthTail) — the row holds finished hours only, so the tile and the forecast lagged the «Месяц» tab by the
+ * running hour. A meter with neither a row of this month nor a tail has no figure. */
+export function monthTotal(ids: string[], raw: Record<string, Array<{ start?: unknown; change?: unknown }>> | null | undefined, since?: number, tail?: Record<string, number> | null): number | null {
+  let sum = 0;
+  for (const id of ids) {
+    const rows = (Array.isArray(raw?.[id]) ? [...raw![id]] : []).filter(r => since === undefined || ms(r.start) >= since).sort((a, b) => ms(a.start) - ms(b.start)), v = rows[rows.length - 1]?.change, t = tail?.[id];
+    const row = typeof v === 'number' && Number.isFinite(v) ? v : null; if (row === null && typeof t !== 'number') return null;
+    sum += (row ?? 0) + (t ?? 0);
+  }
+  return sum;
+}
+const HOUR = 3600000, FIVE = 300000;
+/** What each meter counted after the finished hours a monthly row is built from: its 5-minute rows of the running hour. Home Assistant writes an
+ * hour's row together with that hour's last 5 minutes (recorder/statistics.py: the hourly pass runs when the slot of :55 is compiled), so in the
+ * first moments of an hour, while no meter has its :55 slot yet, the hour before is not in the monthly row either and is taken from here too.
+ * Never before `monthStart`. A meter without such rows is absent from the answer. */
+export function monthTail(ids: string[], five: Record<string, Array<{ start?: unknown; change?: unknown }>> | null | undefined, now: number, monthStart: number): Record<string, number> {
+  const hour = Math.floor(now / HOUR) * HOUR, rows = (id: string) => Array.isArray(five?.[id]) ? five![id] : [];
+  const compiled = now - hour >= 120000 || ids.some(id => rows(id).some(r => ms(r.start) === hour - FIVE)), cut = Math.max(monthStart, compiled ? hour : hour - HOUR), out: Record<string, number> = {};
+  for (const id of ids) { const mine = rows(id).filter(r => ms(r.start) >= cut && typeof r.change === 'number' && Number.isFinite(r.change)); if (mine.length) out[id] = mine.reduce((a, r) => a + (r.change as number), 0); }
+  return out;
+}
 /** Live host over the authenticated `hass` object: registry via WebSocket (read-only), states from hass, commands via callService.
  * HA hands the panel a new `hass` on every state change, several times a second. One host lives as long as the panel and reads the current
  * `hass` when asked: effects keyed on the host must not restart with every update (the chart blinked and every panel re-queried HA, 05.11.2026). */
 export function liveHost(current: () => Hass): Host {
   return {
+    get timeZone() { return current().config?.time_zone; },
     get admin() { return current().user?.is_admin === true; },
     get userId() { return current().user?.id ?? null; },
     get online() { return current().connected !== false; },
@@ -104,7 +135,18 @@ export function liveHost(current: () => Hass): Host {
       }, ids, start, end, period, types);
     },
     async statistic(id, start, end, types) { const r = await current().callWS<Record<string, unknown>>({ type: 'recorder/statistic_during_period', statistic_id: id, fixed_period: { start_time: new Date(start).toISOString(), end_time: new Date(end).toISOString() }, types, units: UNITS }); const n = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? v : null; return { change: n(r?.change), min: n(r?.min), max: n(r?.max) }; },
-    async energyMonth(ids) { if (!ids.length) return null; try { const rows = await Promise.all(ids.map(id => current().callWS<{ change?: number | null }>({ type: 'recorder/statistic_during_period', statistic_id: id, calendar: { period: 'month' }, types: ['change'], units: { energy: 'kWh' } }))); const v = rows.map(r => r?.change); return v.every(x => typeof x === 'number' && Number.isFinite(x)) ? (v as number[]).reduce((a, x) => a + x, 0) : null; } catch { return null; } },
+    // PERF-8 of the audit: the reads are for all the meters at once (it was one request per meter on every load). The monthly rows come on Home
+    // Assistant's own month boundaries, so the question starts a little before this screen's 1st — and only a row that began on this month's 1st
+    // counts (monthTotal). They hold finished hours: the running hour is the second read, the same meters' 5-minute rows (monthTail).
+    async energyMonth(ids) {
+      if (!ids.length) return null;
+      try {
+        const now = new Date(), at = now.getTime(), first = houseMonthStart(now.getTime(), current().config?.time_zone), from = first - 26 * 3600000; // the 1st by the house's calendar, not this browser's
+        const read = (start: number, period: StatPeriod) => current().callWS<Record<string, Array<{ start?: unknown; change?: unknown }>>>({ type: 'recorder/statistics_during_period', start_time: new Date(start).toISOString(), end_time: now.toISOString(), statistic_ids: ids, period, types: ['change'], units: { energy: 'kWh' } });
+        const [raw, five] = await Promise.all([read(from, 'month'), read(Math.max(first, Math.floor(at / HOUR) * HOUR - HOUR), '5minute').catch(() => null)]);
+        return monthTotal(ids, raw, from, monthTail(ids, five, at, first));
+      } catch { return null; }
+    },
     async airStart(task) { await current().callWS({ type: 'atom_home/air/start', ...task }); },
     async airStop(device) { await current().callWS({ type: 'atom_home/air/stop', device }); },
     subscribe: <T,>(message: Record<string, unknown>, callback: (m: T) => void) => { const conn = current().connection; if (!conn?.subscribeMessage) return Promise.reject(new Error('no subscription API')); return conn.subscribeMessage<T>(callback, message); },
@@ -118,9 +160,9 @@ export function liveHost(current: () => Hass): Host {
   };
 }
 /** Isolated host for previews and QA: a frozen snapshot, every command recorded and rejected. */
-export function previewHost(snapshot: Registry, log: Array<{ domain: string; service: string; data: Record<string, unknown> }> = []): Host & { log: typeof log; setOnline(v: boolean): void; setDelay(ms: number): void; setAutomations(rows: AutomationRow[]): void; setFeederLog(log: FeederLog | null): void; setAccept(v: boolean): void; setAirTasks(t: AirTask[]): void; setAirRead(ok: boolean): void; setAirRefuse(e: unknown): void } {
-  let online = true, delay = 0, automations: AutomationRow[] = [], feeder: FeederLog | null = null, accept = false, airTasks: AirTask[] = [], airRead = true, airRefuse: unknown = null; // ST-4 / ST-3 of the audit: QA flips the connection and slows the answer to see the banner, the veil, the pending state and the refused command
+export function previewHost(snapshot: Registry, log: Array<{ domain: string; service: string; data: Record<string, unknown> }> = []): Host & { log: typeof log; setOnline(v: boolean): void; setDelay(ms: number): void; setAutomations(rows: AutomationRow[]): void; setFeederLog(log: FeederLog | null): void; setAccept(v: boolean): void; setAirTasks(t: AirTask[]): void; setAirRead(ok: boolean): void; setAirRefuse(e: unknown): void; /** QA: a household member who is not an administrator */ setAdmin(v: boolean): void; /** QA: how commands are refused — `{ code, message }` as Home Assistant does it, an Error, anything */ setRefusal(e: unknown): void } {
+  let admin = true, refusal: unknown = null, online = true, delay = 0, automations: AutomationRow[] = [], feeder: FeederLog | null = null, accept = false, airTasks: AirTask[] = [], airRead = true, airRefuse: unknown = null; // ST-4 / ST-3 of the audit: QA flips the connection and slows the answer to see the banner, the veil, the pending state and the refused command
   const stats = () => { const s = (globalThis as { __energyStats?: PreviewStats | 'fail' | null }).__energyStats; if (s === 'fail') throw new Error('preview: statistics refused'); return s; };
   const hasStats = !!(globalThis as { __energyStats?: unknown }).__energyStats;
-  return { admin: true, get userId() { return (globalThis as { __userId?: string }).__userId ?? null; }, ...(hasStats ? { async statistics(ids: string[], start: number, end: number, period: StatPeriod, types: StatType[]) { return withinPeriod(async (...a) => previewStatistics(stats()!, ...a), ids, start, end, period, types); }, async statistic(id: string, start: number, end: number, types: StatType[]) { return previewStatistic(stats()!, id, start, end, types); } } : {}), async energyMonth() { const v = (globalThis as { __energyMonth?: unknown }).__energyMonth; return typeof v === 'number' ? v : null; }, get online() { return online; }, setOnline(v: boolean) { online = v; }, setDelay(ms: number) { delay = ms; }, setAutomations(rows: AutomationRow[]) { automations = rows; }, setFeederLog(log: FeederLog | null) { feeder = log; }, setAccept(v: boolean) { accept = v; }, setAirTasks(t: AirTask[]) { airTasks = t; }, setAirRead(ok: boolean) { airRead = ok; }, setAirRefuse(e: unknown) { airRefuse = e; }, async airTasks() { return airRead ? airTasks : null; }, async airStart(task) { log.push({ domain: 'air', service: 'start', data: task }); if (accept && !airRefuse) airTasks = [...airTasks, { ...task, startedAt: Date.now(), wasOn: false, stopping: false }]; /* listed before the device answers, as the server does */ if (delay) await new Promise(r => setTimeout(r, delay)); if (airRefuse) throw airRefuse; if (!accept) throw new Error('preview: commands are rejected'); }, async airStop(device) { log.push({ domain: 'air', service: 'stop', data: { device } }); if (delay) await new Promise(r => setTimeout(r, delay)); if (airRefuse) throw airRefuse; if (!accept) throw new Error('preview: commands are rejected'); airTasks = airTasks.filter(x => x.device !== device); }, async feederLog() { return feeder; }, async automations() { return automations; }, previewFrame(id: string) { const f = (globalThis as { __frames?: Record<string, string> }).__frames; return f?.[id] ?? null; }, log, states: () => snapshot.states, registry: async () => ({ areas: snapshot.areas, devices: snapshot.devices, entities: snapshot.entities }), async call(domain, service, data) { log.push({ domain, service, data }); if (delay) await new Promise(r => setTimeout(r, delay)); if (accept) return; throw new Error('preview: commands are rejected'); }, async ws<T>(message: Record<string, unknown>) { log.push({ domain: 'ws', service: String(message.type), data: message }); if (message.type === 'history/history_during_period') { const h = (globalThis as { __camHistory?: Record<string, Array<{ s: string; lc: number }>> }).__camHistory; if (h) { const ids = (message.entity_ids as string[]) ?? []; return Object.fromEntries(ids.filter(id => h[id]).map(id => [id, h[id]])) as T; } } if (message.type === 'logbook/get_events') return ((globalThis as { __logbook?: unknown }).__logbook ?? []) as T; if (message.type === 'energy/get_prefs') { const p = (globalThis as { __energyPrefs?: unknown }).__energyPrefs; if (p === 'fail') throw new Error('preview: energy prefs refused'); if (p === 'none') throw { code: 'not_found', message: 'No prefs' }; /* HA without Energy settings (energy/websocket_api.py) */ return (p ?? { device_consumption: [] }) as T; } /* read-only, like the real one */ throw new Error('preview: commands are rejected'); }, async history() { return {}; } };
+  return { get timeZone() { return (globalThis as { __timeZone?: string }).__timeZone; }, get admin() { return admin; }, setAdmin(v: boolean) { admin = v; }, setRefusal(e: unknown) { refusal = e; }, get userId() { return (globalThis as { __userId?: string }).__userId ?? null; }, ...(hasStats ? { async statistics(ids: string[], start: number, end: number, period: StatPeriod, types: StatType[]) { return withinPeriod(async (...a) => previewStatistics(stats()!, ...a), ids, start, end, period, types); }, async statistic(id: string, start: number, end: number, types: StatType[]) { return previewStatistic(stats()!, id, start, end, types); } } : {}), async energyMonth() { const v = (globalThis as { __energyMonth?: unknown }).__energyMonth; return typeof v === 'number' ? v : null; }, get online() { return online; }, setOnline(v: boolean) { online = v; }, setDelay(ms: number) { delay = ms; }, setAutomations(rows: AutomationRow[]) { automations = rows; }, setFeederLog(log: FeederLog | null) { feeder = log; }, setAccept(v: boolean) { accept = v; }, setAirTasks(t: AirTask[]) { airTasks = t; }, setAirRead(ok: boolean) { airRead = ok; }, setAirRefuse(e: unknown) { airRefuse = e; }, async airTasks() { return airRead ? airTasks : null; }, async airStart(task) { log.push({ domain: 'air', service: 'start', data: task }); if (accept && !airRefuse) airTasks = [...airTasks, { ...task, startedAt: Date.now(), wasOn: false, stopping: false }]; /* listed before the device answers, as the server does */ if (delay) await new Promise(r => setTimeout(r, delay)); if (airRefuse) throw airRefuse; if (!accept) throw new Error('preview: commands are rejected'); }, async airStop(device) { log.push({ domain: 'air', service: 'stop', data: { device } }); if (delay) await new Promise(r => setTimeout(r, delay)); if (airRefuse) throw airRefuse; if (!accept) throw new Error('preview: commands are rejected'); airTasks = airTasks.filter(x => x.device !== device); }, async feederLog() { return feeder; }, async automations() { return automations; }, previewFrame(id: string) { const f = (globalThis as { __frames?: Record<string, string> }).__frames; return f?.[id] ?? null; }, log, states: () => snapshot.states, registry: async () => ({ areas: snapshot.areas, devices: snapshot.devices, entities: snapshot.entities }), async call(domain, service, data) { log.push({ domain, service, data }); if (delay) await new Promise(r => setTimeout(r, delay)); if (accept) return; throw refusal ?? new Error('preview: commands are rejected'); }, async ws<T>(message: Record<string, unknown>) { log.push({ domain: 'ws', service: String(message.type), data: message }); if (message.type === 'history/history_during_period') { const h = (globalThis as { __camHistory?: Record<string, Array<{ s: string; lc: number }>> }).__camHistory; if (h) { const ids = (message.entity_ids as string[]) ?? []; return Object.fromEntries(ids.filter(id => h[id]).map(id => [id, h[id]])) as T; } } if (message.type === 'logbook/get_events') return ((globalThis as { __logbook?: unknown }).__logbook ?? []) as T; if (message.type === 'energy/get_prefs') { const p = (globalThis as { __energyPrefs?: unknown }).__energyPrefs; if (p === 'fail') throw new Error('preview: energy prefs refused'); if (p === 'none') throw { code: 'not_found', message: 'No prefs' }; /* HA without Energy settings (energy/websocket_api.py) */ return (p ?? { device_consumption: [] }) as T; } /* QA: an integration that keeps «Выключить через» timers and answers with its own list (entity → ISO moment); without it the preview is the older integration that has only the mirror helper */ { const g = globalThis as { __lightSleep?: Record<string, string> }; if (g.__lightSleep && message.type === 'atom_home/light/sleep/state') return { pending: { ...g.__lightSleep } } as T; if (g.__lightSleep && message.type === 'atom_home/light/sleep') { const id = String(message.entity_id), min = Number(message.minutes); if (min > 0) g.__lightSleep[id] = houseIso(Math.ceil((Date.now() + min * 60_000) / 1000) * 1000) /* CODEX-018: now + the minutes, in the house's clock with its offset as the integration answers — no longer a fixed 10 November */; else delete g.__lightSleep[id]; return { until: g.__lightSleep[id] ?? null, pending: { ...g.__lightSleep } } as T; } } /* read-only, like the real one */ throw new Error('preview: commands are rejected'); }, async history() { return {}; } };
 }

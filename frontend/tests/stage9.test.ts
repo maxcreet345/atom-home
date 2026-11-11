@@ -1,3 +1,4 @@
+process.env.TZ = 'Europe/Chisinau'; // the sun and the clock are checked by the house's time, whatever zone the machine is in
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
