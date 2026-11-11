@@ -451,7 +451,7 @@
 .hm-shell .hm-sidebar nav button{padding-inline:0}.hm-shell .hm-sidebar nav button span{letter-spacing:-.15px}
 .hm-shell.is-short .hm-sidebar{gap:6px;padding-top:8px;padding-bottom:max(8px,var(--ah-safe-b))}
 .hm-shell.is-short .hm-sidebar nav{gap:2px}
-.hm-shell.is-short .hm-sidebar nav button{min-height:clamp(44px,calc((var(--hm-height) - 150px)/5),60px);padding-block:3px;gap:2px}
+.hm-shell.is-short .hm-sidebar nav button{min-height:clamp(44px,calc((var(--hm-height) - 150px)/7),60px);padding-block:3px;gap:2px} /* seven places since 1.27.0 */
 .hm-shell:where(:not(.ph-461)) .hm-clock small{display:none}
 .hm-shell:where(:not(.ph-461)) .hm-sidebar nav button svg{width:22px;height:22px}
 .hm-shell:where(:not(.ph-461)) .hm-conn{min-height:28px}
@@ -739,3 +739,82 @@
 .hm-shell .at-cam-stage button.at-cam-sound.is-on{background:var(--ah-accent)}
 /* on: the dark theme's light accent takes the dark ink, as the banners on it do (white on #b9b3ff is under 2:1) */
 .hm-shell.ah-shell[data-theme="dark"] .at-cam-stage button.at-cam-sound.is-on{color:#1c1c1e}
+
+/* ---------- 1.27.0 «menu and rooms» ---------- */
+/* the rail holds seven places (Дом · Комнаты · Свет · Устройства · Энергия · Безопасность · Настройка): a little wider, so that «Безопасность»
+   is whole, and on a screen under 421 px the clock and the link's dot step aside before a place gets under 44 px (the header says «нет связи») */
+.hm-shell.ah-shell{--ah-rail:clamp(96px,6rem,140px)}
+.hm-shell .hm-sidebar{padding-left:calc(5px + var(--ah-safe-l));padding-right:5px}
+.hm-shell.is-wide:not(.ph-421) .hm-sidebar{gap:4px;padding-top:6px;padding-bottom:max(6px,var(--ah-safe-b))}
+.hm-shell.is-wide:not(.ph-421) .hm-sidebar :is(.hm-clock,.hm-conn){display:none}
+/* the phone's bar: four places and «Ещё»; «Ещё» opens its pages above the bar, as large rows (a thumb, a screen reader, a keyboard) */
+.hm-shell .hm-tabbar .at-more{position:absolute;right:max(8px,var(--ah-safe-r));bottom:calc(100% + 8px);z-index:6;display:grid;gap:2px;width:min(264px,calc(100% - 16px));padding:6px;border-radius:22px;background:var(--ah-bar-solid);box-shadow:0 16px 40px #0b132a38,0 0 0 1px var(--ah-line);animation:at-more-in .18s cubic-bezier(.2,.8,.2,1)}
+.hm-shell .hm-tabbar .at-more[hidden]{display:none}
+.hm-shell .hm-tabbar .at-more button{flex:none;flex-direction:row;justify-content:flex-start;gap:14px;min-height:52px;padding:0 16px;border-radius:16px;font-size:1rem;font-weight:600;color:var(--ah-ink)}
+.hm-shell .hm-tabbar .at-more button svg{width:24px;height:24px;color:var(--ah-glyph)}
+.hm-shell .hm-tabbar .at-more button.is-current{background:var(--ah-tile);color:var(--ah-accent-ink)}.hm-shell .hm-tabbar .at-more button.is-current svg{color:currentColor}
+.hm-shell .hm-tabbar .at-more-btn.is-open:not(.is-active){color:var(--ah-ink)}
+.hm-shell .at-more-scrim{position:absolute;inset:0;z-index:4;background:#0b132a2e}
+/* the bar never runs past the screen. On a phone on its side the icon (26 px and a 6 px gap) stands beside the word, so a large system font
+   stops growing the labels at 2.3 vw — where the longest («Устройства», about 6 em) beside its icon fills its fifth of a 568 px phone, as the
+   upright bar's 3.75 vw does — «Устройства» at 200 % pushed the bar 13 px over and the whole shell slid sideways under every window. A label
+   still longer (another language, a narrower screen) breaks at a syllable onto a second line instead of widening the bar: whole, never «Устрой…» */
+.hm-shell.is-narrow.is-landscape.is-short .hm-tabbar > button{font-size:min(.75rem,calc(2.3*var(--ah-vw)))}
+.hm-shell.is-narrow.is-landscape.is-short .hm-tabbar > button span{white-space:normal;text-overflow:clip;hyphens:auto;-webkit-hyphens:auto;overflow-wrap:break-word;line-height:1.1;text-align:start}
+@keyframes at-more-in{from{opacity:0;transform:translateY(8px) scale(.98)}}
+@media (prefers-reduced-motion:reduce){.hm-shell .hm-tabbar .at-more{animation:none}}
+/* «Безопасность»: its devices in groups, and the way to the cameras under the alarm's own card */
+.hm-shell .at-osec-group-h{grid-column:1/-1;margin:10px 2px 0;font-size:1rem;font-weight:700;letter-spacing:-.2px}
+.hm-shell .at-osec-list>.at-osec-group-h:first-child{margin-top:0}
+.hm-shell .at-sec-cams{display:flex;align-items:center;gap:14px;width:100%;min-height:76px;padding:14px 18px;border-radius:26px;background:var(--os-card,var(--ah-group));color:var(--ah-ink);text-align:left}
+.hm-shell .at-sec-cams .at-sec-cams-glyph{width:48px;height:48px;background:#5e5ce6;color:#fff}.hm-shell .at-sec-cams .at-sec-cams-glyph svg{width:26px;height:26px}
+.hm-shell .at-sec-cams-text{flex:1;display:grid;gap:2px;min-width:0}.hm-shell .at-sec-cams-text strong{font-size:1.0625rem;font-weight:700}.hm-shell .at-sec-cams-text small{font-size:.875rem;color:var(--ah-muted)}
+.hm-shell .at-sec-cams>svg:last-child{flex:none;color:var(--ah-muted)}
+.hm-shell .at-sec-cams.is-warn .at-sec-cams-text small{color:var(--os-warn-ink,#9a5200)}
+.hm-shell .hm-page>.at-sec-cams{max-width:var(--ah-page-max);margin:16px auto 0}
+.hm-shell .at-sec-devices>.at-sec-cams{margin-bottom:6px}
+/* the alarm's card stands higher on its own page (no tabs over it) and meets a lighter band of the dark wallpaper: the arming word a shade lighter keeps 4.5:1 */
+.hm-shell.ah-shell[data-theme="dark"] .at-osec-wrap .at-osec-control:is(.is-st-arming,.is-st-pending) .at-osec-state{color:#ffe4b8}
+@container (min-width:880px){.hm-shell .at-sec-panel .at-osec:has(>.at-sec-cams){grid-template-rows:auto auto 1fr;grid-template-areas:"ctl devs" "cams devs" "feed devs" "set set"}.hm-shell .at-osec>.at-sec-cams{grid-area:cams}}
+/* «Комнаты» on one screen: the columns and the tile's size come from the grid's own measure (ui/rooms-fit.ts) */
+.hm-shell .hm-room-grid.is-page.is-fit{grid-template-columns:repeat(var(--rg-cols,2),minmax(0,var(--rg-w,1fr)));grid-auto-rows:var(--rg-h,auto);justify-content:start}
+.hm-shell .hm-room-grid.is-page.is-fit .hm-room{aspect-ratio:auto;height:auto;min-height:0}
+.hm-shell .hm-room-grid.is-low .hm-room{padding:10px 12px}.hm-shell .hm-room-grid.is-low .hm-room-bottom b{font-size:1.5rem}
+/* the tile's top: the name, the lamps that are on at its right (they come first in the markup, so that a slim tile can float them) */
+.hm-shell .hm-room .hm-room-top>.hm-lit{order:1;flex:none}
+.hm-shell .hm-room-grid.is-slim .hm-room{padding:10px}.hm-shell .hm-room-grid.is-slim .hm-room-top{display:block}
+.hm-shell .hm-room-grid.is-slim .hm-room-top>.hm-lit{float:right;margin:-2px -3px 2px 4px;padding:2px 6px;gap:2px}.hm-shell .hm-room-grid.is-slim .hm-room-top>.hm-lit svg{width:12px;height:12px}
+.hm-shell .hm-room-grid.is-slim .hm-room-top strong{display:block;font-size:.875rem;line-height:1.15;white-space:normal;hyphens:auto;-webkit-hyphens:auto;overflow-wrap:break-word;text-overflow:clip}
+.hm-shell .hm-room-grid.is-slim .hm-room-bottom b{font-size:1.375rem}.hm-shell .hm-room-grid.is-slim .hm-room-co2{display:none}
+/* a tiny tile (under 120 px: twelve rooms on the smallest phone, a phone on its side): the name in 13 px, the temperature and the humidity on one
+   line, so that the picture between them keeps a picture's size */
+.hm-shell .hm-room-grid.is-tiny .hm-room{padding:8px 9px}.hm-shell .hm-room-grid.is-tiny .hm-room.is-art .ra-box{row-gap:2px}.hm-shell .hm-room-grid.is-tiny .hm-room-bottom small{line-height:1.15}.hm-shell .hm-room-grid.is-tiny .hm-room-top strong{font-size:.8125rem;line-height:1.05}.hm-shell .hm-room-grid.is-tiny .hm-room-bottom{gap:3px}.hm-shell .hm-room-grid.is-tiny .hm-room-bottom b{font-size:1rem}.hm-shell .hm-room-grid.is-tiny .hm-room-bottom i{font-size:.8125rem}
+/* a phone on its side: its bar is one row of 44 px, so the page keeps only that much free under it (the rooms fit one screen there too) */
+.hm-shell.is-narrow.is-landscape.is-short .hm-main{padding-bottom:calc(60px + env(safe-area-inset-bottom));scroll-padding-bottom:64px}
+/* a short screen beside the rail (a phone on its side, a 13-inch laptop at 150 %): «Комнаты» says its count in its tiles, not under its title */
+.hm-shell.is-wide:not(.ph-421).hm-route-rooms .hm-head p{display:none}
+.hm-shell.is-wide:not(.ph-421) .hm-main{padding-bottom:max(12px,var(--ah-safe-b))}
+/* a room's drawn picture (ui/room-art.ts) on the room's own ground, composed so that no word lies on the drawing: the name has the top, the
+   readings the bottom left, the picture the space they leave, standing at its right and bottom — between the name and the readings on a tall or
+   square tile, beside the readings (which then stack, the humidity under the temperature) on a wide one. The picture keeps its colours. */
+.hm-shell.ah-shell .hm-room.is-art{container:ra/size;color:var(--ra-ink);background:linear-gradient(180deg,var(--ra-bg1),var(--ra-bg2))}
+.hm-shell .hm-room.is-art::after{content:none}
+.hm-shell .hm-room.is-art .ra-box{position:absolute;inset:0;padding:inherit;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"top" "pic" "bottom";row-gap:6px;text-align:left}
+.hm-shell.ah-shell .hm-room.is-art .hm-room-top{grid-area:top;width:auto;min-width:0}
+.hm-shell .hm-room.is-art .ra-pic{grid-area:pic;position:relative;min-width:0;min-height:0;pointer-events:none}
+.hm-shell .hm-room.is-art .ra-pic svg{position:absolute;inset:0;display:block;width:100%;height:100%}
+.hm-shell.ah-shell .hm-room.is-art .hm-room-bottom{grid-area:bottom;align-self:end;width:auto;min-width:0}
+@container ra (aspect-ratio > 13/10){
+  .hm-shell .hm-room.is-art .ra-box{grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);grid-template-areas:"top top" "bottom pic";column-gap:10px}
+  .hm-shell.ah-shell .hm-room.is-art .hm-room-bottom{flex-direction:column;align-items:flex-start;gap:2px}
+}
+/* CO₂ on a tile under 200 px wide would leave the picture no room: the room's page says it */
+@container ra (width < 200px){.hm-shell .hm-room.is-art .hm-room-co2{display:none}}
+.hm-shell .hm-room.is-art .hm-room-bottom small{color:var(--ra-ink2);opacity:1;font-weight:600}
+.hm-shell .hm-room .hm-lit{font-size:.8125rem}
+/* «Устройства» on a phone: the rooms of a group side by side in the grid of «Свет» (since 1.27.0 the list is mostly one lamp, one head, one
+   speaker per room — one room per row left most of the phone empty) */
+.hm-shell.is-narrow .at-sys-rooms{grid-template-columns:var(--ah-cols);gap:14px var(--ah-gap);align-items:start}.hm-shell.is-narrow .at-sys-room{min-width:0;align-content:start}
+.hm-shell.is-narrow .at-sys-room.span-2{grid-column:span 2}.hm-shell.is-narrow .at-sys-room.span-3{grid-column:1/-1} /* three and more: the whole row, never an extra column past a 2-column phone's edge */
+.hm-shell.is-narrow .at-sys-room .ah-grid{grid-template-columns:repeat(1,minmax(0,1fr))}.hm-shell.is-narrow .at-sys-room.span-2 .ah-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hm-shell.is-narrow .at-sys-room.span-3 .ah-grid{grid-template-columns:var(--ah-cols)}
+.hm-shell.is-narrow .at-sys-room h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:clamp(.6875rem,calc(4.1*var(--ah-vw) - .125rem),.875rem);letter-spacing:-.2px}

@@ -258,5 +258,7 @@ test('a thermostat step stays inside the device\'s limits', () => {
 test('Romanian: rooms and cameras are different words, and one of a thing is counted as one', () => {
   assert.notEqual(ro('section.rooms'), ro('section.camera')); assert.equal(ro('section.rooms'), ro('ui.rooms'));
   assert.equal(ro('overview.on', { n: 1 }), '1 pornit'); assert.equal(ro('overview.on', { n: 3 }), '3 pornite'); assert.equal(ro('overview.opened', { n: 1 }), '1 deschis');
-  assert.equal(ru('section.devices'), 'Устройства'); assert.notEqual(ru('section.devices'), ru('section.systems'), 'the list of devices is not called like the section it is a tab of');
+  // 1.27.0: the section itself is «Устройства» (owner, 11.11.2026), so its list's tab is «Все» — still never called like the section it is a tab of
+  assert.equal(ru('section.systems'), 'Устройства'); assert.equal(translator('en')('section.systems'), 'Devices'); assert.equal(ro('section.systems'), 'Dispozitive');
+  for (const t of [ru, ro, translator('en')]) assert.notEqual(t('devices.all'), t('section.systems'), 'the list of devices is not called like the section it is a tab of');
 });

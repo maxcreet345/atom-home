@@ -56,15 +56,23 @@ export function SecurityTile({ s, registry, config, t, lang: _lang, onOpen }: { 
   </div>;
 }
 /** Gas, water and the valve drawn like Ajax's product pictures (the doors and windows are the office's drawings). */
-function HouseArt({ kind }: { kind: 'gas' | 'leak' | 'valve' }) {
+function HouseArt({ kind }: { kind: 'gas' | 'leak' | 'valve' | 'motion' }) {
   return <svg className="at-osec-art" viewBox="0 0 64 64" aria-hidden="true">
-    {kind === 'gas' ? <><rect x="14" y="12" width="36" height="40" rx="9" className="is-body" /><circle cx="32" cy="28" r="9" className="is-inner" /><rect x="24" y="43" width="16" height="2" rx="1" className="is-lens" /></>
+    {kind === 'motion' ? <><rect x="17" y="12" width="30" height="40" rx="11" className="is-body" /><path d="M21 34a11 11 0 0 1 22 0z" className="is-inner" /><circle cx="32" cy="44" r="1.8" className="is-lens" /></>
+      : kind === 'gas' ? <><rect x="14" y="12" width="36" height="40" rx="9" className="is-body" /><circle cx="32" cy="28" r="9" className="is-inner" /><rect x="24" y="43" width="16" height="2" rx="1" className="is-lens" /></>
       : kind === 'leak' ? <><rect x="15" y="16" width="34" height="28" rx="10" className="is-body" /><circle cx="25" cy="48" r="2.4" className="is-lens" /><circle cx="39" cy="48" r="2.4" className="is-lens" /><path d="M32 23c3 4 5 6 5 9a5 5 0 0 1-10 0c0-3 2-5 5-9z" className="is-inner" /></>
         : <><rect x="8" y="27" width="48" height="10" rx="4" className="is-body" /><rect x="22" y="18" width="20" height="24" rx="6" className="is-body" /><rect x="28" y="9" width="8" height="10" rx="2" className="is-body" /><rect x="22" y="7" width="20" height="4" rx="2" className="is-lens" /></>}
   </svg>;
 }
-type Dev = { id: string; room: string; name: string; art: 'door' | 'window' | 'gas' | 'leak' | 'valve'; now: string; tone: '' | 'is-warn' | 'is-alarm' | 'is-live'; info: Guarded | Hazard | null; tamper: boolean | null };
-export function SecurityPanel({ s, registry, config, host, commands, t, lang, now: _now, admin }: { s: Security; registry: Registry; config: HouseConfig; host: Host; commands: Commands; t: T; lang: Lang; now: number; admin: boolean }) {
+type Dev = { id: string; room: string; name: string; art: 'door' | 'window' | 'gas' | 'leak' | 'valve' | 'motion'; now: string; tone: '' | 'is-warn' | 'is-alarm' | 'is-live'; info: Guarded | Hazard | null; tamper: boolean | null };
+/** A motion or presence sensor of the house as «Безопасность» lists it (1.27.0): its state only, nothing to press. `on` null — it says nothing. */
+export interface MotionSensor { id: string; name: string; room: string; on: boolean | null; since: number | null }
+type SecGroup = 'doors' | 'water' | 'fire' | 'motion';
+const GROUP_ORDER: SecGroup[] = ['doors', 'water', 'fire', 'motion'];
+const groupOf = (d: Dev): SecGroup => d.art === 'door' || d.art === 'window' ? 'doors' : d.art === 'leak' || d.art === 'valve' ? 'water' : d.art === 'gas' ? 'fire' : 'motion';
+/** «Безопасность» as a page of its own (1.27.0): the same panel, its devices grouped — doors and windows, water, gas and smoke, motion — and
+ * `aside` (the way to the cameras) under the alarm's own card. No new command and no new question: what it sends and asks is what it did. */
+export function SecurityPanel({ s, registry, config, host, commands, t, lang, now: _now, admin, motion = [], aside = null }: { s: Security; registry: Registry; config: HouseConfig; host: Host; commands: Commands; t: T; lang: Lang; now: number; admin: boolean; motion?: MotionSensor[]; aside?: preact.JSX.Element | null }) {
   const tone = secTone(s), list = people(registry, config), homeList = list.filter(p => p.state === 'home'), guests = !!s.guests?.on, st = s.alarm.state;
   const armed = [...ARMED_ST, 'triggered', 'pending', 'arming'].includes(st), offline = !host.online;
   // every command of the panel goes through the shell's runner: nothing while the house is offline, one command per intent (the button waits until
@@ -119,11 +127,45 @@ export function SecurityPanel({ s, registry, config, host, commands, t, lang, no
   const devs: Dev[] = [
     ...s.guarded.map(g => ({ id: g.id, room: g.room, name: g.name, art: g.kind, info: g, tamper: g.tamper, now: guardedNow(g, t, hm(g.since, lang)), tone: (g.open === null || g.open ? 'is-warn' : '') as Dev['tone'] })),
     ...s.hazards.map(h => ({ id: h.id, room: h.room, name: hazardName(h, t), art: h.kind, info: h, tamper: null, now: hazardWord(h, t), tone: (h.alarm ? 'is-alarm' : h.silent ? 'is-warn' : '') as Dev['tone'] })),
+    // motion only tells; a sensor that says nothing is «нет данных», never «тихо»
+    ...motion.map(m => ({ id: m.id, room: m.room, name: m.name, art: 'motion' as const, info: null, tamper: null, now: m.on === null ? sk(t, 'noData') : m.on ? sk(t, 'motionNow') : sk(t, 'motionQuiet'), tone: (m.on === null ? 'is-warn' : m.on ? 'is-live' : '') as Dev['tone'] })),
   ];
   const rooms = [...new Set([...devs.map(d => d.room), ...(s.valve ? [s.valve.room] : [])].filter(Boolean))];
   // trouble first: an alarm, then what is open or has no data, then a device with a fault (case, battery, radio)
   const rank = (d: Dev) => d.tone === 'is-alarm' ? 0 : d.tone === 'is-warn' ? 1 : d.tamper || d.info?.low || d.info?.signal === 'weak' ? 2 : 3;
   const shown = devs.filter(d => room === 'all' || d.room === room).map((d, i) => ({ d, i })).sort((x, y) => rank(x.d) - rank(y.d) || x.i - y.i).map(x => x.d);
+  // one card of the list: the device, its state, its faults; opened, its rows (unchanged since 1.22)
+  const card = (d: Dev) => { const isOpen = open === d.id, bad = (d.tamper ? 1 : 0) + (d.info?.low ? 1 : 0) + (d.info?.signal === 'weak' ? 1 : 0); return <div className={`at-osec-dev ${isOpen ? 'is-open' : ''} ${d.tone === 'is-alarm' ? 'is-alarm' : ''}`} key={d.id}>
+    <button type="button" className="at-osec-dev-hit" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : d.id)}>
+      <span className="at-osec-pic">{d.art === 'door' || d.art === 'window' ? <Art kind={d.art} maker={d.info?.maker ?? 'zigbee'} /> : <HouseArt kind={d.art} />}{bad > 0 && <i className="at-osec-badge">{bad}</i>}</span>
+      <span className="at-osec-dev-text"><b>{d.name}</b><small>{d.room}</small>
+        <span className={`at-osec-now ${d.tone}`}>{d.now}</span>
+        <span className="at-osec-icons">{d.info?.signal && <Bars v={d.info.signal} />}{d.info?.level != null && <Battery v={d.info.level} />}{d.tamper && <span className="is-bad"><Case /></span>}</span></span>
+      <Chevron />
+    </button>
+    {isOpen && <div className="at-osec-rows">
+      <Row k={d.art === 'gas' ? sk(t, 'row.gas') : d.art === 'leak' ? sk(t, 'row.leak') : sk(t, 'row.contact')} v={d.now} bad={d.tone === 'is-alarm' ? true : d.tone === 'is-warn' ? 'warn' : false} />
+      {d.tamper !== null && <Row k={sk(t, 'row.case')} v={d.tamper ? sk(t, 'row.caseOpen') : sk(t, 'row.caseClosed')} bad={!!d.tamper} />}
+      {d.info?.signal && <Row k={sk(t, 'row.signal')} v={sk(t, `sig.${d.info.signal}`)} bad={d.info.signal === 'weak'} />}
+      {d.info?.level != null && <Row k={sk(t, 'row.battery')} v={`${Math.round(d.info.level)} %${d.info.low ? ` · ${sk(t, 'row.low')}` : ''}`} bad={d.info.level <= 20 || d.info.low} />}
+      {d.info?.model && <Row k={sk(t, 'row.model')} v={d.info.model} />}
+    </div>}
+  </div>; };
+  const valveShown = room === 'all' || room === s.valve?.room || !s.valve;
+  const valveCard = <div className={`at-osec-dev at-sec-valve ${s.valve?.state === 'closed' ? 'is-closed' : ''}`} key="valve">
+    <div className="at-osec-dev-hit is-static">
+      <span className="at-osec-pic"><HouseArt kind="valve" /></span>
+      <span className="at-osec-dev-text"><b>{sk(t, 'valveName')}</b><small>{s.valve?.room || sk(t, 'valveRoom')}</small>
+        <span className={`at-osec-now ${vs === 'closed' || vs === 'offline' ? 'is-warn' : ''}`}>{!s.valve ? sk(t, 'valveMissing') : vs === 'closed' ? sk(t, 'valveClosed') : vs === 'open' ? sk(t, 'valveOpen') : vs === 'moving' ? sk(t, 'valveMoving') : vs === 'offline' ? sk(t, 'valveOffline') : sk(t, 'noData')}</span>
+        {s.exercise?.on && <small>{sk(t, 'exercise', { n: String(s.exercise.days ?? 7), t: s.exercise.time ?? '03:00' })}</small>}</span>
+      {/* closing is one tap (the safe way); opening always asks, and with a wet leak sensor the question says so and keeping it closed comes first */}
+      {s.valve && <button type="button" className="hm-pill at-sec-valve-btn" aria-label={sk(t, 'valveAct', { name: sk(t, 'valveName'), do: valveDo })} disabled={offline || vs === 'offline'} aria-disabled={valveWaits || undefined} aria-busy={valveWaits || undefined} onClick={e => { if (valveWaits) return; if (vs === 'closed') question('valve', e.currentTarget); else send('valve:close', 'valve', call('valve', 'close_valve', { entity_id: s.valve!.id })); }}>{valveDo}</button>}
+    </div>
+    {ask === 'valve' && <Ask text={valveAsk.text} yes={sk(t, 'ask.valveOpenYes')} no={valveAsk.leak ? sk(t, 'ask.valveKeep') : sk(t, 'ask.no')} danger={valveAsk.leak} onYes={answer} onNo={closeAsk} />}
+  </div>;
+  // the groups in their order, the one with an alarm first (trouble first, as the flat list had it); a group with nothing in it is not drawn
+  const groups = GROUP_ORDER.map(g => ({ g, list: shown.filter(d => groupOf(d) === g), valve: g === 'water' && valveShown })).filter(x => x.list.length || x.valve)
+    .map((x, i) => ({ ...x, i, worst: Math.min(...x.list.map(rank), x.valve && s.valve?.state === 'closed' ? 1 : 3) })).sort((a, b) => (a.worst === 0 ? 0 : 1) - (b.worst === 0 ? 0 : 1) || a.i - b.i);
   const away = st === 'away' ? sk(t, 'chip.awayOn') : homeList.length ? sk(t, 'chip.awayWait', { who: homeList.map(p => p.first).join(', ') }) : guests ? sk(t, 'chip.awayGuests') : sk(t, 'chip.awayAuto');
   const backDay = calendarDay(s.vacation?.to ?? null, locales[lang]); // the helper's date as it is written, not moved by the browser's zone
   const persons = Object.keys(registry.states).filter(id => id.startsWith('person.')).map(id => ({ user: typeof registry.states[id].attributes.user_id === 'string' ? registry.states[id].attributes.user_id as string : null, name: String(registry.states[id].attributes.friendly_name ?? id) }));
@@ -165,53 +207,17 @@ export function SecurityPanel({ s, registry, config, host, commands, t, lang, no
           <i className="at-sec-sw" /><b>{sk(t, 'vacation')}</b><small>{s.vacation.on ? (backDay ? sk(t, 'chip.until', { d: backDay }) : sk(t, 'chip.on')) : sk(t, 'chip.off')}</small></button>}
       </div>
     </section>
+    {aside}
     <section className="at-osec-devs">
       <div className="hm-section-head"><h2>{sk(t, 'devices')}</h2><small>{devicesWord(s, t)}</small></div>
       <div className="at-osec-chips" role="group" aria-label={t('ui.rooms')}>{/* a filter of the list below, not tabs: buttons with a pressed one (tabs would owe the arrow keys) */}{[{ id: 'all', name: sk(t, 'allRooms') }, ...rooms.map(r => ({ id: r, name: r }))].map(r => <button type="button" aria-pressed={room === r.id} className={room === r.id ? 'is-on' : ''} onClick={() => setRoom(r.id)}>{r.name}</button>)}</div>
       <div className="at-osec-list">
-        {shown.filter(d => rank(d) < 2).map(d => { const isOpen = open === d.id, bad = (d.tamper ? 1 : 0) + (d.info?.low ? 1 : 0) + (d.info?.signal === 'weak' ? 1 : 0); return <div className={`at-osec-dev ${isOpen ? 'is-open' : ''} ${d.tone === 'is-alarm' ? 'is-alarm' : ''}`}>
-          <button type="button" className="at-osec-dev-hit" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : d.id)}>
-            <span className="at-osec-pic">{d.art === 'door' || d.art === 'window' ? <Art kind={d.art} maker={d.info?.maker ?? 'zigbee'} /> : <HouseArt kind={d.art} />}{bad > 0 && <i className="at-osec-badge">{bad}</i>}</span>
-            <span className="at-osec-dev-text"><b>{d.name}</b><small>{d.room}</small>
-              <span className={`at-osec-now ${d.tone}`}>{d.now}</span>
-              <span className="at-osec-icons">{d.info?.signal && <Bars v={d.info.signal} />}{d.info?.level != null && <Battery v={d.info.level} />}{d.tamper && <span className="is-bad"><Case /></span>}</span></span>
-            <Chevron />
-          </button>
-          {isOpen && <div className="at-osec-rows">
-            <Row k={d.art === 'gas' ? sk(t, 'row.gas') : d.art === 'leak' ? sk(t, 'row.leak') : sk(t, 'row.contact')} v={d.now} bad={d.tone === 'is-alarm' ? true : d.tone === 'is-warn' ? 'warn' : false} />
-            {d.tamper !== null && <Row k={sk(t, 'row.case')} v={d.tamper ? sk(t, 'row.caseOpen') : sk(t, 'row.caseClosed')} bad={!!d.tamper} />}
-            {d.info?.signal && <Row k={sk(t, 'row.signal')} v={sk(t, `sig.${d.info.signal}`)} bad={d.info.signal === 'weak'} />}
-            {d.info?.level != null && <Row k={sk(t, 'row.battery')} v={`${Math.round(d.info.level)} %${d.info.low ? ` · ${sk(t, 'row.low')}` : ''}`} bad={d.info.level <= 20 || d.info.low} />}
-            {d.info?.model && <Row k={sk(t, 'row.model')} v={d.info.model} />}
-          </div>}
-        </div>; })}
-        {(room === 'all' || room === s.valve?.room || !s.valve) && <div className={`at-osec-dev at-sec-valve ${s.valve?.state === 'closed' ? 'is-closed' : ''}`}>
-          <div className="at-osec-dev-hit is-static">
-            <span className="at-osec-pic"><HouseArt kind="valve" /></span>
-            <span className="at-osec-dev-text"><b>{sk(t, 'valveName')}</b><small>{s.valve?.room || sk(t, 'valveRoom')}</small>
-              <span className={`at-osec-now ${vs === 'closed' || vs === 'offline' ? 'is-warn' : ''}`}>{!s.valve ? sk(t, 'valveMissing') : vs === 'closed' ? sk(t, 'valveClosed') : vs === 'open' ? sk(t, 'valveOpen') : vs === 'moving' ? sk(t, 'valveMoving') : vs === 'offline' ? sk(t, 'valveOffline') : sk(t, 'noData')}</span>
-              {s.exercise?.on && <small>{sk(t, 'exercise', { n: String(s.exercise.days ?? 7), t: s.exercise.time ?? '03:00' })}</small>}</span>
-            {/* closing is one tap (the safe way); opening always asks, and with a wet leak sensor the question says so and keeping it closed comes first */}
-            {s.valve && <button type="button" className="hm-pill at-sec-valve-btn" aria-label={sk(t, 'valveAct', { name: sk(t, 'valveName'), do: valveDo })} disabled={offline || vs === 'offline'} aria-disabled={valveWaits || undefined} aria-busy={valveWaits || undefined} onClick={e => { if (valveWaits) return; if (vs === 'closed') question('valve', e.currentTarget); else send('valve:close', 'valve', call('valve', 'close_valve', { entity_id: s.valve!.id })); }}>{valveDo}</button>}
-          </div>
-          {ask === 'valve' && <Ask text={valveAsk.text} yes={sk(t, 'ask.valveOpenYes')} no={valveAsk.leak ? sk(t, 'ask.valveKeep') : sk(t, 'ask.no')} danger={valveAsk.leak} onYes={answer} onNo={closeAsk} />}
-        </div>}
-        {shown.filter(d => rank(d) >= 2).map(d => { const isOpen = open === d.id, bad = (d.tamper ? 1 : 0) + (d.info?.low ? 1 : 0) + (d.info?.signal === 'weak' ? 1 : 0); return <div className={`at-osec-dev ${isOpen ? 'is-open' : ''} ${d.tone === 'is-alarm' ? 'is-alarm' : ''}`}>
-          <button type="button" className="at-osec-dev-hit" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : d.id)}>
-            <span className="at-osec-pic">{d.art === 'door' || d.art === 'window' ? <Art kind={d.art} maker={d.info?.maker ?? 'zigbee'} /> : <HouseArt kind={d.art} />}{bad > 0 && <i className="at-osec-badge">{bad}</i>}</span>
-            <span className="at-osec-dev-text"><b>{d.name}</b><small>{d.room}</small>
-              <span className={`at-osec-now ${d.tone}`}>{d.now}</span>
-              <span className="at-osec-icons">{d.info?.signal && <Bars v={d.info.signal} />}{d.info?.level != null && <Battery v={d.info.level} />}{d.tamper && <span className="is-bad"><Case /></span>}</span></span>
-            <Chevron />
-          </button>
-          {isOpen && <div className="at-osec-rows">
-            <Row k={d.art === 'gas' ? sk(t, 'row.gas') : d.art === 'leak' ? sk(t, 'row.leak') : sk(t, 'row.contact')} v={d.now} bad={d.tone === 'is-alarm' ? true : d.tone === 'is-warn' ? 'warn' : false} />
-            {d.tamper !== null && <Row k={sk(t, 'row.case')} v={d.tamper ? sk(t, 'row.caseOpen') : sk(t, 'row.caseClosed')} bad={!!d.tamper} />}
-            {d.info?.signal && <Row k={sk(t, 'row.signal')} v={sk(t, `sig.${d.info.signal}`)} bad={d.info.signal === 'weak'} />}
-            {d.info?.level != null && <Row k={sk(t, 'row.battery')} v={`${Math.round(d.info.level)} %${d.info.low ? ` · ${sk(t, 'row.low')}` : ''}`} bad={d.info.level <= 20 || d.info.low} />}
-            {d.info?.model && <Row k={sk(t, 'row.model')} v={d.info.model} />}
-          </div>}
-        </div>; })}
+        {groups.map(({ g, list, valve }) => <>
+          {groups.length > 1 && <h3 className="at-osec-group-h" key={`h:${g}`}>{sk(t, `group.${g}`)}</h3>}
+          {list.filter(d => rank(d) < 2).map(card)}
+          {valve && valveCard}
+          {list.filter(d => rank(d) >= 2).map(card)}
+        </>)}
       </div>
     </section>
     <SecurityFeed alarmId={s.alarm.id} alarmState={st} people={persons} host={host} t={t} lang={lang} armed={armedWord} />

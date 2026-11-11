@@ -38,7 +38,12 @@ for (const theme of ['light', 'dark']) for (const [w, h, dev] of DEVICES) for (c
   const s = await small(page); check(`targets ${tag}`, !s.length, s);
   const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth); check(`no sideways scroll ${tag}`, over <= 0, over);
   const tabs = await page.evaluate(() => { const bar = document.querySelector('.ah-segments.is-sys'); if (!bar) return 'no bar'; const b = [...bar.querySelectorAll('button')].map(x => x.getBoundingClientRect()); const hit = (x, y) => x.left < y.right - 0.5 && y.left < x.right - 0.5 && x.top < y.bottom - 0.5 && y.top < x.bottom - 0.5; /* the bar may wrap into rows on a phone: an overlap is two buttons whose rectangles intersect, in a row or across rows */ return b.every((x, i) => x.width > 0 && b.slice(i + 1).every(y => !hit(x, y))) && !!bar.querySelector('.is-active') ? 'ok' : 'overlap'; });
-  check(`system tabs never overlap ${tag}`, tabs === 'ok', tabs);
+  // since 1.27.0 «Безопасность» is a page of its own: no tabs over it; the tabs of «Устройства» are checked where they are
+  check(`«Безопасность» is a page of its own, no tabs over it ${tag}`, tabs === 'no bar', tabs);
+  await page.evaluate(() => { location.hash = '#systems'; }); await page.waitForTimeout(350);
+  const devTabs = await page.evaluate(() => { const bar = document.querySelector('.ah-segments.is-sys'); if (!bar) return 'no bar'; const b = [...bar.querySelectorAll('button')].map(x => x.getBoundingClientRect()); const hit = (x, y) => x.left < y.right - 0.5 && y.left < x.right - 0.5 && x.top < y.bottom - 0.5 && y.top < x.bottom - 0.5; return b.every((x, i) => x.width > 0 && b.every((y, j) => i === j || !hit(x, y))) && !!bar.querySelector('.is-active') ? 'ok' : b.map(x => [Math.round(x.left), Math.round(x.top), Math.round(x.width)]); });
+  check(`the tabs of «Устройства» never overlap ${tag}`, devTabs === 'ok', devTabs);
+  await page.evaluate(() => { location.hash = '#security'; }); await page.waitForTimeout(350);
   if (['13R', 'pad', 'mac'].includes(dev)) { const a = await runAxe(page, '.at-sec-panel'); check(`axe ${tag}`, !a.length, a); }
   if (['13R', 'pad'].includes(dev)) await page.screenshot({ path: `${out}/${dev}-${theme}-${scenario}.png`, fullPage: true });
   check(`errors ${tag}`, !errors.length, errors); check(`no command ${tag}`, !(await log(page)).some(x => !x.startsWith('ws.')), await log(page)); await ctx.close();

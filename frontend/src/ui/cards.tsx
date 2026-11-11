@@ -1,11 +1,12 @@
 import type { ComponentChildren } from 'preact';
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useId, useMemo, useRef, useState } from 'preact/hooks';
 import { Icon } from './primitives.tsx';
 import type { HomeDevice, EntityRef, Room } from '../model/discover.ts';
 import type { T } from '../i18n/index.ts';
 import { stepTarget, targetDraft, type Action, type TargetDraft } from '../runtime/actions.ts';
 import { stateText, isOn, num, iconOfKind, held, shownName, roomBeside, type Lang } from './format.ts';
-import { stockRoomArtSet } from './art.ts';
+import { roomType } from './art.ts';
+import { roomArtSvg, roomArtStyle } from './room-art.ts';
 import { DeviceArt, deviceArtType, DEVICE_ART_TYPES, type DeviceArtType } from './device-art.tsx';
 import { Tick } from './motion.tsx';
 import { ProductPhoto, usePhoto } from './photo.tsx';
@@ -35,14 +36,24 @@ export function Switch({ on, pending, disabled, label, onToggle, large, offline 
   return <button type="button" role="switch" aria-checked={on} aria-label={label} className={`hm-switch ${on ? 'is-on' : ''} ${pending ? 'is-pending' : ''} ${large ? 'is-large' : ''}`} aria-busy={pending || undefined} aria-disabled={offline || undefined} disabled={disabled} onClick={e => { e.stopPropagation(); onToggle(); }}><span className="hm-switch-knob" /></button>;
 }
 /** Photo-less room tile: dark surface with the room's climate summary and lit lamps. */
-export function RoomTile({ room, temperature, humidity, co2, lightsOn, onClick, t, lang, label }: { room: Room; temperature: number | null; humidity: number | null; co2: number | null; lightsOn: number; onClick: () => void; t: T; lang: Lang; label: string }) {
-  // a photo that does not load (the house was unreachable when it was asked for, the file is gone) gives way to the stock picture, then to the plain tile — never the browser's broken-image mark
+/** A room's tile: its name, its lamps that are on, its temperature and humidity. The owner's own photo of the room when he set one (a dark
+ * veil under white words, as before); otherwise the room's drawn picture (1.27.0, room-art.ts) on the room's own soft ground, in the theme's
+ * version. The drawn tile is composed (`.ra-box`, atom.css): the name has the top, the readings the bottom left, and the picture takes the
+ * space they leave — beside the readings on a wide tile, between the name and the readings on a tall one — standing at its right and bottom.
+ * No word lies on the drawing (qa-nav measures every drawn shape against the words). */
+export function RoomTile({ room, temperature, humidity, co2, lightsOn, onClick, t, lang, label, theme = 'light' }: { room: Room; temperature: number | null; humidity: number | null; co2: number | null; lightsOn: number; onClick: () => void; t: T; lang: Lang; label: string; theme?: 'light' | 'dark' }) {
+  // a photo that does not load (the house was unreachable when it was asked for, the file is gone) gives way to the drawn picture — never the browser's broken-image mark
   const [failed, setFailed] = useState<string[]>([]);
-  const stock = stockRoomArtSet(room.name), own = room.photo && !failed.includes(room.photo) ? room.photo : null, art = own || !stock || failed.includes(stock.src) ? null : stock, src = own ?? art?.src ?? null; // F13: two sizes of the stock photo, lazy below the fold
-  return <button type="button" className="hm-card hm-room at-room" data-room-id={room.id} onClick={onClick} title={label}>
-    {src ? <img className="hm-photo" key={src} src={src} srcSet={art?.srcset} sizes={art ? '(max-width: 599px) 43vw, (max-width: 1199px) 230px, 300px' : undefined} width={960} height={640} alt="" decoding="async" loading="lazy" onError={() => setFailed(f => f.includes(src) ? f : [...f, src])} /> : <span className="at-room-art" aria-hidden="true"><Icon name="rooms" size={40} /></span>}
-    <span className="hm-room-top"><strong>{room.name || t('room.none')}</strong>{lightsOn > 0 && <span className="hm-lit"><Icon name="light" size={14} />{lightsOn}</span>}</span>
-    <span className="hm-room-bottom">{temperature !== null && <b>{num(temperature, lang)}<i>°</i></b>}<small>{humidity === null ? '' : `${num(humidity, lang, 0)}%`}{co2 !== null ? ` · CO₂ ${num(co2, lang, 0)}` : ''}</small></span>
+  const own = room.photo && !failed.includes(room.photo) ? room.photo : null, kind = roomType(room.name) ?? 'other', uid = useId();
+  const svg = useMemo(() => own ? '' : roomArtSvg(kind, theme, false, uid), [own, kind, theme, uid]);
+  // the lamps that are on stand before the name in the markup: on a slim tile they float to its right and the name wraps under them
+  const top = <span className="hm-room-top">{lightsOn > 0 && <span className="hm-lit"><Icon name="light" size={14} />{lightsOn}</span>}<strong>{room.name || t('room.none')}</strong></span>;
+  const bottom = <span className="hm-room-bottom">{temperature !== null && <b>{num(temperature, lang)}<i>°</i></b>}<small>{humidity === null ? '' : `${num(humidity, lang, 0)}%`}{co2 !== null ? <span className="hm-room-co2">{`${humidity === null ? '' : ' · '}CO₂ ${num(co2, lang, 0)}`}</span> : ''}</small></span>;
+  if (own) return <button type="button" className="hm-card hm-room at-room is-photo" data-room-id={room.id} onClick={onClick} title={label}>
+    <img className="hm-photo" key={own} src={own} width={960} height={640} alt="" decoding="async" loading="lazy" onError={() => setFailed(f => f.includes(own) ? f : [...f, own])} />{top}{bottom}
+  </button>;
+  return <button type="button" className={`hm-card hm-room at-room is-art ra-${kind}`} data-room-id={room.id} data-art={kind} onClick={onClick} title={label} style={roomArtStyle(kind, theme)}>
+    <span className="ra-box">{top}<span className="ra-pic" aria-hidden="true" dangerouslySetInnerHTML={{ __html: svg }} />{bottom}</span>
   </button>;
 }
 export function LightTile({ device, photo, pending, onToggle, onOpen, t, lang }: { device: HomeDevice; photo?: string | null; pending: boolean; onToggle: () => void; onOpen: () => void; t: T; lang: Lang }) {

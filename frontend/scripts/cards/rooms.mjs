@@ -8,7 +8,9 @@ const live = JSON.parse(readFileSync(resolve(import.meta.dirname, '../../../priv
 const KEEP = /^(climate\.|vacuum\.|camera\.|input_|timer\.|button\.|number\.|select\.)|_robot_vacuum|kitchen_boiler_(?!plug)/; // the other cards' own moments
 export const card = {
   name: 'Комната', sheet: '#rooms?room=kukhnia', home: '#rooms', sheetRoot: '.rm-page', tileRoot: '.at-room', actionButton: null,
-  scenarios: { live: {}, evening: { sc: 'evening' } },
+  // `twelve` (1.27.0, «Комнаты» on one screen): the same house with two more rooms, each with a climate sensor — the brief's upper case of 12;
+  // `eight`: the house with the 8 rooms of the 28.10 registry (the stairwell and the corridor by the bedroom set aside)
+  scenarios: { live: {}, evening: { sc: 'evening' }, twelve: { sc: 'twelve' }, eight: { sc: 'eight' } },
   build(base, scenario, now) {
     const out = vac.build(base, vac.scenarios.docked, now), snap = out.snapshot, ids = new Set(live.entities.map(e => e.entity_id));
     const devs = new Map(snap.devices.map(d => [d.id, d])); for (const d of live.devices) devs.set(d.id, { ...devs.get(d.id), ...d, name: d.name_by_user ?? d.name }); snap.devices = [...devs.values()];
@@ -23,6 +25,12 @@ export const card = {
     // the kitchen as it was: the centre window open, so its head waits (the heating's own «window» moment)
     set('input_boolean.kitchen_heating_window', 'on'); snap.states['climate.kitchen_trv'] = { ...snap.states['climate.kitchen_trv'], state: 'off', attributes: { ...snap.states['climate.kitchen_trv'].attributes, current_temperature: 20.5, temperature: null, hvac_action: 'off' } };
     if (scenario.sc === 'evening') { set('light.living_light', 'on'); set('light.kids_chandelier', 'on'); set('media_player.living_tv', 'on'); set('sensor.living_tv_meter_power', '96.4'); set('switch.kitchen_kettle_power', 'on'); set('sensor.kitchen_kettle_status', 'heating'); set('sensor.kitchen_kettle_temperature', '71'); set('sensor.kitchen_kettle_plug_power', '1840'); }
+    // (new arrays and new rows only: the 09.11 house is read once for every scenario of the server's life)
+    if (scenario.sc === 'twelve') for (const [id, name, t, h] of [['garderob', 'Гардероб', '19.4', '51'], ['kabinet', 'Кабинет', '21.8', '44']]) {
+      snap.areas = [...snap.areas, { area_id: id, name, picture: null, floor_id: null, temperature_entity_id: null, humidity_entity_id: null }];
+      for (const [cls, v, unit] of [['temperature', t, '°C'], ['humidity', h, '%']]) { const eid = `sensor.${id}_climate_${cls}`; snap.entities = [...snap.entities, { entity_id: eid, device_id: null, area_id: id, disabled_by: null, hidden_by: null, entity_category: null, platform: 'mock', device_class: cls, name: null, original_name: `${name} ${cls}` }]; snap.states[eid] = { state: v, attributes: { device_class: cls, unit_of_measurement: unit, friendly_name: `${name} · ${cls === 'temperature' ? 'Температура' : 'Влажность'}` }, last_changed: now.toISOString(), last_updated: now.toISOString() }; }
+    }
+    if (scenario.sc === 'eight') { const gone = new Set(['podezd', 'koridor_u_spalni']), move = x => gone.has(x.area_id ?? '') ? { ...x, area_id: 'prikhozhaia' } : x; snap.areas = snap.areas.filter(a => !gone.has(a.area_id)); snap.entities = snap.entities.map(move); snap.devices = snap.devices.map(move); } // their things move to the hall
     return out;
   },
   config: (text, s) => vac.config(text, s),

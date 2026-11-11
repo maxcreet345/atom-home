@@ -1,8 +1,6 @@
-/** Stock illustrations: a room type is guessed from the area name (ru/ro/en keywords); own photos from HouseConfig take precedence. */
-// Vite inlines the glob at build time; under the Node test runner `import.meta.glob` does not exist, so fall back to an empty map.
-let files: Record<string, string> = {};
-try { files = import.meta.glob('../art/room-*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>; } catch { files = {}; }
-const art = (name: string) => files[`../art/room-${name}.webp`];
+/** Stock pictures: a room's kind is guessed from the area's name (ru/ro/en keywords); the owner's own photo from HouseConfig takes precedence.
+ * The pictures themselves are drawn (room-art.ts, 1.27.0): the photoreal night interiors of 1.18–1.26 are gone. */
+import { roomArtUrl, type Theme } from './room-art.ts';
 export type RoomType = 'living' | 'kitchen' | 'bedroom' | 'kids' | 'bathroom' | 'hall' | 'office' | 'storage';
 const KEYWORDS: Array<[RoomType, RegExp]> = [
   // Corridors first: «Коридор у ванной» leads to the bathroom but is a hall.
@@ -17,8 +15,6 @@ const KEYWORDS: Array<[RoomType, RegExp]> = [
   ['living', /гостин|зал|living|lounge|salon|sufragerie/i],
 ];
 export function roomType(name: string): RoomType | null { for (const [type, re] of KEYWORDS) if (re.test(name)) return type; return null; }
-export function stockRoomArt(name: string): string | null { const type = roomType(name); return type ? art(type) ?? null : null; }
-/** The stock photo in two sizes for `srcset` (F13 of the audit: 960 px for a 300 px slot on a 1× screen was 385 KB too many). */
-export function stockRoomArtSet(name: string): { src: string; srcset: string } | null { const type = roomType(name); if (!type) return null; const big = art(type), small = files[`../art/room-${type}-480.webp`]; return big ? { src: big, srcset: small ? `${small} 480w, ${big} 960w` : `${big} 960w` } : null; }
+/** The drawn picture of a room, with its ground, as an image address: what a room's photo slot shows until the owner sets his own. */
+export function stockRoomArt(name: string, theme: Theme = 'light'): string { return roomArtUrl(roomType(name) ?? 'other', theme, true); }
 export const stockRoomTypes: RoomType[] = ['living', 'kitchen', 'bedroom', 'kids', 'bathroom', 'hall', 'office', 'storage'];
-export const stockArtOfType = (type: RoomType) => art(type) ?? null;

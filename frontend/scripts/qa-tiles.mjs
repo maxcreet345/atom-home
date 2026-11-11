@@ -26,7 +26,8 @@ try {
     check(`${label}: the steppers are named after their thermostat and what they do`, thermo.every(t => t.steps.length === 0 || (t.steps.length === 2 && t.steps.every(s => s && s.startsWith(t.name) && /цель/.test(s)) && t.steps[0] !== t.steps[1])) && new Set(thermo.flatMap(t => t.steps)).size === thermo.flatMap(t => t.steps).length, thermo.map(t => t.steps));
     await page.screenshot({ path: resolve(out, `${label}-climate.png`) });
     // ---- things you switch: on or off in words and as aria-pressed, not by the glyph's colour alone
-    await go('#systems');
+    // (since 1.27.0 plugs and relays are no devices of «Устройства»: its search finds them, and they are checked there)
+    await go('#systems'); await page.fill('.at-search', 'розетк'); await page.waitForTimeout(250);
     const sw = await page.evaluate(() => [...document.querySelectorAll('.ah-tile.kind-socket, .ah-tile.kind-switch')].map(t => ({ name: t.querySelector('strong')?.textContent, line: t.querySelector('.ah-tile-text small')?.textContent, pressed: t.querySelector('.ah-tile-hit')?.getAttribute('aria-pressed'), off: t.classList.contains('is-off'), on: t.classList.contains('is-on') })));
     check(`${label}: sockets and switches are on the screen`, sw.length >= 1, sw);
     check(`${label}: each says «Вкл» / «Выкл» (or that it has no link) in its second line`, sw.every(t => /^(Вкл|Выкл|Нет связи|Нет данных)( ·|$)/.test(t.line ?? '')), sw);
@@ -80,8 +81,11 @@ try {
         await page.evaluate(() => { window.atomPreview.setDelay(0); window.atomPreview.setAccept(false); });
       } }
     // l10: a tile with nothing to switch is ONE Tab stop (the tile opens the sheet; «Подробнее» stays for the pointer); a tile you switch keeps both
-    await go('#systems');
-    { const stops = await page.evaluate(() => [...document.querySelectorAll('.hm-systems .ah-tile')].map(t => ({ kind: [...t.classList].find(c => c.startsWith('kind-')), sw: t.querySelector('.ah-tile-hit').hasAttribute('aria-pressed'), off: t.classList.contains('is-off'), stops: [...t.querySelectorAll('button')].filter(b => !b.disabled && b.tabIndex >= 0).length, more: t.querySelector('.ah-tile-more')?.getAttribute('aria-hidden') })));
+    await go('#systems'); await page.fill('.at-search', '');
+    // the list's own tiles (things you switch) and — through its search, since 1.27.0 sensors are no devices of the list — the sensors' tiles
+    { const tilesNow = () => page.evaluate(() => [...document.querySelectorAll('.hm-systems .ah-tile')].map(t => ({ kind: [...t.classList].find(c => c.startsWith('kind-')), sw: t.querySelector('.ah-tile-hit').hasAttribute('aria-pressed'), off: t.classList.contains('is-off'), stops: [...t.querySelectorAll('button')].filter(b => !b.disabled && b.tabIndex >= 0).length, more: t.querySelector('.ah-tile-more')?.getAttribute('aria-hidden') })));
+      const listed = await tilesNow(); await page.fill('.at-search', 'датчик'); await page.waitForTimeout(250); const sensors = await tilesNow(); await page.fill('.at-search', ''); await page.waitForTimeout(200);
+      const stops = [...listed, ...sensors];
       const read = stops.filter(x => ['kind-environment', 'kind-leak', 'kind-opening', 'kind-measurement', 'kind-motion'].includes(x.kind)), switched = stops.filter(x => x.sw);
       check(`${label}: l10 — a sensor tile is one Tab stop`, read.length >= 1 && read.every(x => x.stops === 1 && x.more === 'true'), read.filter(x => x.stops !== 1));
       check(`${label}: l10 — a tile you switch keeps the tile and «Подробнее»`, switched.length >= 1 && switched.every(x => x.stops === 2 && x.more === null), switched.filter(x => x.stops !== 2));
@@ -96,7 +100,7 @@ try {
         check(`${label}: l97 — a closed valve offers «Открыть» only, an open one «Закрыть» only`, closed.join() === 'Открыть' && open.join() === 'Закрыть', { closed, open });
         await page.evaluate(id => window.atomPreview.setStates({ [id]: 'closed' }), valve); await page.keyboard.press('Escape'); await page.waitForTimeout(300); } }
     // f56: with the house off the line a device sheet says so in its head, its controls are aria-disabled (not disabled), and a press tells why without sending
-    { const sw = await page.evaluate(() => document.querySelector('.hm-systems .ah-tile.kind-switch:not(.is-off), .hm-systems .ah-tile.kind-socket:not(.is-off)')?.dataset.deviceKey ?? null);
+    { await go('#systems'); await page.fill('.at-search', 'розетк'); await page.waitForTimeout(250); const sw = await page.evaluate(() => document.querySelector('.hm-systems .ah-tile.kind-switch:not(.is-off), .hm-systems .ah-tile.kind-socket:not(.is-off)')?.dataset.deviceKey ?? null); await page.fill('.at-search', '');
       check(`${label}: the snapshot has a socket with a link`, !!sw);
       if (sw) { await go('#systems?device=' + encodeURIComponent(sw));
         const on = await page.evaluate(() => ({ badge: document.querySelector('.hm-sheet-head .hm-badge')?.textContent ?? null, aria: document.querySelector('.hm-sheet .ah-power')?.getAttribute('aria-disabled') ?? null }));

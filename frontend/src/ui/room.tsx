@@ -25,6 +25,7 @@ export interface RoomProps { reg: Registry; roomId: string; roomName: string; he
   /** the shell's command runner, and a device's own action by id through the sheet's runner (a valve's «open» / «close», with its question) */ commands: Commands; act: (d: HomeDevice, actionId: string) => void;
   /** a device the owner switched off in «Настройка» («Показывать»): it has no card here either */ hidden?: (th: Thing) => boolean;
   /** a device drawn by a module (the kettle): the module's sheet key, and how to open it */ sheetOf?: (deviceId: string) => string | undefined; openSheet?: (key: string) => void;
+  /** an appliance HA knows only through switches (1.27.0, model/appliance.ts): the device a tap opens — never one of its switches */ applianceOf?: (deviceId: string) => HomeDevice | undefined;
   /** the device's own card, when one was made for it (kettle, feeder, robot, camera): the room draws exactly that card */ ownCard?: (th: Thing, all: Thing[]) => ComponentChildren | null | false }
 type P = RoomProps;
 
@@ -74,7 +75,7 @@ function Hero({ m, p }: { m: RoomModel; p: P }) {
 }
 
 /** What «подробнее» opens: the module's sheet or the device's own; null when there is nothing to open — then the card is not a button. */
-const opensOf = (th: Thing, p: P): (() => void) | null => { const sheet = p.sheetOf?.(th.key); if (sheet && p.openSheet) return () => p.openSheet!(sheet); const d = (th.main ? p.deviceOf(th.main) : undefined) ?? th.ids.map(p.deviceOf).find(Boolean); return d ? () => p.open(d) : null; };
+const opensOf = (th: Thing, p: P): (() => void) | null => { const sheet = p.sheetOf?.(th.key); if (sheet && p.openSheet) return () => p.openSheet!(sheet); const app = p.applianceOf?.(th.key); if (app) return () => p.open(app); const d = (th.main ? p.deviceOf(th.main) : undefined) ?? th.ids.map(p.deviceOf).find(Boolean); return d ? () => p.open(d) : null; };
 function Tile({ th, p }: { th: Thing; p: P }) {
   // a button whose command is on its way, or with the house offline, is not `disabled` (the keyboard's focus would fall to nowhere, and a press
   // could not tell why): it is `aria-disabled` — a waiting one ignores the press, an offline one lets the runner say «Нет связи с домом»

@@ -28,7 +28,9 @@ const r = await page.evaluate(async () => {
   const idle = (calls['atom_home/automations'] ?? 0) - (before['atom_home/automations'] ?? 0);
   const tileValue = /524/.test(root.querySelector('.at-air-tile')?.textContent ?? ''); // the CO₂ on the home screen, after the 25 updates above
   // a sensor sheet open, with the chart. Since 1.17 the home screen has the Air tile instead of a CO₂ tile with a chart, so the sensor is found in Systems and opened over the home screen.
+  // Since 1.27.0 «Устройства» lists devices only: a sensor is found by its search, as a person finds it there («датчик» is a sensor's kind)
   location.hash = '#systems'; await sleep(500);
+  const search = root.querySelector('.at-search'); if (search) { search.value = 'датчик'; search.dispatchEvent(new Event('input', { bubbles: true })); await sleep(400); }
   const sensorKey = [...root.querySelectorAll('[data-device-key]')].find(x => /°C/.test(x.textContent))?.dataset.deviceKey; location.hash = `#home?device=${encodeURIComponent(sensorKey)}`; await sleep(800);
   const open = { ...calls }; let flips = 0, last = null; const heights = new Set(); const iv = setInterval(() => { const on = !!root.querySelector('.ah-history svg path'); if (on !== last) { flips++; last = on; } const s = root.querySelector('.hm-sheet,[role=dialog]'); if (s) heights.add(Math.round(s.getBoundingClientRect().height)); }, 20);
   for (let n = 0; n < 25; n++) { tick(100 + n); await sleep(200); } clearInterval(iv);

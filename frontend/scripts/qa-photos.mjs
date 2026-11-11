@@ -172,18 +172,24 @@ for (const theme of THEMES) for (const [w, h, dev] of SIZES) {
     for (const d of fx.devices.filter(d => AUX.test(`${d.model ?? ''}`))) c.devices[`d:${d.id}`] = { ...(c.devices[`d:${d.id}`] ?? {}), photo: PHOTO }; await r.fulfill({ response: res, json: c }); });
   for (const theme of THEMES) {
     const a = await open(panelUrl(theme, true, '#systems'), { w: 1070, h: 764, wait: '.ah-tile[data-device-key]', route: forced });
-    const aux = await a.page.evaluate(() => [...document.querySelectorAll('.ah-tile[data-device-key]')].filter(t => /\bkind-(leak|valve|switch|socket|opening|motion|environment|alarm)\b/.test(t.className)).map(t => ({ key: t.getAttribute('data-device-key'), kind: t.className.match(/kind-(\w+)/)[1], plate: !!t.querySelector('.ah-photo'), glyph: !!t.querySelector('.ah-glyph>svg') })));
+    // since 1.27.0 «Устройства» lists devices only: a sensor, a relay, the valve is found by its search, as a person finds it there
+    const search = async q => { await a.page.fill('.at-search', q); await a.page.waitForTimeout(300); };
+    const auxNow = () => a.page.evaluate(() => [...document.querySelectorAll('.ah-tile[data-device-key]')].filter(t => /\bkind-(leak|valve|switch|socket|opening|motion|environment|alarm)\b/.test(t.className)).map(t => ({ key: t.getAttribute('data-device-key'), kind: t.className.match(/kind-(\w+)/)[1], plate: !!t.querySelector('.ah-photo'), glyph: !!t.querySelector('.ah-glyph>svg') })));
+    const aux = []; for (const q of ['протечк', 'кран', 'выключател', 'розетк', 'реле']) { await search(q); for (const x of await auxNow()) if (!aux.some(y => y.key === x.key)) aux.push(x); }
+    await search('');
     check(`${theme}: the rule is exercised — leak sensors, the valve and relays are on the page with a photo in their slot`, aux.some(x => x.kind === 'leak') && aux.some(x => x.kind === 'valve') && aux.length >= 4, aux.map(x => x.kind));
     check(`${theme}: a sensor, a relay, the valve keep their pictogram although a photo is set`, aux.length > 0 && aux.every(x => !x.plate && x.glyph), aux.filter(x => x.plate || !x.glyph));
     const tileOf = id => a.page.evaluate(id => { const t = [...document.querySelectorAll('.ah-tile[data-device-key]')].find(x => x.getAttribute('data-device-key').includes(id)); return t ? { key: t.getAttribute('data-device-key'), cls: t.className, plate: !!t.querySelector('.ah-glyph>.ah-photo'), glyph: !!t.querySelector('.ah-glyph>svg') } : null; }, id);
     check(`${theme}: the speaker shows its photo first`, (await tileOf('yandex_station'))?.plate, await tileOf('yandex_station'));
     const speaker = (await tileOf('yandex_station'))?.key.replace(/^e:/, '');
     await a.page.evaluate(id => window.atomPreview.setStates({ [id]: 'unavailable', 'binary_sensor.datchik_protechki_kukhnia_water_leak': 'on', 'button.kitchen_cat_feeder_dispense': 'unavailable' }), speaker); await a.page.waitForTimeout(400);
-    const sp = await tileOf('yandex_station'), leak = await tileOf('213bdcfb');
+    const sp = await tileOf('yandex_station');
     check(`${theme}: a speaker with no connection shows its glyph, not the photo`, !!sp && sp.cls.includes('is-off') && !sp.plate && sp.glyph, sp);
-    check(`${theme}: a leak sensor in alarm shows its glyph`, !!leak && leak.cls.includes('is-alert') && !leak.plate && leak.glyph, leak);
     check(`${theme}: a feeder with no connection draws its cat on the tile`, await a.page.locator('[data-module-card="pet_feeder"] .at-fd-tile-cat>svg.at-cat').count() === 1 && await a.page.locator('[data-module-card="pet_feeder"] .ah-photo').count() === 0);
     await shot(a.page, `systems-offline-alarm-pad-${theme}-photos`);
+    await search('протечк'); const leak = await tileOf('213bdcfb');
+    check(`${theme}: a leak sensor in alarm shows its glyph`, !!leak && leak.cls.includes('is-alert') && !leak.plate && leak.glyph, leak);
+    await shot(a.page, `systems-leak-alarm-pad-${theme}-photos`); await search('');
     await a.page.evaluate(() => { location.hash = '#rooms?room=gostinaia'; }); await a.page.waitForSelector('.rm-tile'); await a.page.waitForTimeout(300);
     check(`${theme}: the room's card of a speaker with no connection shows its glyph`, await a.page.locator('.rm-tile .rm-tile-ic>.ah-photo').count() === 0 && await a.page.locator('.rm-tile .rm-tile-ic>svg').count() >= 1);
     await a.page.evaluate(() => { location.hash = '#rooms?room=vannaia'; }); await a.page.waitForSelector('.rm-tile'); await a.page.waitForTimeout(300);

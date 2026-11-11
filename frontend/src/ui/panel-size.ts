@@ -4,7 +4,7 @@
 /** Panel widths the stylesheets branch on: the shell carries `pw-N` when it is at least N px wide (apple.css / atom.css: «panel (…)» rules). */
 export const WIDTH_STEPS = [381, 421, 561, 601, 641, 700, 701, 980, 991, 1180, 1300, 2000, 2400] as const;
 /** The same for the panel's height (`ph-N`). */
-export const HEIGHT_STEPS = [461, 521, 641, 821] as const;
+export const HEIGHT_STEPS = [421, 461, 521, 641, 821] as const;
 
 export interface PanelInput { /** no pointer that can hover: a touch screen or a remote */ noHover: boolean; /** no pointing device at all: a television with a remote */ noPointer: boolean; /** the screen takes fingers (`navigator.maxTouchPoints > 0`): a wall kiosk however large, never a television */ touch?: boolean }
 /** A television: nothing hovers, nothing touches, and either there is no pointer at all or the screen is Full HD and wider (a TV browser that

@@ -509,12 +509,13 @@ for (const scenario of ['offline', 'oneSilent', 'longSilent', 'now', 'silentHour
   const { page, ctx } = await bare(); await page.focus('.rm-energy-tabs button:nth-child(2)'); await page.keyboard.press('Enter'); await page.waitForTimeout(300);
   await page.focus('.rm-energy-tabs button:nth-child(1)'); await page.keyboard.press('Enter'); await page.waitForSelector('.at-ep-hero'); await page.waitForTimeout(300);
   check('«Обзор» pressed from the keyboard keeps the focus (the title took it)', await page.evaluate(() => document.activeElement === document.querySelector('.rm-energy-tabs button:nth-child(1)')), await page.evaluate(() => `${document.activeElement?.tagName} ${document.activeElement?.textContent?.slice(0, 20)}`));
-  // leave by a systems tab from the keyboard, come «Back»: the tab that was pressed still has the focus (the period's title took it)
-  await page.locator('.is-sys button:not(.is-active)').first().focus(); const tab = await page.evaluate(() => document.activeElement.textContent); await page.keyboard.press('Enter'); await page.waitForFunction(() => !location.hash.startsWith('#energy')); await page.waitForTimeout(300);
+  // leave by the menu from the keyboard, come «Back»: the place that was pressed still has the focus (the period's title took it) — since 1.27.0
+  // «Энергия» is a page of the menu of its own, with no tabs of «Системы» over it, so one leaves it by the menu
+  await page.locator('.hm-sidebar nav button', { hasText: 'Устройства' }).focus(); const tab = await page.evaluate(() => document.activeElement.textContent); await page.keyboard.press('Enter'); await page.waitForFunction(() => !location.hash.startsWith('#energy')); await page.waitForTimeout(300);
   await page.goBack(); await page.waitForSelector('.at-ep-hero'); await page.waitForTimeout(400);
-  check('«Back» to the panel: the focus stays on the tab that was pressed, not on the period\'s title', await page.evaluate(() => document.activeElement?.closest('.is-sys') ? document.activeElement.textContent : null) === tab, await page.evaluate(() => `${document.activeElement?.tagName} ${document.activeElement?.textContent?.slice(0, 30)}`));
-  await page.locator('.is-sys button').last().focus(); await page.keyboard.press('Tab'); // …and the panel is still reached by Tab, right after the last systems tab
-  check('…and Tab goes on into the panel', await page.evaluate(() => !!document.activeElement?.closest('.hm-page')));
+  check('«Back» to the panel: the focus stays on the menu place that was pressed, not on the period\'s title', await page.evaluate(() => document.activeElement?.closest('.hm-sidebar nav') ? document.activeElement.textContent : null) === tab, await page.evaluate(() => `${document.activeElement?.tagName} ${document.activeElement?.textContent?.slice(0, 30)}`));
+  await page.locator('.hm-sidebar nav button').last().focus(); await page.keyboard.press('Tab'); // …and the panel is still reached by Tab, right after the menu's last place
+  check('…and Tab goes on into the panel', await page.evaluate(() => !!document.activeElement?.closest('.hm-page')), await page.evaluate(() => `${document.activeElement?.tagName}.${document.activeElement?.className}`));
   await ctx.close();
 }
 // 4. the tile on the home face, in every scenario and on the small tiles

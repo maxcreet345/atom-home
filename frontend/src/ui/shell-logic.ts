@@ -37,3 +37,9 @@ export function swipeDelta(clientY: number, startY: number, zoom: number): numbe
 export function rectsMeet(a: { top: number; bottom: number; left: number; right: number }, b: { top: number; bottom: number; left: number; right: number }): boolean {
   return a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
 }
+/** The phone's bottom bar (1.27.0): up to `slots` places; with more, the first `slots - 1` and «Ещё», which holds the rest in their order. */
+export function splitBar<T>(items: readonly T[], slots = 5): { bar: T[]; more: T[] } {
+  if (items.length <= slots) return { bar: [...items], more: [] };
+  const keep = Math.max(1, slots - 1);
+  return { bar: items.slice(0, keep), more: items.slice(keep) };
+}

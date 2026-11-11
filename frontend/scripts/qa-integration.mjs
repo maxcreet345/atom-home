@@ -149,7 +149,7 @@ try {
     await ctx.close(); }
   // the smallest phone on its side: the bars leave more than half of the 320 px to the tiles
   { const { ctx, page } = await open({ w: 568, h: 320, mobile: true, url: H('#home') });
-    const bars = await page.evaluate(() => { const hd = document.querySelector('.hm-head'), tb = document.querySelector('.hm-tabbar'); return { head: Math.round(hd?.getBoundingClientRect().height ?? 0), bar: Math.round(tb?.getBoundingClientRect().height ?? 0), cut: [...(tb?.querySelectorAll('button span') ?? [])].filter(x => x.scrollWidth > x.clientWidth + 1).length, small: [...(tb?.querySelectorAll('button') ?? [])].filter(b => b.getBoundingClientRect().height < 44).length }; });
+    const bars = await page.evaluate(() => { const hd = document.querySelector('.hm-head'), tb = document.querySelector('.hm-tabbar'); return { head: Math.round(hd?.getBoundingClientRect().height ?? 0), bar: Math.round(tb?.getBoundingClientRect().height ?? 0), cut: [...(tb?.querySelectorAll('button span') ?? [])].filter(x => x.scrollWidth > x.clientWidth + 1).length, small: [...(tb?.querySelectorAll(':scope > button') ?? [])].filter(b => b.getBoundingClientRect().height < 44).length /* the bar's own places; «Ещё»'s pages (1.27.0) are 52 px rows of their own, hidden until it opens */ }; });
     check('568x320: header and tab bar together leave 170 px or more, the tabs stay 44 px with whole words', bars.bar > 0 && bars.head + bars.bar <= 150 && bars.cut === 0 && bars.small === 0, bars);
     await page.screenshot({ path: resolve(out, 'home-568x320.png') }); await ctx.close(); }
   // a television (no hover, 4K): the shell is zoomed; a menu stays on the screen

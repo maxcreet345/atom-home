@@ -61,6 +61,33 @@ export const held = (pending?: boolean, offline?: boolean): { 'aria-disabled'?: 
 /** A device nobody named arrives called by its entity id («fan.office_fan»): it is shown by its kind, as «Настройка» does — never by the id. */
 const ENTITY_ID = /^[a-z_]+\.[a-z0-9_]+$/;
 export const shownName = (name: string, kind: string, t: T) => ENTITY_ID.test(name.trim()) ? t(`kind.${kind}` as Key) : name;
+/** Watts as the panel writes them (1.27.0: the tile and the sheet's big number alike): «290 Вт», «1,25 кВт» — the units of «Энергия»
+ *  (`ep.unit.w`, `ep.unit.kw`), never HA's raw «W». */
+export const wattsText = (watts: number, t: T, lang: Lang): string => Math.abs(watts) >= 1000 ? `${num(watts / 1000, lang, 2)} ${t('ep.unit.kw' as Key)}` : `${num(watts, lang, 0)} ${t('ep.unit.w' as Key)}`;
+/** A power reading in watts (its own unit W or kW), or null when the entity is no power reading or says nothing. */
+export const powerWatts = (e: Pick<EntityRef, 'deviceClass' | 'unit' | 'state' | 'available'>): number | null => {
+  if (!e.available || !(e.deviceClass === 'power' || e.unit === 'W' || e.unit === 'kW')) return null;
+  const v = Number(e.state); return e.state !== '' && Number.isFinite(v) ? v * (e.unit === 'kW' ? 1000 : 1) : null;
+};
+/** The big number of a sheet: a power reading in the panel's own units, anything else as its state says it. */
+export const bigReading = (e: EntityRef, t: T, lang: Lang): string => { const w = powerWatts(e); return w === null ? stateText(e, t, lang) : wattsText(w, t, lang); };
+/** A device's name under its room's own header (1.27.0, the rule of `roomBeside`): a leading «<room> · » goes, as does a trailing « · <room>» —
+ *  «Ванная · Вентилятор» under «Ванная» is «Вентилятор», and HA's doubled «Склад · Вытяжка Склад · Вытяжка» is «Вытяжка». Only the room as a
+ *  whole word before or after a separator; a name that would be left empty keeps it. */
+export const nameUnderRoom = (name: string, room: string | null | undefined): string => {
+  const n = name.trim(), r = (room ?? '').trim(); if (!r) return n;
+  const rl = r.toLowerCase();
+  let out = n;
+  for (const sep of [' · ', ' — ', ' – ', ' - ', ': ']) {
+    const o = out.toLowerCase();
+    if (o.startsWith(rl + sep) && out.length > r.length + sep.length) { out = out.slice(r.length + sep.length).trim(); break; }
+    if (o.endsWith(sep + rl) && out.length > r.length + sep.length) { out = out.slice(0, out.length - r.length - sep.length).trim(); break; }
+  }
+  // HA's own doubling — the device's name, then its entity's that says the room again: «Вытяжка Склад · Вытяжка» is «Вытяжка»
+  const inner = ` ${rl} · `, at = out.toLowerCase().indexOf(inner);
+  if (at > 0) { const a = out.slice(0, at).trim(), b = out.slice(at + inner.length).trim(); if (a && a.toLowerCase() === b.toLowerCase()) return a; }
+  return out;
+};
 /** The room to say beside a device's kind or state, or '' when the device's own name already says it — at its end («Камера · Компьютерная») or at
  *  its start («Компьютерная · Камера (C700)», 1.26.1): a head or a tile never repeats the room. At the start only as a whole word («Зал», not «Зальная»). */
 export const roomBeside = (name: string, room: string | null | undefined): string => {

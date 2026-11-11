@@ -72,7 +72,9 @@ try {
   check('photo-uploaded-into-config', typeof photo === 'string' && photo.startsWith('data:image/jpeg;base64,'), { len: photo?.length });
   await page.evaluate(() => (location.hash = '#rooms')); await page.waitForTimeout(500);
   check('photo-shown-on-room-tile', await page.evaluate(() => document.querySelector('.at-room[data-room-id="vannaia"] img.hm-photo')?.getAttribute('src')?.startsWith('data:image/jpeg') === true));
-  check('stock-art-on-other-rooms', await page.evaluate(() => document.querySelector('.at-room[data-room-id="kukhnia"] img.hm-photo')?.getAttribute('src')?.includes('room-kitchen') === true));
+  // 1.27.0: the stock pictures are drawn (ui/room-art.ts, an inline SVG beside the words): the kitchen shows the kitchen's drawing; the room
+  // with its own photo shows no drawing
+  check('stock-art-on-other-rooms', await page.evaluate(() => { const k = document.querySelector('.at-room[data-room-id="kukhnia"]'), v = document.querySelector('.at-room[data-room-id="vannaia"]'), svg = k?.querySelector('.ra-pic > svg'); return k?.dataset.art === 'kitchen' && k.classList.contains('ra-kitchen') && !!svg && svg.querySelectorAll('path,rect,circle,ellipse').length > 5 && svg.getBoundingClientRect().width > 20 && !k.querySelector('img.hm-photo') && !v?.querySelector('.ra-pic'); }));
   await shot('rooms-with-photo');
   // 6. modules tab lists the boiler as detected; disabling removes its card from Climate
   await page.evaluate(() => (location.hash = '#climate')); await page.waitForTimeout(500);

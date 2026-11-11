@@ -5,7 +5,7 @@ import type { HomeDevice, EntityRef } from '../model/discover.ts';
 import type { Host, AutomationRow } from '../runtime/host.ts';
 import type { T, Key } from '../i18n/index.ts';
 import { actionsFor, entityActions, stepTarget, type Action } from '../runtime/actions.ts';
-import { stateText, isOn, num, iconOfKind, roomBeside, type Lang } from './format.ts';
+import { stateText, bigReading, isOn, num, iconOfKind, roomBeside, type Lang } from './format.ts';
 import { metricLabel, Switch, artOf, tileColor, held, shownName, modelText, useTargetDraft, focusTwin } from './cards.tsx';
 import { DeviceArt } from './device-art.tsx';
 import { ProductPhoto, usePhoto } from './photo.tsx';
@@ -152,12 +152,12 @@ function Hero({ device, runner, t, lang, host, offline }: Common & { host?: Host
   }
   if (['switch', 'socket', 'energy'].includes(device.kind)) {
     const power = device.metrics.find(m => m.deviceClass === 'power' && m.available), energy = device.metrics.filter(m => m.deviceClass === 'energy' && m.available);
-    return <div className={`ah-hero ${on ? 'is-on' : ''}`}>{glyph}<div className="ah-hero-main"><b>{power ? stateText(power, t, lang) : stateText(p, t, lang)}</b>{power && <small>{`${stateText(p, t, lang)}${energy[0] ? ` · ${stateText(energy[0], t, lang)}` : ''}`}</small>}</div></div>;
+    return <div className={`ah-hero ${on ? 'is-on' : ''}`}>{glyph}<div className="ah-hero-main"><b>{/* the big number in the panel's own units («0 Вт», not HA's «0 W»), as the tile says it */ power ? bigReading(power, t, lang) : bigReading(p, t, lang)}</b>{power && <small>{`${stateText(p, t, lang)}${energy[0] ? ` · ${stateText(energy[0], t, lang)}` : ''}`}</small>}</div></div>;
   }
   if (p.domain === 'sensor' || p.domain === 'binary_sensor') {
-    return <div className="ah-hero">{glyph}<div className="ah-hero-main"><b>{stateText(p, t, lang)}</b><small>{metricLabel(p, t)}</small></div></div>;
+    return <div className="ah-hero">{glyph}<div className="ah-hero-main"><b>{bigReading(p, t, lang)}</b><small>{metricLabel(p, t)}</small></div></div>;
   }
-  return <div className={`ah-hero ${on ? 'is-on' : ''}`}>{glyph}<div className="ah-hero-main"><b>{stateText(p, t, lang)}</b></div></div>;
+  return <div className={`ah-hero ${on ? 'is-on' : ''}`}>{glyph}<div className="ah-hero-main"><b>{bigReading(p, t, lang)}</b></div></div>;
 }
 /** AUTO-2 of the audit: the automations of HA that drive this card — name, last run, on/off dot. Read-only, nothing to tap. */
 export type SheetAutomation = AutomationRow & { byRoom: boolean };
@@ -180,7 +180,7 @@ export function DeviceSheet({ device, runner, onClose, t, lang, stage, host, roo
   const acts = actionsFor(device), p = device.primary;
   const own = usePhoto(p.id), shot = takesPhoto(device) ? device.photo ?? own : null; // the appliance's own photo (the `photo` slot of its device) on its plate; without one, the stock scene or the glyph as before
   const toggle = acts.find(a => a.kind === 'toggle' && (a.id === 'toggle')), selects = acts.filter(a => a.kind === 'select'), sliders = acts.filter(a => a.kind === 'number' && !(device.kind === 'climate' && a.id === 'temperature')), buttons = acts.filter(a => a.kind === 'button'), otherToggles = acts.filter(a => a.kind === 'toggle' && a !== toggle);
-  const head = <div className="hm-sheet-head"><span className="hm-sheet-photo"><ProductPhoto src={shot} eager>{artOf(device) ? <DeviceArt type={artOf(device)!} fill /> : <Icon name={iconOfKind[device.kind] ?? 'generic'} size={30} />}</ProductPhoto></span><div><small>{t(`kind.${device.kind}` as Key)}{roomShown ? ` · ${roomShown}` : ''}</small><h2>{heading}</h2>{offline && <span className="hm-badge tone-danger at-sheet-offline" style="justify-self:start">{t('ui.offline')}</span>}</div><button type="button" className="hm-icon-btn" aria-label={t('ui.closeSheet')} onClick={onClose}>×</button></div>;
+  const head = <div className="hm-sheet-head"><span className="hm-sheet-photo"><ProductPhoto src={shot} eager>{artOf(device) ? <DeviceArt type={artOf(device)!} fill /> : <Icon name={(device.key.startsWith('app:') ? device.icon : null) ?? iconOfKind[device.kind] ?? 'generic'} size={30} />}</ProductPhoto></span><div><small>{device.key.startsWith('app:') ? t('devices.appliance') /* an appliance known only through its switches (model/appliance.ts) */ : t(`kind.${device.kind}` as Key)}{roomShown ? ` · ${roomShown}` : ''}</small><h2>{heading}</h2>{offline && <span className="hm-badge tone-danger at-sheet-offline" style="justify-self:start">{t('ui.offline')}</span>}</div><button type="button" className="hm-icon-btn" aria-label={t('ui.closeSheet')} onClick={onClose}>×</button></div>;
   // The light card: a lamp of the room draws its own body (slider, temperature, ambient light; a relay gets the big bulb), then the readings and settings as everywhere.
   if (device.kind === 'light') return <div className="hm-sheet-body ah-sheet at-light-sheet" data-kind="light">{head}<LightBody device={device} runner={runner} t={t} lang={lang} host={host} sleepAt={parseSleep(host?.states?.()[SLEEP_MIRROR]?.state)[device.primary.id] ?? null} /><Facts device={device} t={t} lang={lang} /><Automations rows={automations} t={t} lang={lang} /><Settings device={device} runner={runner} t={t} lang={lang} host={host} offline={offline} /></div>;
   return <div className="hm-sheet-body ah-sheet" data-kind={device.kind}>
