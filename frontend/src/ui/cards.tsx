@@ -4,7 +4,7 @@ import { Icon } from './primitives.tsx';
 import type { HomeDevice, EntityRef, Room } from '../model/discover.ts';
 import type { T } from '../i18n/index.ts';
 import { stepTarget, targetDraft, type Action, type TargetDraft } from '../runtime/actions.ts';
-import { stateText, isOn, num, iconOfKind, held, shownName, type Lang } from './format.ts';
+import { stateText, isOn, num, iconOfKind, held, shownName, roomBeside, type Lang } from './format.ts';
 import { stockRoomArtSet } from './art.ts';
 import { DeviceArt, deviceArtType, DEVICE_ART_TYPES, type DeviceArtType } from './device-art.tsx';
 import { Tick } from './motion.tsx';
@@ -99,7 +99,7 @@ export function AccessoryTile({ device, name, sub, room, pending, onToggle, onOp
   const alert = e.available && (device.kind === 'leak' || device.kind === 'alarm') && e.state === 'on';
   const color = tileColor(device), ownName = shownName(device.name, device.kind, t), label = shownName(name ?? device.name, device.kind, t);
   // second line: the room for things you switch; the state (plus the room unless the name already ends with it) for everything else
-  const roomShown = room && !label.trim().toLowerCase().endsWith(room.trim().toLowerCase()) ? room : '';
+  const roomShown = roomBeside(label, room);
   // a thing you switch says «Вкл · Ванная» / «Выкл · Ванная»: on or off is never told by the glyph's colour alone, and an unknown state is not «off»
   const switched = !e.available ? t('state.unavailable') : e.state === 'on' ? t('mode.on') : e.state === 'off' ? t('mode.off') : tileStatus(device, t, lang);
   const line2 = sub ?? (device.kind === 'climate' || device.kind === 'light' ? tileStatus(device, t, lang) : onToggle ? [switched, roomShown].filter(Boolean).join(' · ') : [tileStatus(device, t, lang), roomShown].filter(Boolean).join(' · '));

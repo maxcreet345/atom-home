@@ -5,7 +5,7 @@ import type { HomeDevice, EntityRef } from '../model/discover.ts';
 import type { Host, AutomationRow } from '../runtime/host.ts';
 import type { T, Key } from '../i18n/index.ts';
 import { actionsFor, entityActions, stepTarget, type Action } from '../runtime/actions.ts';
-import { stateText, isOn, num, iconOfKind, type Lang } from './format.ts';
+import { stateText, isOn, num, iconOfKind, roomBeside, type Lang } from './format.ts';
 import { metricLabel, Switch, artOf, tileColor, held, shownName, modelText, useTargetDraft, focusTwin } from './cards.tsx';
 import { DeviceArt } from './device-art.tsx';
 import { ProductPhoto, usePhoto } from './photo.tsx';
@@ -176,7 +176,7 @@ export function Automations({ rows, t, lang }: { rows: SheetAutomation[]; t: T; 
 export function DeviceSheet({ device, runner, onClose, t, lang, stage, host, room, automations = [], title }: { device: HomeDevice; runner: Runner; onClose: () => void; t: T; lang: Lang; stage?: ComponentChildren; host?: Host; room?: string; automations?: SheetAutomation[]; title?: string }) {
   const heading = shownName(title ?? device.name, device.kind, t); // the same short name as on the tile; the room stands above it, once
   const offline = host?.online === false; // the house is unreachable: said in the head in words, every command control is marked and its press tells why
-  const roomShown = room && !heading.trim().toLowerCase().endsWith(room.trim().toLowerCase()) ? room : '';
+  const roomShown = roomBeside(heading, room);
   const acts = actionsFor(device), p = device.primary;
   const own = usePhoto(p.id), shot = takesPhoto(device) ? device.photo ?? own : null; // the appliance's own photo (the `photo` slot of its device) on its plate; without one, the stock scene or the glyph as before
   const toggle = acts.find(a => a.kind === 'toggle' && (a.id === 'toggle')), selects = acts.filter(a => a.kind === 'select'), sliders = acts.filter(a => a.kind === 'number' && !(device.kind === 'climate' && a.id === 'temperature')), buttons = acts.filter(a => a.kind === 'button'), otherToggles = acts.filter(a => a.kind === 'toggle' && a !== toggle);

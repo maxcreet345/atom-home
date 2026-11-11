@@ -320,6 +320,8 @@ function Toggle({ s, label, hint, act, ui, k }: { s: VacSwitch; label: string; h
   return <div className="at-vac-set-row"><div><strong>{label}</strong>{hint && <small>{hint}</small>}</div>
     <button type="button" role="switch" aria-checked={!!s.on} aria-label={label} className={`at-vac-switch ${s.on ? 'is-on' : ''}`} aria-busy={ui.pending(k) || undefined} aria-disabled={s.on === null || ui.pending(k) || undefined} onClick={() => { if (s.on !== null) ui.run(k, () => act.sw(s, !s.on)); }}><i /></button></div>;
 }
+/** The browser writes a time field in ITS locale's clock (not the panel's language): a 12-hour one says «10:00 PM» and needs a wider field (1.26.1). */
+const H12 = (() => { try { const hc = new Intl.DateTimeFormat(typeof navigator === 'undefined' ? undefined : navigator.language, { hour: 'numeric' }).resolvedOptions().hourCycle; return hc === 'h11' || hc === 'h12'; } catch { return false; } })();
 function TimeField({ x, label, act, ui, k, disabled, of, lang }: { x: { id: string; v: string }; label: string; act: Act; ui: UI; k: string; disabled?: boolean; of: string; /** the panel's language: the field follows it where the browser allows */ lang: Lang }) {
   // the browser fires change on every hour or minute part: keep a draft and send once, when the field is left
   const [draft, setDraft] = useState<string | null>(null);
@@ -327,7 +329,7 @@ function TimeField({ x, label, act, ui, k, disabled, of, lang }: { x: { id: stri
   // Enter and then leaving the field is one command (`sent`); a refusal puts the field back to what the robot has
   const sent = useRef<string | null>(null);
   const send = () => { if (draft && /^\d\d:\d\d$/.test(draft) && draft !== x.v && sent.current !== draft) { sent.current = draft; ui.run(`${k}:${x.id}`, () => act.time(x.id, draft), () => { sent.current = null; setDraft(null); }); } };
-  return <label><small>{label}</small><input type="time" lang={lang} aria-label={`${of}: ${label}`} value={draft ?? x.v} disabled={disabled} onInput={e => setDraft((e.target as HTMLInputElement).value)} onBlur={send} onKeyDown={e => { if (e.key === 'Enter') send(); }} /></label>;
+  return <label><small>{label}</small><input type="time" className={H12 ? 'is-12h' : undefined} lang={lang} aria-label={`${of}: ${label}`} value={draft ?? x.v} disabled={disabled} onInput={e => setDraft((e.target as HTMLInputElement).value)} onBlur={send} onKeyDown={e => { if (e.key === 'Enter') send(); }} /></label>;
 }
 function Times({ from, to, act, ui, k, t, disabled, of, lang }: { lang: Lang; from: { id: string; v: string } | null; to: { id: string; v: string } | null; act: Act; ui: UI; k: string; t: T; disabled?: boolean; of: string }) {
   if (!from || !to) return null;

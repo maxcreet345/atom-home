@@ -32,3 +32,8 @@ export function swipeDelta(clientY: number, startY: number, zoom: number): numbe
   const k = zoom > 0 && Number.isFinite(zoom) ? zoom : 1;
   return Math.max(0, (clientY - startY) / k);
 }
+/** Whether the toast would lie over the control a person just pressed (1.26.1): a refused «Добавить кнопку» at the foot of a phone's page said its
+ *  refusal right over the button for six seconds, so the retry first had to tap the message away. Then the toast says it at the top instead. */
+export function rectsMeet(a: { top: number; bottom: number; left: number; right: number }, b: { top: number; bottom: number; left: number; right: number }): boolean {
+  return a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+}

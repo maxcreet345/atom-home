@@ -61,3 +61,10 @@ export const held = (pending?: boolean, offline?: boolean): { 'aria-disabled'?: 
 /** A device nobody named arrives called by its entity id («fan.office_fan»): it is shown by its kind, as «Настройка» does — never by the id. */
 const ENTITY_ID = /^[a-z_]+\.[a-z0-9_]+$/;
 export const shownName = (name: string, kind: string, t: T) => ENTITY_ID.test(name.trim()) ? t(`kind.${kind}` as Key) : name;
+/** The room to say beside a device's kind or state, or '' when the device's own name already says it — at its end («Камера · Компьютерная») or at
+ *  its start («Компьютерная · Камера (C700)», 1.26.1): a head or a tile never repeats the room. At the start only as a whole word («Зал», not «Зальная»). */
+export const roomBeside = (name: string, room: string | null | undefined): string => {
+  const r = (room ?? '').trim(), n = name.trim().toLowerCase(), l = r.toLowerCase();
+  if (!r) return '';
+  return n.endsWith(l) || (n.startsWith(l) && !/^[\p{L}\p{N}]/u.test(n.slice(l.length))) ? '' : r;
+};

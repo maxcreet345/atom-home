@@ -10,6 +10,7 @@ import { stageFullscreen, type StageFullscreen } from './camera-state.ts';
 import { Icon } from '../ui/primitives.tsx';
 import { ProductPhoto, usePhoto } from '../ui/photo.tsx';
 import { Switch } from '../ui/cards.tsx';
+import { roomBeside } from '../ui/format.ts';
 import { entityActions, type Action } from '../runtime/actions.ts';
 import type { EntityRef } from '../model/discover.ts';
 import { domainOf, type Registry } from '../model/registry.ts';
@@ -36,7 +37,7 @@ function DoorbellSheet({ device, registry, entities, options, host, t, lang, run
   const tx = (k: string, p?: Record<string, string | number>) => t(k as Key, p);
   const ref = (role: string) => refOf(registry, entities[role]);
   const busy = runner.busy.has(device.key);
-  const roomShown = room && !device.name.trim().toLowerCase().endsWith(room.trim().toLowerCase()) ? room : '';
+  const roomShown = roomBeside(device.name, room);
   const pic = typeof device.primary.attributes.entity_picture === 'string' ? device.primary.attributes.entity_picture : null;
   const ring = ref('ring'), motion = ref('motion'), battery = ref('battery'), identify = ref('identify');
   const now = Date.now();

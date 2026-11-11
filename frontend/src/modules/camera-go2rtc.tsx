@@ -11,7 +11,7 @@ import { entityActions, type Action } from '../runtime/actions.ts';
 import type { EntityRef, HomeDevice } from '../model/discover.ts';
 import { domainOf, type Registry } from '../model/registry.ts';
 import type { T, Key } from '../i18n/index.ts';
-import { num, type Lang } from '../ui/format.ts';
+import { num, roomBeside, type Lang } from '../ui/format.ts';
 import { Go2rtcView } from './go2rtc-view.tsx';
 import { useEventFeed, ClipStage, FeedList, ArchiveGrid, ArchiveHead } from './event-feed.tsx';
 
@@ -72,7 +72,7 @@ export function CameraSheet({ device: shown, registry, entities, options, host, 
   // the Imou's local stream goes away while its shutter is closed: its settings still work through the cloud
   const device: HomeDevice = privacy ? { ...shown, primary: { ...shown.primary, available: privacy.available } } : shown;
   const busy = runner.busy.has(device.key);
-  const roomShown = room && !device.name.trim().toLowerCase().endsWith(room.trim().toLowerCase()) ? room : '';
+  const roomShown = roomBeside(device.name, room);
   const hasControls = CAMERA_CONTROL_ROLES.some(r => entities[r.role]) || !!entities.privacy;
   const night = act('night', tx('module.camera.night')), hdr = act('hdr', tx('module.camera.hdr'));
   const nightLabel = (o: string) => ({ on: tx('module.camera.night.always'), off: tx('module.camera.night.never'), auto: tx('module.camera.night.auto') } as Record<string, string>)[o.toLowerCase()] ?? o;

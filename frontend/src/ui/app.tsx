@@ -55,7 +55,7 @@ import { decode, encode, pageOf, pushView, replaceView, leaveTo, landed, stayOn,
 import { keepFocus, type FocusKeep } from './focus-keep.ts';
 import { arrowNav } from './spatial-nav.ts';
 import { headWords } from './head-words.ts';
-import { toastLife, confirmWords, swipeDelta } from './shell-logic.ts';
+import { toastLife, confirmWords, swipeDelta, rectsMeet } from './shell-logic.ts';
 import { Banners, Takeover, NoticeBar, type TakeAct } from './shell-banner.tsx';
 import { shellAlarm, announcement, sk } from '../model/security-words.ts';
 import { houseStatus, type HouseStatus } from '../model/house-status.ts';
@@ -162,8 +162,14 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null), toastSeq = useRef(0), toastMs = useRef(6000);
   const holdToast = (ms: number | null) => { if (toastTimer.current) clearTimeout(toastTimer.current); toastTimer.current = ms === null ? null : setTimeout(() => setToast(null), ms); };
   const offlineSaid = useRef(0); // the last message that said «Нет связи с домом»: the live region reads the connection line again for it instead of reading two lines
-  const notify = (text: string, ms = 6000) => { const life = toastLife(text, ms), offline = text === words.current('ui.offline'); toastMs.current = life; const id = ++toastSeq.current; if (offline) offlineSaid.current = id; setToast({ id, text, offline }); holdToast(life); };
+  // the control a person pressed last (or holds the focus): a message never lies over it — it is said at the top instead (`rectsMeet`, 1.26.1)
+  const lastPress = useRef<{ el: Element; at: number } | null>(null), toastNear = useRef<Element | null>(null), toastEl = useRef<HTMLDivElement>(null), [toastTop, setToastTop] = useState(false);
+  const notify = (text: string, ms = 6000) => { const life = toastLife(text, ms), offline = text === words.current('ui.offline'); toastMs.current = life; const id = ++toastSeq.current; if (offline) offlineSaid.current = id;
+    const root = shellRef.current?.getRootNode() as Document | ShadowRoot | undefined, active = root?.activeElement ?? null, pressed = lastPress.current && Date.now() - lastPress.current.at < 10000 ? lastPress.current.el : null;
+    toastNear.current = pressed ?? (active && shellRef.current?.contains(active) ? active : null); setToast({ id, text, offline }); holdToast(life); };
   const dropToast = () => { holdToast(null); setToast(null); };
+  useLayoutEffect(() => { const el = toastEl.current, near = toastNear.current; if (!toast || !el || !near?.isConnected) { setToastTop(false); return; }
+    const c = near.closest('button,a,input,select,textarea,[role=button],[role=switch]') ?? near; setToastTop(rectsMeet(el.getBoundingClientRect(), c.getBoundingClientRect())); }, [toast?.id]);
   say.current = notify;
   // an update without a restart: said once to the administrator (who can restart), in the calm region and as a toast that stays a while
   const restartTold = useRef(false);
@@ -371,7 +377,7 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
   // A question about a device that has gone silent meanwhile is withdrawn: its answer could not be carried out.
   const asked = confirm ? enabled.find(d => d.key === confirm.device.key) : undefined;
   useEffect(() => { if (confirm && asked && !asked.primary.available) { setConfirm(null); notify(`${asked.name}: ${t('state.unavailable').toLowerCase()}`); } });
-  return <PhotoOf.Provider value={photoOf}><div className={`hm-shell daily-shell at-shell ah-shell ${bannersH ? 'has-banners' : ''} ${host.online ? '' : 'is-offline'} ${wide && !short ? 'daily-fit-screen' : ''} ${panel.classes} hm-route-${view.section}`} ref={shellRef} lang={lang} data-theme={config.home.theme} style={`--hm-height:${viewport.height}px;--hm-width:${viewport.width}px;--ah-banners-h:${bannersH}px${panel.scale !== 1 ? `;zoom:${panel.scale}` : ''}`}>
+  return <PhotoOf.Provider value={photoOf}><div className={`hm-shell daily-shell at-shell ah-shell ${bannersH ? 'has-banners' : ''} ${host.online ? '' : 'is-offline'} ${wide && !short ? 'daily-fit-screen' : ''} ${panel.classes} hm-route-${view.section}`} ref={shellRef} onPointerDownCapture={e => { lastPress.current = { el: e.target as Element, at: Date.now() }; }} lang={lang} data-theme={config.home.theme} style={`--hm-height:${viewport.height}px;--hm-width:${viewport.width}px;--ah-banners-h:${bannersH}px${panel.scale !== 1 ? `;zoom:${panel.scale}` : ''}`}>
     <div className="ah-wallpaper" aria-hidden="true" />
     <button type="button" className="at-skip" inert={modal || undefined} onClick={() => mainRef.current?.focus()}>{t('ui.skip')}</button>
     {wide && <aside className="hm-sidebar" inert={modal || undefined}>
@@ -459,7 +465,7 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
       {!host.online && <span className="at-vh" key={`offline:${offlineSaid.current}`}>{t('ui.offline')}</span>}
       {banner && <span className="at-vh" key={`banner:${banner.id}:${banner.text}`}>{banner.text}</span>}
       {ringBanner && <span className="at-vh" key="ring">{t('module.doorbell.ringing')}</span>}
-      {toast && <div className="hm-toast" key={toast.id} tabIndex={toast.offline && !host.online ? -1 : 0} aria-hidden={toast.offline && !host.online ? 'true' : undefined /* the connection line above says it, read again for this message; what is hidden from a reader is not a Tab stop either */} onClick={dropToast} onPointerEnter={() => holdToast(null)} onPointerLeave={() => holdToast(Math.min(3000, toastMs.current))} onFocus={e => { toastFrom.current = e.relatedTarget as HTMLElement | null; holdToast(null); }} onBlur={() => holdToast(Math.min(3000, toastMs.current))} onKeyDown={e => { if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Escape') return; e.preventDefault(); e.stopPropagation(); dropToast(); giveBack(toastFrom.current); }}><Icon name="warning" size={18} /><span>{toast.text}</span></div>}
+      {toast && <div className={`hm-toast ${toastTop ? 'is-top' : ''}`} ref={toastEl} key={toast.id} tabIndex={toast.offline && !host.online ? -1 : 0} aria-hidden={toast.offline && !host.online ? 'true' : undefined /* the connection line above says it, read again for this message; what is hidden from a reader is not a Tab stop either */} onClick={dropToast} onPointerEnter={() => holdToast(null)} onPointerLeave={() => holdToast(Math.min(3000, toastMs.current))} onFocus={e => { toastFrom.current = e.relatedTarget as HTMLElement | null; holdToast(null); }} onBlur={() => holdToast(Math.min(3000, toastMs.current))} onKeyDown={e => { if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Escape') return; e.preventDefault(); e.stopPropagation(); dropToast(); giveBack(toastFrom.current); }}><Icon name="warning" size={18} /><span>{toast.text}</span></div>}
     </div>
   </div></PhotoOf.Provider>;
 }
