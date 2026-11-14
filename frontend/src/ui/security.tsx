@@ -6,7 +6,7 @@ import type { T } from '../i18n/index.ts';
 import type { Registry } from '../model/registry.ts';
 import type { HouseConfig } from '../model/config.ts';
 import { errorText, locales, type Lang } from './format.ts';
-import { calendarDay, countdown, delayClock, questionStands, returnDate, secTone, VACATION_LABEL, type AskKind, type Guarded, type Hazard, type Security, type SecTone } from '../model/security.ts';
+import { calendarDay, countdown, delayClock, questionStands, returnDate, secTone, valveLabel, VACATION_LABEL, type AskKind, type Guarded, type Hazard, type Security, type SecTone, type Valve } from '../model/security.ts';
 import { houseToday } from '../runtime/zone.ts';
 import { announcement, armWarning, devicesWord, failLine, guardedNow, hazardName, hazardWord, sentence, sk, stateWord, tileLabel, tileWord, valveOpenAsk } from '../model/security-words.ts';
 import { people } from '../model/people.ts';
@@ -14,7 +14,7 @@ import { NO_RETURN_DAY } from '../model/heating.ts';
 /** The alarm panel went silent while «Отпуск» was on its way (ST-06): the sequence stops, the panel says «Нет связи с охраной». */
 class AlarmGone extends Error { constructor() { super('alarm gone'); this.name = 'AlarmGone'; } }
 /** The Security card and panel (owner, 09.11.2026, book/06-dashboards/SECURITY.md). Mock from real code: Alarmo's state, the modes «Не дома»
- * (by presence), «Охрана» (by hand), «Отпуск», «Гости», the door and windows, tamper, gas and water, the bathroom valve. */
+ * (by presence), «Охрана» (by hand), «Отпуск», «Гости», the door and windows, tamper, gas and water, every water valve of the house (14.11.2026). */
 const GLYPH: Record<string, string> = { door: 'M7 3h10v18H7zM14 12h.01M4 21h16', window: 'M5 4h14v16H5zM12 4v16M5 12h14', gas: 'M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-3 2-4 2-7 1 1 2 2 3 4 0-3 0-5 0-7z', leak: 'M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z', valve: 'M3 12h4M17 12h4M7 8h10v8H7zM12 8V4M9 4h6' };
 const Glyph = ({ k }: { k: string }) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={GLYPH[k]} /></svg>;
 const hm = (ms: number | null, lang: Lang) => ms === null ? '' : new Date(ms).toLocaleTimeString(locales[lang], { hour: '2-digit', minute: '2-digit' });
@@ -77,8 +77,9 @@ export function SecurityPanel({ s, registry, config, host, commands, t, lang, no
   const armed = [...ARMED_ST, 'triggered', 'pending', 'arming'].includes(st), offline = !host.online;
   // every command of the panel goes through the shell's runner: nothing while the house is offline, one command per intent (the button waits until
   // the house shows the new state), a refusal in words under the buttons
-  type Part = 'alarm' | 'guests' | 'valve';
-  const [err, setErr] = useState(''), seen = useRef<Record<Part, string>>({ alarm: '', guests: '', valve: '' }); seen.current = { alarm: `${st}|${s.vacation?.on}`, guests: String(guests), valve: String(s.valve?.state) };
+  // a valve's command waits for that valve only: each valve is a part of its own (`valve:<id>`)
+  type Part = 'alarm' | 'guests' | `valve:${string}`;
+  const [err, setErr] = useState(''), seen = useRef<Record<string, string>>({}); seen.current = { alarm: `${st}|${s.vacation?.on}`, guests: String(guests), ...Object.fromEntries(s.valves.map(v => [`valve:${v.id}`, v.state])) };
   // the newest reading of the house, for a command already on its way (ST-06: between the return date and the arming the alarm panel may go)
   const live = useRef(s); live.current = s;
   // a command waits for its own answer only: the alarm's three (arm, disarm, «Отпуск») for one another, «Гости» and the valve for themselves —
@@ -91,14 +92,14 @@ export function SecurityPanel({ s, registry, config, host, commands, t, lang, no
   const [room, setRoom] = useState('all'), [open, setOpen] = useState<string | null>(null);
   // the questions: disarming, «Отпуск» both ways, opening the water (always); arming is one tap unless a sensor does not answer
   // «today» for the return date is the HOUSE's day, not this browser's
-  const [ask, setAsk] = useState<AskKind | null>(null), [back, setBack] = useState(''), [backBad, setBackBad] = useState(false), opener = useRef<HTMLElement | null>(null), dateField = useRef<HTMLInputElement>(null), backId = useId(), today = houseToday();
-  const question = (k: AskKind, el: EventTarget | null) => { opener.current = el as HTMLElement | null; if (k === 'vacOn') { setBack(s.vacation?.to ?? ''); setBackBad(false); } setAsk(k); };
+  const [ask, setAsk] = useState<AskKind | null>(null), [askValve, setAskValve] = useState<string | null>(null), [back, setBack] = useState(''), [backBad, setBackBad] = useState(false), opener = useRef<HTMLElement | null>(null), dateField = useRef<HTMLInputElement>(null), backId = useId(), today = houseToday();
+  const question = (k: AskKind, el: EventTarget | null, valveId: string | null = null) => { opener.current = el as HTMLElement | null; setAskValve(valveId); if (k === 'vacOn') { setBack(s.vacation?.to ?? ''); setBackBad(false); } setAsk(k); };
   // the focus goes back to the control the question was opened from; when that control can no longer be pressed (ST-06: the alarm panel lost its
   // link and «Отпуск» is `disabled`), to the state line that says why — never to the page
   const stateLine = useRef<HTMLParagraphElement>(null);
   const closeAsk = () => { setAsk(null); const el = opener.current; opener.current = null; requestAnimationFrame(() => { if (el?.isConnected && !(el as HTMLButtonElement).disabled) el.focus(); else if (el) stateLine.current?.focus(); }); };
   // a question whose ground is gone (the house was disarmed, «Отпуск» flipped, the valve turned from another device, the alarm panel lost) is withdrawn
-  useEffect(() => { if (ask && !questionStands(ask, s)) closeAsk(); });
+  useEffect(() => { if (ask && !questionStands(ask, s, askValve)) closeAsk(); });
   const arm = () => send('arm', 'alarm', call('alarm_control_panel', 'alarm_arm_home', { entity_id: s.alarm.id }));
   const answer = () => { const k = ask;
     if (k === 'vacOn') {
@@ -114,11 +115,8 @@ export function SecurityPanel({ s, registry, config, host, commands, t, lang, no
     if (k === 'arm') arm();
     else if (k === 'disarm') send('disarm', 'alarm', call('alarm_control_panel', 'alarm_disarm', { entity_id: s.alarm.id }));
     else if (k === 'vacOff') send('vacation', 'alarm', call('alarm_control_panel', 'alarm_disarm', { entity_id: s.vacation!.id }));
-    else if (k === 'valve') send('valve:open', 'valve', call('valve', 'open_valve', { entity_id: s.valve!.id }));
+    else if (k === 'valve' && askValve) send(`valve:open:${askValve}`, `valve:${askValve}`, call('valve', 'open_valve', { entity_id: askValve }));
   };
-  const vs = s.valve?.state, valveAsk = valveOpenAsk(s, t), valveDo = vs === 'closed' ? sk(t, 'valveDoOpen') : sk(t, 'valveDoClose');
-  // the valve waits for its own command only, and for its own turning; a valve that does not answer gets no command at all (HA would quietly drop it)
-  const valveWaits = waits(vs === 'closed' ? 'valve:open' : 'valve:close') || vs === 'moving';
   // the key that had the focus and went out with the new state (armed → «Под охрану» is off) hands it to the other one, never to nowhere
   const armKey = useRef<HTMLButtonElement>(null), disarmKey = useRef<HTMLButtonElement>(null);
   useLayoutEffect(() => { const a = armKey.current, d = disarmKey.current, at = (a?.getRootNode() as Document | ShadowRoot | undefined)?.activeElement;
@@ -130,7 +128,7 @@ export function SecurityPanel({ s, registry, config, host, commands, t, lang, no
     // motion only tells; a sensor that says nothing is «нет данных», never «тихо»
     ...motion.map(m => ({ id: m.id, room: m.room, name: m.name, art: 'motion' as const, info: null, tamper: null, now: m.on === null ? sk(t, 'noData') : m.on ? sk(t, 'motionNow') : sk(t, 'motionQuiet'), tone: (m.on === null ? 'is-warn' : m.on ? 'is-live' : '') as Dev['tone'] })),
   ];
-  const rooms = [...new Set([...devs.map(d => d.room), ...(s.valve ? [s.valve.room] : [])].filter(Boolean))];
+  const rooms = [...new Set([...devs.map(d => d.room), ...s.valves.map(v => v.room)].filter(Boolean))];
   // trouble first: an alarm, then what is open or has no data, then a device with a fault (case, battery, radio)
   const rank = (d: Dev) => d.tone === 'is-alarm' ? 0 : d.tone === 'is-warn' ? 1 : d.tamper || d.info?.low || d.info?.signal === 'weak' ? 2 : 3;
   const shown = devs.filter(d => room === 'all' || d.room === room).map((d, i) => ({ d, i })).sort((x, y) => rank(x.d) - rank(y.d) || x.i - y.i).map(x => x.d);
@@ -151,21 +149,26 @@ export function SecurityPanel({ s, registry, config, host, commands, t, lang, no
       {d.info?.model && <Row k={sk(t, 'row.model')} v={d.info.model} />}
     </div>}
   </div>; };
-  const valveShown = room === 'all' || room === s.valve?.room || !s.valve;
-  const valveCard = <div className={`at-osec-dev at-sec-valve ${s.valve?.state === 'closed' ? 'is-closed' : ''}`} key="valve">
-    <div className="at-osec-dev-hit is-static">
-      <span className="at-osec-pic"><HouseArt kind="valve" /></span>
-      <span className="at-osec-dev-text"><b>{sk(t, 'valveName')}</b><small>{s.valve?.room || sk(t, 'valveRoom')}</small>
-        <span className={`at-osec-now ${vs === 'closed' || vs === 'offline' ? 'is-warn' : ''}`}>{!s.valve ? sk(t, 'valveMissing') : vs === 'closed' ? sk(t, 'valveClosed') : vs === 'open' ? sk(t, 'valveOpen') : vs === 'moving' ? sk(t, 'valveMoving') : vs === 'offline' ? sk(t, 'valveOffline') : sk(t, 'noData')}</span>
-        {s.exercise?.on && <small>{sk(t, 'exercise', { n: String(s.exercise.days ?? 7), t: s.exercise.time ?? '03:00' })}</small>}</span>
-      {/* closing is one tap (the safe way); opening always asks, and with a wet leak sensor the question says so and keeping it closed comes first */}
-      {s.valve && <button type="button" className="hm-pill at-sec-valve-btn" aria-label={sk(t, 'valveAct', { name: sk(t, 'valveName'), do: valveDo })} disabled={offline || vs === 'offline'} aria-disabled={valveWaits || undefined} aria-busy={valveWaits || undefined} onClick={e => { if (valveWaits) return; if (vs === 'closed') question('valve', e.currentTarget); else send('valve:close', 'valve', call('valve', 'close_valve', { entity_id: s.valve!.id })); }}>{valveDo}</button>}
-    </div>
-    {ask === 'valve' && <Ask text={valveAsk.text} yes={sk(t, 'ask.valveOpenYes')} no={valveAsk.leak ? sk(t, 'ask.valveKeep') : sk(t, 'ask.no')} danger={valveAsk.leak} onYes={answer} onNo={closeAsk} />}
-  </div>;
+  // the valves of the room in view; with none in the house yet, one card says «ещё не подключён» (the list of all rooms only)
+  const valvesShown = s.valves.filter(v => room === 'all' || v.room === room), missingShown = !s.valves.length && room === 'all';
+  const valveCard = (v: Valve | null) => { const vs = v?.state, name = v ? valveLabel(v, sk(t, 'valveName')) : sk(t, 'valveName'), valveDo = vs === 'closed' ? sk(t, 'valveDoOpen') : sk(t, 'valveDoClose');
+    // the valve waits for its own command only, and for its own turning; a valve that does not answer gets no command at all (HA would quietly drop it)
+    const valveWaits = !!v && (waits(`valve:${vs === 'closed' ? 'open' : 'close'}:${v.id}`) || vs === 'moving'), asking = !!v && ask === 'valve' && askValve === v.id, valveAsk = asking ? valveOpenAsk(s, t, v) : null;
+    return <div className={`at-osec-dev at-sec-valve ${vs === 'closed' ? 'is-closed' : ''}`} key={v ? `valve:${v.id}` : 'valve'}>
+      <div className="at-osec-dev-hit is-static">
+        <span className="at-osec-pic"><HouseArt kind="valve" /></span>
+        <span className="at-osec-dev-text"><b>{name}</b><small>{v?.room || sk(t, 'valveRoom')}</small>
+          <span className={`at-osec-now ${vs === 'closed' || vs === 'offline' ? 'is-warn' : ''}`}>{!v ? sk(t, 'valveMissing') : vs === 'closed' ? sk(t, 'valveClosed') : vs === 'open' ? sk(t, 'valveOpen') : vs === 'moving' ? sk(t, 'valveMoving') : vs === 'offline' ? sk(t, 'valveOffline') : sk(t, 'noData')}</span>
+          {s.exercise?.on && <small>{sk(t, 'exercise', { n: String(s.exercise.days ?? 7), t: s.exercise.time ?? '03:00' })}</small>}</span>
+        {/* closing is one tap (the safe way); opening always asks, and with a wet leak sensor the question says so and keeping it closed comes first */}
+        {v && <button type="button" className="hm-pill at-sec-valve-btn" aria-label={sk(t, 'valveAct', { name: `${name}${s.valves.length > 1 && v.room ? ` · ${v.room}` : ''}`, do: valveDo })} disabled={offline || vs === 'offline'} aria-disabled={valveWaits || undefined} aria-busy={valveWaits || undefined} onClick={e => { if (valveWaits) return; if (vs === 'closed') question('valve', e.currentTarget, v.id); else send(`valve:close:${v.id}`, `valve:${v.id}`, call('valve', 'close_valve', { entity_id: v.id })); }}>{valveDo}</button>}
+      </div>
+      {asking && valveAsk && <Ask text={valveAsk.text} yes={sk(t, 'ask.valveOpenYes')} no={valveAsk.leak ? sk(t, 'ask.valveKeep') : sk(t, 'ask.no')} danger={valveAsk.leak} onYes={answer} onNo={closeAsk} />}
+    </div>; };
+  const valveCards = () => missingShown ? [valveCard(null)] : valvesShown.map(valveCard);
   // the groups in their order, the one with an alarm first (trouble first, as the flat list had it); a group with nothing in it is not drawn
-  const groups = GROUP_ORDER.map(g => ({ g, list: shown.filter(d => groupOf(d) === g), valve: g === 'water' && valveShown })).filter(x => x.list.length || x.valve)
-    .map((x, i) => ({ ...x, i, worst: Math.min(...x.list.map(rank), x.valve && s.valve?.state === 'closed' ? 1 : 3) })).sort((a, b) => (a.worst === 0 ? 0 : 1) - (b.worst === 0 ? 0 : 1) || a.i - b.i);
+  const groups = GROUP_ORDER.map(g => ({ g, list: shown.filter(d => groupOf(d) === g), valve: g === 'water' && (valvesShown.length > 0 || missingShown) })).filter(x => x.list.length || x.valve)
+    .map((x, i) => ({ ...x, i, worst: Math.min(...x.list.map(rank), x.valve && valvesShown.some(v => v.state === 'closed') ? 1 : 3) })).sort((a, b) => (a.worst === 0 ? 0 : 1) - (b.worst === 0 ? 0 : 1) || a.i - b.i);
   const away = st === 'away' ? sk(t, 'chip.awayOn') : homeList.length ? sk(t, 'chip.awayWait', { who: homeList.map(p => p.first).join(', ') }) : guests ? sk(t, 'chip.awayGuests') : sk(t, 'chip.awayAuto');
   const backDay = calendarDay(s.vacation?.to ?? null, locales[lang]); // the helper's date as it is written, not moved by the browser's zone
   const persons = Object.keys(registry.states).filter(id => id.startsWith('person.')).map(id => ({ user: typeof registry.states[id].attributes.user_id === 'string' ? registry.states[id].attributes.user_id as string : null, name: String(registry.states[id].attributes.friendly_name ?? id) }));
@@ -192,7 +195,7 @@ export function SecurityPanel({ s, registry, config, host, commands, t, lang, no
       </div>
       {ask === 'arm' && <Ask text={armWarning(s, t) ?? ''} yes={sk(t, 'key.arm')} no={sk(t, 'ask.no')} onYes={answer} onNo={closeAsk} />}
       {ask === 'disarm' && <Ask text={t('confirm.alarm.disarm')} yes={sk(t, 'key.disarm')} no={sk(t, 'ask.no')} onYes={answer} onNo={closeAsk} />}
-      {ask === 'vacOn' && <Ask text={sk(t, s.valve ? 'ask.vacOnValve' : 'ask.vacOn')} yes={sk(t, 'ask.vacOnYes')} no={sk(t, 'ask.no')} onYes={answer} onNo={closeAsk}>
+      {ask === 'vacOn' && <Ask text={sk(t, s.valves.length > 1 ? 'ask.vacOnValves' : s.valve ? 'ask.vacOnValve' : 'ask.vacOn')} yes={sk(t, 'ask.vacOnYes')} no={sk(t, 'ask.no')} onYes={answer} onNo={closeAsk}>
         {s.vacation?.toId && <label className="at-sec-field at-sec-ask-date"><span>{sk(t, 'ask.vacBack')}</span><input type="date" ref={dateField} min={today} value={back} aria-invalid={backBad || undefined} aria-describedby={backBad ? backId : undefined} onInput={e => { setBack((e.currentTarget as HTMLInputElement).value); setBackBad(false); }} /></label>}
         {backBad && <small id={backId} className="at-sec-err" role="alert">{sk(t, 'ask.vacBackBad')}</small>}</Ask>}
       {ask === 'vacOff' && <Ask text={sk(t, 'ask.vacOff')} yes={sk(t, 'ask.vacOffYes')} no={sk(t, 'ask.no')} onYes={answer} onNo={closeAsk} />}
@@ -215,7 +218,7 @@ export function SecurityPanel({ s, registry, config, host, commands, t, lang, no
         {groups.map(({ g, list, valve }) => <>
           {groups.length > 1 && <h3 className="at-osec-group-h" key={`h:${g}`}>{sk(t, `group.${g}`)}</h3>}
           {list.filter(d => rank(d) < 2).map(card)}
-          {valve && valveCard}
+          {valve && valveCards()}
           {list.filter(d => rank(d) >= 2).map(card)}
         </>)}
       </div>

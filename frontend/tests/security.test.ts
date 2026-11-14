@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readSecurity, secTone, silentOnes, countdown, pickValve } from '../src/model/security.ts';
+import { readSecurity, secTone, silentOnes, countdown, pickValve, questionStands, allShut } from '../src/model/security.ts';
 import { sentence, stateWord, tileWord, devicesWord, hazardWord, hazardName, guardedNow, armWarning, valveOpenAsk, announcement } from '../src/model/security-words.ts';
 import { translator } from '../src/i18n/index.ts';
 import { defaultConfig } from '../src/model/config.ts';
@@ -93,4 +93,35 @@ test('the valve: the config names it; otherwise the one that says water, never j
   assert.equal(readSecurity(house({}, extra))!.valve!.id, 'valve.bath_water');
   const cfg = defaultConfig('Дом'); cfg.modules.security = { entities: { valve: 'valve.a_radiator' } };
   assert.equal(readSecurity(house({}, extra), cfg)!.valve!.id, 'valve.a_radiator');
+});
+
+// 14.11.2026: two valves — the kitchen's hot water for the whole house and the bathroom's; each named by its device, each with its own question
+function twoValves(kitchen = 'open', bath = 'open', over: Record<string, string> = {}): Registry {
+  const r = house({ ...over, 'valve.bath_water': bath }, [['valve.kitchen_hot_water_valve', 'kitchen', kitchen, { friendly_name: 'Кухня · Кран горячей воды Кран' }]]);
+  r.devices = [{ id: 'dk', name: 'Кухня · Кран горячей воды', area_id: 'kitchen' }, { id: 'db', name: 'Ванная · Кран воды', area_id: 'bath' }] as Registry['devices'];
+  for (const e of r.entities) if (e.entity_id === 'valve.kitchen_hot_water_valve') e.device_id = 'dk'; else if (e.entity_id === 'valve.bath_water') e.device_id = 'db';
+  return r;
+}
+test('several valves: all of them are listed, the water-named one first, each with its device\'s name and room', () => {
+  const s = readSecurity(twoValves())!;
+  assert.deepEqual(s.valves.map(v => [v.id, v.name, v.room]), [['valve.bath_water', 'Кран воды', 'Ванная'], ['valve.kitchen_hot_water_valve', 'Кран горячей воды', 'Кухня']]);
+  assert.equal(s.valve!.id, 'valve.bath_water');
+  const cfg = defaultConfig('Дом'); cfg.modules.security = { entities: { valve: 'valve.kitchen_hot_water_valve' } };
+  assert.equal(readSecurity(twoValves(), cfg)!.valves[0].id, 'valve.kitchen_hot_water_valve');
+});
+test('several valves: «закрыты» only when every one is shut; the open question is about one valve and names it', () => {
+  const leak = { 'binary_sensor.bath_leak_water_leak': 'on' };
+  assert.equal(sentence(readSecurity(twoValves('closed', 'open', leak))!, t, 1, false), 'Ванная. Перекройте воду');
+  assert.equal(sentence(readSecurity(twoValves('closed', 'closed', leak))!, t, 1, false), 'Ванная. Краны воды закрыты');
+  assert.equal(sentence(readSecurity(house({ ...leak, 'valve.bath_water': 'closed' }))!, t, 1, false), 'Ванная. Кран воды закрыт');
+  const s = readSecurity(twoValves('closed', 'open'))!;
+  assert.equal(allShut(s), false);
+  assert.equal(questionStands('valve', s, 'valve.kitchen_hot_water_valve'), true);
+  assert.equal(questionStands('valve', s, 'valve.bath_water'), false);
+  const ask = valveOpenAsk(s, t, s.valves.find(v => v.id === 'valve.kitchen_hot_water_valve')!);
+  assert.equal(ask.text, 'Открыть кран горячей воды (Кухня)? Вода пойдёт сразу.');
+  const wet = valveOpenAsk(readSecurity(twoValves('closed', 'closed', leak))!, t, readSecurity(twoValves('closed', 'closed', leak))!.valves[1]);
+  assert.equal(wet.leak, true); assert.equal(wet.text, 'Сейчас протечка: Ванная. Открыть кран горячей воды (Кухня)? Вода пойдёт сразу.');
+  // one valve: the words of 1.22 stay
+  assert.equal(valveOpenAsk(readSecurity(house({ 'valve.bath_water': 'closed' }))!, t).text, 'Открыть кран воды? Вода пойдёт сразу.');
 });

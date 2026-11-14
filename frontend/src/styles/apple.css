@@ -1105,6 +1105,9 @@
 .hm-shell .at-sec-ask p{margin:0;font-size:.9375rem;font-weight:600;color:var(--ah-ink);overflow-wrap:anywhere}
 .hm-shell .at-sec-ask-btns{display:flex;flex-wrap:wrap;gap:8px}.hm-shell .at-sec-ask-no:not(.is-primary){background:var(--os-card,#fff);border:1px solid var(--ah-line,#0000001f)}.hm-shell .at-sec-ask-yes.is-danger{background:transparent;color:var(--os-alarm-ink,#c4271d);border:1px solid currentColor}.hm-shell .at-sec-ask-btns .hm-pill{flex:1 1 140px;min-height:44px;justify-content:center}
 .hm-shell .at-sec-valve .at-sec-ask{margin:0 12px 12px;width:auto}
+/* 14.11.2026, several valves: a long name («Кран горячей воды») on a narrow phone does not break into three lines beside the button — under 400px of card the button goes under the words, full width */
+.hm-shell .at-sec-panel .at-sec-valve{container-type:inline-size}
+@container (max-width:400px){.hm-shell .at-sec-panel .at-sec-valve .at-osec-dev-hit.is-static{grid-template-columns:76px minmax(0,1fr);row-gap:10px}.hm-shell .at-sec-panel .at-sec-valve .at-sec-valve-btn{grid-column:1/-1;justify-self:stretch}}
 .hm-shell .at-sec-panel .at-osec-control.is-warn.is-st-disarmed .at-osec-state,.hm-shell .at-sec-panel .at-osec-name small.at-sec-say-warn{color:var(--os-warn-ink)}
 .hm-shell .at-sec-panel .at-osec-control.is-alarm .at-osec-name small.at-sec-say-warn{color:var(--os-alarm-ink)}
 .hm-shell .at-sec-stale{display:block;font-weight:600;color:var(--os-warn-ink)}

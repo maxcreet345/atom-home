@@ -1,6 +1,6 @@
 /* What the Security tile and panel say (docs/SECURITY.md): pure, so it is tested under Node. */
 import type { Key, T } from '../i18n/index.ts';
-import { openOnes, silentOnes, countdown, type Guarded, type Hazard, type Security } from './security.ts';
+import { allShut, openOnes, silentOnes, countdown, valveLabel, type Guarded, type Hazard, type Security, type Valve } from './security.ts';
 export const sk = (t: T, k: string, p?: Record<string, string | number>) => t(`sec.${k}` as Key, p);
 const isHazard = (x: Guarded | Hazard): x is Hazard => 'what' in x;
 /** Sentences one after another for a screen reader: a full stop between them, but none after a part that already ends with its own mark
@@ -34,7 +34,8 @@ export const where = (g: Guarded | Hazard, t: T): string => isHazard(g) ? `${sk(
 export function sentence(s: Security, t: T, home: number, guests: boolean): string {
   const hz = hazardNow(s), at = (h: Hazard) => `${h.room || h.name}${h.spot ? `, ${h.spot}` : ''}`;
   if (hz && hz.what !== 'leak') return sk(t, `say.${hz.what}`, { room: at(hz) });
-  if (hz) return sk(t, s.valve?.state === 'closed' ? 'say.leakShut' : 'say.leak', { room: at(hz) });
+  // «Кран воды закрыт» with one valve, «Краны воды закрыты» once every one of several is shut; while one still lets water through: «Перекройте воду»
+  if (hz) return sk(t, allShut(s) ? (s.valves.length > 1 ? 'say.leakShutN' : 'say.leakShut') : 'say.leak', { room: at(hz) });
   const open = openOnes(s), tamper = s.guarded.find(x => x.tamper), silent = silentOnes(s);
   if (s.alarm.state === 'triggered') return open.length ? sk(t, 'say.opened', { what: where(open[0], t) }) : sk(t, 'say.triggered');
   if (tamper) return sk(t, 'say.tamper', { what: where(tamper, t) });
@@ -62,9 +63,11 @@ export function armWarning(s: Security, t: T): string | null {
   return silent.length === 1 ? sk(t, 'ask.armSilent1', { what: where(silent[0], t) }) : sk(t, 'ask.armSilentN', { n: silent.length });
 }
 /** Opening the water always asks; while a leak sensor is wet the question names the leak and the safe choice comes first. */
-export function valveOpenAsk(s: Security, t: T): { text: string; leak: boolean } {
-  const wet = s.hazards.filter(h => h.kind === 'leak' && h.alarm);
-  return wet.length ? { text: sk(t, 'ask.valveOpenLeak', { room: wet.map(h => `${h.room || h.name}${h.spot ? `, ${h.spot}` : ''}`).join('; ') }), leak: true } : { text: sk(t, 'ask.valveOpen'), leak: false };
+/** With several valves the question names the one being opened («Открыть кран горячей воды?»): a «yes» must not be a guess which water starts. */
+export function valveOpenAsk(s: Security, t: T, v: Valve | null = s.valve): { text: string; leak: boolean } {
+  const wet = s.hazards.filter(h => h.kind === 'leak' && h.alarm), many = s.valves.length > 1 && !!v;
+  const name = many && v ? valveLabel(v, sk(t, 'valveName')) : '', what = name && v ? `${name.charAt(0).toLowerCase()}${name.slice(1)}${v.room ? ` (${v.room})` : ''}` : '';
+  return wet.length ? { text: sk(t, many ? 'ask.valveOpenLeakN' : 'ask.valveOpenLeak', { room: wet.map(h => `${h.room || h.name}${h.spot ? `, ${h.spot}` : ''}`).join('; '), name: what }), leak: true } : { text: sk(t, many ? 'ask.valveOpenN' : 'ask.valveOpen', { name: what }), leak: false };
 }
 /** What the live region announces: only the states a person must hear about (an alarm, gas, water, the entry delay, a tamper), else nothing. */
 export function announcement(s: Security, t: T, home: number, guests: boolean): string {

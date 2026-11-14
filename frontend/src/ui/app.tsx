@@ -395,13 +395,14 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
   // «Показать». The other action, when there is one, is «Показать» (the «Безопасность» page). Nothing is sent without the house (the runner's guard).
   const [bannersH, setBannersH] = useState(0);
   const alarmTake = alarmShown && security ? (() => {
-    const wet = security.hazards.filter(h => h.alarm), fire = wet.some(h => h.what !== 'leak'), leak = wet.length > 0 && !fire, st = security.alarm.state, valve = security.valve;
+    // «Перекрыть воду» shuts every valve that still lets water through (14.11.2026: the kitchen's hot water and the bathroom's), each through the runner
+    const wet = security.hazards.filter(h => h.alarm), fire = wet.some(h => h.what !== 'leak'), leak = wet.length > 0 && !fire, st = security.alarm.state, toShut = security.valves.filter(v => v.state !== 'closed' && v.state !== 'offline');
     const placeSec = pages.includes('security') ? { section: 'security' as const } : { section: 'systems' as const, filter: 'attention' };
     const show: TakeAct = { label: t('take.show'), icon: 'shield', onClick: () => go(placeSec) };
     const at = wet.length ? wet[0].since : st === 'pending' ? null /* the countdown says it */ : security.alarm.since, since = at ? t('take.since', { t: dateFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(at) }) : '';
     let main = show, second: TakeAct | undefined;
-    if (leak && valve && valve.state !== 'closed' && valve.state !== 'offline') { const dev = enabled.find(d => d.primary.id === valve.id) ?? ({ key: `e:${valve.id}`, name: valve.name, primary: { id: valve.id, available: true, state: valve.state, attributes: {} } } as unknown as HomeDevice);
-      main = { label: t('take.closeWater'), icon: 'water', busy: runner.busy.has(dev.key), onClick: () => void runner.run(dev, { id: 'close', label: 'action.close', kind: 'button', domain: 'valve', service: 'close_valve', entityId: valve.id, confirm: false, risk: 'water' }) }; second = show; }
+    if (leak && toShut.length) { const devsToShut = toShut.map(valve => enabled.find(d => d.primary.id === valve.id) ?? ({ key: `e:${valve.id}`, name: valve.name ?? valve.id, primary: { id: valve.id, available: true, state: valve.state, attributes: {} } } as unknown as HomeDevice));
+      main = { label: t('take.closeWater'), icon: 'water', busy: devsToShut.some(dev => runner.busy.has(dev.key)), onClick: () => { for (const dev of devsToShut) void runner.run(dev, { id: 'close', label: 'action.close', kind: 'button', domain: 'valve', service: 'close_valve', entityId: dev.primary.id, confirm: false, risk: 'water' }); } }; second = show; }
     else if (!wet.length && (st === 'triggered' || st === 'pending')) { const dev = { key: 'sec:disarm', name: sk(t, 'title'), primary: { id: security.alarm.id, available: true, state: st, attributes: {} } } as unknown as HomeDevice;
       main = { label: t('take.disarm'), icon: 'unlock', busy: runner.busy.has(dev.key), onClick: () => void runner.run(dev, { id: 'disarm', label: 'action.disarm', kind: 'button', domain: 'alarm_control_panel', service: 'alarm_disarm', entityId: security.alarm.id, confirm: true, risk: 'security' }) }; second = show; }
     return <Takeover key="alarm" tone="danger" kind="alarm" glyph="danger" title={alarmShown.text} sub={[alarmShown.sub, since].filter(Boolean).join(' · ')} left={alarmShown.counting ? () => secLeft(security.alarm, statesNow.current) : null} main={main} second={second} className="is-alarm" />;

@@ -389,4 +389,55 @@ for (const st of ['unavailable', 'unknown']) for (const theme of ['light', 'dark
   await page.evaluate(g => window.atomPreview.setStates({ [g]: 'unavailable' }), GLASS); await page.waitForTimeout(250);
   check('CODEX-010 office: an unavailable glass break makes the building amber and names the device', /\bis-warn\b/.test(await page.evaluate(() => document.querySelector('.at-osec-control').className)) && /Не отвечает: Движение в Шоуруме/.test(await page.locator('.at-osec-name small').innerText()), await page.locator('.at-osec-name small').innerText());
   check('errors CODEX-010 glass', !errors.length, errors); await ctx.close(); }
+
+// 14.11.2026: two valves (the kitchen's hot water for the house and the bathroom's): a card each with its device's name and room, each button
+// commands its own valve, opening asks and names which valve, the room filter keeps the room's valve, «Перекрыть воду» shuts every open one
+for (const theme of ['light', 'dark']) for (const [w, h, dev] of [[360, 792, '13R'], [792, 360, '13R-land'], [764, 1070, 'pad-port'], [1070, 764, 'pad'], [1024, 768, 'open-land'], [1440, 900, 'mac'], [1920, 1080, 'hd']]) for (const scenario of ['twoValves', 'twoLeak']) {
+  const { page, ctx, errors } = await open({ w, h, theme, scenario }), tag = `two valves ${dev}/${theme}/${scenario}`;
+  const l = await layout(page, '.at-sec-panel'); check(`layout ${tag}`, !l.length, l);
+  const sm = await small(page); check(`targets ${tag}`, !sm.length, sm);
+  const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth); check(`no sideways scroll ${tag}`, over <= 0, over);
+  if (['13R', 'pad', 'mac'].includes(dev)) { const a = await runAxe(page, '.at-sec-panel'); check(`axe ${tag}`, !a.length, a); }
+  if (['13R', 'pad', '13R-land'].includes(dev)) { await page.locator('.at-sec-valve').first().scrollIntoViewIfNeeded(); await page.screenshot({ path: `${out}/two-${dev}-${theme}-${scenario}.png`, fullPage: true }); }
+  check(`errors ${tag}`, !errors.length, errors); await ctx.close();
+}
+{ const { page, ctx, errors } = await open({ scenario: 'twoValves' }); await page.evaluate(() => window.atomPreview.host.setAccept(true));
+  const cards = await page.locator('.at-sec-valve').allInnerTexts(), names = await page.locator('.at-sec-valve-btn').evaluateAll(b => b.map(x => x.getAttribute('aria-label')));
+  check('two valves: two cards, the bathroom\'s first, each with its device\'s name and room', cards.length === 2 && /^Кран воды\s+Ванная\s+открыт/i.test(cards[0]) && /^Кран горячей воды\s+Кухня\s+открыт/i.test(cards[1]) && cards.every(c => /профилактика раз в 7 дн\. в 03:00/.test(c)), cards);
+  check('two valves: each button is named with its valve and room', JSON.stringify(names) === JSON.stringify(['Кран воды · Ванная: Закрыть', 'Кран горячей воды · Кухня: Закрыть']), names);
+  await page.locator('.at-sec-valve-btn').nth(1).click(); await page.waitForTimeout(300); let l = await sent(page);
+  check('two valves: «Закрыть» on the kitchen\'s card shuts the kitchen\'s valve only, at once', l.length === 1 && l[0].c === 'valve.close_valve' && l[0].id === 'valve.kitchen_hot_water_valve', l);
+  const busy = await page.locator('.at-sec-valve-btn').evaluateAll(b => b.map(x => x.getAttribute('aria-disabled')));
+  check('two valves: only the kitchen\'s button waits for its valve; the bathroom\'s stays free', busy[0] === null && busy[1] === 'true', busy);
+  await page.locator('.at-sec-valve-btn').nth(0).click(); await page.waitForTimeout(300); l = await sent(page);
+  check('…and the bathroom\'s shuts the bathroom\'s', l.length === 2 && l[1].id === 'valve.bath_water', l);
+  await page.evaluate(() => window.atomPreview.setStates({ 'valve.kitchen_hot_water_valve': 'closed' })); await page.waitForTimeout(300);
+  await page.locator('.at-sec-valve-btn').nth(1).click(); await page.waitForTimeout(250);
+  const ask = await page.locator('.at-sec-valve').nth(1).locator('.at-sec-ask').innerText().catch(() => ''), asks = await page.locator('.at-sec-ask').count();
+  check('two valves: opening asks on that valve\'s card and names it', asks === 1 && /^Открыть кран горячей воды \(Кухня\)\? Вода пойдёт сразу\./.test(ask) && (await sent(page)).length === 2, [asks, ask]);
+  await page.evaluate(() => window.atomPreview.setStates({ 'valve.kitchen_hot_water_valve': 'open' })); await page.waitForTimeout(300);
+  check('two valves: the kitchen\'s valve opened elsewhere — its question is withdrawn, nothing sent', await page.locator('.at-sec-ask').count() === 0 && (await sent(page)).length === 2);
+  await page.evaluate(() => window.atomPreview.setStates({ 'valve.kitchen_hot_water_valve': 'closed' })); await page.waitForTimeout(300);
+  await page.locator('.at-sec-valve-btn').nth(1).click(); await page.waitForTimeout(250); await page.locator('.at-sec-ask-yes').click(); await page.waitForTimeout(300); l = await sent(page);
+  check('two valves: «yes» opens the kitchen\'s valve, not the bathroom\'s', l.length === 3 && l[2].c === 'valve.open_valve' && l[2].id === 'valve.kitchen_hot_water_valve', l);
+  await page.locator('.at-osec-chips button', { hasText: 'Кухня' }).click(); await page.waitForTimeout(250);
+  const kitchen = await page.locator('.at-sec-valve').allInnerTexts(); check('two valves: the room filter «Кухня» keeps the kitchen\'s valve only', kitchen.length === 1 && /^Кран горячей воды/.test(kitchen[0]), kitchen);
+  check('errors two valves', !errors.length, errors); await ctx.close(); }
+{ const { page, ctx, errors } = await open({ scenario: 'twoLeak' });
+  const say = await page.locator('.at-osec-name small').first().innerText();
+  check('two valves, a leak with the bathroom\'s still open: «Перекройте воду», not «Краны воды закрыты»', /Ванная\. Перекройте воду/.test(say), say);
+  await page.evaluate(() => window.atomPreview.setStates({ 'valve.bath_water': 'closed' })); await page.waitForTimeout(300);
+  check('…both shut: «Краны воды закрыты»', /Краны воды закрыты/.test(await page.locator('.at-osec-name small').first().innerText()));
+  await page.locator('.at-sec-valve-btn').nth(1).click(); await page.waitForTimeout(250);
+  const ask = await page.locator('.at-sec-ask').innerText(); check('two valves: opening during a leak names the leak and the valve, keeping it shut comes first', /^Сейчас протечка: Ванная\. Открыть кран горячей воды \(Кухня\)\? Вода пойдёт сразу\./.test(ask), ask);
+  check('errors two leak', !errors.length, errors); await ctx.close(); }
+{ const { page, ctx, errors } = await open({ scenario: 'twoLeak', hash: '#home' }); await page.evaluate(() => { window.atomPreview.host.setAccept(true); location.hash = '#lights'; }); await page.waitForTimeout(500);
+  const b = await page.evaluate(() => [...document.querySelectorAll('.ah-take.is-alarm button')].map(x => x.textContent.trim()));
+  check('two valves, a leak: the takeover offers «Перекрыть воду» while one valve is open', b[0] === 'Перекрыть воду', b);
+  await page.locator('.ah-take.is-alarm button', { hasText: 'Перекрыть воду' }).click(); await page.waitForTimeout(350); let l = await sent(page);
+  check('…and it shuts the open one (the kitchen\'s is already shut)', l.length === 1 && l[0].c === 'valve.close_valve' && l[0].id === 'valve.bath_water', l);
+  await page.evaluate(() => window.atomPreview.setStates({ 'valve.kitchen_hot_water_valve': 'open', 'valve.bath_water': 'open' })); await page.waitForTimeout(350);
+  await page.locator('.ah-take.is-alarm button', { hasText: 'Перекрыть воду' }).click(); await page.waitForTimeout(350); l = await sent(page);
+  check('…with both open it shuts both', l.length === 3 && l.slice(1).every(x => x.c === 'valve.close_valve') && new Set(l.slice(1).map(x => x.id)).size === 2, l);
+  check('errors two leak takeover', !errors.length, errors); await ctx.close(); }
 stop(fails.length ? 1 : 0);

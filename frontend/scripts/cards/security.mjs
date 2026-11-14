@@ -33,6 +33,13 @@ function apply(fx, now, sc) {
     if (id === 'binary_sensor.office_window_contact') { const lid = 'binary_sensor.office_window_battery_low'; fx.entities.push({ entity_id: lid, device_id: dev, area_id: null, disabled_by: null, hidden_by: null, entity_category: 'diagnostic', platform: 'mqtt', device_class: 'battery', name: null, original_name: 'battery low' }); set(lid, 'on', {}, 300); }
   }
   ENT(fx, 'valve.bath_water', 'vannaia', 'water', 'Ванная · Кран воды'); set('valve.bath_water', 'open', { friendly_name: 'Кран воды', device_class: 'water' }, 600);
+  // 14.11.2026: the second valve — hot water for the whole house, in the kitchen; both valves are named by their devices (as HA has them)
+  if (sc.valves2) {
+    ENT(fx, 'valve.kitchen_hot_water_valve', 'kukhnia', 'water', 'Кран'); set('valve.kitchen_hot_water_valve', 'open', { friendly_name: 'Кухня · Кран горячей воды Кран', device_class: 'water' }, 600);
+    for (const [id, dev, name, area] of [['valve.bath_water', 'dev_bath_water_valve', 'Ванная · Кран воды', 'vannaia'], ['valve.kitchen_hot_water_valve', 'dev_kitchen_hot_water_valve', 'Кухня · Кран горячей воды', 'kukhnia']]) {
+      if (!fx.devices.some(d => d.id === dev)) fx.devices.push({ id: dev, name, model: 'ZPV-01', manufacturer: 'MOES', area_id: area, entry_type: null, disabled_by: null, via_device_id: null, labels: [] });
+      fx.entities.find(e => e.entity_id === id).device_id = dev; }
+  }
   ENT(fx, 'alarm_control_panel.alarmo', null, null, 'Alarmo'); fx.entities.find(e => e.entity_id === 'alarm_control_panel.alarmo').platform = 'alarmo'; set('alarm_control_panel.alarmo', 'disarmed', { friendly_name: 'Alarmo', code_format: null, changed_by: null, arm_mode: null, bypassed_sensors: [] }, 95);
   // as applied in HA on 09.11: «Гости» is the heating's switch, «Отпуск» Alarmo's mode with the heating's return date, the exercise helpers
   add('input_boolean.heating_guests', null, null, 'Отопление · Гости', 'off', 900); add('input_datetime.heating_vacation_return', null, null, 'Отопление · Возвращение из отпуска', '2026-11-03 00:00:00', 9000);
@@ -74,6 +81,9 @@ export const card = {
     guests: { people: 'away', over: [['input_boolean.heating_guests', 'on', 180]] },
     vacation: { people: 'away', state: 'armed_vacation', alarmMin: 3000, over: [['input_datetime.heating_vacation_return', '2026-11-23 00:00:00', 3000], ['valve.bath_water', 'closed', 3000]] },
     leak: { people: 'one', over: [['binary_sensor.bath_leak_water_leak', 'on', 3], ['valve.bath_water', 'closed', 3]] },
+    // 14.11.2026: two valves; during a leak the kitchen's is already shut and the bathroom's still open
+    twoValves: { people: 'one', valves2: true },
+    twoLeak: { people: 'one', valves2: true, over: [['binary_sensor.bath_leak_water_leak', 'on', 3], ['valve.kitchen_hot_water_valve', 'closed', 3]] },
     gas: { people: 'all', over: [['binary_sensor.kitchen_gas', 'on', 1]] },
     tamper: { people: 'all', over: [['binary_sensor.living_window_left_tamper', 'on', 7]] },
     // audit 2026-11-09: a window and the gas sensor do not answer — never «закрыто» / «сухо», the card is not calm, arming warns

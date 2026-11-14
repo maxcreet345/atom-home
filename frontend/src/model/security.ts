@@ -18,13 +18,18 @@ export interface Guarded extends DevInfo { id: string; name: string; room: strin
  * `alarm: null` is either `silent` (the sensor does not answer: never «сухо») or a leak sensor that has not reported yet (`unknown` until its
  * first alarm — the owner's decision of 09.11.2026 for the storage room's sensor, book SECURITY.md п. 7: no «без связи» for it). */
 export interface Hazard extends DevInfo { id: string; name: string; room: string; /** where in the room, from the device's name: «котёл», «раковина» */ spot: string | null; kind: 'gas' | 'leak'; what: 'gas' | 'smoke' | 'co' | 'leak'; alarm: boolean | null; silent: boolean; since: number | null }
+/** `offline` — the valve is `unavailable`: HA would quietly skip a command to it, so the panel sends none; `unknown` — it answers but has not said
+ * where it stands. `name` is the device's own words after the room («Кран горячей воды»), null when it has none. */
+export interface Valve { id: string; name: string | null; room: string; state: 'open' | 'closed' | 'moving' | 'unknown' | 'offline' }
 export interface Security {
   alarm: { id: string; state: AlarmState; since: number | null; arming: string | null; bypassed: string[]; changedBy: string | null; delayEnds: number | null };
   guests: { id: string; on: boolean } | null;
   vacation: { id: string; on: boolean; from: string | null; to: string | null; /** the return date's helper, set from the panel */ toId: string | null } | null;
   guarded: Guarded[]; hazards: Hazard[];
-  /** `offline` — the valve is `unavailable`: HA would quietly skip a command to it, so the panel sends none; `unknown` — it answers but has not said where it stands */
-  valve: { id: string; name: string; room: string; state: 'open' | 'closed' | 'moving' | 'unknown' | 'offline' } | null;
+  /** The house's water valves (14.11.2026: a hot-water valve in the kitchen and the bathroom's), the configured or water-named one first.
+   * `valve` is that first one — the vacation question and the settings speak of «the» valve; each card, button and question has its own. */
+  valves: Valve[];
+  valve: Valve | null;
   /** the valve's weekly exercise: on/off, the time and every how many days (input_boolean/_time/_days, Настройка) */
   exercise: { id: string; on: boolean; time: string | null; timeId: string | null; days: number | null; daysId: string | null } | null;
   /** the house's sockets and what «Отпуск» turns off: the label «Отпуск: выключать» on the switch (owner: everything but the fridge, a list to keep) */
@@ -42,6 +47,8 @@ export function pickValve(ids: string[], chosen: string | undefined, words: (id:
   const sorted = [...ids].sort();
   return sorted.find(id => /water|вод|кран|apa/i.test(words(id))) ?? sorted[0];
 }
+/** A valve's name in the panel: its device's words, else «Кран воды». */
+export const valveLabel = (v: Valve, fallback: string): string => v.name ?? fallback;
 export function readSecurity(reg: Registry, config?: HouseConfig, now: number = Date.now()): Security | null {
   const S = reg.states, ents = reg.entities, devs = reg.devices, areas = reg.areas;
   const areaOf = (id: string) => { const e = ents.find(x => x.entity_id === id), d = e?.device_id ? devs.find(x => x.id === e.device_id) : null; return e?.area_id ?? d?.area_id ?? null; };
@@ -73,8 +80,12 @@ export function readSecurity(reg: Registry, config?: HouseConfig, now: number = 
     return { ...info(id, on(S[id].state) === null), id, name: tidy(id), room: roomOf(id), kind: (S[id].attributes.device_class === 'door' || /door/.test(id) ? 'door' : 'window') as Guarded['kind'], open: on(S[id].state), since: ts(S[id].last_changed), tamper: S[tamperId] ? on(S[tamperId].state) : null, bypassed: bypassed.includes(id) };
   }).sort((x, y) => Number(y.kind === 'door') - Number(x.kind === 'door') || x.room.localeCompare(y.room) || x.name.localeCompare(y.name));
   const hazards: Hazard[] = Object.keys(S).filter(id => id.startsWith('binary_sensor.') && live(id) && ['gas', 'moisture', 'smoke', 'carbon_monoxide'].includes(String(S[id].attributes.device_class))).map(id => { const silent = on(S[id].state) === null && !(S[id].state === 'unknown' && S[id].attributes.device_class === 'moisture'); return { ...info(id, silent), id, name: tidy(id), room: roomOf(id), spot: (String(S[id].attributes.friendly_name ?? '').match(/\(([^)]+)\)/)?.[1] ?? '').replace(/^(tuya|ts\d+|zigbee).*$/i, '') || null, kind: (S[id].attributes.device_class === 'moisture' ? 'leak' : 'gas') as Hazard['kind'], what: WHAT[String(S[id].attributes.device_class)] ?? 'gas', alarm: on(S[id].state), silent, since: ts(S[id].last_changed) }; });
-  const valveId = pickValve(Object.keys(S).filter(id => id.startsWith('valve.') && live(id)), config?.modules.security?.entities?.valve, id => `${id} ${String(S[id].attributes.friendly_name ?? '')} ${String(S[id].attributes.device_class ?? '')}`);
-  const vs = valveId ? S[valveId].state : '';
+  const devOf = (id: string) => { const e = ents.find(x => x.entity_id === id); return e?.device_id ? devs.find(d => d.id === e.device_id) ?? null : null; };
+  const valveIds = Object.keys(S).filter(id => id.startsWith('valve.') && live(id));
+  const valveId = pickValve(valveIds, config?.modules.security?.entities?.valve, id => `${id} ${String(S[id].attributes.friendly_name ?? '')} ${String(S[id].attributes.device_class ?? '')}`);
+  // the valve's name is its device's, after the room: «Кухня · Кран горячей воды» → «Кран горячей воды» (the entity itself is only «Кран»)
+  const valveName = (id: string) => { const d = devOf(id) as { name?: string | null; name_by_user?: string | null } | null, n = String(d?.name_by_user ?? d?.name ?? '').split(' · ').at(-1)!.replace(/\s*\([^)]*\)/g, '').trim(); return n || null; };
+  const valveState = (v: string): Valve['state'] => v === 'open' ? 'open' : v === 'closed' ? 'closed' : v === 'opening' || v === 'closing' ? 'moving' : v === 'unavailable' ? 'offline' : 'unknown';
   const pick = (...names: string[]) => names.find(id => S[id]);
   // «Гости» is one switch for the heating and the guard (the heating's own, 09.11.2026); «Отпуск» is Alarmo's armed_vacation, its end the heating's return date
   const g = pick('input_boolean.house_guests', 'input_boolean.heating_guests'), ex = pick('input_boolean.water_valve_exercise');
@@ -84,18 +95,20 @@ export function readSecurity(reg: Registry, config?: HouseConfig, now: number = 
   // the helper holds a calendar date of the HOUSE: «today» is the house's, not this browser's; the house's «no date» (CODEX-011) is no date
   const back = backId ? returnDay(S[backId].state, houseToday(now)) : null;
   // a socket = the main switch of a device labelled «розетки» (its shortest switch id: «…_plug», not «…_plug_child_lock»), or one already on the vacation list
-  const devOf = (id: string) => { const e = ents.find(x => x.entity_id === id); return e?.device_id ? devs.find(d => d.id === e.device_id) ?? null : null; };
   const sw = ents.filter(e => e.entity_id.startsWith('switch.') && !e.entity_category && !e.disabled_by && S[e.entity_id]);
   const main = new Map<string, string>(); for (const e of sw) if (e.device_id) { const cur = main.get(e.device_id); if (!cur || e.entity_id.length < cur.length) main.set(e.device_id, e.entity_id); }
   const loads = sw.filter(e => (e.labels ?? []).includes(VACATION_LABEL) || (e.device_id && main.get(e.device_id) === e.entity_id && (devOf(e.entity_id)?.labels ?? []).includes('rozetki')))
     .map(e => ({ id: e.entity_id, name: tidy(e.entity_id), room: roomOf(e.entity_id), off: (e.labels ?? []).includes(VACATION_LABEL) }))
     .sort((x, y) => x.room.localeCompare(y.room) || x.name.localeCompare(y.name));
+  // the chosen one first, the others by room and name
+  const valves: Valve[] = valveIds.map(id => ({ id, name: valveName(id), room: roomOf(id), state: valveState(S[id].state) }))
+    .sort((x, y) => Number(y.id === valveId) - Number(x.id === valveId) || x.room.localeCompare(y.room) || (x.name ?? '').localeCompare(y.name ?? '') || x.id.localeCompare(y.id));
   return {
     alarm: { id: alarmId, state: st, since: ts(a.last_changed), arming: armMode, bypassed, changedBy: typeof a.attributes.changed_by === 'string' ? a.attributes.changed_by : null, delayEnds: (st === 'arming' || st === 'pending') && Number.isFinite(delay) && delay > 0 ? (ts(a.last_changed) ?? Date.now()) + delay * 1000 : null },
     guests: g ? { id: g, on: S[g].state === 'on' } : null,
     vacation: { id: alarmId, on: vacationOn, from: null, to: back, toId: backId ?? null },
     guarded, hazards,
-    valve: valveId ? { id: valveId, name: tidy(valveId), room: roomOf(valveId), state: vs === 'open' ? 'open' : vs === 'closed' ? 'closed' : vs === 'opening' || vs === 'closing' ? 'moving' : vs === 'unavailable' ? 'offline' : 'unknown' } : null,
+    valves, valve: valves[0] ?? null,
     exercise: ex ? { id: ex, on: S[ex].state === 'on', time: exTime && /^\d\d:\d\d/.test(S[exTime].state) ? S[exTime].state.slice(0, 5) : null, timeId: exTime ?? null, days: exDays && Number.isFinite(Number(S[exDays].state)) ? Math.round(Number(S[exDays].state)) : null, daysId: exDays ?? null } : null,
     loads,
   };
@@ -129,15 +142,18 @@ export function returnDate(typed: string, today: string): { date: string | null;
 export type AskKind = 'arm' | 'disarm' | 'vacOn' | 'vacOff' | 'valve';
 /** Does an open question still make sense? The house may have been disarmed, «Отпуск» flipped or the valve turned from another device meanwhile:
  * the question is then withdrawn — its «yes» would send a command to a house that is already there. */
-export function questionStands(kind: AskKind, s: Security): boolean {
+export function questionStands(kind: AskKind, s: Security, valveId?: string | null): boolean {
   const st = s.alarm.state, armed = ['away', 'guard', 'vacation', 'triggered', 'pending', 'arming'].includes(st);
   if (kind === 'arm') return !armed && st !== 'unknown';
   if (kind === 'disarm') return armed && st !== 'arming';
   // «Отпуск» is a mode of the same Alarmo: with the alarm panel unknown or unavailable there is nothing to switch on (ST-06)
   if (kind === 'vacOn') return !!s.vacation && !s.vacation.on && st !== 'unknown';
   if (kind === 'vacOff') return !!s.vacation?.on;
-  return s.valve?.state === 'closed';
+  // opening asks about one valve: the question stands while THAT valve is closed
+  return (valveId ? s.valves.find(v => v.id === valveId) : s.valve)?.state === 'closed';
 }
+/** Every valve is shut (and there is one): «Краны воды закрыты». */
+export const allShut = (s: Security): boolean => s.valves.length > 0 && s.valves.every(v => v.state === 'closed');
 /** The seconds left of the exit or entry delay, counted without trusting this device's clock (a wall tablet's may be minutes off). The delay
  * ends at `delayEnds` by the HOUSE's clock, and every set of states says how late it is there at least: its newest `last_updated`, never
  * earlier than the alarm's own change. So each new set gives «at most this much is left now»; the smallest of them, counted down by the
