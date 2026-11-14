@@ -57,7 +57,7 @@ import { feedPower } from '../model/energy.ts';
 import type { Thing } from '../model/room.ts';
 import { OfficeClimateTile, OfficeClimatePanel } from './office-climate.tsx';
 import { readOfficeClimate } from '../model/office-climate.ts';
-import { currentEvents, focusCamera, holdEnded, houseNow, houseTime, ringOpensOnce, sensorsOf, type CamEvent } from '../model/cameras.ts';
+import { currentEvents, holdEnded, houseNow, houseTime, ringOpensOnce, sensorsOf, type CamEvent } from '../model/cameras.ts';
 
 import { decode, encode, pageOf, pushView, replaceView, leaveTo, landed, stayOn, repair, markOf, findMark, type View, type FocusMark } from '../runtime/route.ts';
 import { keepFocus, type FocusKeep } from './focus-keep.ts';
@@ -579,7 +579,7 @@ function Overview({ home, registry, config, modules, player, tileState, host, ru
   const co2v = co2 ? Number(co2.state) : null, air = co2Level(co2v, t), co2Dev = co2 ? d.find(x => x.metrics.includes(co2)) : undefined;
   const boilers = boilerDeviceIds(modules, registry);
   // Two cameras or more are one card (owner, 09.11.2026): the main one live, the others as frames, the panel behind it. One camera keeps its own tile.
-  const camFocus = camViews.length > 1 ? camViews.find(v => v.device.key === focusCamera(camViews[0].device.key, camViews.flatMap(x => x.events), now.getTime(), houseTime(registry.states, now.getTime()))) ?? camViews[0] : null;
+  const camFocus = camViews.length > 1; // which camera is big is the card's own choice (owner, 14.11.2026: it changes only when a small one is tapped)
   // the owner's wish (04.11.2026): the home face shows the house thermostat (the boiler's), never a room's radiator head
   const isTrv = (x: HomeDevice) => artOf(x) === 'radiator';
   const climate = d.filter(x => x.kind === 'climate').sort((a, b) => Number(isTrv(a)) - Number(isTrv(b)))[0], cameras = camFocus ? [] : camViews.map(v => v.device), weather = d.find(x => x.kind === 'weather');
@@ -607,7 +607,7 @@ function Overview({ home, registry, config, modules, player, tileState, host, ru
     {heating && !config.sections.climate?.hidden && <HeatingTile h={heating} host={host} t={t} lang={lang} now={now.getTime()} onOpen={() => go({ section: 'climate' })} />}
     {office && !heating && <OfficeClimateTile c={office} host={host} t={t} lang={lang} now={now.getTime()} onOpen={() => go({ section: 'climate' })} />}
     {climate && !heating && !office && <ThermostatTile device={climate} name={inRoomName(climate, roomOf(climate))} sub={roomOf(climate)} target={temp} current={cur} steps={steps} onOpen={() => go({ section: 'home', device: climate.key })} t={t} lang={lang} />}
-    {camFocus && <CamerasTile views={camViews} focus={camFocus} player={player} host={host} now={now.getTime()} t={t} lang={lang} onPanel={() => go({ section: 'camera' })} onCamera={key => go({ section: 'home', device: key })} />}
+    {camFocus && <CamerasTile views={camViews} scope="home" player={player} host={host} now={now.getTime()} t={t} lang={lang} onPanel={() => go({ section: 'camera' })} onCamera={key => go({ section: 'home', device: key })} />}
     {vacuum && <VacuumTile pics={vacPics} v={vacuum} host={host} t={t} lang={lang} onOpen={() => go({ section: 'cleaning' })} />}
     {cameras.slice(0, 1).map(c => { const st = tileState(c); return <CameraTile device={c} state={st} player={st?.closed ? null : player(c, 'tile')} onOpen={() => go({ section: 'home', device: c.key })} t={t} lang={lang} large />; })}
     {modules.filter(m => m.def.placement.includes('overview')).map(m => { if (m.def.sheetKey) return <m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} compact rooms={home.rooms} onOpen={() => go({ section: 'home', device: m.def.sheetKey })} />; const target = (m.def.placement.find(p => p !== 'overview') ?? 'systems') as Section, name = t(`module.${m.def.id}` as Key); return <div className="ah-tile ah-module"><button type="button" className="ah-tile-hit at-module-hit" aria-label={`${t('ui.open')}: ${name === `module.${m.def.id}` ? t(`section.${target}` as Key) : name}`} onClick={() => go({ section: target })} /><div className="at-module-body"><m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} compact /></div></div>; })}
@@ -649,7 +649,7 @@ function RoomPage({ home, registry, roomId, runner, toggle, go, t, lang, alarms,
     if (th.kind === 'vacuum' && vacuum && th.ids.includes(vacuum.entity)) return <VacuumTile pics={vacPics} v={vacuum} host={host} t={t} lang={lang} onOpen={() => go({ section: 'cleaning' })} />;
     if (th.kind === 'camera') { // the room's cameras as Home draws them: two or more are one «Камеры» card, one camera its own tile; the card stands once, in the first camera's place
       const first = roomCams.length ? things.find(x => x.kind === 'camera') : undefined; if (th !== first) return roomCams.length ? false : null;
-      if (roomCams.length > 1) return <CamerasTile views={roomCams} focus={roomCams.find(v => v.device.key === focusCamera(roomCams[0].device.key, roomCams.flatMap(x => x.events), now, houseTime(registry.states, now))) ?? roomCams[0] /* the camera with the event comes forward here as it does on Home */} player={player} host={host} now={now} t={t} lang={lang} onPanel={() => go({ section: 'camera' })} onCamera={key => go({ section: 'rooms', room: roomId, device: key })} />;
+      if (roomCams.length > 1) return <CamerasTile views={roomCams} scope={`room:${roomId}`} player={player} host={host} now={now} t={t} lang={lang} onPanel={() => go({ section: 'camera' })} onCamera={key => go({ section: 'rooms', room: roomId, device: key })} />;
       const c = roomCams[0].device, st = tileState(c); return <CameraTile device={c} state={st} player={st?.closed ? null : player(c, 'tile')} onOpen={() => go({ section: 'rooms', room: roomId, device: c.key })} t={t} lang={lang} large />;
     }
     return null;

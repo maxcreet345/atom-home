@@ -132,13 +132,13 @@ try {
     check('the cameras panel off the line: dimmed and said so, not «все на связи»', off && off.stale && /потери связи/.test(off.line ?? '') && Number(off.opacity) < 1 && off.warn, off);
     await page.screenshot({ path: resolve(out, 'cameras-offline.png') }); await ctx.close(); }
 
-  // the room page's «Камеры» card looks at the camera that has the event, not at the room's first one (room-card-focus-fixed had no scripted gate)
+  // the room page's «Камеры» card keeps its big camera while a person is on the stairs (owner 14.11.2026: the big one changes only by a tap); the stairs' frame carries the flag
   { const { ctx, page } = await open({ url: C('cameras', 'person', '#camera') }); await page.waitForSelector('.at-cams-cell', { timeout: 8000 }).catch(() => {});
     const hot = await page.evaluate(() => { const c = document.querySelector('.at-cams-cell[class*="tone-"]'); return c ? { key: c.dataset.deviceKey, name: c.querySelector('.at-cams-cap strong')?.textContent } : null; });
     await page.evaluate(() => { location.hash = '#rooms'; }); await page.waitForTimeout(500);
     const rooms = await page.evaluate(() => [...document.querySelectorAll('.hm-room-grid .hm-room, .hm-room-grid [data-room], .hm-room-grid button')].map(r => (r.textContent ?? '').trim().slice(0, 30)));
-    let focus = null; for (let i = 0; i < rooms.length && focus === null; i++) { await page.evaluate(() => { location.hash = '#rooms'; }); await page.waitForTimeout(350); await page.evaluate(i => [...document.querySelectorAll('.hm-room-grid .hm-room, .hm-room-grid [data-room], .hm-room-grid button')][i]?.click(), i); await page.waitForTimeout(450); focus = await page.evaluate(k => { const t = [...document.querySelectorAll('.at-cams-tile')].find(x => [...x.querySelectorAll('.at-cams-thumb, .at-cams-main')].length > 1 || x.dataset.focus === k); return t ? t.dataset.focus : null; }, hot?.key); }
-    check('the room with several cameras shows the one with the person first', !!hot && focus === hot.key, { hot, focus, rooms: rooms.length });
+    let focus = null; for (let i = 0; i < rooms.length && focus === null; i++) { await page.evaluate(() => { location.hash = '#rooms'; }); await page.waitForTimeout(350); await page.evaluate(i => [...document.querySelectorAll('.hm-room-grid .hm-room, .hm-room-grid [data-room], .hm-room-grid button')][i]?.click(), i); await page.waitForTimeout(450); focus = await page.evaluate(k => { const t = [...document.querySelectorAll('.at-cams-tile')].find(x => x.querySelector(`[data-device-key="${k}"]`)); return t ? { big: t.dataset.focus, flagged: !!t.querySelector(`.at-cams-thumb[class*="tone-"][data-device-key="${k}"]`) } : null; }, hot?.key); }
+    check('the room with several cameras keeps its big camera; the one with the person is flagged among the small ones', !!hot && !!focus && focus.big !== hot.key && focus.flagged, { hot, focus, rooms: rooms.length });
     await ctx.close(); }
 
   // ---- 7. the header: chips where there is room, the avatar stack on a compact panel and a phone on its side

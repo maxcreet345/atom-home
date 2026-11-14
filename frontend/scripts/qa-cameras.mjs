@@ -54,10 +54,10 @@ try {
     check(`errors [${tag}]`, !errors.length, errors); await ctx.close();
   }
   // 2. which camera is big and what the line says
-  const want = { quiet: [DOOR, null, /^Тихо · 5 камер$/], person: [DOWN, 'is-warning', /^Человек · Лестница вниз · сейчас$/], ring: [DOOR, 'is-danger', /^Звонок · Камера звонка · \d\d:\d\d$/], offline: [DOOR, 'is-muted', /^1 камера без связи$/] };
+  const want = { quiet: [DOOR, null, /^Тихо · 5 камер$/], person: [DOOR, 'is-warning', /^Человек · Лестница вниз · сейчас$/], ring: [DOOR, 'is-danger', /^Звонок · Камера звонка · \d\d:\d\d$/], offline: [DOOR, 'is-muted', /^1 камера без связи$/] };
   for (const [scenario, [focus, tone, line]] of Object.entries(want)) {
     const { page, ctx } = await open({ scenario }); const t = await tileInfo(page);
-    check(`${scenario}: big camera, tone and line`, t && t.focus === focus && t.tone === tone && line.test(t.line ?? '') && t.thumbs === 4 && t.live === 'live' && t.singles === 0, t); await ctx.close();
+    check(`${scenario}: big camera (the doorbell whatever happens: owner 14.11.2026, the big one changes only by a tap), tone and line`, t && t.focus === focus && t.tone === tone && line.test(t.line ?? '') && t.thumbs === 4 && t.live === 'live' && t.singles === 0, t); await ctx.close();
   }
   // 3. the panel: summary, cells, filters with counts, the cell of the event, offline camera
   { const { page, ctx } = await open({ scenario: 'person', hash: '#camera' });
@@ -79,8 +79,15 @@ try {
   { const { page, ctx } = await open({ scenario: 'quiet' });
     const thumbs = await page.evaluate(() => [...document.querySelectorAll('.at-cams-thumb')].map(b => ({ name: b.querySelector('small')?.textContent, live: b.querySelector('.at-go2rtc')?.dataset.playerStatus ?? null })));
     check('tile: the three small cameras are live too, the C700 named after its room', thumbs.map(x => x.name).join() === 'Компьютерная,Лестница вниз,Лестница вверх,Прихожая' && thumbs.filter(x => x.name !== 'Прихожая').every(x => x.live === 'live') /* the hall has no recorded frame in the preview */, thumbs);
-    await page.click('.at-cams-thumb:nth-child(1)'); await page.waitForTimeout(200); check('tile: a small camera opens its sheet', /device=e%3Acamera.entrance_camera/.test(page.url()) && !!(await page.$('.at-cam')), page.url());
+    // a small camera is chosen, not opened (owner 14.11.2026): it becomes the big one at once, on the same player (nothing reconnects), and the choice outlives a reload
+    await page.evaluate(() => { for (const v of document.querySelectorAll('.at-cams-tile .at-go2rtc')) v.__qa = v.dataset.stream; });
+    await page.click(`.at-cams-thumb[data-device-key="${C700}"] .at-cams-hit`); await page.waitForTimeout(200);
+    const chosen = await page.evaluate(() => { const t = document.querySelector('.at-cams-tile'); return { focus: t.dataset.focus, sheet: !!document.querySelector('.hm-sheet'), hash: location.hash, thumbs: [...t.querySelectorAll('.at-cams-thumb small')].map(x => x.textContent).join(), kept: [...t.querySelectorAll('.at-go2rtc')].every(v => v.__qa === v.dataset.stream), mainPlays: t.querySelector('.at-cams-main .at-go2rtc')?.dataset.stream }; });
+    check('tile: a small camera becomes the big one — no sheet, no reconnect, the doorbell takes its place among the small ones', chosen.focus === C700 && !chosen.sheet && chosen.hash === '#home' && chosen.kept && chosen.thumbs === 'Камера звонка,Лестница вниз,Лестница вверх,Прихожая', chosen);
+    await page.click('.at-cams-main'); await page.waitForTimeout(400); check('tile: the chosen big camera opens its own sheet', /device=e%3Acamera.entrance_camera/.test(page.url()) && !!(await page.$('.at-cam')), page.url());
     await page.waitForTimeout(400); await page.keyboard.press('Escape'); await page.waitForTimeout(350);
+    await page.evaluate(() => { location.hash = '#lights'; }); await page.waitForTimeout(300); await page.evaluate(() => { location.hash = '#home'; }); await page.waitForSelector('.at-cams-tile'); await page.waitForTimeout(200); check('tile: the choice is remembered on this screen (the card drawn anew; the preview clears storage on a reload)', (await tileInfo(page)).focus === C700, await tileInfo(page));
+    await page.click(`.at-cams-thumb[data-device-key="${DOOR}"] .at-cams-hit`); await page.waitForTimeout(200); check('tile: the doorbell can be chosen back', (await tileInfo(page)).focus === DOOR);
     await page.click('.at-cams-main'); await page.waitForTimeout(400); const stage = await page.evaluate(() => ({ layers: [...document.querySelectorAll('.hm-sheet .at-cam-layer')].map(l => `${l.dataset.quality ?? 'low'}:${l.classList.contains('is-pending') ? 'pending' : 'shown'}:${l.querySelector('.at-go2rtc')?.dataset.stream}`) }));
     check('tile: the big picture opens the doorbell, its sheet on 1080p (the 720p gave way)', /device=e%3Acamera.entrance_doorbell/.test(page.url()) && stage.layers.join() === 'high:shown:entrance_doorbell', [page.url(), stage]);
     await page.waitForTimeout(400); await page.keyboard.press('Escape'); await page.waitForTimeout(350);
@@ -88,7 +95,7 @@ try {
     // keyboard: the three kinds of controls are reachable and named
     const names = await page.evaluate(() => { location.hash = '#home'; return new Promise(r => setTimeout(() => r([...document.querySelectorAll('.at-cams-tile button')].map(b => b.getAttribute('aria-label'))), 300)); });
     // the big camera and each small one are real buttons with a name (the frame is no longer inside a button, so «Повторить» can stand on it); the caption is named by its own text
-    check('tile: every control has a name', names.length === 6 && names.slice(0, 5).every(n => /^Открыть: /.test(n ?? '')) && names[5] === null, names);
+    check('tile: every control has a name — the big one opens, the small ones are shown large', names.length === 6 && /^Открыть: /.test(names[0] ?? '') && names.slice(1, 5).every(n => /^Показать крупно: /.test(n ?? '')) && names[5] === null, names);
     const nested = await page.evaluate(() => document.querySelectorAll('.at-cams-tile button button, .at-cams-tile [role="button"]').length); check('tile: no control inside another control', nested === 0, nested);
     // Enter and Space open the camera from the keyboard
     for (const key of ['Enter', ' ']) { await page.focus('.at-cams-main .at-cams-hit'); await page.keyboard.press(key); await page.waitForSelector('.hm-sheet .at-cam', { timeout: 3000 }).catch(() => {}); check(`tile: ${key === ' ' ? 'Space' : key} opens the big camera`, !!(await page.$('.hm-sheet .at-cam')) && /device=/.test(await page.evaluate(() => location.hash))); await page.keyboard.press('Escape'); await page.waitForTimeout(350); }

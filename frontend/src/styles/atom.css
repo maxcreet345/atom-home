@@ -354,7 +354,10 @@
 .hm-shell .at-cams-name i,.hm-shell .at-cams-flag{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-style:normal;font-size:.75rem;font-weight:700;color:#fff;background:#000000a6}
 .hm-shell :is(.at-cams-name i,.at-cams-flag).tone-danger{background:var(--ah-red)}.hm-shell :is(.at-cams-name i,.at-cams-flag).tone-warning{background:#c26a00}.hm-shell :is(.at-cams-name i,.at-cams-flag).tone-active{background:#0a64c2}
 .hm-shell .at-cams-main .hm-live{top:8px;left:8px}
-.hm-shell .at-cams-strip{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:6px;flex:none}
+/* 14.11.2026: every camera is a cell of one grid; the chosen one spans the top row, the others fill the row under it in the cards' order (no remount when the choice changes) */
+.hm-shell .at-cams-stage{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));grid-template-rows:minmax(0,1fr) auto;gap:6px}
+.hm-shell .at-cams-stage>.at-cams-main{grid-column:1/-1;grid-row:1}.hm-shell .at-cams-stage>.at-cams-thumb{grid-row:2}
+.hm-shell.is-narrow .at-cams-stage{flex:none;grid-template-rows:auto auto}
 .hm-shell .at-cams-thumb{all:unset;position:relative;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#141c2a;cursor:pointer}
 .hm-shell .at-cams-thumb.is-off{opacity:.55}
 .hm-shell .at-cams-thumb small{position:absolute;left:0;right:0;bottom:0;padding:10px 6px 3px;font-size:.6875rem;font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:linear-gradient(transparent,#000000b3)}

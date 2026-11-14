@@ -44,22 +44,30 @@ function Still({ device, host }: { device: HomeDevice; host: Host }) {
   const src = fake ?? (pic ? pic + (n ? `${pic.includes('?') ? '&' : '?'}r=${n}` : '') : null);
   return src && !broken ? <img className="at-cams-still" src={src} alt="" loading="lazy" onError={() => setBroken(true)} /> : <span className="at-cams-none"><Icon name="camera" size={18} /></span>;
 }
-/** Home card (owner, 09.11.2026: «карточка и панель камеры»): one camera big — the one where something is happening, else the doorbell — the others small, every one live on its light stream; the worst event in words. */
-export function CamerasTile({ views: all, focus: main, player, host, now, t, lang, onPanel, onCamera }: { views: CamView[]; focus: CamView; player: Player; host: Host; now: number; t: T; lang: Lang; onPanel: () => void; onCamera: (key: string) => void }) {
-  const views = useShown(all), focus = views.find(v => v.device.key === main.device.key) ?? main;
+/** The big camera the owner chose last on this screen, per card (Home, each room). A convenience only: private mode or cleared storage starts on the first camera. */
+const pickKey = (scope: string) => `atom-home:cams-main:${scope}`;
+function usePicked(scope: string, views: CamView[]): [string, (key: string) => void] {
+  const first = views[0].device.key;
+  const [picked, setPicked] = useState<string | null>(() => { try { return localStorage.getItem(pickKey(scope)); } catch { return null; } });
+  const pick = (key: string) => { setPicked(key); try { localStorage.setItem(pickKey(scope), key); } catch { /* the choice lasts for this screen only */ } };
+  return [picked && views.some(v => v.device.key === picked) ? picked : first, pick];
+}
+/** Home card (owner, 09.11.2026: «карточка и панель камеры»): one camera big, the others small, every one live on its light stream; the worst event in words.
+ * Owner, 14.11.2026: «чтобы камеры не менялись, а просто выбрав их менялась» — the big camera no longer jumps to an event by itself: it is the doorbell until a small camera is
+ * tapped, and that choice stays (remembered on this screen). Events still show on the small frames (badge, coloured frame) and in the line under them; the ring has its own banner.
+ * Every camera is one keyed cell in one grid, in the cards' order: choosing one only moves it by CSS, so no player is remounted and the switch is instant. */
+export function CamerasTile({ views: all, scope, player, host, now, t, lang, onPanel, onCamera }: { views: CamView[]; /** whose choice this is: 'home' or a room id */ scope: string; player: Player; host: Host; now: number; t: T; lang: Lang; onPanel: () => void; onCamera: (key: string) => void }) {
+  const views = useShown(all), [mainKey, pick] = usePicked(scope, views);
   const ringNow = houseTime(host.states(), now); // a ring's stamp is the house's: a tablet whose clock is off still shows it for its two minutes
-  const line = camerasLine(views, now, t, lang, ringNow), others = views.filter(v => v !== focus);
+  const line = camerasLine(views, now, t, lang, ringNow);
   const hot = (v: CamView) => topEvent(v.events, now, ringNow);
-  const closed = focus.state?.closed === true;
-  return <div className={`ah-tile hm-card at-cams-tile ${line.tone ? `is-${line.tone}` : ''}`} data-focus={focus.device.key}>
-    <div className="at-cams-main">
-      <button type="button" className="at-cams-hit" aria-label={`${t('ui.open')}: ${focus.name}${hot(focus) ? ` · ${kindText(hot(focus)!.kind, t)}` : ''}`} onClick={() => onCamera(focus.device.key)} />
-      <span className="hm-camera-frame">{closed ? <span className="hm-camera-wait"><Icon name="camera" size={28} /><span>{t('module.camera.closed')}</span></span> : player(focus.device, 'tile') ?? <Still device={focus.device} host={host} />}</span>
-      <span className="at-cams-name"><b>{focus.name}</b>{hot(focus) && <i className={`tone-${TONE[hot(focus)!.kind]}`}><Icon name={ICON[hot(focus)!.kind]} size={14} />{kindText(hot(focus)!.kind, t)}</i>}</span>
-    </div>
-    {others.length > 0 && <div className="at-cams-strip" style={`--n:${others.length}`}>{others.map(v => { const e = hot(v); return <div className={`at-cams-thumb ${v.online ? '' : 'is-off'} ${e ? `tone-${TONE[e.kind]}` : ''}`}>
-      <button type="button" className="at-cams-hit" aria-label={`${t('ui.open')}: ${v.name}${e ? ` · ${kindText(e.kind, t)}` : !v.online ? ` · ${t('module.camera.offline')}` : ''}`} onClick={() => onCamera(v.device.key)} />
-      <span className="hm-camera-frame">{v.state?.closed ? <span className="at-cams-none"><Icon name="camera" size={18} /></span> : player(v.device, 'tile') ?? <Still device={v.device} host={host} />}</span>{e && <i className="at-cams-dot"><Icon name={ICON[e.kind]} size={12} /></i>}<small>{v.name}</small></div>; })}</div>}
+  return <div className={`ah-tile hm-card at-cams-tile ${line.tone ? `is-${line.tone}` : ''}`} data-focus={mainKey}>
+    <div className="at-cams-stage" style={`--n:${views.length - 1}`}>{views.map(v => { const big = v.device.key === mainKey, e = hot(v), closed = v.state?.closed === true;
+      return <div key={v.device.key} data-device-key={v.device.key} className={big ? 'at-cams-main' : `at-cams-thumb ${v.online ? '' : 'is-off'} ${e ? `tone-${TONE[e.kind]}` : ''}`}>
+        <button type="button" className="at-cams-hit" aria-label={big ? `${t('ui.open')}: ${v.name}${e ? ` · ${kindText(e.kind, t)}` : ''}` : `${t('cams.show')}: ${v.name}${e ? ` · ${kindText(e.kind, t)}` : !v.online ? ` · ${t('module.camera.offline')}` : ''}`} onClick={() => big ? onCamera(v.device.key) : pick(v.device.key)} />
+        <span className="hm-camera-frame">{closed ? <span className={big ? 'hm-camera-wait' : 'at-cams-none'}><Icon name="camera" size={big ? 28 : 18} />{big && <span>{t('module.camera.closed')}</span>}</span> : player(v.device, 'tile') ?? <Still device={v.device} host={host} />}</span>
+        {big ? <span className="at-cams-name"><b>{v.name}</b>{e && <i className={`tone-${TONE[e.kind]}`}><Icon name={ICON[e.kind]} size={14} />{kindText(e.kind, t)}</i>}</span> : <>{e && <i className="at-cams-dot"><Icon name={ICON[e.kind]} size={12} /></i>}<small>{v.name}</small></>}
+      </div>; })}</div>
     <button type="button" className="at-cams-caption" onClick={onPanel}><Icon name="camera" size={18} /><span><strong>{t('cams.title')}</strong><small>{line.text}</small></span><Icon name="next" size={18} /></button>
   </div>;
 }
