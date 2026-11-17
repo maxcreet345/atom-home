@@ -142,7 +142,7 @@ test('the shell\'s live region does not share a class with the camera\'s LIVE ba
 });
 
 test('sheets: «×» is «Закрыть окно» everywhere, the runner says whether the house accepted, a status role is not put on a reading', () => {
-  for (const f of ['modules/event-feed.tsx', 'modules/doorbell.tsx', 'modules/air.tsx', 'modules/clock.tsx', 'modules/camera-go2rtc.tsx', 'modules/kettle.tsx', 'modules/pet-feeder.tsx', 'ui/sheet.tsx'])
+  for (const f of ['modules/event-feed.tsx', 'modules/doorbell.tsx', 'modules/air.tsx', 'modules/clock.tsx', 'modules/camera-go2rtc.tsx', 'modules/kettle.tsx', 'modules/airfryer.tsx', 'modules/pet-feeder.tsx', 'ui/sheet.tsx'])
     assert.doesNotMatch(src(f), /aria-label=\{t\('ui\.close'\)\}[^>]*>×/, f);
   assert.notEqual(ru['ui.closeSheet'], ru['ui.close']);
   assert.match(src('ui/sheet.tsx'), /run\(device: HomeDevice, action: Action, value\?: unknown\): Promise<boolean>/);

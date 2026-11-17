@@ -68,7 +68,7 @@ export const onOffOf = (state: string | undefined): boolean | null => state === 
  * kettle answers through its cloud a few seconds later, and in that gap the sheet still said «Ожидание» with a live «Включить»: a second tap sent
  * the target and the switch again. */
 export const HOLD_MS = 6000;
-function useRun(host: Host, t: T) {
+export function useRun(host: Host, t: T) {
   const [busy, setBusy] = useState<string | null>(null), [err, setErr] = useState(''), running = useRef(false), held = useRef<ReturnType<typeof setTimeout> | null>(null);
   const release = () => { if (held.current) clearTimeout(held.current); held.current = null; running.current = false; setBusy(null); };
   useEffect(() => () => { if (held.current) clearTimeout(held.current); }, []);

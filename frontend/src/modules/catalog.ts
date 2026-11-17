@@ -201,6 +201,31 @@ export const kettleSpec: ModuleSpec = {
     } };
   },
 };
+/** Xiaomi smart air fryer (MIOT, xiaomi.fryer.*; owner 17.11.2026: «как в Mi Home», the functions after the model's MIOT spec): the device's model
+ * finds it, the entity suffixes the roles; the energy meter in its line (`<stem>_meter_*`) gives the watts while it cooks. It has no entity of
+ * its own kind: its status sensor stands for it. */
+export const airfryerSpec: ModuleSpec = {
+  id: 'airfryer', titleKey: 'module.airfryer', placement: ['room'],
+  roles: [{ role: 'status', labelKey: 'module.airfryer.role.status', required: true }, { role: 'temp', labelKey: 'module.airfryer.role.temp', required: false }, { role: 'time', labelKey: 'module.airfryer.role.time', required: false }],
+  detect(reg) {
+    const dev = reg.devices.find(d => /^xiaomi\.fryer\./.test(d.model ?? '') && !d.disabled_by);
+    if (!dev) return null;
+    const own = reg.entities.filter(e => e.device_id === dev.id && !e.disabled_by && reg.states[e.entity_id]).map(e => e.entity_id);
+    const find = (domain: string, re: RegExp, not?: RegExp) => own.find(id => id.startsWith(`${domain}.`) && re.test(id) && !not?.test(id));
+    const status = find('sensor', /_status$/);
+    if (!status) return null;
+    const stem = status.split('.')[1].replace(/_status$/, ''), has = (tail: string) => [`sensor.${stem}${tail}`].find(id => !!reg.states[id]);
+    return { label: dev.model ?? 'MIOT', entities: {
+      status, fault: find('sensor', /_fault$/), left: find('sensor', /_left_time$/), turn: find('sensor', /_(shake_reminder|turn_pot)$/),
+      time: find('number', /_target_time$/), temp: find('number', /_target_temperature$/), weight: find('number', /_cooking_weight$/), delay: find('number', /_(schedule|reservation)_left_time$/),
+      mode: find('select', /_mode$/), layers: find('select', /_(cooking_layers|target_cooking_measure)$/), texture: find('select', /_texture$/),
+      autoKeep: find('switch', /_auto_keep_warm$/), keepNow: find('switch', /_keep_warm$/, /_auto_keep_warm$/), shake: find('switch', /_(shake_reminder_enabled|turn_pot_config)$/),
+      start: find('button', /_start(_cook)?$/), cancel: find('button', /_cancel(_cooking)?$/), pause: find('button', /_pause$/), resume: find('button', /_resume(_cook)?$/),
+      meterPower: has('_meter_power'), meterToday: has('_meter_energy_today'),
+      device: dev.id, rest: own.join(','),
+    } };
+  },
+};
 /** Imou camera (Ranger 2C): video only from the local network — the ONVIF device's SD profile on tiles, the generic camera on the HD RTSP in the sheet — and the functions from Imou's cloud
  * integration (shutter, pan and tilt, presets, detections, siren). The cloud is not polled (30 000 requests a month): a command asks for one fresh state afterwards. Roles by the entity prefix of `switch.<prefix>_privacy`. */
 export const IMOU_ROLES: ReadonlyArray<{ role: string; id: (p: string) => string }> = [
@@ -226,7 +251,7 @@ export const cameraImouSpec: ModuleSpec = {
     return { label: dev?.name ?? 'Imou', entities };
   },
 };
-export const MODULE_SPECS: ModuleSpec[] = [boilerEbusSpec, doorbellSpec, cameraGo2rtcSpec, cameraOnvifSpec, cameraImouSpec, petFeederSpec, airSpec, clockSpec, kettleSpec];
+export const MODULE_SPECS: ModuleSpec[] = [boilerEbusSpec, doorbellSpec, cameraGo2rtcSpec, cameraOnvifSpec, cameraImouSpec, petFeederSpec, airSpec, clockSpec, kettleSpec, airfryerSpec];
 export interface ActiveSpec { spec: ModuleSpec; entities: ModuleEntities; label: string; options: ModuleOptions }
 /** Modules whose hardware is present (or that the owner configured by hand) and that are not disabled. */
 const roomOfEntity = (reg: Registry, id: string) => { const e = reg.entities.find(x => x.entity_id === id); return e ? e.area_id ?? reg.devices.find(d => d.id === e.device_id)?.area_id ?? null : null; };

@@ -85,4 +85,4 @@ export const LIST_GROUPS: ReadonlyArray<{ id: ListGroup; kinds: readonly Kind[] 
   { id: 'cameras', kinds: ['camera'] }, { id: 'media', kinds: ['media'] }, { id: 'access', kinds: ['cover', 'lock', 'valve'] },
 ];
 /** Module cards that are appliances of their own (the feeder, the kettle): they stand in «Приборы». */
-export const APPLIANCE_MODULES: readonly string[] = ['pet_feeder', 'kettle'];
+export const APPLIANCE_MODULES: readonly string[] = ['pet_feeder', 'kettle', 'airfryer'];

@@ -1394,3 +1394,28 @@
 .hm-shell.is-narrow.is-landscape.is-short .hm-head p{display:none}
 .hm-shell.is-narrow.is-landscape.is-short .hm-tabbar{padding-top:4px;padding-bottom:calc(4px + env(safe-area-inset-bottom))}
 .hm-shell.is-narrow.is-landscape.is-short .hm-tabbar button{flex-direction:row;gap:6px;min-height:44px}
+
+/* the air fryer: the kettle's sheet in the fryer's own warm colour */
+.hm-shell .at-af-art{width:100%;height:100%}.hm-shell .at-af-art .at-af-body{fill:#2c2c2e;stroke:#48484a;stroke-width:1.4}.hm-shell .at-af-art .at-af-basket{fill:#1c1c1e;stroke:#48484a;stroke-width:1.2}.hm-shell .at-af-art .at-af-handle{fill:#3a3a3c;stroke:#636366;stroke-width:1.2}
+.hm-shell .at-af-art .at-af-dial{fill:#1c1c1e;stroke:#636366;stroke-width:1.2}.hm-shell .at-af-art .at-af-lamp{fill:#8e8e93}.hm-shell .at-af-art .at-af-lamp.is-hot{fill:#ff9f0a}.hm-shell .at-af-art .at-af-shadow{fill:#0000001a}
+.hm-shell .at-af-art .at-kt-steam path{stroke:#ff9f0a}
+.hm-shell.ah-shell[data-theme="dark"] .at-af-art .at-af-body{fill:#48484a;stroke:#8e8e93}.hm-shell.ah-shell[data-theme="dark"] .at-af-art .at-af-basket{fill:#2c2c2e;stroke:#8e8e93}.hm-shell.ah-shell[data-theme="dark"] .at-af-art .at-af-handle{fill:#636366;stroke:#aeaeb2}
+.hm-shell .at-af-hero{padding-bottom:26px}.hm-shell .at-af-hero:is(.is-off,.is-standby){background:linear-gradient(180deg,#5b6770,#6b7780)}
+.hm-shell .at-af-time{align-items:baseline;gap:6px}.hm-shell .at-af-time i{margin-top:0}
+.hm-shell .at-af-plan{font-size:.9375rem;opacity:.95}
+.hm-shell .at-af-acts{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:10px}.hm-shell .at-af-acts:empty{display:none}.hm-shell .at-af-acts .at-kt-stop{margin-top:0;min-width:120px}
+.hm-shell .at-af-acts .at-kt-stop.is-quiet{background:#ffffff33;color:#fff;box-shadow:inset 0 0 0 1px #ffffff80}
+.hm-shell .at-af-pad{padding:12px 16px}.hm-shell .at-af-card .at-af-pad .at-kt-note{margin:0}
+.hm-shell .at-af-line{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.hm-shell .at-af-chips button{padding:0 14px}
+.hm-shell .at-af-tile.is-on{background:linear-gradient(160deg,#ffe9d2,#fff7ee)}.hm-shell.ah-shell[data-theme="dark"] .at-af-tile.is-on{background:linear-gradient(160deg,rgba(255,159,10,.26),transparent 75%),var(--ah-tile)}
+.hm-shell .at-af-tile.is-on .ah-tile-text small{color:var(--kt-ink);font-weight:600}.hm-shell.ah-shell[data-theme="dark"] .at-af-tile.is-on .ah-tile-text small{color:#ffc58a}
+.hm-shell .at-af-hero.is-calm{padding-top:22px}.hm-shell .at-af-hero.is-calm .at-kt-status{font-size:1.25rem;font-weight:600}
+.hm-shell .at-af-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px 4px;padding:14px 10px 10px}
+.hm-shell .at-af-prog{display:grid;justify-items:center;align-content:start;gap:8px;min-height:112px;padding:8px 4px;border:0;border-radius:18px;background:none;color:var(--ah-ink);font-size:.875rem;font-weight:500;line-height:1.25;text-align:center;cursor:pointer}
+.hm-shell .at-af-prog:disabled{cursor:default;opacity:.5}.hm-shell .at-af-prog:focus-visible{outline-offset:-3px}
+.hm-shell .at-af-ball{display:grid;place-items:center;width:60px;height:60px;border-radius:50%;flex:none}.hm-shell .at-af-ball.is-big{width:132px;height:132px}
+.hm-shell .at-af-stage{display:grid;justify-items:center;gap:16px;padding:22px 16px;border-radius:26px;background:var(--ah-group)}
+.hm-shell .at-af-about{font-size:1.5rem;font-weight:700;text-align:center;color:var(--ah-ink)}
+.hm-shell .at-af-go{min-width:min(100%,240px);min-height:52px;font-size:1.0625rem}
+.hm-shell .at-af-seg{align-self:stretch}.hm-shell .at-af-seg button{flex:1}

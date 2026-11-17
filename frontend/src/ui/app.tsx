@@ -11,6 +11,7 @@ import { RoomTile, AccessoryTile, ThermostatTile, ClockTile as PlainClockTile, S
 import { ClockTile, ClockSheet, beep } from '../modules/clock.tsx';
 import { FeederSheet } from '../modules/pet-feeder.tsx';
 import { KettleSheet } from '../modules/kettle.tsx';
+import { FryerSheet } from '../modules/airfryer.tsx';
 import { AirSheet } from '../modules/air.tsx';
 import type { Alarm } from '../model/config.ts';
 import { DeviceSheet, heatOn, stepTarget, type Runner } from './sheet.tsx';
@@ -344,6 +345,7 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
   const feederMod = modules.find(m => m.def.sheetKey === 'feeder'), feederOpen = view.device === 'feeder' && !!feederMod;
   const airMod = modules.find(m => m.def.sheetKey === 'air'), airOpen = view.device === 'air' && !!airMod;
   const kettleMod = modules.find(m => m.def.sheetKey === 'kettle'), kettleOpen = view.device === 'kettle' && !!kettleMod;
+  const fryerMod = modules.find(m => m.def.sheetKey === 'airfryer'), fryerOpen = view.device === 'airfryer' && !!fryerMod;
   // H9 of the audit: a room is shown when it has a photo or something to look at or switch; «no room» only for the admin
   const LIVING: Kind[] = ['light', 'climate', 'media', 'vacuum', 'camera', 'environment', 'switch', 'socket', 'fan', 'cover', 'lock', 'opening', 'leak', 'motion'];
   const rooms = home.rooms.filter(r => !r.hidden && (r.id === NO_ROOM ? host.admin : (!!r.photo || enabled.some(d => d.roomId === r.id && LIVING.includes(d.kind)))));
@@ -356,7 +358,7 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
   const title = view.section === 'setup' ? t('setup.title') : view.section === 'rooms' && view.room ? roomName(view.room) : view.section === 'home' ? home.name : inSystems ? t('section.systems') /* «Устройства» */ : t(`section.${view.section}` as Key);
   const subtitle = view.section === 'home' ? `${t(head.greeting)} · ${date}` : view.section === 'rooms' && !view.room ? t('rooms.count', { n: rooms.length }) : '';
   const pageKey = pageOf(view);
-  const modal =!!device || clockOpen || feederOpen || airOpen || kettleOpen || !!confirm;
+  const modal =!!device || clockOpen || feederOpen || airOpen || kettleOpen || fryerOpen || !!confirm;
   const navItems = [...NAV.filter(n => n.id === 'home' || n.id === 'rooms' || (n.id === 'systems' ? systemTabs.length > 0 : shown(n.id))), ...(host.admin ? [{ id: 'setup' as const, icon: 'gear' }] : [])];
   // the phone's bar: up to five, else four and «Ещё» with the rest; «Ещё» is lit while one of its pages is open
   const { bar: barItems, more: moreItems } = splitBar(navItems, BAR_SLOTS), moreActive = moreItems.some(n => navActive(n.id));
@@ -367,7 +369,7 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
   const mainRef = useRef<HTMLElement>(null), sheetRef = useRef<HTMLElement>(null), confirmRef = useRef<HTMLDivElement>(null), sheetOpener = useRef<HTMLElement | null>(null), confirmOpener = useRef<HTMLElement | null>(null);
   const activeIn = (el: HTMLElement | null) => ((el?.getRootNode() as Document | ShadowRoot | undefined)?.activeElement as HTMLElement | null) ?? null;
   const focusFirst = (el: HTMLElement | null) => (el?.querySelector<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled])') ?? el?.querySelector<HTMLElement>('[tabindex]:not([tabindex="-1"])'))?.focus({ preventScroll: true });
-  const sheetOpen = !!device || clockOpen || feederOpen || airOpen || kettleOpen;
+  const sheetOpen = !!device || clockOpen || feederOpen || airOpen || kettleOpen || fryerOpen;
   const lastInMain = useRef<HTMLElement | null>(null); // `main` is already inert when the effect runs, so the opener is remembered as focus moves, not read afterwards
   // a sheet opened by touch or mouse takes the focus itself (no ring around its «×»); opened from the keyboard, its first control does
   const byKeys = useRef(false);
@@ -493,6 +495,9 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
     {kettleOpen && kettleMod && (() => { const close = closeSheet, devRoom = registry.devices.find(d => d.id === kettleMod.entities.device)?.area_id, kettleWide = landscape && viewport.width >= 700;
       return <div className="hm-scrim" key="sheet" inert={!!confirm || undefined} onClick={e => { if (e.target === e.currentTarget) close(); }}><section className={`hm-sheet ${kettleWide ? 'is-split' : ''}`} role="dialog" aria-modal="true" aria-label={t('module.kettle.title' as Key)} ref={sheetRef} tabIndex={-1} {...swipe(close)}>
         <KettleSheet registry={registry} entities={kettleMod.entities} options={kettleMod.options} host={host} t={t} lang={lang} room={home.rooms.find(r => r.id === devRoom)?.name} wide={kettleWide} onClose={close} /></section></div>; })()}
+    {fryerOpen && fryerMod && (() => { const close = closeSheet, devRoom = registry.devices.find(d => d.id === fryerMod.entities.device)?.area_id, fryerWide = landscape && viewport.width >= 700;
+      return <div className="hm-scrim" key="sheet" inert={!!confirm || undefined} onClick={e => { if (e.target === e.currentTarget) close(); }}><section className={`hm-sheet ${fryerWide ? 'is-split' : ''}`} role="dialog" aria-modal="true" aria-label={t('module.airfryer.title' as Key)} ref={sheetRef} tabIndex={-1} {...swipe(close)}>
+        <FryerSheet registry={registry} entities={fryerMod.entities} options={fryerMod.options} host={host} t={t} lang={lang} room={home.rooms.find(r => r.id === devRoom)?.name} wide={fryerWide} onClose={close} /></section></div>; })()}
     {feederOpen && feederMod && (() => { const close = closeSheet, dev = feederMod.entities.device ?? '', devRoom = registry.devices.find(d => d.id === dev)?.area_id, roomLabel = home.rooms.find(r => r.id === devRoom)?.name, feederWide = landscape && viewport.width >= 700;
       return <div className="hm-scrim" key="sheet" inert={!!confirm || undefined} onClick={e => { if (e.target === e.currentTarget) close(); }}><section className={`hm-sheet ${feederWide ? 'is-split' : ''}`} role="dialog" aria-modal="true" aria-label={t('module.pet_feeder')} ref={sheetRef} tabIndex={-1} {...swipe(close)}>
         <FeederSheet registry={registry} entities={feederMod.entities} options={feederMod.options} host={host} t={t} lang={lang} room={roomLabel} wide={feederWide} onClose={close} automations={automations.filter(a => a.devices.includes(dev) || a.entities.some(id => Object.values(feederMod.entities).includes(id))).map(a => ({ ...a, byRoom: false }))} /></section></div>; })()}
