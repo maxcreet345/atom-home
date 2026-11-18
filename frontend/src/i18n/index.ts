@@ -1,9 +1,23 @@
 import { ru, type Dictionary } from './ru.ts';
-import { en } from './en.ts';
-import { ro } from './ro.ts';
 import type { Language } from '../model/config.ts';
 export type Key = keyof Dictionary;
-const dictionaries: Record<Language, Dictionary> = { ru, en, ro };
+/** H-6 of the audit of 17.11.2026: Russian is in the bundle; English and Romanian are separate files the panel loads when the house speaks
+ *  them (about 200 KB of the 1.38 MB bundle). Until one has arrived, its words fall back to Russian, key by key, as a missing word always did. */
+const dictionaries: Partial<Record<Language, Dictionary>> = { ru };
+const loading = new Map<Language, Promise<void>>();
+/** For the preview and the tests, which have every language at hand. */
+export function provideDictionary(lang: Language, dict: Dictionary) { dictionaries[lang] = dict; }
+export const hasDictionary = (lang: Language): boolean => !!dictionaries[lang];
+export function loadDictionary(lang: Language): Promise<void> {
+  if (dictionaries[lang]) return Promise.resolve();
+  let p = loading.get(lang);
+  if (!p) {
+    const load: Promise<Dictionary> = lang === 'en' ? import('./en.ts').then(m => m.en) : lang === 'ro' ? import('./ro.ts').then(m => m.ro) : Promise.resolve(ru);
+    p = load.then(d => { dictionaries[lang] = d; }, e => { loading.delete(lang); throw e; });
+    loading.set(lang, p);
+  }
+  return p;
+}
 /** Plural forms: "{n} a|{n} b|{n} c|{n} d" = zero/many | one | few | many (Russian rules; English and Romanian use one/other).
  *  Shorter keys are understood too, never silently cut to their first form: "one|other" and "one|few|many". */
 export function plural(lang: Language, n: number, forms: string[]): string {
@@ -21,8 +35,8 @@ export function plural(lang: Language, n: number, forms: string[]): string {
 /** `n` as a number: a number, or a string that is one («3», «2.5»). */
 const count = (v: unknown): number | null => typeof v === 'number' ? (Number.isFinite(v) ? v : null) : typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : null;
 export function translator(lang: Language) {
-  const dict = dictionaries[lang] ?? ru;
   return (key: Key, params: Record<string, string | number> = {}): string => {
+    const dict = dictionaries[lang] ?? ru; // read at every call: a translator made before its language arrived speaks it from then on
     let text: string = dict[key] ?? ru[key] ?? key;
     const n = text.includes('|') ? count(params.n) : null;
     if (n !== null) text = plural(lang, n, text.split('|'));

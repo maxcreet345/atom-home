@@ -134,7 +134,7 @@ test('words: one of a thing is counted as one, «нет связи» is one word
 });
 
 test('the shell\'s live region does not share a class with the camera\'s LIVE badge', () => {
-  const app = src('ui/app.tsx'), css = src('styles/apple.css') + src('styles/atom.css') + src('styles/home.css');
+  const app = src('ui/app.tsx'), css = src('styles/apple.css') + src('styles/atom.css');
   assert.match(app, /className="hm-announce"[^>]*aria-live="assertive"/); assert.ok(!/aria-live="assertive"/.test(app.split('\n').filter(l => /hm-live/.test(l)).join('\n')) && !app.includes('<div className="hm-live"'), 'no live region is called hm-live');
   assert.doesNotMatch(css, /\.hm-shell>\.hm-live/, 'the stop-gap scoping is gone');
   assert.match(css, /\.hm-shell>\.hm-announce\{[^}]*pointer-events:none/, 'the region covers the shell and takes no taps');

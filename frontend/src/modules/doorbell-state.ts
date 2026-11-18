@@ -112,11 +112,19 @@ export function parseHistory(raw: unknown, entities: ModuleEntities, startMs: nu
 }
 /** Where the panel keeps the last live frame of a stream (per browser). */
 export const frameKey = (addon: string, stream: string) => `atom-home:frame:${addon}:${stream}`;
+/** The latest frame of each stream in this page; the browser's storage gets one at most every minute (M-1 of the audit of 17.11.2026: a wall
+ *  tablet wrote ~40 KB to localStorage every 5 s per camera, all day). */
+const latest = new Map<string, { at: number; data: string }>(), savedAt = new Map<string, number>();
+export const FRAME_SAVE_MS = 60_000;
 export function readFrame(addon: string, stream: string | undefined): { at: number; data: string } | null {
   if (!stream) return null;
+  const mem = latest.get(frameKey(addon, stream)); if (mem) return mem;
   try { const raw = localStorage.getItem(frameKey(addon, stream)); if (!raw) return null; const v = JSON.parse(raw) as { at?: unknown; data?: unknown }; return typeof v.at === 'number' && typeof v.data === 'string' && v.data.startsWith('data:image/jpeg;base64,') ? { at: v.at, data: v.data } : null; } catch { return null; }
 }
-export function writeFrame(addon: string, stream: string | undefined, data: string): void {
+export function writeFrame(addon: string, stream: string | undefined, data: string, now = Date.now()): void {
   if (!stream) return;
-  try { localStorage.setItem(frameKey(addon, stream), JSON.stringify({ at: Date.now(), data })); } catch { /* quota or private mode: the poster is a convenience */ }
+  const key = frameKey(addon, stream), frame = { at: now, data }; latest.set(key, frame);
+  if (now - (savedAt.get(key) ?? 0) < FRAME_SAVE_MS) return;
+  savedAt.set(key, now);
+  try { localStorage.setItem(key, JSON.stringify(frame)); } catch { /* quota or private mode: the poster is a convenience */ }
 }

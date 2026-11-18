@@ -1,4 +1,6 @@
 import { ADDON_SLUG, AUDIO_CODECS, VIDEO_CODECS, STREAM_NAME, acceptMime, ingressPath, pickStream, validSession } from './go2rtc-protocol.ts';
+/** How often a live stream leaves its frame for the poster (M-1 of the audit of 17.11.2026: it was every 5 s, each one encoded and stored). */
+const FRAME_EVERY_MS = 15_000;
 /** Live MSE player over the go2rtc add-on's ingress WebSocket (`api/ws?src=<stream>`). Muted (or with the sound the family turned on, while the browser allows it), autoplay, stops when hidden or held.
  * It never gives up: quick retries (3, 6, 12, 24 s), then one a minute for as long as it is mounted; while the house is off the line it waits and starts the moment it is back. */
 export interface PlayerHost { ws<T = unknown>(message: Record<string, unknown>): Promise<T>; readonly online: boolean }
@@ -28,7 +30,8 @@ export function mountGo2rtcPlayer(container: HTMLElement, opts: PlayerOptions): 
   let pending: Uint8Array<ArrayBuffer>[] = [], pendingBytes = 0, timer: ReturnType<typeof setInterval> | undefined, retry: ReturnType<typeof setTimeout> | undefined;
   let lastFrames = 0, lastTime = 0, lastProgress = 0, detach: Array<() => void> = [];
   let liveSince = 0, blackChecked = false, lastFrameAt = 0, held = false, holdTimer: ReturnType<typeof setTimeout> | undefined;
-  const capture = () => { try { const w = 480, h = Math.max(1, Math.round(w * video.videoHeight / video.videoWidth)); const c = document.createElement('canvas'); c.width = w; c.height = h; const ctx = c.getContext('2d'); if (!ctx) return; ctx.drawImage(video, 0, 0, w, h); opts.onFrame?.(c.toDataURL('image/jpeg', 0.6)); } catch { /* tainted or detached */ } };
+  let shot: HTMLCanvasElement | null = null;
+  const capture = () => { try { const w = 480, h = Math.max(1, Math.round(w * video.videoHeight / video.videoWidth)); const c = shot ??= document.createElement('canvas'); c.width = w; c.height = h; /* M-1 of the audit of 17.11.2026: one canvas for the player's life, not a new one per frame */ const ctx = c.getContext('2d'); if (!ctx) return; ctx.drawImage(video, 0, 0, w, h); opts.onFrame?.(c.toDataURL('image/jpeg', 0.6)); } catch { /* tainted or detached */ } };
   const looksBlack = () => { try { const c = document.createElement('canvas'); c.width = 32; c.height = 18; const ctx = c.getContext('2d', { willReadFrequently: true }); if (!ctx) return false; ctx.drawImage(video, 0, 0, 32, 18); const d = ctx.getImageData(0, 0, 32, 18).data; let max = 0; for (let i = 0; i < d.length; i += 4) { const v = Math.max(d[i], d[i + 1], d[i + 2]); if (v > max) max = v; } return max < 12; } catch { return false; } };
   const video = document.createElement('video'); video.muted = !opts.sound; video.autoplay = true; video.playsInline = true; video.controls = false; container.append(video);
   const report = (s: PlayerStatus) => { if (status !== s) { status = s; opts.onStatus?.(s); } };
@@ -58,7 +61,7 @@ export function mountGo2rtcPlayer(container: HTMLElement, opts: PlayerOptions): 
       if (!allowed()) return;
       const frames = video.getVideoPlaybackQuality?.().totalVideoFrames;
       const advanced = frames === undefined ? video.currentTime > lastTime : frames > lastFrames;
-      if (video.readyState >= 2 && video.videoWidth > 0 && !video.paused && video.currentTime > lastTime && advanced) { lastProgress = performance.now(); lastTime = video.currentTime; if (frames !== undefined) lastFrames = frames; retries = 0; report('live'); if (!liveSince) liveSince = performance.now(); if (opts.onBlack && !blackChecked && performance.now() - liveSince > 3000) { blackChecked = true; if (looksBlack()) opts.onBlack(); } if (opts.onFrame && performance.now() - lastFrameAt > 5000 && performance.now() - liveSince > 1500) { lastFrameAt = performance.now(); capture(); } }
+      if (video.readyState >= 2 && video.videoWidth > 0 && !video.paused && video.currentTime > lastTime && advanced) { lastProgress = performance.now(); lastTime = video.currentTime; if (frames !== undefined) lastFrames = frames; retries = 0; report('live'); if (!liveSince) liveSince = performance.now(); if (opts.onBlack && !blackChecked && performance.now() - liveSince > 3000) { blackChecked = true; if (looksBlack()) opts.onBlack(); } if (opts.onFrame && performance.now() - lastFrameAt > FRAME_EVERY_MS && performance.now() - liveSince > 1500) { lastFrameAt = performance.now(); capture(); } }
       else { const idle = performance.now() - lastProgress; if (idle > 15000) failed('stalled'); else if (idle > FROZEN_MS && status === 'live') report('stalled'); /* the frame on screen is old: no LIVE over it */ }
     }, 1000);
     try {

@@ -1,5 +1,7 @@
 /** WebRTC playback of an HA camera through Home Assistant's own go2rtc (`camera/webrtc/*` WebSocket commands). Works for every signed-in user, unlike the add-on ingress (admins only); ICE servers come from HA (Nabu Casa adds TURN). Independent implementation of the public protocol documented in home-assistant/frontend ha-web-rtc-player.ts. */
 import { FROZEN_MS, playVideo, retryDelay, type PlayerStatus } from './go2rtc-player.ts';
+/** How often a live stream leaves its frame for the poster (M-1 of the audit of 17.11.2026: it was every 5 s, each one encoded and stored). */
+const FRAME_EVERY_MS = 15_000;
 export interface WebrtcHost { ws<T = unknown>(message: Record<string, unknown>): Promise<T>; subscribe<T = unknown>(message: Record<string, unknown>, cb: (m: T) => void): Promise<() => void>; readonly online: boolean }
 export interface WebrtcOptions { entityId: string; host: WebrtcHost; onStatus?(status: PlayerStatus): void; onAudio?(has: boolean): void; onFrame?(dataUrl: string): void; /** start with sound (see go2rtc-player); default muted */ sound?: boolean; /** the browser refused sound without a tap: the picture plays muted */ onMuted?(): void }
 /** How long a connected stream may show no new frame before it is rebuilt (the label says «нет кадров» after FROZEN_MS already). */
@@ -13,7 +15,8 @@ export function mountWebrtcPlayer(container: HTMLElement, opts: WebrtcOptions): 
   let pc: RTCPeerConnection | null = null, unsub: (() => void) | null = null, session: string | null = null, disposed = false, epoch = 0, retries = 0, status: PlayerStatus = 'connecting';
   let timer: ReturnType<typeof setInterval> | undefined, retry: ReturnType<typeof setTimeout> | undefined, lastTime = 0, lastProgress = 0, lastFrameAt = 0, liveSince = 0, held = false, holdTimer: ReturnType<typeof setTimeout> | undefined, lastFrames = 0, lastFrameSeen = 0, counted = false;
   const report = (s: PlayerStatus) => { if (status !== s) { status = s; opts.onStatus?.(s); } };
-  const capture = () => { try { const w = 480, h = Math.max(1, Math.round(w * video.videoHeight / video.videoWidth)); const c = document.createElement('canvas'); c.width = w; c.height = h; const ctx = c.getContext('2d'); if (!ctx) return; ctx.drawImage(video, 0, 0, w, h); opts.onFrame?.(c.toDataURL('image/jpeg', 0.6)); } catch { /* tainted */ } };
+  let shot: HTMLCanvasElement | null = null;
+  const capture = () => { try { const w = 480, h = Math.max(1, Math.round(w * video.videoHeight / video.videoWidth)); const c = shot ??= document.createElement('canvas'); c.width = w; c.height = h; /* M-1 of the audit of 17.11.2026: one canvas for the player's life, not a new one per frame */ const ctx = c.getContext('2d'); if (!ctx) return; ctx.drawImage(video, 0, 0, w, h); opts.onFrame?.(c.toDataURL('image/jpeg', 0.6)); } catch { /* tainted */ } };
   const stop = () => {
     epoch++; if (timer) clearInterval(timer); timer = undefined; if (retry) clearTimeout(retry); retry = undefined;
     const u = unsub; unsub = null; try { void Promise.resolve(u?.()).catch(() => { /* HA forgot the subscription on reconnect: «Subscription not found» is not an error here */ }); } catch { /* closed */ }
@@ -40,7 +43,7 @@ export function mountWebrtcPlayer(container: HTMLElement, opts: WebrtcOptions): 
         // an audio track keeps the clock running over a frozen picture, and by the clock the connection was never rebuilt (CODEX-012).
         // The label follows the picture, the connection gets its long patience: no new frame for 6 s is «нет кадров», not LIVE over an old frame; 45 s, a new connection.
         const seen = counted ? lastFrameSeen : lastProgress;
-        retries = 0; report(now - seen > FROZEN_MS ? 'stalled' : 'live'); if (!liveSince) liveSince = performance.now(); if (opts.onFrame && performance.now() - lastFrameAt > 5000 && performance.now() - liveSince > 1500) { lastFrameAt = performance.now(); capture(); } if (now - seen > REBUILD_MS) failed(); }
+        retries = 0; report(now - seen > FROZEN_MS ? 'stalled' : 'live'); if (!liveSince) liveSince = performance.now(); if (opts.onFrame && performance.now() - lastFrameAt > FRAME_EVERY_MS && performance.now() - liveSince > 1500) { lastFrameAt = performance.now(); capture(); } if (now - seen > REBUILD_MS) failed(); }
       else if (video.paused && video.srcObject) void playVideo(video, opts.onMuted).catch(() => undefined);
       else if (performance.now() - lastProgress > (pc && (pc.connectionState === 'connecting' || pc.connectionState === 'new') ? 60000 : 40000)) failed();
     }, 1000);

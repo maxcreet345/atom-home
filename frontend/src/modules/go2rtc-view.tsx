@@ -29,6 +29,8 @@ function Go2rtcLive({ options, host, t, mode, poster, live = true, webrtcEntity,
   const sdLive = useRef(false); if (!hd && status === 'live') sdLive.current = true;
   const addon = options.addon ?? '', stream = hd && options.streamHd ? options.streamHd : options.stream;
   const [stored, setStored] = useState(() => readFrame(addon, options.stream));
+  // the poster is the stream's latest frame from the moment the picture stops (a re-render every 5 s while live drew nothing new)
+  useEffect(() => { if (status === 'live') return; const f = readFrame(addon, options.stream); if (f && f.at !== stored?.at) setStored(f); }, [status]);
   const [picBroken, setPicBroken] = useState(false);
   const canIngress = !!hostRef.current.ws && !!addon && mseAvailable() && hostRef.current.admin;
   const [path, setPath] = useState<'mse' | 'webrtc'>(() => canIngress || !webrtcEntity ? 'mse' : 'webrtc');
@@ -53,7 +55,7 @@ function Go2rtcLive({ options, host, t, mode, poster, live = true, webrtcEntity,
     setStatus('connecting');
     const h = hostRef.current; if (!h.ws || !h.subscribe || !webrtcAvailable()) { setStatus('error'); return; }
     let player: WebrtcPlayer;
-    try { player = mountWebrtcPlayer(node, { entityId: webrtcEntity, host: { ws: m => hostRef.current.ws!(m), subscribe: (m, cb) => hostRef.current.subscribe!(m, cb), get online() { return hostRef.current.online; } }, onStatus: setStatus, onAudio: setAudio, onFrame: posterEnabled(options) ? data => { writeFrame(addon, options.stream, data); setStored({ at: Date.now(), data }); } : undefined, sound: wish.current && !behindRef.current, onMuted: refused }); playerRef.current = player as unknown as Player; if (holdRef.current) player.hold(true); }
+    try { player = mountWebrtcPlayer(node, { entityId: webrtcEntity, host: { ws: m => hostRef.current.ws!(m), subscribe: (m, cb) => hostRef.current.subscribe!(m, cb), get online() { return hostRef.current.online; } }, onStatus: setStatus, onAudio: setAudio, onFrame: posterEnabled(options) ? data => { writeFrame(addon, options.stream, data); /* M-1: kept aside while live; the poster takes it when the picture stops */ } : undefined, sound: wish.current && !behindRef.current, onMuted: refused }); playerRef.current = player as unknown as Player; if (holdRef.current) player.hold(true); }
     catch { setStatus('error'); return; }
     const unheard = heard(player.video);
     return () => { unheard(); player.dispose(); playerRef.current = null; };
@@ -67,7 +69,7 @@ function Go2rtcLive({ options, host, t, mode, poster, live = true, webrtcEntity,
     const onStatus = (s: PlayerStatus) => { if (s === 'live') wasLive = true; setStatus(s); if (hdUnsupported(hd, s, wasLive, sdLive.current)) { setHd(false); setHdBroken(true); } };
     try {
       player = mountGo2rtcPlayer(node, { addon, stream, host: { ws: m => hostRef.current.ws!(m), get online() { return hostRef.current.online; } }, onStatus, onBlack: hd ? () => { setHd(false); setHdBroken(true); } : undefined,
-        onAudio: setAudio, onFrame: posterEnabled(options) ? data => { writeFrame(addon, options.stream, data); setStored({ at: Date.now(), data }); } : undefined, sound: wish.current && !behindRef.current, onMuted: refused });
+        onAudio: setAudio, onFrame: posterEnabled(options) ? data => { writeFrame(addon, options.stream, data); /* M-1: kept aside while live; the poster takes it when the picture stops */ } : undefined, sound: wish.current && !behindRef.current, onMuted: refused });
       playerRef.current = player; if (holdRef.current) player.hold(true);
     } catch { setStatus('error'); return; }
     const unheard = heard(player.video);

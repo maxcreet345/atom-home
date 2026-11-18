@@ -1,4 +1,5 @@
 import { render } from 'preact';
+import '../i18n/all.ts';
 import { AtomApp } from '../ui/app.tsx';
 import { previewHost } from '../runtime/host.ts';
 import { localStore, memoryStore } from '../runtime/store.ts';

@@ -113,7 +113,8 @@ test('loader: a failed read is tried again by itself, a second run joins the fir
   let n = 0, failed = 0, settled = 0;
   const l = createLoader(async () => { n++; if (n < 3) throw new Error('down'); }, { failed: () => failed++, settled: () => settled++, delays: [10, 20] });
   const a = l.run(), b = l.run(); assert.equal(await a, false); assert.equal(await b, false); assert.equal(n, 1, 'one read for two callers'); assert.equal(l.waiting, true);
-  await sleep(80); assert.equal(n, 3); assert.equal(failed, 2); assert.equal(settled, 3); assert.equal(l.waiting, false);
+  for (let i = 0; i < 100 && (n < 3 || settled < 3 || l.waiting); i++) await sleep(20); // the retries run on timers: a busy machine fires them late, so wait for them, up to 2 s
+  assert.equal(n, 3); assert.equal(failed, 2); assert.equal(settled, 3); assert.equal(l.waiting, false);
   let m = 0; const dead = createLoader(async () => { m++; throw new Error('down'); }, { delays: [10] }); await dead.run(); dead.stop(); await sleep(40); assert.equal(m, 1);
   assert.deepEqual([1, 2, 3, 4, 9].map(i => nextDelay(i)), [2000, 5000, 15000, 30000, 30000]);
 });

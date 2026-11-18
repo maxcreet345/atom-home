@@ -6,6 +6,7 @@ import { restartNeeded, type ConfigStore } from './runtime/store.ts';
 import { normaliseConfig, type HouseConfig } from './model/config.ts';
 import type { Registry } from './model/registry.ts';
 import { createLoader } from './runtime/loader.ts';
+import { hasDictionary, loadDictionary } from './i18n/index.ts';
 import { Guard, reportError, setErrorReporter } from './ui/guard.tsx';
 import { errorReporter, mayReloadAfterCrash, mayReloadForUpdate, newerVersion, whenIdle } from './runtime/self-heal.ts';
 import { nextViewport } from './ui/panel-size.ts';
@@ -155,13 +156,16 @@ export class AtomHomePanel extends HTMLElement {
     // ST-1 of the audit: a skeleton with the home grid's geometry instead of a black screen while the registry and the config load;
     // a load that failed keeps the skeleton and says, in the panel's language, that it is being tried again
     if (!this.base || !this.config) { const words = SKELETON_TEXT[readSkeletonLang(hass.language)]; render(<><style>{SKELETON_CSS}</style><div dangerouslySetInnerHTML={{ __html: skeletonHtml(this.registryFailed ? words.fail : words.wait, readSkeletonTheme()) }} /></>, this.mount); return; }
+    // H-6: English and Romanian come as their own files; the skeleton stays the moment it takes (a failed load falls back to Russian words)
+    const want = this.config.home.language;
+    if (!hasDictionary(want)) { const done = () => this.draw(); void loadDictionary(want).then(done, done); if (!this.view) { const words = SKELETON_TEXT[readSkeletonLang(hass.language)]; render(<><style>{SKELETON_CSS}</style><div dangerouslySetInnerHTML={{ __html: skeletonHtml(words.wait, readSkeletonTheme()) }} /></>, this.mount); return; } }
     rememberSkeletonTheme(this.config.home.theme); rememberSkeletonLang(this.config.home.language);
     if (!this.view || this.view.states !== hass.states) this.view = { ...this.base, states: hass.states };
     this.seen = { states: hass.states, connected: hass.connected !== false, user: hass.user?.id ?? null, admin: hass.user?.is_admin === true, language: hass.language };
     const words = SKELETON_TEXT[readSkeletonLang(this.config.home.language)];
     const fallback = <><style>{SKELETON_CSS}</style><div dangerouslySetInnerHTML={{ __html: skeletonHtml(this.crash === 'stuck' ? words.stuck : words.crash, readSkeletonTheme()) }} /></>;
     render(<Guard where="panel" kind="panel" fallback={fallback} onFail={() => this.crashed()}><AtomApp registry={this.view} config={this.config} host={this.host} viewport={this.viewport} store={this.configStore()} configWarnings={this.warnings} configPending={!this.configReal} restartNeeded={this.restart}
-      onConfigChange={next => { this.config = next; rememberSkeletonTheme(next.home.theme); rememberSkeletonLang(next.home.language); }} /></Guard>, this.mount);
+      onConfigChange={next => { this.config = next; if (!hasDictionary(next.home.language)) void loadDictionary(next.home.language).then(() => this.draw(), () => undefined); rememberSkeletonTheme(next.home.theme); rememberSkeletonLang(next.home.language); }} /></Guard>, this.mount);
   }
 }
 if (!customElements.get('atom-home-panel')) customElements.define('atom-home-panel', AtomHomePanel);

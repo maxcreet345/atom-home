@@ -70,6 +70,24 @@ class Http(Surface):
             self.assertEqual((again.status, again.body), (304, None))
         run(go())
 
+    def test_a_language_part_is_served_and_nothing_else_is(self):
+        # H-6 of the audit of 17.11.2026: English and Romanian come as /atom_home/chunks/<name>.js, beside the bundle
+        async def go():
+            w = await self.house()
+            (ah.FRONTEND_DIR / "chunks").mkdir()
+            (ah.FRONTEND_DIR / "chunks" / "en-Ab12_x.js").write_bytes(JS)
+            (ah.FRONTEND_DIR / "secret.txt").write_text("no")
+            view = self.view(w, ah.ChunkView)
+            r = await view.get(Request(w, {"Accept-Encoding": "gzip"}), "en-Ab12_x.js")
+            self.assertEqual((r.status, r.headers.get("Content-Encoding"), r.content_type), (200, "gzip", "text/javascript"))
+            self.assertEqual(gzip.decompress(r.body), JS)
+            self.assertIn("immutable", r.headers["Cache-Control"])
+            again = await view.get(Request(w, {"If-None-Match": r.headers["ETag"]}), "en-Ab12_x.js")
+            self.assertEqual(again.status, 304)
+            for bad in ["../secret.txt", "..%2Fsecret.txt", "../atom-home.js", "en.js/../../x.js", "secret.txt", "missing.js", ".js"]:
+                self.assertEqual((await view.get(Request(w, {}), bad)).status, 404, bad)
+        run(go())
+
     def test_head_answers_like_get_without_the_file(self):
         async def go():
             w = await self.house()
