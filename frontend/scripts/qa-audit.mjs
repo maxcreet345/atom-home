@@ -37,8 +37,8 @@ try {
     const confirmIfAsked = async () => { const dlg = await page.$('.hm-confirm'); if (dlg) { await page.click('.hm-confirm .is-primary'); await page.waitForTimeout(300); return true; } return false; };
     await page.evaluate(() => document.querySelector('.ah-thermo .ah-chev.is-up').click()); await page.waitForTimeout(400); const askedUp = await confirmIfAsked(); c = await last();
     check(`${tag}/thermostat-up-sets-target-plus-step`, c.domain === 'climate' && c.service === 'set_temperature' && (Math.abs(c.data.temperature - (target + 0.5)) < 1e-6 || Math.abs(c.data.temperature - (target + 1)) < 1e-6) && (!thermoOff || (askedUp && c.data.hvac_mode === 'heat')), { c, target, thermoOff, askedUp });
-    await page.evaluate(() => document.querySelector('.ah-thermo .ah-chev.is-down').click()); await page.waitForTimeout(400); const askedDown = await confirmIfAsked(); c = await last();
-    check(`${tag}/thermostat-down-sets-target-minus-step`, c.domain === 'climate' && (Math.abs(c.data.temperature - (target - 0.5)) < 1e-6 || Math.abs(c.data.temperature - (target - 1)) < 1e-6) && (!thermoOff || askedDown), { c });
+    await page.evaluate(() => document.querySelector('.ah-thermo .ah-chev.is-down').click()); await page.waitForTimeout(400); const askedDown = !!(await page.$('.hm-confirm')); await page.waitForTimeout(1600); c = await last(); /* UX-07 of 17.11: «−» of a switched-off thermostat only lowers the target — no question, no hvac_mode; the step is sent after a short pause */
+    check(`${tag}/thermostat-down-sets-target-minus-step`, c.domain === 'climate' && (Math.abs(c.data.temperature - (target - 0.5)) < 1e-6 || Math.abs(c.data.temperature - (target - 1)) < 1e-6) && !askedDown && c.data.hvac_mode === undefined, { c, askedDown });
     // 3. scene button «Свет выкл.» (homeassistant.turn_off, 9 lights): «switch everything off» asks first whatever the button's own flag says
     //    (audit 2026-11-09); nothing leaves before the answer, the answer sends the nine targets
     const sceneN0 = (await log()).filter(x => x.domain !== 'ws').length;
