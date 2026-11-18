@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { Registry } from '../model/registry.ts';
-import { unavailable } from '../model/registry.ts';
+import { gasMeters, type GasMeter } from '../model/gas.ts';
 import type { Host } from '../runtime/host.ts';
 import { houseAt, houseDate, houseMonthStart } from '../runtime/zone.ts';
 import type { T } from '../i18n/index.ts';
@@ -10,18 +10,6 @@ import { num, type Lang } from './format.ts';
  *  class `gas` that only grows — in Criuleni the kitchen meter read by a camera every 5 minutes). Cubic metres stay apart from the kWh and lei
  *  above: the electricity report never adds them. Today and this month come from HA's statistics, the same numbers HA's Energy dashboard shows.
  *  Read-only. */
-export interface GasMeter { id: string; name: string; value: number | null; unit: string; changed: number | null; online: boolean }
-
-export function gasMeters(reg: Registry): GasMeter[] {
-  return reg.entities.filter(e => e.entity_id.startsWith('sensor.') && !e.disabled_by && !e.hidden_by && reg.states[e.entity_id]).flatMap(e => {
-    const s = reg.states[e.entity_id], a = s.attributes;
-    if ((e.device_class ?? a.device_class) !== 'gas' || !/^total(_increasing)?$/.test(String(a.state_class ?? ''))) return [];
-    const unit = String(a.unit_of_measurement ?? 'm³'), v = Number(s.state);
-    const dev = e.device_id ? reg.devices.find(d => d.id === e.device_id)?.name ?? '' : '';
-    return [{ id: e.entity_id, name: dev || String(a.friendly_name ?? e.entity_id), value: unavailable(s.state) || !Number.isFinite(v) ? null : v, unit, changed: Date.parse(s.last_changed) || null, online: !unavailable(s.state) }];
-  });
-}
-
 const unitWord = (u: string, t: T) => /^m³|m3$/i.test(u) ? t('gas.m3') : u;
 
 function GasOne({ m, host, t, lang, now }: { m: GasMeter; host: Host; t: T; lang: Lang; now: number }) {
