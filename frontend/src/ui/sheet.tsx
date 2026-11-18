@@ -5,7 +5,7 @@ import type { HomeDevice, EntityRef } from '../model/discover.ts';
 import type { Host, AutomationRow } from '../runtime/host.ts';
 import type { T, Key } from '../i18n/index.ts';
 import { actionsFor, entityActions, stepTarget, type Action } from '../runtime/actions.ts';
-import { stateText, bigReading, isOn, num, iconOfKind, roomBeside, type Lang } from './format.ts';
+import { stateText, bigReading, powerWatts, wattsText, isOn, num, iconOfKind, roomBeside, type Lang } from './format.ts';
 import { metricLabel, Switch, artOf, tileColor, held, shownName, modelText, useTargetDraft, focusTwin } from './cards.tsx';
 import { DeviceArt } from './device-art.tsx';
 import { ProductPhoto, usePhoto } from './photo.tsx';
@@ -21,7 +21,7 @@ export interface Runner { run(device: HomeDevice, action: Action, value?: unknow
 type Common = { device: HomeDevice; runner: Runner; t: T; lang: Lang; offline?: boolean };
 const label = (a: Action, t: T) => t(a.label as Key) === a.label ? a.label : t(a.label as Key);
 /** C1 of the audit: a thermostat that is off does not start heating from a stray «+»; the step becomes an explicit, confirmed «turn heating on to X°». */
-export const heatOn = (temp: Action, v: number, t: T, lang: Lang = 'ru'): Action => ({ ...temp, label: t('climate.heatTo', { t: num(v, lang) }), confirm: true, data: { ...(temp.data ?? {}), hvac_mode: 'heat' } });
+export const heatOn = (temp: Action, v: number, t: T, lang: Lang = 'ru'): Action => ({ ...temp, label: t('climate.heatTo', { t: num(v, lang) }), question: t('climate.heatAsk', { t: num(v, lang) }), confirm: true, data: { ...(temp.data ?? {}), hvac_mode: 'heat' } });
 export { stepTarget };
 /** Secondary entity names without the device's own name in front («Розетка туалет Delayed power on time» → «Delayed power on time»). */
 const short = (name: string, device: HomeDevice) => { const dev = (typeof device.primary.attributes.friendly_name === 'string' ? device.primary.attributes.friendly_name : device.name).trim(); const a = name.split(/\s+/); let best = 0; for (const base of [dev, device.name]) { if (base === name) continue; const b = base.split(/\s+/); let n = 0; while (n < a.length - 1 && n < b.length && a[n].toLowerCase() === b[n].toLowerCase()) n++; if (n === b.length && n > best) best = n; } return best > 0 ? a.slice(best).join(' ').replace(/^[—·:-]+\s*/, '') : name; };
@@ -78,11 +78,16 @@ function History({ entity, host, t, lang }: { entity: EntityRef; host?: Host; t:
   return <div className="ah-history"><div className="ah-history-head"><small>{t('ui.history')}</small><small>{num(min, lang, 1)} – {num(max, lang, 1)} {entity.unit ?? ''}</small></div><svg viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true" className="ah-draw"><path d={`${d} V28 H0 Z`} className="ah-history-area" /><path d={d} className="ah-history-line" pathLength={1} /></svg></div>;
 }
 /** Readings grid. Names like «Детская — расчётная температура» ×5 share a suffix: it becomes the grid caption, the cells keep only what differs. */
+/** UX-05 of the audit of 17.11.2026: the setting names Zigbee2MQTT and Tuya give in English («Power-on behavior», «Child lock», «Toggle») in the
+ *  panel's language; a name the dictionary does not know stays as the owner or the integration wrote it. */
+const human = (name: string, t: T) => { const slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''); if (!slug) return name; const k = `hn.${slug}` as Key, v = t(k); return v === k ? name : v; };
+/** A value that is a data structure or a schedule string («{'native_boot': 0, …}», «monday 00:00/16 07:00/19 …») is not a reading for a person. */
+const rawValue = (e: EntityRef) => { const v = String(e.state ?? '').trim(); return /^[[{(]/.test(v) || v.length > 48; };
 function Facts({ device, t, lang }: { device: HomeDevice; t: T; lang: Lang }) {
-  const e = device.primary, list = device.metrics.filter(m => m.id !== e.id);
+  const e = device.primary, list = device.metrics.filter(m => m.id !== e.id && !rawValue(m));
   if (!list.length) return null;
   const pre = commonPrefix(list.map(m => m.name));
-  const names = list.map(m => { const same = list.filter(x => x.deviceClass === m.deviceClass).length > 1; return same ? short(m.name.split(/\s+/).slice(pre).join(' '), device) : metricLabel(m, t); });
+  const names = list.map(m => { const same = list.filter(x => x.deviceClass === m.deviceClass).length > 1; return same ? human(short(m.name.split(/\s+/).slice(pre).join(' '), device), t) : metricLabel(m, t); });
   let caption = '';
   if (list.length > 1) { const words = names.map(n => n.split(/\s+/)); let k = 0; while (words.every(w => w.length > k + 1) && words.every(w => w[w.length - 1 - k].toLowerCase() === words[0][words[0].length - 1 - k].toLowerCase())) k++; if (k > 0) { caption = words[0].slice(-k).join(' ').replace(/^[—·:-]+\s*/, ''); names.forEach((_, i) => { names[i] = words[i].slice(0, -k).join(' ').replace(/[\s—·:-]+$/, ''); }); } }
   const cell = (m: EntityRef, i: number) => <div className="hm-fact"><small>{names[i]}</small><strong>{stateText(m, t, lang)}</strong></div>;
@@ -98,19 +103,19 @@ function Settings({ device, runner, t, lang, host, offline }: Common & { host?: 
   // The device's own settings («Detach relay mode», «Power-on behavior», a restart button) change how the device works, not what it does now:
   // an administrator's, and never by one stray tap (owner's rule, audit 2026-11-09). A robot's room buttons are everyday actions and stay as they were.
   const admin = host?.admin === true, everyday = device.kind === 'vacuum';
-  const rows = params.flatMap(p => entityActions(p).map(a => ({ p, a: { ...a, label: short(a.label, device), confirm: a.confirm || !(everyday && a.kind === 'button') } }))), readOnly = params.filter(p => entityActions(p).length === 0);
+  const rows = params.flatMap(p => entityActions(p).map(a => ({ p, a: { ...a, label: human(short(a.label, device), t), confirm: a.confirm || !(everyday && a.kind === 'button') } }))), readOnly = params.filter(p => entityActions(p).length === 0 && !rawValue(p));
   const buttons = rows.filter(r => r.a.kind === 'button' && (admin || everyday)), others = admin ? rows.filter(r => r.a.kind !== 'button') : [];
-  const bpre = commonPrefix(buttons.map(b => b.p.name)), chip = (name: string) => short(name.split(/\s+/).slice(bpre).join(' '), device);
+  const bpre = commonPrefix(buttons.map(b => b.p.name)), chip = (name: string) => human(short(name.split(/\s+/).slice(bpre).join(' '), device), t);
   const model = modelText(device.model);
   const ICON: Record<string, string> = { switch: 'power', input_boolean: 'power', number: 'settings', input_number: 'settings', select: 'more', input_select: 'more' };
   return <>
     {buttons.length > 0 && <div className="ah-group"><small className="ah-group-title">{device.kind === 'vacuum' ? t('ui.rooms') : t('ui.actions')}</small><div className="hm-chips at-actions">{buttons.map(({ p, a }) => <button type="button" className="hm-pill" {...held(runner.busy.has(device.key), offline)} disabled={!p.available || !device.primary.available} onClick={() => { if (!runner.busy.has(device.key)) void runner.run(device, a); }}>{chip(p.name)}</button>)}</div></div>}
     {(others.length > 0 || readOnly.length > 0) && <Fold title={`${t('ui.settings')} (${others.length + readOnly.length})`}>
       {others.map(({ p, a }) => <SettingRow device={device} action={a} runner={runner} t={t} lang={lang} icon={ICON[p.domain]} color={a.kind === 'toggle' ? (a.current === true ? '#30d158' : '#8e8e93') : '#7b74d8'} nameOf={namesOf(host)} offline={offline} />)}
-      {readOnly.map(p => <div className="ah-row hm-setting"><span className="ah-row-text"><strong>{short(p.name, device)}</strong></span><small>{stateText(p, t, lang)}</small></div>)}
+      {readOnly.map(p => <div className="ah-row hm-setting"><span className="ah-row-text"><strong>{human(short(p.name, device), t)}</strong></span><small>{stateText(p, t, lang)}</small></div>)}
     </Fold>}
     {/* the model as a person reads it; an integration's technical id («yeelink.light.ceila») is never printed */}
-    {(device.diagnostics.length > 0 || model) && <Fold title={`${t('ui.diagnostics')} (${device.diagnostics.length + (model ? 1 : 0)})`}>{model && <div className="ah-row hm-setting"><span className="ah-row-text"><strong>{t('ui.model')}</strong></span><small>{device.manufacturer && !model.toLowerCase().startsWith(device.manufacturer.toLowerCase()) ? `${device.manufacturer} · ${model}` : model}</small></div>}{device.diagnostics.map(p => <div className="ah-row hm-setting"><span className="ah-row-text"><strong>{short(p.name, device)}</strong></span><small>{stateText(p, t, lang)}</small></div>)}</Fold>}
+    {(device.diagnostics.some(p => !rawValue(p)) || model) && <Fold title={`${t('ui.diagnostics')} (${device.diagnostics.filter(p => !rawValue(p)).length + (model ? 1 : 0)})`}>{model && <div className="ah-row hm-setting"><span className="ah-row-text"><strong>{t('ui.model')}</strong></span><small>{device.manufacturer && !model.toLowerCase().startsWith(device.manufacturer.toLowerCase()) ? `${device.manufacturer} · ${model}` : model}</small></div>}{device.diagnostics.filter(p => !rawValue(p)).map(p => <div className="ah-row hm-setting"><span className="ah-row-text"><strong>{human(short(p.name, device), t)}</strong></span><small>{stateText(p, t, lang)}</small></div>)}</Fold>}
     {host && device.kind !== 'camera' && [e(device)].filter(x => x.domain === 'sensor' && Number.isFinite(Number(x.state))).map(x => <History entity={x} host={host} t={t} lang={lang} />)}
   </>;
 }
@@ -151,8 +156,10 @@ function Hero({ device, runner, t, lang, host, offline }: Common & { host?: Host
     return <div className={`ah-hero ${on ? 'is-on' : ''}`}>{glyph}<div className="ah-hero-main"><b>{title ?? stateText(p, t, lang)}</b>{(src || vol !== null) && <small>{[src, vol !== null ? `${t('action.volume')} ${vol}%` : null].filter(Boolean).join(' · ')}</small>}</div></div>;
   }
   if (['switch', 'socket', 'energy'].includes(device.kind)) {
-    const power = device.metrics.find(m => m.deviceClass === 'power' && m.available), energy = device.metrics.filter(m => m.deviceClass === 'energy' && m.available);
-    return <div className={`ah-hero ${on ? 'is-on' : ''}`}>{glyph}<div className="ah-hero-main"><b>{/* the big number in the panel's own units («0 Вт», not HA's «0 W»), as the tile says it */ power ? bigReading(power, t, lang) : bigReading(p, t, lang)}</b>{power && <small>{`${stateText(p, t, lang)}${energy[0] ? ` · ${stateText(energy[0], t, lang)}` : ''}`}</small>}</div></div>;
+    const powers = device.metrics.filter(m => m.deviceClass === 'power' && m.available), power = powers[0], energy = device.metrics.filter(m => m.deviceClass === 'energy' && m.available);
+    // UX-04 of the audit of 17.11.2026: a meter with several channels (a Sonoff SPM board) is the sum of its channels, the number «Энергия» shows for it
+    const watts = powers.map(powerWatts).filter((w): w is number => w !== null), total = watts.length > 1 ? wattsText(watts.reduce((a, b) => a + b, 0), t, lang) : null;
+    return <div className={`ah-hero ${on ? 'is-on' : ''}`}>{glyph}<div className="ah-hero-main"><b>{/* the big number in the panel's own units («0 Вт», not HA's «0 W»), as the tile says it */ total ?? (power ? bigReading(power, t, lang) : bigReading(p, t, lang))}</b>{power && <small>{`${stateText(p, t, lang)}${energy.length === 1 ? ` · ${stateText(energy[0], t, lang)}` : ''}`}</small>}</div></div>;
   }
   if (p.domain === 'sensor' || p.domain === 'binary_sensor') {
     return <div className="ah-hero">{glyph}<div className="ah-hero-main"><b>{bigReading(p, t, lang)}</b><small>{metricLabel(p, t)}</small></div></div>;

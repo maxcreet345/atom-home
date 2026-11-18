@@ -4,7 +4,7 @@ import { boilerEbusSpec } from './catalog.ts';
 import { Icon } from '../ui/primitives.tsx';
 import { DeviceArt } from '../ui/device-art.tsx';
 import { ProductPhoto, usePhoto } from '../ui/photo.tsx';
-import { num } from '../ui/format.ts';
+import { num, unitWord } from '../ui/format.ts';
 /** Gas boiler on eBUS (ebusd): flow, return, hot water, pressure with the 1.0–1.5 bar norm, burner. Read-only. */
 export const boilerEbus: ModuleDef = {
   ...boilerEbusSpec, photoEntity: entities => entities.flame ?? entities.flow ?? entities.pressure,
@@ -16,14 +16,14 @@ export const boilerEbus: ModuleDef = {
     const [hist, setHist] = useState<Record<string, Array<[number, number]>>>({});
     useEffect(() => { let alive = true; const ids = ['flow', 'return', 'pressure'].map(r => entities[r]).filter((x): x is string => !!x); if (!ids.length || !host.history) return; host.history(ids, 24).then(d => { if (alive) setHist(d); }).catch(() => undefined); return () => { alive = false; }; }, [entities.flow, entities.pressure]);
     const tile = (role: string, label: string, unit: string, sub?: string, tone = '') => <div className={`at-boiler-tile ${tone}`}><small>{label}</small><strong>{val(role) === null ? '—' : num(val(role), lang, role === 'pressure' ? 2 : 1)} {unit}</strong>{sub && <span>{sub}</span>}<Spark points={hist[entities[role] ?? '']} band={role === 'pressure' ? [1, 1.5] : undefined} /></div>;
-    if (compact) return <div className={`hm-card hm-status tone-${low || high ? 'warning' : 'calm'}`}><span className="hm-status-icon"><Icon name="flame" size={20} /></span><span className="hm-status-text"><small>{t('module.boiler.pressure')}</small><strong>{pressure === null ? '—' : `${num(pressure, lang, 2)} bar`}</strong><em>{low ? t('module.boiler.low') : high ? t('module.boiler.high') : t('module.boiler.norm')}</em></span></div>;
+    if (compact) return <div className={`hm-card hm-status tone-${low || high ? 'warning' : 'calm'}`}><span className="hm-status-icon"><Icon name="flame" size={20} /></span><span className="hm-status-text"><small>{t('module.boiler.pressure')}</small><strong>{pressure === null ? '—' : `${num(pressure, lang, 2)} ${unitWord('bar', t)}`}</strong><em>{low ? t('module.boiler.low') : high ? t('module.boiler.high') : t('module.boiler.norm')}</em></span></div>;
     return <section className="hm-card at-boiler">
-      <div className="at-boiler-head"><span className={`at-module-art ${burning ? 'is-on' : ''}`}><ProductPhoto src={shot}><DeviceArt type="boiler" fill /></ProductPhoto></span><div><strong>{t('module.boiler_ebus')}</strong><small>{burning ? t('module.boiler.burning') : flame === 'off' ? t('module.boiler.idle') : t('state.unknown')}</small></div><span className={`hm-badge ${low || high ? 'tone-warning' : 'tone-calm'}`}>{pressure === null ? '—' : `${num(pressure, lang, 2)} bar`}</span></div>
+      <div className="at-boiler-head"><span className={`at-module-art ${burning ? 'is-on' : ''}`}><ProductPhoto src={shot}><DeviceArt type="boiler" fill /></ProductPhoto></span><div><strong>{t('module.boiler_ebus')}</strong><small>{burning ? t('module.boiler.burning') : flame === 'off' ? t('module.boiler.idle') : t('state.unknown')}</small></div><span className={`hm-badge ${low || high ? 'tone-warning' : 'tone-calm'}`}>{pressure === null ? '—' : `${num(pressure, lang, 2)} ${unitWord('bar', t)}`}</span></div>
       <div className="at-boiler-grid">
         {tile('flow', t('module.boiler.flow'), '°C', val('flowSet') !== null ? `${t('ui.target')} ${num(val('flowSet'), lang, 0)}°` : undefined)}
         {entities.return && tile('return', t('module.boiler.return'), '°C', val('flow') !== null && val('return') !== null ? `Δ ${num(Math.abs(val('flow')! - val('return')!), lang, 1)}°` : undefined)}
         {entities.hwc && tile('hwc', t('module.boiler.hwc'), '°C', val('hwcSet') !== null ? `${t('ui.target')} ${num(val('hwcSet'), lang, 0)}°` : undefined)}
-        {tile('pressure', t('module.boiler.pressure'), 'bar', low ? t('module.boiler.low') : high ? t('module.boiler.high') : t('module.boiler.norm'), low || high ? 'is-warning' : '')}
+        {tile('pressure', t('module.boiler.pressure'), unitWord('bar', t), low ? t('module.boiler.low') : high ? t('module.boiler.high') : t('module.boiler.norm'), low || high ? 'is-warning' : '')}
       </div>
     </section>;
   },

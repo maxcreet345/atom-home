@@ -10,6 +10,8 @@ export interface Action {
   domain: string; service: string; entityId: string; data?: Record<string, unknown>; confirm: boolean; risk: Risk;
   /** number: range; select: options; toggle: service for the other state is derived. */
   min?: number; max?: number; step?: number; unit?: string; options?: string[]; current?: unknown;
+  /** the confirmation's question in plain words («Включить отопление на 20°?»), instead of «Выполнить «…» для «…»?» (UX-07 of the audit of 17.11.2026) */
+  question?: string;
 }
 const num = (v: unknown, d: number) => typeof v === 'number' && Number.isFinite(v) ? v : d;
 const list = (v: unknown) => Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];

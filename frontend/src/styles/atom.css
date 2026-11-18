@@ -837,3 +837,5 @@
 .hm-shell .at-osec-ring .is-body{fill:var(--rc,var(--os-teal))}
 .hm-shell .at-osec-ring.is-open .is-track{stroke:color-mix(in srgb,var(--rc,var(--os-teal)) 35%,transparent)}
 .hm-shell .at-sec-title-short{display:none}
+/* UX-07 of the audit of 17.11.2026: the thermostat tile's steps are «−» and «+», not rotated chevrons */
+.hm-shell .ah-chev.is-pm{transform:none;--chev-rot:rotate(0deg)}

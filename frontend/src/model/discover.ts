@@ -37,7 +37,8 @@ export function discover(reg: Registry, config: HouseConfig, claimed: ReadonlySe
   for (const e of reg.entities) {
     if (e.disabled_by || e.hidden_by) continue;
     const d = e.device_id ? devices.get(e.device_id) : undefined;
-    if (e.device_id && d && !d.disabled_by && d.entry_type !== 'service') { (byDevice.get(e.device_id) ?? byDevice.set(e.device_id, []).get(e.device_id)!).push(e); }
+    // H-1 of the audit of 17.11.2026: met.no and OpenWeatherMap register the weather as a «service»; Sun and backups stay out
+    if (e.device_id && d && !d.disabled_by && (d.entry_type !== 'service' || e.entity_id.startsWith('weather.'))) { (byDevice.get(e.device_id) ?? byDevice.set(e.device_id, []).get(e.device_id)!).push(e); }
     else if (!e.device_id) loose.push(e);
   }
   const cards: HomeDevice[] = [];
