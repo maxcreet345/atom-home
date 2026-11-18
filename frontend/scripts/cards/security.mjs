@@ -54,7 +54,7 @@ function apply(fx, now, sc) {
   for (const id of Object.keys(S)) if (id.startsWith('person.')) { delete S[id]; fx.entities = fx.entities.filter(e => e.entity_id !== id); }
   const person = (k, name, st, min) => { add(`person.${k}`, null, null, name, st, min); S[`person.${k}`].attributes.user_id = `u_${k}`; };
   const P = { all: ['home', 'home', 'home'], away: ['not_home', 'Atom Service', 'not_home'], one: ['not_home', 'home', 'Esperanza Sanitas'] }[sc.people ?? 'one'];
-  person('ararat_melconean', 'Ararat Melconean', P[0], 40); person('gayane_grigorean', 'Gayane Grigorean', P[1], 300); person('daniela_melconean', 'Daniela Melconean', P[2], 200);
+  person('andrei_popescu', 'Andrei Popescu', P[0], 40); person('galina_lupu', 'Galina Lupu', P[1], 300); person('daniela_popescu', 'Daniela Popescu', P[2], 200);
   const alarm = (state, attrs = {}, min = 20) => set('alarm_control_panel.alarmo', state, attrs, min);
   if (sc.state) alarm(sc.state, sc.alarmAttrs ?? {}, sc.alarmMin ?? 35);
   for (const [id, st, min] of sc.over ?? []) set(id, st, {}, min ?? 5);
@@ -67,7 +67,7 @@ function apply(fx, now, sc) {
 // the panel's week from HA's logbook (logbook/get_events) in the shape HA answers: «Не дома» set by its automation, disarmed by a person, one alarm
 const logFor = now => { const at = (d, h, m) => { const x = new Date(now); x.setDate(x.getDate() - d); x.setHours(h, m, 0, 0); return x.getTime() / 1000; }, A = 'alarm_control_panel.alarmo', auto = { context_domain: 'automation', context_entity_id: 'automation.bezopasnost_ne_doma_avtopostanovka', context_name: 'Безопасность · Не дома: автопостановка' };
   return [{ when: at(0, 8, 41), entity_id: A, state: 'arming', ...auto }, { when: at(0, 8, 42), entity_id: A, state: 'armed_away', ...auto }, { when: at(0, 10, 29), entity_id: A, state: 'disarmed', context_domain: 'automation', context_entity_id: 'automation.bezopasnost_ne_doma_avtosniatie', context_name: 'Безопасность · Не дома: автоснятие' },
-    { when: at(1, 22, 5), entity_id: A, state: 'arming', context_user_id: 'u_gayane_grigorean' }, { when: at(1, 22, 6), entity_id: A, state: 'armed_home', context_user_id: 'u_gayane_grigorean' }, { when: at(1, 23, 40), entity_id: A, state: 'pending' }, { when: at(1, 23, 40), entity_id: A, state: 'disarmed', context_user_id: 'u_ararat_melconean' }]; };
+    { when: at(1, 22, 5), entity_id: A, state: 'arming', context_user_id: 'u_galina_lupu' }, { when: at(1, 22, 6), entity_id: A, state: 'armed_home', context_user_id: 'u_galina_lupu' }, { when: at(1, 23, 40), entity_id: A, state: 'pending' }, { when: at(1, 23, 40), entity_id: A, state: 'disarmed', context_user_id: 'u_andrei_popescu' }]; };
 export const card = {
   name: 'Безопасность', sheet: '#security', home: '#home', sheetRoot: '.at-sec-panel', tileRoot: '.at-sec-tile', actionButton: '.at-sec-main',
   scenarios: {

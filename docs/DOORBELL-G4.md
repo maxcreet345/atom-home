@@ -11,7 +11,7 @@
 | sensor.entrance_doorbell_battery | 100 % | диагностика |
 | switch chime_mute / mic_mute / speaker_mute | мелодия на репитере, микрофон, динамик | «Настройки (3)» |
 | button.entrance_doorbell_identify | опознать (мигнуть) | диагностика |
-Устройство: Aqara SVD-C02, прошивка 4.0.6, hw 1.1, репитер 192.168.100.39.
+Устройство: Aqara SVD-C02 с репитером в локальной сети.
 
 ## 2. Что есть в Aqara Home и чего нет в HA
 | Aqara Home | HA | Как получить в HAOS |

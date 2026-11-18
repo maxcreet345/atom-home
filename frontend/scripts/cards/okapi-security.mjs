@@ -13,7 +13,7 @@ const NAMES = {
 };
 const devKey = prefix => live.devices.find(d => d.id.startsWith(prefix))?.id;
 // HA's persons on 09.11.2026 (no one carries the staff label yet: the owner picks them in the panel's settings)
-const PERSONS = [['ararat', 'Ararat Melconean', 'e28897d4a88248baa7bd051795141d65'], ['roman_gantea', 'Roman Gantea', 'cddc3cdfe26f4a88bbd65c3f12be471c'], ['ion_faurean', 'Ion Faurean', 'efd3bd9630ae403fa357e6139a163245'], ['daniela_tarita', 'Daniela Tarita', '9e359ad948d44a01b12220c75b3f667d'], ['alexandru_guzun', 'Alexandru Guzun', '02a1c0ae850e44038cfd3f463298c315'], ['ion_lascu', 'Ion Lascu', '1dd7cd256f7c456bae1f574beedfa3cc'], ['vasile_odagiu', 'Vasile Odagiu', '25489f5ed33b4741a28af85d2be1325b'], ['ararat_melconean', 'Ararat Melconean', '83126f6863be44da9aad51c500588b7d'], ['dorin_botan', 'Dorin Botan', '9330229f2aec4f76b39e047de8e8def8'], ['tableta', 'Tableta', '91d30fa194e442e6b45b27898cc78d94'], ['madan', 'Madan', '53679ad7e9954f61955fb4ffad6f53a4']];
+const PERSONS = [['andrei', 'Andrei Popescu', '97a798b46d501b5c1173760af531e1f7'], ['mihai_ionescu', 'Mihai Ionescu', '5c46fa76af23c780c99cce83f60ea2f1'], ['victor_rusu', 'Victor Rusu', '13e71a1f7ac58f99127e89f8b339dfc3'], ['elena_ciobanu', 'Elena Ciobanu', '66b17ecef2443f999ac4d33e2d4c8163'], ['cristian_munteanu', 'Cristian Munteanu', '58c9f1e634215ee5f09793019b721bfd'], ['sergiu_lungu', 'Sergiu Lungu', '9331109375e838c7cdc300a305a5054b'], ['pavel_moraru', 'Pavel Moraru', '2adae52b677d38ed48342c4a28b37289'], ['andrei_popescu', 'Andrei Popescu', '7b9a9b03b5b469669d6cdafcc832d19e'], ['radu_ceban', 'Radu Ceban', 'eb6651276cfe9c9f6d063cc49c096947'], ['tableta', 'Tableta', '43cf9c15a1ea60353bf1b1cc1c507137'], ['oleg', 'Oleg', '978c753167817be7bf8fe4b8f9e3d17c']];
 const ago = s => new Date(Date.parse(AT) - s * 1000).toISOString();
 function snapshot(sc) {
   const s = structuredClone(live);
@@ -48,15 +48,15 @@ function config() {
   const devices = Object.fromEntries(Object.entries(NAMES).map(([p, name]) => [`d:${devKey(p)}`, { name }]));
   return { schemaVersion: 1, home: { name: 'Атом + Окапи', logo: null, language: 'ru', theme: 'light' }, rooms, devices, entities: {}, buttons: [], sections, modules, alarms: [] };
 }
-// HA's logbook of the master, 04–09.11.2026 (logbook/get_events): armed by Ararat (e28897…) and by Madan (53679a…), disarmed at 08:00 by Ajax (its scenario, synced)
+// HA's logbook of the master, 04–09.11.2026 (logbook/get_events): armed by Andrei (e28897…) and by Oleg (53679a…), disarmed at 08:00 by Ajax (its scenario, synced)
 const T = iso => Date.parse(iso) / 1000, AJAX = 'automation.ajax_alarmo_sinkhronizatsiia_okhrany', M = 'alarm_control_panel.master';
 const LOG = [
-  ['2026-11-04T16:25:28Z', 'arming', 'e28897d4a88248baa7bd051795141d65'], ['2026-11-04T16:26:28Z', 'armed_away'], ['2026-11-05T06:00:26Z', 'disarmed', null, AJAX],
-  ['2026-11-05T17:12:02Z', 'arming', '53679ad7e9954f61955fb4ffad6f53a4'], ['2026-11-05T17:13:02Z', 'armed_away'], ['2026-11-06T06:00:34Z', 'disarmed', null, AJAX],
-  ['2026-11-06T16:30:50Z', 'arming', 'e28897d4a88248baa7bd051795141d65'], ['2026-11-06T16:31:50Z', 'armed_away'], ['2026-11-09T06:00:34Z', 'disarmed', null, AJAX],
+  ['2026-11-04T16:25:28Z', 'arming', '97a798b46d501b5c1173760af531e1f7'], ['2026-11-04T16:26:28Z', 'armed_away'], ['2026-11-05T06:00:26Z', 'disarmed', null, AJAX],
+  ['2026-11-05T17:12:02Z', 'arming', '978c753167817be7bf8fe4b8f9e3d17c'], ['2026-11-05T17:13:02Z', 'armed_away'], ['2026-11-06T06:00:34Z', 'disarmed', null, AJAX],
+  ['2026-11-06T16:30:50Z', 'arming', '97a798b46d501b5c1173760af531e1f7'], ['2026-11-06T16:31:50Z', 'armed_away'], ['2026-11-09T06:00:34Z', 'disarmed', null, AJAX],
 ].map(([w, state, user, ent]) => ({ when: T(w), entity_id: M, state, context_user_id: user ?? null, context_entity_id: ent ?? null, context_domain: ent ? 'automation' : user ? 'alarm_control_panel' : null }));
-const logFor = sc => sc === 'armed' ? [...LOG, { when: T('2026-11-09T12:00:10Z'), entity_id: M, state: 'arming', context_user_id: '53679ad7e9954f61955fb4ffad6f53a4' }, { when: T('2026-11-09T12:01:10Z'), entity_id: M, state: 'armed_away' }]
-  : sc === 'triggered' ? [...LOG, { when: T('2026-11-09T12:00:10Z'), entity_id: M, state: 'arming', context_user_id: '53679ad7e9954f61955fb4ffad6f53a4' }, { when: T('2026-11-09T12:01:10Z'), entity_id: M, state: 'armed_away' }, { when: Date.parse(AT) / 1000 - 40, entity_id: M, state: 'triggered' }] : LOG;
+const logFor = sc => sc === 'armed' ? [...LOG, { when: T('2026-11-09T12:00:10Z'), entity_id: M, state: 'arming', context_user_id: '978c753167817be7bf8fe4b8f9e3d17c' }, { when: T('2026-11-09T12:01:10Z'), entity_id: M, state: 'armed_away' }]
+  : sc === 'triggered' ? [...LOG, { when: T('2026-11-09T12:00:10Z'), entity_id: M, state: 'arming', context_user_id: '978c753167817be7bf8fe4b8f9e3d17c' }, { when: T('2026-11-09T12:01:10Z'), entity_id: M, state: 'armed_away' }, { when: Date.parse(AT) / 1000 - 40, entity_id: M, state: 'triggered' }] : LOG;
 export const card = {
   name: 'Охрана · Атом + Окапи', sheet: '#security', home: '#home', sheetRoot: '.at-osec-wrap', tileRoot: '.at-sec-tile', actionButton: '.at-sec-main',
   scenarios: { now: { at: AT }, arming: { at: AT, sc: 'arming' }, armed: { at: AT, sc: 'armed' }, pending: { at: AT, sc: 'pending' }, triggered: { at: AT, sc: 'triggered' }, smoke: { at: AT, sc: 'smoke' } },

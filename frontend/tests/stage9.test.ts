@@ -38,7 +38,7 @@ test('clock: timers, nearest, formatting, labels, week, people', () => {
   assert.ok(withLabel({}, 'timer.atom_1', 'x'.repeat(300)).length <= 255);
   assert.equal(weekNumber(new Date(2026, 10, 4)), 45); assert.equal(weekNumber(new Date(2026, 0, 1)), 1);
   assert.deepEqual(personState(row('home')), { home: true, zone: null }); assert.deepEqual(personState(row('Atom Service')), { home: false, zone: 'Atom Service' }); assert.deepEqual(personState(row('not_home')), { home: false, zone: null });
-  assert.equal(initials('Gayane Grigorean'), 'GG'); assert.equal(initials('Арарат'), 'А');
+  assert.equal(initials('Galina Lupu'), 'GL'); assert.equal(initials('Андрей'), 'А');
 });
 
 test('clock: module detected on the Criuleni snapshot, claims its helpers', { skip: !cam }, () => {

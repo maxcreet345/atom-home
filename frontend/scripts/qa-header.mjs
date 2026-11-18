@@ -61,7 +61,7 @@ for (const scenario of ['allHome', 'mixed', 'nobody', 'unknown', 'allUnknown', '
   else {
     check(`people button ${tag}`, count === 1);
     if (dev === '13R' && SUM[scenario]) check(`summary ${tag}`, SUM[scenario].test(await page.locator('.at-people-sum').textContent()), await page.locator('.at-people-sum').textContent());
-    const name = await page.locator('.at-people-btn').getAttribute('aria-label'); check(`the button names everyone and where ${tag}`, /Ararat/.test(name) && (scenario === 'single' || /Gayane|Gayane-Anahit/.test(name)), name);
+    const name = await page.locator('.at-people-btn').getAttribute('aria-label'); check(`the button names everyone and where ${tag}`, /Andrei/.test(name) && (scenario === 'single' || /Galina|Galina-Anahit/.test(name)), name);
     const norm = x => x.replace(/,/g, ' ').replace(/\s+/g, ' ').trim(), shown = sel => page.evaluate(q => { const walk = n => n.nodeType === 3 ? n.textContent : n.nodeType === 1 && !n.matches('[aria-hidden="true"]') ? [...n.childNodes].map(walk).join(' ') : ''; return walk(document.querySelector(q)); }, sel), seen = norm(await shown('.at-people-btn')); // the decorative initials are not part of the label
     check(`the button's name starts with what it shows ${tag}`, norm(name).startsWith(seen), { seen, name });
     if (await page.locator('.at-lang .at-pill-btn').count()) { const ln = await page.locator('.at-lang .at-pill-btn').getAttribute('aria-label'), lv = norm(await shown('.at-lang .at-pill-btn')); check(`the language button's name starts with what it shows ${tag}`, norm(ln).startsWith(lv), { lv, ln }); }
@@ -151,9 +151,9 @@ const twoPicks = async page => { await page.click('.at-lang .at-pill-btn'); awai
 // 7. a photo that failed stays with its person when the order changes
 { const { page, ctx } = await open();
   const chips = () => page.evaluate(() => [...document.querySelectorAll('.at-person-chip')].map(c => `${c.querySelector('b:not(.at-person-ava b)')?.innerText ?? c.innerText.split('\n')[0]}:${c.querySelector('img') ? 'photo' : 'initials'}`));
-  await page.evaluate(() => { const img = [...document.querySelectorAll('.at-person-chip')].find(c => /Ararat/.test(c.innerText)).querySelector('img'); img.dispatchEvent(new Event('error')); }); await page.waitForTimeout(150);
-  await page.evaluate(() => window.atomPreview.setStates({ 'person.ararat': 'not_home', 'person.daniela': 'home' })); await page.waitForTimeout(300);
-  const c = await chips(); check('after a reorder Daniela keeps her photo and Ararat his initials', c.some(x => /Daniela:photo/.test(x)) && c.some(x => /Ararat:initials/.test(x)), c);
+  await page.evaluate(() => { const img = [...document.querySelectorAll('.at-person-chip')].find(c => /Andrei/.test(c.innerText)).querySelector('img'); img.dispatchEvent(new Event('error')); }); await page.waitForTimeout(150);
+  await page.evaluate(() => window.atomPreview.setStates({ 'person.andrei': 'not_home', 'person.daniela': 'home' })); await page.waitForTimeout(300);
+  const c = await chips(); check('after a reorder Daniela keeps her photo and Andrei his initials', c.some(x => /Daniela:photo/.test(x)) && c.some(x => /Andrei:initials/.test(x)), c);
   await ctx.close(); }
 // 8. the look: no sticky hover on touch, readable initials, no stray dots in the stack, no dark band round the photos
 { const { page, ctx } = await open({ w: 360, h: 792, scenario: 'allHome' });

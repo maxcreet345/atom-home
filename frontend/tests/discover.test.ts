@@ -112,7 +112,7 @@ test('Criuleni registry snapshot (private) discovers rooms and household devices
   assert.ok(home.rooms.length >= 9);
   assert.ok((home.counts.light ?? 0) >= 8, 'lights'); assert.ok((home.counts.climate ?? 0) >= 6, 'climate'); assert.equal(home.counts.vacuum, 1); assert.ok((home.counts.leak ?? 0) >= 2); assert.ok((home.counts.environment ?? 0) >= 6); assert.ok((home.counts.camera ?? 0) >= 1);
   assert.ok(enabled.every(d => d.primary && d.roomId), 'every card has a primary entity and a room');
-  assert.ok(!enabled.some(d => /^sensor\.(oppo_|ararat_(steps|light|internal|external|battery))|steps_sensor|sleep_confidence/.test(d.primary.id)), 'phone sensors (mobile_app) never become cards');
+  assert.ok(!enabled.some(d => /^sensor\.(oppo_|andrei_(steps|light|internal|external|battery))|steps_sensor|sleep_confidence/.test(d.primary.id)), 'phone sensors (mobile_app) never become cards');
   assert.ok(!enabled.some(d => d.kind === 'energy' && !d.metrics.some(m => m.deviceClass === 'power' || m.deviceClass === 'energy')), 'energy cards carry power or energy');
   assert.ok(enabled.some(d => d.metrics.some(m => m.deviceClass === 'energy' && m.unit === 'kWh')), 'class-less kWh meters are recognised by unit');
   assert.ok(!enabled.some(d => d.primary.domain === 'update' || d.primary.domain === 'automation'), 'service entities never become cards');
