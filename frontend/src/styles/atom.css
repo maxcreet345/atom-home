@@ -839,3 +839,11 @@
 .hm-shell .at-sec-title-short{display:none}
 /* UX-07 of the audit of 17.11.2026: the thermostat tile's steps are «−» and «+», not rotated chevrons */
 .hm-shell .ah-chev.is-pm{transform:none;--chev-rot:rotate(0deg)}
+/* 18.11: a wide panel under 421 px tall (a fold's cover screen turned sideways, 882×344) — eight places do not fit one column of 44 px targets,
+   so the rail takes two columns: every place stays on screen, none scrolls out of sight */
+.hm-shell.is-wide:not(.ph-421) .hm-sidebar nav{display:grid;grid-template-columns:repeat(2,64px);gap:2px}
+.hm-shell.is-wide:not(.ph-421) .hm-sidebar nav button{min-height:44px;padding:3px 1px;gap:1px;font-size:.625rem}
+.hm-shell.is-wide:not(.ph-421) .hm-sidebar nav button svg{width:20px;height:20px}
+.hm-shell .hm-sidebar nav .at-nav-short{display:none}
+.hm-shell.is-wide:not(.ph-421) .hm-sidebar nav .at-nav-long{display:none}
+.hm-shell.is-wide:not(.ph-421) .hm-sidebar nav .at-nav-short{display:block}

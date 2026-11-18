@@ -106,7 +106,7 @@ for (const [w, h] of [[568, 320], [320, 568]]) for (const lang of ['ru', 'ro', '
 {
   const { page, ctx, errors } = await open({ card: 'heating', scenario: 'normal' });
   const at = async h => { await page.evaluate(h => { location.hash = h; }, h); await page.waitForTimeout(450); return page.evaluate(() => ({ hash: location.hash, title: document.querySelector('.hm-head h1')?.textContent, rail: document.querySelector('.hm-sidebar nav button.is-active span')?.textContent, tab: document.querySelector('.ah-segments.is-sys .is-active')?.textContent ?? null, attn: document.querySelector('.at-sys-attn')?.getAttribute('aria-pressed') ?? null })); };
-  const want = { '#systems?filter=attention': ['Устройства', 'Устройства', 'Все', 'true'], '#systems': ['Устройства', 'Устройства', 'Все', 'false'], '#climate': ['Устройства', 'Устройства', 'Климат', null], '#cleaning': ['Устройства', 'Устройства', 'Уборка', null], '#camera': ['Устройства', 'Устройства', 'Камеры', null], '#energy': ['Энергия', 'Энергия', null, null], '#energy?filter=now': ['Энергия', 'Энергия', null, null], '#security': ['Безопасность', 'Безопасность', null, null] };
+  const want = { '#systems?filter=attention': ['Устройства', 'Устройства', null, 'true'] /* UX-12 of 17.11: «Все» is not lit while only the attention list is shown */, '#systems': ['Устройства', 'Устройства', 'Все', 'false'], '#climate': ['Устройства', 'Устройства', 'Климат', null], '#cleaning': ['Устройства', 'Устройства', 'Уборка', null], '#camera': ['Устройства', 'Устройства', 'Камеры', null], '#energy': ['Энергия', 'Энергия', null, null], '#energy?filter=now': ['Энергия', 'Энергия', null, null], '#security': ['Безопасность', 'Безопасность', null, null] };
   for (const [h, [title, rail, tab, attn]] of Object.entries(want)) { const r = await at(h); check(`old address ${h}: still opens where it did`, r.hash === h && r.title === title && r.rail === rail && r.tab === tab && r.attn === attn, r); }
   check('old addresses: no page error', errors.length === 0, errors);
   // the settings hide a place: «Энергия» and «Безопасность» hidden — not in the menu, and their addresses lead Home
@@ -154,7 +154,7 @@ for (const [w, h] of [[568, 320], [320, 568]]) for (const lang of ['ru', 'ro', '
     check(`devices: «…» on «${word}» opens the appliance — its power in «Вт» — and sends nothing`, opened(sheet, word, tile) && more.length === 0, { tile, sheet, more });
     await page.keyboard.press('Escape'); await page.waitForTimeout(300);
   }
-  for (const word of ['Увлажнитель воздуха', 'Аэрогриль', 'Сушильная машина']) {
+  for (const word of ['Увлажнитель воздуха', 'Сушильная машина']) /* «Аэрогриль» has its own card since 1.28.0 (qa-airfryer) */ {
     const tile = await tileOf(word, null), n0 = await page.evaluate(() => window.atomPreview.host.log.length);
     await press(word, null, '.ah-tile-hit'); await page.waitForTimeout(400);
     const sheet = await sheetNow(), sent = await calls(n0);

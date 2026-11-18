@@ -11,13 +11,14 @@ import { addFeeder, feederLog } from './feeder-fixture.mjs';
 const root = resolve(import.meta.dirname, '..'), dist = process.env.QA_DIST ? resolve(process.env.QA_DIST) : resolve(root, 'dist-preview'); // QA_DIST: another build of the preview (to see the checks fail on an older one)
 const out = resolve(process.argv[2] ?? resolve(root, 'evidence/layout')); await mkdir(out, { recursive: true });
 const only = process.argv[3] ? new RegExp(process.argv[3]) : null;
+const QLANG = process.env.QA_LANG ?? 'ru'; // QA_LANG=en|ro walks the same matrix in another language
 
 // ---- own server: «/» the whole panel (owner's config), «/card?card=&scenario=» one card in a state (scripts/cards/*.mjs) -----------------------------------
 const fixture = JSON.stringify(addFeeder(JSON.parse(await readFile(resolve(root, '../private/fixtures/criuleni-registry.json'), 'utf8'))));
 const cardBase = JSON.parse(await readFile(resolve(root, '../private/fixtures/criuleni-registry-live-20261028.json'), 'utf8'));
 const configText = await readFile(resolve(root, '../../clients/criuleni/atom-home-config-20261028.json'), 'utf8');
 const HEAD = '<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>html,body{margin:0;height:100%;overflow:hidden;background:#000}#root{height:100%;position:relative}</style><div id="root"></div><script type="module">import "/atom-preview.js"; const q = new URLSearchParams(location.search);';
-const PANEL = HEAD + 'const [fx, cfg] = await Promise.all([fetch("/fixture.json").then(r => r.json()), fetch("/config.json").then(r => r.json())]); cfg.home.theme = q.get("theme") ?? "light"; window.__feederLog = await fetch("/feeder-log.json").then(r => r.json()); await window.mountPreview(document.getElementById("root"), fx, cfg); window.ready = true;</script>';
+const PANEL = HEAD + 'const [fx, cfg] = await Promise.all([fetch("/fixture.json").then(r => r.json()), fetch("/config.json").then(r => r.json())]); cfg.home.theme = q.get("theme") ?? "light"; if (q.get("lang")) cfg.home.language = q.get("lang"); window.__feederLog = await fetch("/feeder-log.json").then(r => r.json()); await window.mountPreview(document.getElementById("root"), fx, cfg); window.ready = true;</script>';
 const CARD = HEAD + 'const d = await (await fetch("/__state" + location.search)).json(); localStorage.clear(); d.config.home.theme = q.get("theme") ?? "light"; d.config.home.language = q.get("lang") ?? "ru"; window.__feederLog = d.feederLog; window.__airTasks = d.airTasks; window.__energyMonth = d.energyMonth; window.__energyStats = d.energyStats; window.__energyPrefs = d.energyPrefs; window.__logbook = d.logbook; window.__frames = d.frames; window.__camHistory = d.camHistory; await window.mountPreview(document.getElementById("root"), d.snapshot, d.config); window.ready = true;</script>';
 const TYPES = { '.js': 'text/javascript', '.css': 'text/css', '.webp': 'image/webp', '.png': 'image/png', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.json': 'application/json' };
 const server = createServer(async (req, res) => { const u = new URL(req.url, 'http://l'); try {
@@ -41,8 +42,16 @@ const SIZES = [
   S('oppo-pad-port-764x1070', 764, 1070, { touch: true }), S('oppo-pad-1070x764', 1070, 764, { touch: true }), S('ipad-11-in-ha-1180x820', 1180, 820, { touch: true, ha: 256 }),
   S('laptop-13-1280x600', 1280, 600), S('fhd-1920x1080', 1920, 1080), S('ultrawide-2560x1080', 2560, 1080), S('super-ultrawide-5120x1440', 5120, 1440), S('4k-3840x2160', 3840, 2160),
   S('tv-960x540', 960, 540, { tv: true }), S('tv-1920x1080', 1920, 1080, { tv: true }),
+  // 18.11: the rest of the 2026 envelope — every phone class in both orientations, tablets, laptops and monitors between the extremes
+  S('iphone-17-402x874', 402, 874, { touch: true }), S('iphone-17-land-874x402', 874, 402, { touch: true }), S('iphone-17-pro-max-440x956', 440, 956, { touch: true }), S('iphone-pro-max-land-956x440', 956, 440, { touch: true }),
+  S('galaxy-s-412x915', 412, 915, { touch: true }), S('galaxy-s-land-915x412', 915, 412, { touch: true }), S('pixel-pro-448x998', 448, 998, { touch: true }), S('iphone-se-375x667', 375, 667, { touch: true }),
+  S('fold-cover-land-882x344', 882, 344, { touch: true }), S('fold-open-land-829x690', 829, 690, { touch: true }), S('galaxy-fold-open-884x1104', 884, 1104, { touch: true }),
+  S('ipad-mini-744x1133', 744, 1133, { touch: true }), S('ipad-air-820x1180', 820, 1180, { touch: true }), S('ipad-pro-13-1032x1376', 1032, 1376, { touch: true }), S('ipad-pro-13-land-1376x1032', 1376, 1032, { touch: true }),
+  S('galaxy-tab-800x1280', 800, 1280, { touch: true }), S('galaxy-tab-land-1280x800', 1280, 800, { touch: true }),
+  S('laptop-1366x768', 1366, 768), S('macbook-air-1470x956', 1470, 956), S('laptop-1536x864', 1536, 864), S('macbook-pro-16-1728x1117', 1728, 1117), S('qhd-2560x1440', 2560, 1440),
+  S('ultrawide-3440x1440', 3440, 1440), S('portrait-monitor-1080x1920', 1080, 1920), S('tv-3840x2160', 3840, 2160, { tv: true }),
 ].filter(s => !only || only.test(s.id));
-const PANELS = [['home', '#home'], ['lights', '#lights'], ['systems', '#systems'], ['climate', '#climate'], ['room', '#rooms?room=prikhozhaia'], ['setup', '#setup']];
+const PANELS = [['home', '#home'], ['rooms', '#rooms'], ['lights', '#lights'], ['systems', '#systems'], ['attention', '#systems?filter=attention'], ['climate', '#climate'], ['cleaning', '#cleaning'], ['energy', '#energy'], ['security-page', '#security'], ['camera', '#camera'], ['room', '#rooms?room=prikhozhaia'], ['setup', '#setup']];
 const CARDS = [['heating', 'heating', 'normal', '#climate'], ['cameras-home', 'cameras', 'person', '#home'], ['kettle-sheet', 'kettle', 'heating', '#home?device=kettle'], ['security', 'security', 'triggered', '#security'], ['vacuum-room', 'rooms', 'evening', '#rooms?room=prikhozhaia']];
 
 // ---- what is measured on a screen (runs in the page) ----------------------------------------------------------------------------------------------------
@@ -140,7 +149,7 @@ const open = async (s, theme = 'light', extra = {}) => { const ctx = await brows
   if (css) await ctx.addInitScript(c => { document.addEventListener('DOMContentLoaded', () => { const st = document.createElement('style'); st.textContent = c; document.head.append(st); }); }, css);
   if (s.tv) await ctx.addInitScript(() => { const mm = window.matchMedia.bind(window); window.matchMedia = q => /any-hover:\s*none|any-pointer:\s*none/.test(q) ? { matches: true, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, onchange: null, dispatchEvent: () => false } : mm(q); }); // a television's browser: no hover, no pointer
   const page = await ctx.newPage(); const errors = []; page.on('pageerror', e => errors.push(String(e.message).slice(0, 160))); await page.clock.setFixedTime(new Date('2026-11-10T12:00:00')); return { ctx, page, errors }; };
-const go = async (page, where, theme) => { if (where[0] === 'panel') { await page.goto(`${origin}/?theme=${theme}${where[1]}`); } else await page.goto(`${origin}/card?card=${where[1]}&scenario=${where[2]}&theme=${theme}&lang=ru${where[3]}`); await page.waitForFunction(() => window.ready === true, null, { timeout: 30000 }); await page.waitForTimeout(450); };
+const go = async (page, where, theme) => { if (where[0] === 'panel') { await page.goto(`${origin}/?theme=${theme}&lang=${QLANG}${where[1]}`); } else await page.goto(`${origin}/card?card=${where[1]}&scenario=${where[2]}&theme=${theme}&lang=${QLANG}${where[3]}`); await page.waitForFunction(() => window.ready === true, null, { timeout: 30000 }); await page.waitForTimeout(450); };
 try {
   // A. layout on every size
   for (const s of SIZES) { const { ctx, page, errors } = await open(s); const found = []; let first = null;

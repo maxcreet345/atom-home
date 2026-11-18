@@ -92,7 +92,7 @@ for (const [w, h, theme] of [[360, 792, 'light'], [320, 568, 'dark']]) {
 // 5. the C700's sheet: the room is said once
 { const { ctx, page, errors } = await open(`${cards}/?card=cameras&scenario=quiet&theme=dark&lang=ru#home`, { w: 1070, h: 764 });
   const hits = page.locator('.at-cams-hit'), n = await hits.count(), heads = [];
-  for (let i = 0; i < n; i++) { await hits.nth(i).click(); await page.waitForTimeout(500);
+  for (let i = 0; i < n; i++) { await hits.nth(i).click(); await page.waitForTimeout(500); /* since 1.27.2 a small camera only becomes the big one; the big one opens */ if (!await page.locator('.hm-sheet').count()) { await page.locator('.at-cams-hit[aria-label^="Открыть"]').first().click(); await page.waitForTimeout(500); }
     heads.push(...await page.evaluate(() => [...document.querySelectorAll('.hm-sheet .hm-sheet-head')].map(h => ({ small: h.querySelector('small')?.textContent?.trim() ?? '', title: h.querySelector('h2')?.textContent?.trim() ?? '' }))));
     await page.keyboard.press('Escape'); await page.waitForTimeout(300); if (!/#home$/.test(page.url())) { await page.evaluate(() => { location.hash = '#home'; }); await page.waitForTimeout(300); } }
   const twice = heads.filter(x => { const room = x.small.split(' · ')[1]?.toLowerCase(); const t = x.title.toLowerCase(); return !!room && (t.startsWith(room) || t.endsWith(room)); });

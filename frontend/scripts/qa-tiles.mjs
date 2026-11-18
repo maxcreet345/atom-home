@@ -66,7 +66,7 @@ try {
       if (offOne) {
         const n0 = (await cmds()).length; await page.click(`.ah-thermo[data-device-key="${offOne.key}"] .ah-chev.is-up`); await page.waitForTimeout(350);
         const ask = await page.evaluate(() => document.querySelector('.hm-confirm p')?.textContent ?? null);
-        check(`${label}: f67 — «+» of a switched-off thermostat in «Климат» asks «Включить нагрев до N°» and sends nothing`, /Включить нагрев до/.test(ask ?? '') && (await cmds()).length === n0, { ask, sent: (await cmds()).length - n0 });
+        check(`${label}: f67 — «+» of a switched-off thermostat in «Климат» asks «Включить отопление на N°?» and sends nothing`, /Включить отопление на \d/.test(ask ?? '') && (await cmds()).length === n0, { ask, sent: (await cmds()).length - n0 });
         await page.keyboard.press('Escape'); await page.waitForTimeout(250);
         // f75 / l32 / l55: the same thermostat heating — three quick «+» are ONE command with the sum, the number on the tile follows every tap
         await page.evaluate(id => { window.atomPreview.setStates({ [id]: 'heat' }); window.atomPreview.setAccept(true); window.atomPreview.setDelay(300); }, offOne.id); await page.waitForTimeout(250);
