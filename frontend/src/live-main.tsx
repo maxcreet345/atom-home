@@ -6,6 +6,8 @@ import { restartNeeded, type ConfigStore } from './runtime/store.ts';
 import { normaliseConfig, type HouseConfig } from './model/config.ts';
 import type { Registry } from './model/registry.ts';
 import { createLoader } from './runtime/loader.ts';
+import { Guard, reportError, setErrorReporter } from './ui/guard.tsx';
+import { errorReporter, mayReloadAfterCrash, mayReloadForUpdate, newerVersion, whenIdle } from './runtime/self-heal.ts';
 import { nextViewport } from './ui/panel-size.ts';
 import base from './styles/base.css?inline';
 import home from './styles/apple.css?inline';
@@ -38,6 +40,10 @@ export class AtomHomePanel extends HTMLElement {
   /** The panel is newer (or older) than the integration that answers: Home Assistant has not been restarted since the update. */
   private restart = false;
   private registryFailed = false;
+  /** a reload for a newer integration waits for a quiet screen (H-2) */
+  private updateWait: (() => void) | null = null;
+  /** the whole panel failed to draw: 'reload' while it reloads itself, 'stuck' once the reloads allowed are spent (C-1) */
+  private crash: 'reload' | 'stuck' | null = null;
   private observer: ResizeObserver | null = null;
   private viewport = { width: 320, height: 480 };
   private sized = false;
@@ -58,7 +64,12 @@ export class AtomHomePanel extends HTMLElement {
     const cfg = await this.configStore().load();
     // a refresh that brought the same settings must not look like a change (the app would drop what is being edited)
     if (!this.configReal || JSON.stringify(cfg.config) !== JSON.stringify(this.config)) this.config = cfg.config;
-    this.warnings = cfg.warnings; this.configReal = true; this.restart = restartNeeded(PANEL_VERSION, cfg.serverVersion);
+    this.warnings = cfg.warnings; this.configReal = true;
+    // H-2 of the audit of 17.11.2026: Home Assistant runs a newer integration than this page's bundle (HACS updated it and HA restarted,
+    // the tablet kept the old page): the page reloads itself once nobody is touching it, instead of asking for a restart that already happened
+    const newer = newerVersion(cfg.serverVersion, PANEL_VERSION);
+    if (newer && !this.updateWait && mayReloadForUpdate(cfg.serverVersion!)) this.updateWait = whenIdle(() => location.reload());
+    this.restart = restartNeeded(PANEL_VERSION, cfg.serverVersion) && !(newer && this.updateWait);
   }, { failed: () => { this.config ??= normaliseConfig(null).config; }, settled: () => this.draw() });
   narrow = false;
   panel: { config?: Record<string, unknown> } | null = null;
@@ -91,7 +102,7 @@ export class AtomHomePanel extends HTMLElement {
     this.start();
   }
   disconnectedCallback() {
-    this.started = false; this.registryLoad.stop(); this.configLoad.stop(); for (const f of this.stop.splice(0)) f();
+    this.started = false; this.updateWait?.(); this.updateWait = null; this.registryLoad.stop(); this.configLoad.stop(); for (const f of this.stop.splice(0)) f();
     if (this.frame) cancelAnimationFrame(this.frame); if (this.frameTimer) clearTimeout(this.frameTimer); this.frame = 0; this.frameTimer = null;
     this.observer?.disconnect(); this.observer = null; if (this.mount) render(null, this.mount); this.mount = null; this.seen = null;
   }
@@ -102,7 +113,15 @@ export class AtomHomePanel extends HTMLElement {
   /** Both reads start once the element is in the page and has a `hass`; each one that fails is tried again on its own (2 s, 5 s, 15 s, then every 30 s). */
   private start() {
     if (this.started || !this.mount || !this._hass) return;
-    this.started = true; this.draw();
+    this.started = true;
+    setErrorReporter(errorReporter(message => this.host.call('system_log', 'write', { message, level: 'error', logger: 'custom_components.atom_home.panel' })));
+    // errors outside a draw (a timer, a promise of a card) are written down too; only the panel's own, not Home Assistant's
+    const ours = (stack: unknown) => typeof stack === 'string' && stack.includes('/atom_home/');
+    const onError = (e: ErrorEvent) => { if (ours(e.filename) || ours((e.error as Error | undefined)?.stack)) reportError(e.error ?? e.message, 'window'); };
+    const onReject = (e: PromiseRejectionEvent) => { if (ours((e.reason as Error | undefined)?.stack)) reportError(e.reason, 'promise'); };
+    addEventListener('error', onError); addEventListener('unhandledrejection', onReject);
+    this.stop.push(() => removeEventListener('error', onError), () => removeEventListener('unhandledrejection', onReject));
+    this.draw();
     void this.registryLoad.run(); void this.configLoad.run();
     const config = setInterval(() => void this.configLoad.run(), CONFIG_REFRESH_MS);
     let registry = setInterval(() => void this.registryLoad.run(), REGISTRY_POLL_MS);
@@ -123,6 +142,13 @@ export class AtomHomePanel extends HTMLElement {
     const flush = () => { if (this.frame) cancelAnimationFrame(this.frame); if (this.frameTimer) clearTimeout(this.frameTimer); this.frame = 0; this.frameTimer = null; this.draw(); };
     this.frame = requestAnimationFrame(flush); this.frameTimer = setTimeout(flush, 250);
   }
+  /** C-1: the whole panel failed to draw. It reloads itself in ten seconds, at most three times in a quarter of an hour; then it says to reload by hand. */
+  private crashed() {
+    if (this.crash) return;
+    this.crash = mayReloadAfterCrash() ? 'reload' : 'stuck';
+    if (this.crash === 'reload') setTimeout(() => location.reload(), 10_000);
+    queueMicrotask(() => this.draw());
+  }
   private draw() {
     if (!this.mount || !this._hass) return;
     const hass = this._hass;
@@ -132,8 +158,10 @@ export class AtomHomePanel extends HTMLElement {
     rememberSkeletonTheme(this.config.home.theme); rememberSkeletonLang(this.config.home.language);
     if (!this.view || this.view.states !== hass.states) this.view = { ...this.base, states: hass.states };
     this.seen = { states: hass.states, connected: hass.connected !== false, user: hass.user?.id ?? null, admin: hass.user?.is_admin === true, language: hass.language };
-    render(<AtomApp registry={this.view} config={this.config} host={this.host} viewport={this.viewport} store={this.configStore()} configWarnings={this.warnings} configPending={!this.configReal} restartNeeded={this.restart}
-      onConfigChange={next => { this.config = next; rememberSkeletonTheme(next.home.theme); rememberSkeletonLang(next.home.language); }} />, this.mount);
+    const words = SKELETON_TEXT[readSkeletonLang(this.config.home.language)];
+    const fallback = <><style>{SKELETON_CSS}</style><div dangerouslySetInnerHTML={{ __html: skeletonHtml(this.crash === 'stuck' ? words.stuck : words.crash, readSkeletonTheme()) }} /></>;
+    render(<Guard where="panel" kind="panel" fallback={fallback} onFail={() => this.crashed()}><AtomApp registry={this.view} config={this.config} host={this.host} viewport={this.viewport} store={this.configStore()} configWarnings={this.warnings} configPending={!this.configReal} restartNeeded={this.restart}
+      onConfigChange={next => { this.config = next; rememberSkeletonTheme(next.home.theme); rememberSkeletonLang(next.home.language); }} /></Guard>, this.mount);
   }
 }
 if (!customElements.get('atom-home-panel')) customElements.define('atom-home-panel', AtomHomePanel);

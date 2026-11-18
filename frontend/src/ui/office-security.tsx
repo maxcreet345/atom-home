@@ -14,14 +14,17 @@ type RingKind = 'open' | 'closed' | 'alert' | 'count';
 /** Ajax colours the ring by the state alone (teal disarmed, blue armed, amber counting, red alarm); a tamper is said in words, not by the ring */
 const ringTone = (s: OfficeSecurity): OsecTone => s.alarm.state === 'triggered' || smokeNow(s) ? 'alarm' : s.alarm.state === 'arming' || s.alarm.state === 'pending' ? 'warn' : s.alarm.state === 'armed' ? 'armed' : 'calm';
 const ringOf = (s: OfficeSecurity): RingKind => s.alarm.state === 'triggered' || smokeNow(s) ? 'alert' : s.alarm.state === 'arming' || s.alarm.state === 'pending' ? 'count' : s.alarm.state === 'armed' ? 'closed' : 'open';
-/** Ajax's state glyph: an open ring (disarmed), a closed ring (armed), a filled disc with «!» (alarm); while counting, the ring fills up. */
+/** The state glyph: a padlock in a ring — closed and on a full ring when guarded, open on a faint ring when not, a filled disc with «!» on alarm;
+ *  while counting, the ring fills up around a closing lock. UX-14 / L-2 of the audit of 17.11.2026: the old open state, a ring with a gap,
+ *  and the empty ring of «Под охрану» read as a loading spinner; a lock says what it is to a child and to a pensioner alike. */
 export function Ring({ kind, size = 120, progress = 0, tone }: { kind: RingKind; size?: number; progress?: number; tone: OsecTone }) {
   const r = 26, c = 2 * Math.PI * r;
-  return <svg className={`at-osec-ring is-${tone}`} width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
+  const lock = (open: boolean) => <><path d={open ? 'M25.5 30v-5.5a6.5 6.5 0 0 1 13 0v.5' : 'M25.5 30v-5.5a6.5 6.5 0 0 1 13 0V30'} className="is-shackle" /><rect x="21" y="29" width="22" height="16" rx="4" className="is-body" /></>;
+  return <svg className={`at-osec-ring is-${tone} is-${kind}`} width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
     {kind === 'alert' ? <><circle cx="32" cy="32" r="28" className="is-fill" /><path d="M32 18v17M32 44v.5" className="is-mark" /></>
-      : kind === 'closed' ? <circle cx="32" cy="32" r={r} className="is-stroke" />
-        : kind === 'count' ? <><circle cx="32" cy="32" r={r} className="is-track" /><circle cx="32" cy="32" r={r} className="is-stroke" stroke-dasharray={`${c * progress} ${c}`} transform="rotate(-90 32 32)" /></>
-          : <path d="M13.6 21.5A26 26 0 1 1 9.4 40" className="is-stroke" />}
+      : kind === 'closed' ? <><circle cx="32" cy="32" r={r} className="is-stroke" />{lock(false)}</>
+        : kind === 'count' ? <><circle cx="32" cy="32" r={r} className="is-track" /><circle cx="32" cy="32" r={r} className="is-stroke" stroke-dasharray={`${c * progress} ${c}`} transform="rotate(-90 32 32)" />{lock(false)}</>
+          : <><circle cx="32" cy="32" r={r} className="is-track" />{lock(true)}</>}
   </svg>;
 }
 /** The devices drawn plainly, like Ajax's product pictures: a door contact, a motion sensor, a smoke disc, a presence dome, the hub. */

@@ -821,3 +821,19 @@
 .hm-shell.is-narrow .at-sys-room.span-2{grid-column:span 2}.hm-shell.is-narrow .at-sys-room.span-3{grid-column:1/-1} /* three and more: the whole row, never an extra column past a 2-column phone's edge */
 .hm-shell.is-narrow .at-sys-room .ah-grid{grid-template-columns:repeat(1,minmax(0,1fr))}.hm-shell.is-narrow .at-sys-room.span-2 .ah-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hm-shell.is-narrow .at-sys-room.span-3 .ah-grid{grid-template-columns:var(--ah-cols)}
 .hm-shell.is-narrow .at-sys-room h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:clamp(.6875rem,calc(4.1*var(--ah-vw) - .125rem),.875rem);letter-spacing:-.2px}
+/* C-1 of the audit of 17.11.2026: a part that failed to draw says so instead of leaving a blank screen */
+.hm-shell .at-crash{display:flex;flex-direction:column;align-items:flex-start;gap:10px;margin:16px 0;padding:16px 18px;border-radius:18px;background:var(--ah-tile);color:var(--ah-ink)}
+.hm-shell .at-crash p{margin:0;font-size:1rem;line-height:1.4}
+.hm-shell .at-crash-sheet{margin:24px 16px}
+.hm-shell .at-crash-actions{display:flex;flex-wrap:wrap;gap:8px}
+.hm-shell .at-crash .hm-text-btn{min-height:44px;padding:0 14px}
+.hm-shell .at-crash-tile{display:flex;align-items:center;justify-content:center;text-align:center;padding:12px}
+/* UX-12 of the audit of 17.11.2026: «Устройства → Внимание» shows Home's own status items first, then the rest under its own title */
+.hm-shell .at-sys-attn.is-danger:not(.is-active){color:var(--ah-red)}
+.hm-shell .at-attn-strip{margin:4px 0 12px}
+.hm-shell .at-attn-more{margin:0 0 4px;font-size:.8125rem;font-weight:600;color:var(--ah-muted);text-transform:none}
+/* UX-14 / L-2 of the audit of 17.11.2026: a padlock inside the security ring (closed when guarded, open when not) */
+.hm-shell .at-osec-ring .is-shackle{fill:none;stroke:var(--rc,var(--os-teal));stroke-width:4;stroke-linecap:round}
+.hm-shell .at-osec-ring .is-body{fill:var(--rc,var(--os-teal))}
+.hm-shell .at-osec-ring.is-open .is-track{stroke:color-mix(in srgb,var(--rc,var(--os-teal)) 35%,transparent)}
+.hm-shell .at-sec-title-short{display:none}

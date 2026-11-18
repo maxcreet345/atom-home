@@ -46,7 +46,7 @@ export function SecurityTile({ s, registry, config, t, lang: _lang, onOpen }: { 
   return <div className={`ah-tile hm-card at-sec-tile at-osec-tile at-house-tile is-${tone} ${ARMED_ST.includes(s.alarm.state) ? 'is-st-armed' : ''}`}>
     <button type="button" className="ah-tile-hit" aria-label={tileLabel(s, t, home, guests)} onClick={onOpen}>
       {/* the ring and the name, the state big, one sentence: a narrow tile (a 3-column phone) keeps only the ring and the state, so a delay's seconds ride in the word */}
-      <span className="at-sec-tile-head"><Ring kind={ringKind(s)} size={34} progress={.5} tone={ringTone(s)} /><strong>{sk(t, 'title')}</strong></span>
+      <span className="at-sec-tile-head"><Ring kind={ringKind(s)} size={34} progress={.5} tone={ringTone(s)} /><strong><span className="at-sec-title-full">{sk(t, 'title')}</span><span className="at-sec-title-short" aria-hidden="true">{sk(t, 'titleShort')}</span></strong></span>
       <span className="at-sec-tile-word">{tileWord(s, t, left)}</span>
       <small className="at-sec-tile-say">{sentence(s, t, home, guests)}</small>
       {(guests || s.vacation?.on) && <span className="at-sec-badges">{guests && <i>{sk(t, 'guests')}</i>}{s.vacation?.on && <i>{sk(t, 'vacation')}</i>}</span>}

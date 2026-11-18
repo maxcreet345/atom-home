@@ -21,9 +21,9 @@ export const skeletonHtml = (text = 'Подключаемся к дому…', t
 // then Home Assistant's own language decides. `fail` stands while a load that did not work is being tried again.
 export const LANG_KEY = 'atom-home-lang';
 export const SKELETON_TEXT = {
-  ru: { wait: 'Подключаемся к дому…', fail: 'Не удалось загрузить дом. Пробуем снова…' },
-  en: { wait: 'Connecting to the home…', fail: 'Could not load the home. Retrying…' },
-  ro: { wait: 'Ne conectăm la casă…', fail: 'Casa nu a putut fi încărcată. Reîncercăm…' },
+  ru: { wait: 'Подключаемся к дому…', fail: 'Не удалось загрузить дом. Пробуем снова…', crash: 'Панель перезапускается…', stuck: 'Панель не запустилась. Обновите страницу' },
+  en: { wait: 'Connecting to the home…', fail: 'Could not load the home. Retrying…', crash: 'The panel is restarting…', stuck: 'The panel did not start. Reload the page' },
+  ro: { wait: 'Ne conectăm la casă…', fail: 'Casa nu a putut fi încărcată. Reîncercăm…', crash: 'Panoul repornește…', stuck: 'Panoul nu a pornit. Reîncărcați pagina' },
 };
 /** @param {string} [fallback] Home Assistant's language @returns {'ru' | 'en' | 'ro'} */
 export function readSkeletonLang(fallback) {
