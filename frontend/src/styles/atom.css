@@ -865,7 +865,7 @@
 .hm-shell .at-cs-off{margin-top:6px;font-size:.875rem;font-weight:600;color:var(--ah-muted)}
 .hm-shell .at-cs-tile.is-off{opacity:.75}
 /* «Газ» on «Энергия» (18.11): its own card under the electricity — cubic metres never mixed into kWh or lei */
-.hm-shell .at-gas-list{display:grid;gap:12px;margin-top:12px}
+.hm-shell .at-gas-list{display:grid;gap:12px}.hm-shell .hm-page>.at-ep+.at-gas-list{margin-top:-12px} /* the page's 16 px gap and the report's 8 px padding: 12 px from the last card, as between the report's own cards (live 18.11: was 36) */
 .hm-shell .at-gas{display:flex;flex-direction:column;gap:12px}
 .hm-shell .at-gas-head{display:flex;align-items:center;gap:12px}.hm-shell .at-gas-head h2{margin:0;font-size:1.0625rem;font-weight:700}.hm-shell .at-gas-head small{display:block;color:var(--ah-muted);font-size:.8125rem}
 .hm-shell .at-gas-glyph{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:50%;background:color-mix(in srgb,#ff9f0a 18%,transparent);color:#e07a00}

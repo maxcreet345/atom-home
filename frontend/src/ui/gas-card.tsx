@@ -21,7 +21,7 @@ function GasOne({ m, host, t, lang, now }: { m: GasMeter; host: Host; t: T; lang
     const read = (from: number) => host.statistic!(m.id, from, at, ['change']).then(r => typeof r.change === 'number' ? Math.max(0, r.change) : null, () => null);
     Promise.all([read(dayStart), read(monthStart)]).then(([day, month]) => { if (alive) setUse({ day, month }); });
     return () => { alive = false; }; }, [host, m.id, m.value, slot]);
-  const u = unitWord(m.unit, t), time = m.changed ? new Date(m.changed).toLocaleTimeString(lang === 'en' ? 'en-GB' : lang === 'ro' ? 'ro-RO' : 'ru-RU', { hour: '2-digit', minute: '2-digit' }) : null;
+  const u = unitWord(m.unit, t);
   const amount = (v: number | null | undefined) => use === null ? '…' : v === null || v === undefined ? '—' : num(v, lang, 2);
   return <section className={`at-ep-card at-gas ${m.online ? '' : 'is-off'}`} aria-label={t('gas.title')}>
     <div className="at-gas-head"><span className="at-gas-glyph" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 2.5c.6 3-1.6 4.6-3 6.6-1.3 1.8-2 3.4-2 5.2a5 5 0 0 0 10 0c0-2.6-1.4-4.3-2.6-5.6.1 1.6-.4 2.8-1.5 3.4.3-3.3-.5-6.6-.9-9.6z" fill="currentColor" /></svg></span>
@@ -31,7 +31,8 @@ function GasOne({ m, host, t, lang, now }: { m: GasMeter; host: Host; t: T; lang
       <div className="at-gas-fig"><small>{t('gas.month')}</small><b>{amount(use?.month)}<i>{u}</i></b></div>
     </div>
     <div className="at-gas-meter"><span>{t('gas.reading')}</span><b>{m.value === null ? '—' : num(m.value, lang, 3)}<i>{u}</i></b></div>
-    <p className="at-gas-note">{!m.online ? t('gas.offline') : time ? t('gas.changed', { time }) : ''}</p>
+    {/* no «изменилось в …»: HA gives a restored sensor the restart's time (live 18.11: «13:47» = the restart), so the time would lie */}
+    {!m.online && <p className="at-gas-note">{t('gas.offline')}</p>}
   </section>;
 }
 

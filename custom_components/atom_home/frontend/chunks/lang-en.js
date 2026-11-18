@@ -46,7 +46,6 @@ var e = {
 	"gas.month": "This month",
 	"gas.reading": "Meter reading",
 	"gas.m3": "m³",
-	"gas.changed": "Reading changed at {time}",
 	"gas.offline": "The meter is not answering",
 	"climate.heatYes": "Turn on",
 	"climate.heatAsk": "Turn the heating on at {t}°?",

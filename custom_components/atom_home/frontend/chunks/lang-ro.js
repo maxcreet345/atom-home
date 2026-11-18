@@ -46,7 +46,6 @@ var e = {
 	"gas.month": "Luna aceasta",
 	"gas.reading": "Indexul contorului",
 	"gas.m3": "m³",
-	"gas.changed": "Indexul s-a schimbat la {time}",
 	"gas.offline": "Contorul nu răspunde",
 	"climate.heatYes": "Pornește",
 	"climate.heatAsk": "Porniți încălzirea la {t}°?",
