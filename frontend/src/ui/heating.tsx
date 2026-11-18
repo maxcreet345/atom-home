@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { ClimateSensorsBlock } from './climate-sensors.tsx';
+import type { ClimateSensors } from '../model/climate-sensors.ts';
 import type { Host } from '../runtime/host.ts';
 import type { Key, T } from '../i18n/index.ts';
 import { errorText, type Lang } from './format.ts';
@@ -261,7 +263,7 @@ function BoilerCard({ h, t, lang }: { h: Heating; t: T; lang: Lang }) {
       {!b.online && <p className="at-heat-bnote">{tk(t, b.relay === null ? 'b.offlineRelayUnknown' : b.relay ? 'b.offlineRelayOn' : 'b.offlineRelayOff')}</p>}
     </article></section>;
 }
-export function HeatingPanel({ h, host, t, lang, now }: { h: Heating; host: Host; t: T; lang: Lang; now: number }) {
+export function HeatingPanel({ h, host, t, lang, now, sensors }: { h: Heating; host: Host; t: T; lang: Lang; now: number; sensors?: ClimateSensors }) {
   const tone = heatTone(h), { act, ui, st, text } = useHouse(h, host, t, lang), offline = !host.online, root = useRef<HTMLDivElement>(null);
   const o = outdoorText(h.outdoor), out = o ? tk(t, 'outside', { v: setT(o.temp, lang).replace('-', '−'), w: o.key && t(o.key as Key) !== o.key ? ` · ${t(o.key as Key).toLocaleLowerCase()}` : '' }) : '';
   const wins = h.rooms.flatMap(r => r.windows), openN = wins.filter(w => w.open).length, deafN = wins.filter(w => !w.known).length;
@@ -285,6 +287,7 @@ export function HeatingPanel({ h, host, t, lang, now }: { h: Heating; host: Host
     </section>
     <section className="at-heat-sec"><div className="hm-section-head"><h2>{tk(t, 'rooms')}</h2><small className="at-heat-sec-hint">{roomLocked(h) ? tk(t, 'roomVac') : h.mode === 'manual' ? tk(t, 'roomsManual') : tk(t, 'roomsAuto')}</small></div>
       <div className="at-heat-rooms">{h.rooms.map(r => <RoomCard r={r} h={h} act={act} t={t} lang={lang} now={now} ui={ui} offline={offline} />)}</div></section>
+    {sensors && <ClimateSensorsBlock s={sensors} t={t} lang={lang} />}
     <Scenarios h={h} act={act} t={t} lang={lang} ui={ui} now={now} offline={offline} />
     <BoilerCard h={h} t={t} lang={lang} />
     {h.hyst && (host.admin ? <Hysteresis h={h} act={act} t={t} lang={lang} ui={ui} offline={offline} /> : <HysteresisLine h={h} t={t} lang={lang} />)}

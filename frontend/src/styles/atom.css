@@ -853,3 +853,28 @@
 .hm-shell .at-search input{text-overflow:ellipsis} /* «Найти устройство…» ends in «…» on a 320 px phone instead of a cut letter */
 .hm-shell .ah-tile-text{min-width:0;max-width:100%}.hm-shell .ah-tile-text small{display:block;max-width:100%} /* a centred tile's second line ends in «…», not a cut letter («Нет данных · Ван») */
 .hm-shell .ah-tile-text small .ah-tick{max-width:100%;grid-template-columns:minmax(0,1fr)}.hm-shell .ah-tile-text small .ah-tick>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap} /* the ticking line (inline-grid) gets its own «…» */
+/* «Датчики температуры» on «Климат» (18.11): the street (cool tint) first, then the rooms; plain readings in the heating room cards' type */
+.hm-shell .at-cs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px}
+.hm-shell .at-cs-tile{display:flex;flex-direction:column;gap:2px;min-width:0;padding:12px 14px 13px;border-radius:18px;background:var(--ah-tile);color:var(--ah-ink)}
+.hm-shell .at-cs-tile.is-street{background:color-mix(in srgb,#5ac8fa 16%,var(--ah-tile))}
+.hm-shell .at-cs-name{font-size:.8125rem;font-weight:600;color:var(--ah-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-shell .at-cs-name b{font-weight:700;color:var(--ah-ink)}
+.hm-shell .at-cs-temp{font-size:1.875rem;font-weight:600;line-height:1.1;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.hm-shell .at-cs-temp i{font-style:normal;font-weight:400}
+.hm-shell .at-cs-hum{display:flex;align-items:center;gap:4px;font-size:.8125rem;color:var(--ah-muted)}.hm-shell .at-cs-hum svg{color:#5ac8fa}
+.hm-shell .at-cs-off{margin-top:6px;font-size:.875rem;font-weight:600;color:var(--ah-muted)}
+.hm-shell .at-cs-tile.is-off{opacity:.75}
+/* «Газ» on «Энергия» (18.11): its own card under the electricity — cubic metres never mixed into kWh or lei */
+.hm-shell .at-gas-list{display:grid;gap:12px;margin-top:12px}
+.hm-shell .at-gas{display:flex;flex-direction:column;gap:12px}
+.hm-shell .at-gas-head{display:flex;align-items:center;gap:12px}.hm-shell .at-gas-head h2{margin:0;font-size:1.0625rem;font-weight:700}.hm-shell .at-gas-head small{display:block;color:var(--ah-muted);font-size:.8125rem}
+.hm-shell .at-gas-glyph{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:50%;background:color-mix(in srgb,#ff9f0a 18%,transparent);color:#e07a00}
+.hm-shell .at-gas-figs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.hm-shell .at-gas-fig{display:flex;flex-direction:column;gap:2px;min-width:0;padding:10px 12px;border-radius:14px;background:var(--ah-tile)}
+.hm-shell .at-gas-fig small{font-size:.75rem;font-weight:600;color:var(--ah-muted)}
+.hm-shell .at-gas-fig b{font-size:1.375rem;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}.hm-shell .at-gas-fig b i{margin-left:3px;font-style:normal;font-size:.8125rem;font-weight:500;color:var(--ah-muted)}
+.hm-shell .at-gas-meter{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:10px 2px 0;border-top:1px solid var(--ah-line);font-size:.875rem;color:var(--ah-muted)}.hm-shell .at-gas-meter b{font-size:1.0625rem;font-weight:600;color:var(--ah-ink);font-variant-numeric:tabular-nums;white-space:nowrap}.hm-shell .at-gas-meter b i{margin-left:3px;font-style:normal;font-size:.8125rem;font-weight:500;color:var(--ah-muted)}
+.hm-shell .at-gas-note{margin:0;font-size:.8125rem;color:var(--ah-muted)}
+.hm-shell .at-gas.is-off .at-gas-note{color:var(--ah-red)}
+.hm-shell .at-cs-name.is-street{display:flex;flex-direction:column;white-space:normal}.hm-shell .at-cs-name.is-street span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-shell .at-cs-tile:not(.is-street) .at-cs-name{padding-bottom:calc(.8125rem * 1.25)} /* the rooms' readings stand on the street's line */
