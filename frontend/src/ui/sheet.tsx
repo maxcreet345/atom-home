@@ -21,7 +21,7 @@ export interface Runner { run(device: HomeDevice, action: Action, value?: unknow
 type Common = { device: HomeDevice; runner: Runner; t: T; lang: Lang; offline?: boolean };
 const label = (a: Action, t: T) => t(a.label as Key) === a.label ? a.label : t(a.label as Key);
 /** C1 of the audit: a thermostat that is off does not start heating from a stray «+»; the step becomes an explicit, confirmed «turn heating on to X°». */
-export const heatOn = (temp: Action, v: number, t: T, lang: Lang = 'ru'): Action => ({ ...temp, label: t('climate.heatTo', { t: num(v, lang) }), question: t('climate.heatAsk', { t: num(v, lang) }), confirm: true, data: { ...(temp.data ?? {}), hvac_mode: 'heat' } });
+export const heatOn = (temp: Action, v: number, t: T, lang: Lang = 'ru'): Action => ({ ...temp, label: t('climate.heatTo', { t: num(v, lang) }), question: t('climate.heatAsk', { t: num(v, lang) }), yes: t('climate.heatYes'), confirm: true, data: { ...(temp.data ?? {}), hvac_mode: 'heat' } });
 export { stepTarget };
 /** Secondary entity names without the device's own name in front («Розетка туалет Delayed power on time» → «Delayed power on time»). */
 const short = (name: string, device: HomeDevice) => { const dev = (typeof device.primary.attributes.friendly_name === 'string' ? device.primary.attributes.friendly_name : device.name).trim(); const a = name.split(/\s+/); let best = 0; for (const base of [dev, device.name]) { if (base === name) continue; const b = base.split(/\s+/); let n = 0; while (n < a.length - 1 && n < b.length && a[n].toLowerCase() === b[n].toLowerCase()) n++; if (n === b.length && n > best) best = n; } return best > 0 ? a.slice(best).join(' ').replace(/^[—·:-]+\s*/, '') : name; };

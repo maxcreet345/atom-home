@@ -831,7 +831,9 @@
 /* UX-12 of the audit of 17.11.2026: «Устройства → Внимание» shows Home's own status items first, then the rest under its own title */
 .hm-shell .at-sys-attn.is-danger:not(.is-active){color:var(--ah-red)}
 .hm-shell .at-attn-strip{margin:4px 0 12px}
-.hm-shell .at-attn-more{margin:0 0 4px;font-size:.8125rem;font-weight:600;color:var(--ah-muted);text-transform:none}
+.hm-shell .at-attn-more{margin:12px 0 0;padding-top:16px;border-top:1px solid var(--ah-line);font-size:1rem;font-weight:700;color:var(--ah-muted);text-transform:none;letter-spacing:0}
+/* the pressed «Внимание» keeps the warm colour of the strip it opened instead of turning the accent violet */
+.hm-shell .at-sys-attn.is-active{background:#f5c46b;color:#3d2400}.hm-shell .at-sys-attn.is-danger.is-active{background:var(--ah-red);color:#fff}
 /* UX-14 / L-2 of the audit of 17.11.2026: a padlock inside the security ring (closed when guarded, open when not) */
 .hm-shell .at-osec-ring .is-shackle{fill:none;stroke:var(--rc,var(--os-teal));stroke-width:4;stroke-linecap:round}
 .hm-shell .at-osec-ring .is-body{fill:var(--rc,var(--os-teal))}
@@ -847,3 +849,7 @@
 .hm-shell .hm-sidebar nav .at-nav-short{display:none}
 .hm-shell.is-wide:not(.ph-421) .hm-sidebar nav .at-nav-long{display:none}
 .hm-shell.is-wide:not(.ph-421) .hm-sidebar nav .at-nav-short{display:block}
+.hm-shell.daily-shell.is-wide:not(.ph-421){grid-template-columns:auto minmax(0,1fr)} /* the rail's column follows its two columns instead of hiding the second under the page */
+.hm-shell .at-search input{text-overflow:ellipsis} /* «Найти устройство…» ends in «…» on a 320 px phone instead of a cut letter */
+.hm-shell .ah-tile-text{min-width:0;max-width:100%}.hm-shell .ah-tile-text small{display:block;max-width:100%} /* a centred tile's second line ends in «…», not a cut letter («Нет данных · Ван») */
+.hm-shell .ah-tile-text small .ah-tick{max-width:100%;grid-template-columns:minmax(0,1fr)}.hm-shell .ah-tile-text small .ah-tick>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap} /* the ticking line (inline-grid) gets its own «…» */

@@ -20,7 +20,7 @@ export function confirmWords(a: Action, device: string, t: T, security: Security
     const ask = valveOpenAsk(security, t);
     if (ask.leak) return { text: ask.text, no: sk(t, 'ask.valveKeep'), yes: sk(t, 'ask.valveOpenYes'), leak: true };
   }
-  if (a.question) { const yes = t(a.label as Key) === a.label ? a.label : t(a.label as Key); return { text: a.question, no: t('confirm.no'), yes, leak: false }; }
+  if (a.question) { const yes = a.yes ?? (t(a.label as Key) === a.label ? a.label : t(a.label as Key)); return { text: a.question, no: t('confirm.no'), yes, leak: false }; }
   const special = `confirm.${a.domain === 'alarm_control_panel' ? 'alarm' : a.domain}.${a.id}` as Key, hasSpecial = t(special) !== special;
   const label = t(a.label as Key) === a.label ? a.label : t(a.label as Key);
   const text = a.id === 'all_off' ? t('confirm.lightsOff', { n: a.entityId.split(',').length }) : hasSpecial ? t(special, { device }) : label === device ? t('confirm.text.one', { action: label }) : t('confirm.text', { action: label, device });

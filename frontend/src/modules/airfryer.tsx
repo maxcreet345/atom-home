@@ -12,7 +12,7 @@ import { num, type Lang } from '../ui/format.ts';
 /** Xiaomi Smart Air Fryer (xiaomi.fryer.*), one card and one sheet instead of nineteen entities: what it is doing and how long is left on
  * top with «Пауза / Продолжить / Отменить», Mi Home's thirteen programs as a grid (owner 17.11.2026, studied on the owner's phone), each
  * opening its own screen with exactly the parameters Mi Home gives it and «Начать», and behind the gear the fryer's settings. The functions are the model's own MIOT
- * spec (status 0–14, 13 programs, 40–220 °C in steps of 5, 1–1440 min). The fryer is on Wi-Fi only while it is switched on at its button:
+ * spec (status 0–14, 13 programs, 40–220 °C in steps of 5, 1–1440 min). The fryer is on Wi-Fi only while it is switched on at its button:
  * a fryer that is not there says so and offers nothing to press. */
 type Props = { registry: Registry; entities: ModuleEntities; options: ModuleOptions; host: Host; t: T; lang: Lang };
 const kk = (t: T, k: string, p?: Record<string, string | number>) => t(`module.airfryer.${k}` as Key, p);
@@ -39,7 +39,7 @@ const optName = (t: T, group: 'mode' | 'texture' | 'layers', raw: string) => { c
 export function minutesText(t: T, min: number): string { const m = Math.max(0, Math.round(min)), h = Math.floor(m / 60), r = m % 60; return h === 0 ? kk(t, 'min', { n: r }) : r === 0 ? kk(t, 'hr', { n: h }) : `${kk(t, 'hr', { n: h })} ${kk(t, 'min', { n: r })}`; }
 function read({ registry, entities, host }: Props) {
   const st = (role: string) => { const id = entities[role]; return id ? registry.states[id] : undefined; };
-  // nothing is not zero: Number('') and Number(null) are 0, and «0 °C, 0 мин» would be shown and sent
+  // nothing is not zero: Number('') and Number(null) are 0, and «0 °C, 0 мин» would be shown and sent
   const n = (v: unknown) => { if (v === null || v === undefined || (typeof v === 'string' && !v.trim()) || typeof v === 'boolean') return null; const x = Number(v); return Number.isFinite(x) ? x : null; };
   const phase = fryerPhase(st('status')?.state, host.online), available = phase !== 'off';
   const live = (role: string) => available ? n(st(role)?.state) : null;
