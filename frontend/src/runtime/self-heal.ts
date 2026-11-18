@@ -10,33 +10,38 @@ const CRASH_MAX = 3;
 /** a reload for a new version waits for this much quiet: nobody is touching the screen */
 export const UPDATE_IDLE_MS = 30_000;
 
+/** sessionStorage, or undefined where even reaching it throws (every cookie blocked) */
+const session = (): Storage | undefined => { try { return globalThis.sessionStorage; } catch { return undefined; } };
 function read(storage: Storage | undefined, key: string): string | null { try { return storage?.getItem(key) ?? null; } catch { return null; } }
-function write(storage: Storage | undefined, key: string, value: string) { try { storage?.setItem(key, value); } catch { /* private mode */ } }
+/** False when the value could not be kept: a limit that cannot be remembered is not used (no reload without a memory of the last one). */
+function write(storage: Storage | undefined, key: string, value: string): boolean { if (!storage) return false; try { storage.setItem(key, value); return storage.getItem(key) === value; } catch { return false; } }
 
 /** True when one more reload after a crash is allowed now; records it. */
-export function mayReloadAfterCrash(now = Date.now(), storage: Storage | undefined = globalThis.sessionStorage): boolean {
+export function mayReloadAfterCrash(now = Date.now(), storage: Storage | undefined = session()): boolean {
   let past: number[] = [];
   try { const v = JSON.parse(read(storage, CRASH_KEY) ?? '[]'); if (Array.isArray(v)) past = v.filter((x): x is number => typeof x === 'number' && now - x < CRASH_WINDOW_MS); } catch { past = []; }
   if (past.length >= CRASH_MAX) return false;
-  write(storage, CRASH_KEY, JSON.stringify([...past, now]));
-  return true;
+  return write(storage, CRASH_KEY, JSON.stringify([...past, now]));
 }
 
-const parts = (v: string) => v.trim().split(/[.+-]/).slice(0, 3).map(x => Number.parseInt(x, 10));
-/** `server` is a strictly newer x.y.z than `panel`. */
+const numbers = (v: string) => (v.trim().match(/^\d+(\.\d+)*/)?.[0] ?? '0').split('.').map(Number);
+const pre = (v: string) => v.trim().replace(/^\d+(\.\d+)*/, '') !== '';
+/** `server` is a strictly newer version than `panel`; a release is newer than its own pre-release («1.30.0» over «1.30.0-beta.1» or «1.30.0b1»). */
 export function newerVersion(server: unknown, panel: unknown): boolean {
   const ok = (v: unknown): v is string => typeof v === 'string' && /^\d+(\.\d+)+/.test(v.trim());
   if (!ok(server) || !ok(panel)) return false;
-  const a = parts(server), b = parts(panel);
-  for (let i = 0; i < 3; i++) { const x = a[i] || 0, y = b[i] || 0; if (x !== y) return x > y; }
-  return false;
+  const a = numbers(server), b = numbers(panel);
+  for (let i = 0; i < Math.max(a.length, b.length); i++) { const x = a[i] || 0, y = b[i] || 0; if (x !== y) return x > y; }
+  return pre(panel) && !pre(server);
 }
 
-/** True once per server version: the page reloaded for it already and still runs the old bundle (a cache in the way), so it does not try again. */
-export function mayReloadForUpdate(serverVersion: string, storage: Storage | undefined = globalThis.sessionStorage): boolean {
-  if (read(storage, UPDATE_KEY) === serverVersion) return false;
-  write(storage, UPDATE_KEY, serverVersion);
-  return true;
+/** False when the page already reloaded for this server version and still runs the old bundle (a cache in the way): it does not try again. */
+export function mayReloadForUpdate(serverVersion: string, storage: Storage | undefined = session()): boolean {
+  return read(storage, UPDATE_KEY) !== serverVersion;
+}
+/** Called right before the reload (not when the wait starts: a panel left during the wait must still reload on its return); false when it cannot be remembered. */
+export function markReloadForUpdate(serverVersion: string, storage: Storage | undefined = session()): boolean {
+  return mayReloadForUpdate(serverVersion, storage) && write(storage, UPDATE_KEY, serverVersion);
 }
 
 /** Calls `run` once the page has had `idleMs` without a touch, a key or a scroll. Returns a cancel. */

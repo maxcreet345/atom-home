@@ -8,7 +8,7 @@ import type { Registry } from './model/registry.ts';
 import { createLoader } from './runtime/loader.ts';
 import { hasDictionary, loadDictionary } from './i18n/index.ts';
 import { Guard, reportError, setErrorReporter } from './ui/guard.tsx';
-import { errorReporter, mayReloadAfterCrash, mayReloadForUpdate, newerVersion, whenIdle } from './runtime/self-heal.ts';
+import { errorReporter, markReloadForUpdate, mayReloadAfterCrash, mayReloadForUpdate, newerVersion, whenIdle } from './runtime/self-heal.ts';
 import { nextViewport } from './ui/panel-size.ts';
 import base from './styles/base.css?inline';
 import home from './styles/apple.css?inline';
@@ -69,7 +69,7 @@ export class AtomHomePanel extends HTMLElement {
     // H-2 of the audit of 17.11.2026: Home Assistant runs a newer integration than this page's bundle (HACS updated it and HA restarted,
     // the tablet kept the old page): the page reloads itself once nobody is touching it, instead of asking for a restart that already happened
     const newer = newerVersion(cfg.serverVersion, PANEL_VERSION);
-    if (newer && !this.updateWait && mayReloadForUpdate(cfg.serverVersion!)) this.updateWait = whenIdle(() => location.reload());
+    if (newer && !this.updateWait && mayReloadForUpdate(cfg.serverVersion!)) { const v = cfg.serverVersion!; this.updateWait = whenIdle(() => { if (markReloadForUpdate(v)) location.reload(); }); }
     this.restart = restartNeeded(PANEL_VERSION, cfg.serverVersion) && !(newer && this.updateWait);
   }, { failed: () => { this.config ??= normaliseConfig(null).config; }, settled: () => this.draw() });
   narrow = false;
@@ -103,7 +103,7 @@ export class AtomHomePanel extends HTMLElement {
     this.start();
   }
   disconnectedCallback() {
-    this.started = false; this.updateWait?.(); this.updateWait = null; this.registryLoad.stop(); this.configLoad.stop(); for (const f of this.stop.splice(0)) f();
+    this.started = false; this.updateWait?.(); this.updateWait = null; if (this.langRetry) clearTimeout(this.langRetry); this.langRetry = null; this.registryLoad.stop(); this.configLoad.stop(); for (const f of this.stop.splice(0)) f();
     if (this.frame) cancelAnimationFrame(this.frame); if (this.frameTimer) clearTimeout(this.frameTimer); this.frame = 0; this.frameTimer = null;
     this.observer?.disconnect(); this.observer = null; if (this.mount) render(null, this.mount); this.mount = null; this.seen = null;
   }
@@ -115,7 +115,7 @@ export class AtomHomePanel extends HTMLElement {
   private start() {
     if (this.started || !this.mount || !this._hass) return;
     this.started = true;
-    setErrorReporter(errorReporter(message => this.host.call('system_log', 'write', { message, level: 'error', logger: 'custom_components.atom_home.panel' })));
+    setErrorReporter(errorReporter(message => this._hass!.callWS({ type: 'call_service', domain: 'system_log', service: 'write', service_data: { message, level: 'error', logger: 'custom_components.atom_home.panel' } }))); // callWS: a refused or offline report never pops up Home Assistant's own toast on a wall tablet
     // errors outside a draw (a timer, a promise of a card) are written down too; only the panel's own, not Home Assistant's
     const ours = (stack: unknown) => typeof stack === 'string' && stack.includes('/atom_home/');
     const onError = (e: ErrorEvent) => { if (ours(e.filename) || ours((e.error as Error | undefined)?.stack)) reportError(e.error ?? e.message, 'window'); };
@@ -143,6 +143,18 @@ export class AtomHomePanel extends HTMLElement {
     const flush = () => { if (this.frame) cancelAnimationFrame(this.frame); if (this.frameTimer) clearTimeout(this.frameTimer); this.frame = 0; this.frameTimer = null; this.draw(); };
     this.frame = requestAnimationFrame(flush); this.frameTimer = setTimeout(flush, 250);
   }
+  /** H-6: one load of a language at a time; a failure draws the panel (in Russian) and is tried again in 30 s, never at once (a review of 18.11 found a tight loop). */
+  private langPending: string | null = null;
+  private langFailed: string | null = null;
+  private langRetry: ReturnType<typeof setTimeout> | null = null;
+  private fetchLanguage(lang: HouseConfig['home']['language']) {
+    if (this.langPending === lang || this.langRetry) return;
+    this.langPending = lang;
+    loadDictionary(lang).then(() => { this.langPending = null; this.langFailed = null; this.draw(); }, () => {
+      this.langPending = null; this.langFailed = lang; this.draw();
+      this.langRetry = setTimeout(() => { this.langRetry = null; if (this.started && this.config?.home.language === lang) this.fetchLanguage(lang); }, 30_000);
+    });
+  }
   /** C-1: the whole panel failed to draw. It reloads itself in ten seconds, at most three times in a quarter of an hour; then it says to reload by hand. */
   private crashed() {
     if (this.crash) return;
@@ -158,14 +170,18 @@ export class AtomHomePanel extends HTMLElement {
     if (!this.base || !this.config) { const words = SKELETON_TEXT[readSkeletonLang(hass.language)]; render(<><style>{SKELETON_CSS}</style><div dangerouslySetInnerHTML={{ __html: skeletonHtml(this.registryFailed ? words.fail : words.wait, readSkeletonTheme()) }} /></>, this.mount); return; }
     // H-6: English and Romanian come as their own files; the skeleton stays the moment it takes (a failed load falls back to Russian words)
     const want = this.config.home.language;
-    if (!hasDictionary(want)) { const done = () => this.draw(); void loadDictionary(want).then(done, done); if (!this.view) { const words = SKELETON_TEXT[readSkeletonLang(hass.language)]; render(<><style>{SKELETON_CSS}</style><div dangerouslySetInnerHTML={{ __html: skeletonHtml(words.wait, readSkeletonTheme()) }} /></>, this.mount); return; } }
+    if (!hasDictionary(want)) {
+      this.fetchLanguage(want);
+      // the skeleton waits for the words only on the first draw and only while the file is on its way; a file that could not come leaves the panel in Russian
+      if (!this.view && this.langFailed !== want) { const words = SKELETON_TEXT[readSkeletonLang(hass.language)]; render(<><style>{SKELETON_CSS}</style><div dangerouslySetInnerHTML={{ __html: skeletonHtml(words.wait, readSkeletonTheme()) }} /></>, this.mount); return; }
+    }
     rememberSkeletonTheme(this.config.home.theme); rememberSkeletonLang(this.config.home.language);
     if (!this.view || this.view.states !== hass.states) this.view = { ...this.base, states: hass.states };
     this.seen = { states: hass.states, connected: hass.connected !== false, user: hass.user?.id ?? null, admin: hass.user?.is_admin === true, language: hass.language };
     const words = SKELETON_TEXT[readSkeletonLang(this.config.home.language)];
     const fallback = <><style>{SKELETON_CSS}</style><div dangerouslySetInnerHTML={{ __html: skeletonHtml(this.crash === 'stuck' ? words.stuck : words.crash, readSkeletonTheme()) }} /></>;
     render(<Guard where="panel" kind="panel" fallback={fallback} onFail={() => this.crashed()}><AtomApp registry={this.view} config={this.config} host={this.host} viewport={this.viewport} store={this.configStore()} configWarnings={this.warnings} configPending={!this.configReal} restartNeeded={this.restart}
-      onConfigChange={next => { this.config = next; if (!hasDictionary(next.home.language)) void loadDictionary(next.home.language).then(() => this.draw(), () => undefined); rememberSkeletonTheme(next.home.theme); rememberSkeletonLang(next.home.language); }} /></Guard>, this.mount);
+      onConfigChange={next => { this.config = next; if (!hasDictionary(next.home.language)) this.fetchLanguage(next.home.language); rememberSkeletonTheme(next.home.theme); rememberSkeletonLang(next.home.language); }} /></Guard>, this.mount);
   }
 }
 if (!customElements.get('atom-home-panel')) customElements.define('atom-home-panel', AtomHomePanel);

@@ -8,11 +8,15 @@ const loading = new Map<Language, Promise<void>>();
 /** For the preview and the tests, which have every language at hand. */
 export function provideDictionary(lang: Language, dict: Dictionary) { dictionaries[lang] = dict; }
 export const hasDictionary = (lang: Language): boolean => !!dictionaries[lang];
+/** Where the live panel finds a language: a self-contained file beside the bundle (vite.lang.config.ts), under the static path the integration
+ *  has always served, so it is there even before Home Assistant is restarted after an update. The version names the build. */
+declare const __ATOM_VERSION__: string | undefined;
+const langUrl = (lang: Language) => `/atom_home_static/chunks/lang-${lang}.js?v=${encodeURIComponent(typeof __ATOM_VERSION__ === 'string' ? __ATOM_VERSION__ : 'dev')}`;
 export function loadDictionary(lang: Language): Promise<void> {
   if (dictionaries[lang]) return Promise.resolve();
   let p = loading.get(lang);
   if (!p) {
-    const load: Promise<Dictionary> = lang === 'en' ? import('./en.ts').then(m => m.en) : lang === 'ro' ? import('./ro.ts').then(m => m.ro) : Promise.resolve(ru);
+    const load: Promise<Dictionary> = lang === 'ru' ? Promise.resolve(ru) : import(/* @vite-ignore */ langUrl(lang)).then((m: Record<string, Dictionary>) => { const d = m[lang]; if (!d || typeof d !== 'object') throw new Error(`no ${lang} words`); return d; });
     p = load.then(d => { dictionaries[lang] = d; }, e => { loading.delete(lang); throw e; });
     loading.set(lang, p);
   }

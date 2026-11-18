@@ -6,7 +6,7 @@ import { rememberDiscover, roomClimate, NO_ROOM, type Home, type HomeDevice, typ
 import { SECTIONS, type Section, type Kind } from '../model/kinds.ts';
 import type { Host, AutomationRow } from '../runtime/host.ts';
 import { actionsFor, serviceCall, customAction, type Action } from '../runtime/actions.ts';
-import { translator, type Key } from '../i18n/index.ts';
+import { translator, hasDictionary, type Key } from '../i18n/index.ts';
 import { RoomTile, AccessoryTile, ThermostatTile, ClockTile as PlainClockTile, SceneTile, ValueTile, Section as Block, artOf } from './cards.tsx';
 import { ClockTile, ClockSheet, beep } from '../modules/clock.tsx';
 import { FeederSheet } from '../modules/pet-feeder.tsx';
@@ -140,7 +140,7 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
     }
     const next = { ...base, alarms: r.alarms }; setConfig(next); confirmed.current = next; onConfigChange?.(next);
   };
-  const lang = config.home.language, t = useMemo(() => translator(lang), [lang]); words.current = t;
+  const lang = config.home.language, langReady = hasDictionary(lang), t = useMemo(() => translator(lang), [lang, langReady]); // H-6: a new t once its words have come, so what was memoised on t is said again words.current = t;
   // PERF-1 of the audit: a state change of Home Assistant does not rebuild the house. The modules found are the same list until one of them
   // changes; the house model (model/discover.ts) answers from memory unless a state changed its shape, renewing only the cards a value touched.
   const findModules = useMemo(() => rememberModules(), []), modules = findModules(registry, config); // the same array until the modules themselves change (modules/index.ts)
@@ -509,7 +509,7 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
       const roomy = device.kind === 'light' && wide && landscape && viewport.width >= 800; // a dimmable lamp's sheet: slider left, temperature and ambient light right
       const sheetWide = !!mod && wide && landscape && viewport.width >= 800; // a phone on its side (874×402) splits too: video left, controls right, instead of a video that fills the whole height
       return <div className="hm-scrim" key="sheet" inert={!!confirm || undefined} onClick={e => { if (e.target === e.currentTarget) close(); }}><section className={`hm-sheet ${sheetWide ? 'is-split' : ''} ${roomy ? 'is-roomy' : ''} ${autoClose?.key === device.key ? 'is-alarm' : ''}`} role="dialog" aria-modal="true" aria-label={device.name} ref={sheetRef} tabIndex={-1} {...swipe(close)} onPointerDownCapture={() => { if (autoClose?.key === device.key) setAutoClose(null); }} onKeyDownCapture={() => { if (autoClose?.key === device.key) setAutoClose(null); }}>
-        <Guard where={`sheet:${device.key}`} kind="sheet" t={t} onClose={close}>{mod?.def.Sheet ? <mod.def.Sheet device={device} registry={registry} entities={mod.entities} options={mod.options} host={host} t={t} lang={lang} runner={runner} onClose={close} room={roomName_} stage={stage} wide={sheetWide} setOption={setModuleOption(mod.def.id)} autoClose={autoCloseFor(device.key)} /> : <DeviceSheet device={device} runner={runner} onClose={close} t={t} lang={lang} stage={stage} host={host} room={roomName_} automations={automationsFor(device)} title={inRoomName(device, roomName_ ?? '')} />}</Guard>
+        <Guard key={device.key} where={`sheet:${device.key}`} kind="sheet" t={t} onClose={close}>{mod?.def.Sheet ? <mod.def.Sheet device={device} registry={registry} entities={mod.entities} options={mod.options} host={host} t={t} lang={lang} runner={runner} onClose={close} room={roomName_} stage={stage} wide={sheetWide} setOption={setModuleOption(mod.def.id)} autoClose={autoCloseFor(device.key)} /> : <DeviceSheet device={device} runner={runner} onClose={close} t={t} lang={lang} stage={stage} host={host} room={roomName_} automations={automationsFor(device)} title={inRoomName(device, roomName_ ?? '')} />}</Guard>
       </section></div>;
     })()}
     {confirm && (() => { // AUTO-1 of the audit: the question names the consequence («Вода пойдёт сразу»), the button carries the verb and the risk colour
@@ -753,8 +753,8 @@ function SystemsPage({ status, all, devices, verdict, runner, toggle, go, t, lan
   const [q, setQ] = useState('');
   // UX-12 of the audit of 17.11.2026: the count is Home's («Нужно внимание: N»), and its items stand first; below them, under their own title, every
   // device that does not answer or whose sensor went off — a quiet thermometer or a TV at the wall is still found here, but it is not counted
-  // (motion and an open door are not trouble by themselves: an open door while guarded is on the strip)
-  const attention = (x: HomeDevice) => !x.primary.available || (['leak', 'alarm'].includes(x.kind) && x.primary.state === 'on') || (x.kind === 'alarm_panel' && x.primary.state === 'triggered');
+  // (motion is not trouble by itself; an open door or window is listed — the «открыто» tile of a house without an alarm leads here — but not counted)
+  const attention = (x: HomeDevice) => !x.primary.available || (['leak', 'alarm', 'opening'].includes(x.kind) && x.primary.state === 'on') || (x.kind === 'alarm_panel' && x.primary.state === 'triggered');
   const needs = status.items, query = q.trim().toLowerCase(), wide = !!query || filter === 'attention';
   // «Найти устройство…» finds any device of the house — a lamp, the robot, a leak sensor — not only what the list shows; what it finds opens its own sheet
   const shown = (wide ? all : devices).filter(x => (filter !== 'attention' || attention(x)) && (!query || `${look(x)?.name ?? x.name} ${x.name} ${roomName(x.roomId)} ${t(`kind.${x.kind}` as Key)}`.toLowerCase().includes(query)));

@@ -196,44 +196,6 @@ class BundleView(HomeAssistantView):
         return web.Response(body=body, content_type="text/javascript", charset="utf-8", headers=headers)
 
 
-CHUNK_NAME = re.compile(r"^[A-Za-z0-9_-]{1,64}\.js$")
-
-
-class ChunkView(HomeAssistantView):
-    """H-6 of the audit of 17.11.2026: the parts of the panel it loads only when needed (English and Romanian words). The bundle imports them
-    relative to its own URL, /atom_home/bundle.js, so they are asked for here. A part's name carries the hash of its contents: kept for a year.
-    Only a plain file name from frontend/chunks is ever answered (no path, no other folder)."""
-
-    url = "/atom_home/chunks/{name}"
-    name = "atom_home:chunk"
-    requires_auth = False
-
-    def __init__(self) -> None:
-        self._gzip: dict[str, GzipCache] = {}
-
-    async def get(self, request: web.Request, name: str) -> web.StreamResponse:
-        if not CHUNK_NAME.match(name):
-            return web.Response(status=404)
-        path, hass = FRONTEND_DIR / "chunks" / name, request.app["hass"]
-        try:
-            stat = await hass.async_add_executor_job(path.stat)
-        except OSError:
-            return web.Response(status=404)
-        etag = f'"{etag_of(stat)}"'
-        headers = {"ETag": etag, "Vary": "Accept-Encoding", "Cache-Control": "public, max-age=31536000, immutable"}
-        if etag_matches(request.headers.get("If-None-Match"), etag):
-            return web.Response(status=304, headers=headers)
-        try:
-            if accepts_gzip(request.headers.get("Accept-Encoding")):
-                body = await self._gzip.setdefault(name, GzipCache()).get(hass.async_add_executor_job, path, etag)
-                headers["Content-Encoding"] = "gzip"
-            else:
-                body = await hass.async_add_executor_job(path.read_bytes)
-        except OSError:
-            return web.Response(status=404)
-        return web.Response(body=body, content_type="text/javascript", charset="utf-8", headers=headers)
-
-
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """YAML setup is not used; everything happens in the config entry."""
     return True
@@ -299,7 +261,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             StaticPathConfig(PHOTOS_URL, str(photos_dir), cache_headers=True),
         ])
         hass.http.register_view(BundleView())
-        hass.http.register_view(ChunkView())
         hass.http.register_view(LoaderView())
         hass.http.register_view(MetaView())
         hass.data[DOMAIN]["_http_registered"] = True

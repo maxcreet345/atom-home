@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { mayReloadAfterCrash, mayReloadForUpdate, newerVersion, errorReporter, whenIdle } from '../src/runtime/self-heal.ts';
+import { mayReloadAfterCrash, mayReloadForUpdate, markReloadForUpdate, newerVersion, errorReporter, whenIdle } from '../src/runtime/self-heal.ts';
 
 const memory = (): Storage => { const m = new Map<string, string>(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => { m.set(k, String(v)); }, removeItem: k => { m.delete(k); }, clear: () => m.clear(), key: () => null, get length() { return m.size; } }; };
 const src = (p: string) => readFileSync(new URL(`../src/${p}`, import.meta.url), 'utf8');
@@ -20,7 +20,7 @@ test('C-1: every page, sheet and home tile is drawn inside a guard; the panel it
   const app = src('ui/app.tsx'), live = src('live-main.tsx');
   assert.match(app, /<div className="hm-page" key=\{pageKey\}><Guard where=\{`page:\$\{pageKey\}`\} kind="page"/);
   for (const sheet of ['ClockSheet', 'AirSheet', 'KettleSheet', 'FryerSheet', 'FeederSheet']) assert.match(app, new RegExp(`<Guard where="sheet:${sheet}" kind="sheet"[^>]*><${sheet} `));
-  assert.match(app, /<Guard where=\{`sheet:\$\{device\.key\}`\} kind="sheet"/);
+  assert.match(app, /<Guard key=\{device\.key\} where=\{`sheet:\$\{device\.key\}`\} kind="sheet"/, 'keyed by the device: a failed sheet does not stay failed for the next one');
   const cards = app.match(/<m\.def\.Card /g)?.length ?? 0, guarded = app.match(/kind="tile" t=\{t\}><m\.def\.Card /g)?.length ?? 0;
   assert.equal(guarded, cards, 'every module card has its own guard');
   for (const tile of ['SecurityTile', 'HeatingTile', 'VacuumTile', 'CamerasTile', 'CameraTile', 'ClockTile']) assert.match(app, new RegExp(`kind="tile" t=\\{t\\}><${tile} `));
@@ -35,10 +35,20 @@ test('H-2: the page reloads for a newer integration, once per version, never for
   assert.equal(newerVersion('1.27.2', '1.28.0'), false, 'HA not restarted yet: that is the «restart» badge, not a reload');
   assert.equal(newerVersion(undefined, '1.28.0'), false);
   assert.equal(newerVersion('1.29.0', null), false, 'a dev bundle has no version');
+  assert.equal(newerVersion('1.30.0', '1.30.0-beta.1'), true, 'a release over its own pre-release');
+  assert.equal(newerVersion('1.30.0', '1.30.0b1'), true);
+  assert.equal(newerVersion('1.30.0-beta.1', '1.30.0'), false);
+  assert.equal(newerVersion('1.29.0.1', '1.29.0'), true, 'a fourth part counts');
   const s = memory();
   assert.equal(mayReloadForUpdate('1.29.0', s), true);
+  assert.equal(mayReloadForUpdate('1.29.0', s), true, 'waiting for a quiet screen marks nothing: a panel left during the wait reloads on its return');
+  assert.equal(markReloadForUpdate('1.29.0', s), true);
   assert.equal(mayReloadForUpdate('1.29.0', s), false, 'a reload that still got the old bundle is not repeated');
+  assert.equal(markReloadForUpdate('1.29.0', s), false);
   assert.equal(mayReloadForUpdate('1.29.1', s), true);
+  const broken = { ...memory(), setItem: () => { throw new Error('quota'); }, getItem: () => null } as unknown as Storage;
+  assert.equal(markReloadForUpdate('1.29.0', broken), false, 'a reload that cannot be remembered does not happen');
+  assert.equal(mayReloadAfterCrash(1, broken), false, 'nor a crash reload');
 });
 
 test('H-2: the reload waits for a quiet screen: a touch starts the wait again', async () => {
