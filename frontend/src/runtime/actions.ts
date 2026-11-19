@@ -111,6 +111,9 @@ export function mandatoryRisk(service: string, target: Record<string, unknown> =
   if (domain === 'homeassistant' && (aims('lock') || aims('alarm_control_panel')) && verb !== 'update_entity') return 'security';
   return null;
 }
+/** Starting a robot vacuum always asks first, whatever the button's own flag says (critique 19.11.2026; docs/UX-GUIDE.md: «запущенная уборка
+ * в 3 ночи» is a costly mistake): the robot leaves at once. Sending it home or pausing stays one tap. */
+export const starts = (domain: string, service: string) => domain === 'vacuum' && (service === 'start' || service === 'clean_spot');
 /** Owner-defined buttons: any HA service, shown with their own confirm flag; the panel never invents data. The flag can ADD a question, never take
  * away one the house always asks (`mandatoryRisk`, CODEX-001): opening the water during a leak names the leak, as everywhere (ui/shell-logic.ts). */
 export function customAction(b: CustomButton): Action {
@@ -120,7 +123,7 @@ export function customAction(b: CustomButton): Action {
   const target = { ...(b.target ?? {}), ...(b.data ?? {}) } as Record<string, unknown>, ids = target.entity_id;
   const many = (Array.isArray(ids) && ids.length > 1) || ids === 'all' || (typeof ids === 'string' && ids.includes(',')) || 'area_id' in target || 'floor_id' in target || 'label_id' in target || 'device_id' in target && Array.isArray(target.device_id) && target.device_id.length > 1;
   const must = mandatoryRisk(b.service, target);
-  return { id: `custom:${b.id}`, label: b.label, kind: 'button', domain, service, entityId: typeof b.target?.entity_id === 'string' ? b.target.entity_id : '', data: { ...(b.target ?? {}), ...(b.data ?? {}) }, confirm: b.confirm || !!must || (service === 'turn_off' && many), risk: must ?? 'custom' };
+  return { id: `custom:${b.id}`, label: b.label, kind: 'button', domain, service, entityId: typeof b.target?.entity_id === 'string' ? b.target.entity_id : '', data: { ...(b.target ?? {}), ...(b.data ?? {}) }, confirm: b.confirm || !!must || (service === 'turn_off' && many) || starts(domain, service), risk: must ?? 'custom' };
 }
 
 /** Actions for a secondary entity of the device (settings: switch / number / select / button and their input_* twins). Read-only domains yield nothing. */

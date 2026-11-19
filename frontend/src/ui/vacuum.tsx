@@ -4,6 +4,7 @@ import type { Key, T } from '../i18n/index.ts';
 import { errorText, type Lang } from './format.ts';
 import { Icon } from './primitives.tsx';
 import { Err } from './heating.tsx';
+import { Ask, type Question } from './setup.tsx';
 import { CommandError } from '../runtime/commands.ts';
 import { DOCK_TRIPS, mapAddress, mapShown, percentLeft, readChoice, settingAnswers, vacuumAlerts, type Consumable, type VacSelect, type VacSwitch, type Vacuum } from '../model/vacuum.ts';
 /** One command at a time per key, and the refusal in words next to its button: the house's own reason (`errorText`), never a generic «не дошла» for everything. */
@@ -130,6 +131,9 @@ function mainAction(v: Vacuum, t: T, chosen: number): { key: 'start' | 'pause' |
   return { key: 'start', label: chosen ? tk(t, 'startRooms', { n: chosen }) : tk(t, 'startAll'), icon: 'play' };
 }
 /** No rooms chosen is the whole flat; more than one pass of it goes room by room through every linked room. */
+/** Starting a clean asks first (critique 19.11.2026, the owner's rule in docs/UX-GUIDE.md: «запущенная уборка в 3 ночи» is a costly mistake):
+ * the robot leaves at once. Pause, resume, stop and «На базу» go with one tap. */
+const startQuestion = (t: T, rooms: number, go: () => void): Question => ({ text: rooms ? tk(t, 'startAskRooms', { n: rooms }) : tk(t, 'startAskAll'), yes: tk(t, 'startYes'), run: go });
 const run = (v: Vacuum, act: Act, key: 'start' | 'pause' | 'resume', rooms: string[] = [], repeat = 1) => key === 'pause' ? act.pause() : key === 'resume' ? act.start() : rooms.length ? act.rooms(rooms, repeat) : repeat > 1 && v.rooms.length ? act.rooms(v.rooms.map(r => r.areaId), repeat) : act.start();
 function Facts({ v, t, lang }: { v: Vacuum; t: T; lang: Lang }) {
   const active = v.phase === 'cleaning' || v.phase === 'paused' || v.phase === 'returning';
@@ -149,14 +153,16 @@ export function VacuumTile({ v, host, t, lang, onOpen, pics }: { v: Vacuum; host
   const act = vacuumActions(v, host), ui = useAct(t), tone = vacTone(v), main = mainAction(v, t, 0), say = vacSentence(v, t, lang);
   const alerts = vacuumAlerts(v), first = alerts[0]; // a leftover error on a docked robot is named too: an amber «!» with no word says nothing
   const progress = v.phase === 'cleaning' || v.phase === 'paused' ? v.progress ?? 0 : 0, can = v.available && host.online !== false;
-  const live = useRef(v); live.current = v; const phase = () => live.current.phase;
+  const live = useRef(v); live.current = v; const phase = () => live.current.phase, [ask, setAsk] = useState<Question | null>(null);
+  const go = () => ui.run('main', () => run(v, act, main.key), undefined, phase); const tileErr = ui.err('main', 'dock');
   return <div className={`ah-tile hm-card at-vac-tile vz-${tone}`}>
+    {ask && <Ask q={ask} t={t} onClose={() => setAsk(null)} />}
     <button type="button" className="at-vac-open" aria-label={`${tk(t, 'title')}: ${say}${first ? `. ${alertText(first, t, v)}` : ''}. ${tk(t, 'open')}`} onClick={onOpen} />
-    <div className="at-vac-tile-head"><strong>{tk(t, 'title')}</strong><small>{say}</small>{first && <em className={`at-vac-alert is-${first.tone}`}>{alertText(first, t, v)}</em>}<Err text={ui.err('main', 'dock')} /></div>
+    <div className="at-vac-tile-head"><strong>{tk(t, 'title')}</strong>{/* a refused command takes the place of the sentence (critique 19.11.2026): the tile keeps its height and the grid around it stays put */}{tileErr ? <small className="is-err">{tileErr}</small> : <><small>{say}</small>{first && <em className={`at-vac-alert is-${first.tone}`}>{alertText(first, t, v)}</em>}</>}<p className="at-vh" role="alert">{tileErr ?? ''}</p></div>
     <span className="at-vac-tile-buddy"><RobotPic v={v} tone={tone} pics={pics} size="tile" /></span>
     <Facts v={v} t={t} lang={lang} />
     <div className="at-vac-tile-btns">
-      <button type="button" className={`at-vac-go is-${main.key} ${progress > 0 ? 'has-pct' : ''}`} style={`--p:${progress}%`} aria-label={main.label} aria-busy={ui.pending('main') || undefined} aria-disabled={!can || ui.pending('main') || undefined} onClick={e => { e.stopPropagation(); if (v.available) ui.run('main', () => run(v, act, main.key), undefined, phase); /* the house off the line: the command is refused with «Нет связи с домом» in the tile's line */ }}>
+      <button type="button" className={`at-vac-go is-${main.key} ${progress > 0 ? 'has-pct' : ''}`} style={`--p:${progress}%`} aria-label={main.label} aria-busy={ui.pending('main') || undefined} aria-disabled={!can || ui.pending('main') || undefined} onClick={e => { e.stopPropagation(); if (!v.available) return; if (main.key === 'start' && can && !ui.pending('main')) setAsk(startQuestion(t, 0, go)); else go(); /* the house off the line: the command is refused with «Нет связи с домом» in the tile's line */ }}>
         {progress > 0 && <b className="at-vac-go-pct">{fmt(progress, lang)}<i>%</i></b>}<Icon name={main.icon} size={26} /><span>{main.label}</span></button>
       <button type="button" className="at-vac-home" aria-label={v.phase === 'docked' ? tk(t, 'onDock') : tk(t, 'dock')} aria-busy={ui.pending('dock') || undefined} aria-disabled={!can || v.phase === 'docked' || ui.pending('dock') || undefined} onClick={e => { e.stopPropagation(); if (v.available && v.phase !== 'docked') ui.run('dock', act.dock, undefined, phase); }}><Icon name="home" size={24} /><span>{v.phase === 'docked' ? tk(t, 'onDock') : tk(t, 'dock')}</span></button>
     </div>
@@ -225,9 +231,10 @@ const MODE_ICON: Record<string, preact.JSX.Element> = {
   mop: G('M12 3c-3 4.5-6 7.5-6 11a6 6 0 0 0 12 0c0-3.5-3-6.5-6-11z'),
   custom: G('M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4'),
 };
-function Rooms({ v, chosen, setChosen, repeat, setRepeat, t }: { v: Vacuum; chosen: string[]; setChosen: (x: string[]) => void; repeat: number; setRepeat: (n: number) => void; t: T }) {
+function Rooms({ v, chosen, setChosen, repeat, setRepeat, t, admin }: { v: Vacuum; chosen: string[]; setChosen: (x: string[]) => void; repeat: number; setRepeat: (n: number) => void; t: T; /** the «not linked» note is the installer's to-do (critique 19.11.2026): the family sees no rooms section and cleans the whole house */ admin: boolean }) {
   const all = chosen.length === 0, busy = v.phase === 'cleaning' || v.phase === 'paused' || v.phase === 'returning';
   const toggle = (id: string) => { if (!busy) setChosen(chosen.includes(id) ? chosen.filter(x => x !== id) : [...chosen, id]); };
+  if (!v.rooms.length && !admin) return null;
   if (!v.rooms.length) return <section className="at-vac-sec"><div className="hm-section-head"><h2>{tk(t, 'rooms')}</h2></div><p className="at-vac-note">{tk(t, 'noLink')}</p></section>;
   return <section className="at-vac-sec"><div className="hm-section-head"><h2>{tk(t, 'rooms')}</h2><small className="at-vac-hint">{busy ? tk(t, 'roomsBusy') : all ? tk(t, 'roomsAll') : tk(t, 'roomsN', { n: chosen.length })}</small></div>
     <div className="at-vac-card">
@@ -281,8 +288,10 @@ export function VacuumPanel({ v, host, t, lang, onSettings, pics }: { v: Vacuum;
   const mapSrc = v.mapImage ? host.previewFrame?.(v.mapImage.entity) ?? mapAddress(v.mapImage.url, v.mapImage.changed) : null;
   // the button is named once: «Режим уборки: Пылесос и швабра», or just «Режим уборки» while the robot's mode is not known
   const modeName = v.cleaningMode?.value ? word(t, `mode.${v.cleaningMode.value}`, v.cleaningMode.value) : null;
-  const mapUrl = useTrimmedMap(mapSrc), [mapBroken, setMapBroken] = useState<string | null>(null), modeHead = useRef<HTMLDivElement>(null);
+  const mapUrl = useTrimmedMap(mapSrc), [mapBroken, setMapBroken] = useState<string | null>(null), modeHead = useRef<HTMLDivElement>(null), [ask, setAsk] = useState<Question | null>(null);
+  const go = () => ui.run('main', () => run(v, act, main.key, chosen, repeat), undefined, phase);
   return <div className={`at-vac-panel ${stale ? 'is-stale' : ''}`}>
+    {ask && <Ask q={ask} t={t} onClose={() => setAsk(null)} />}
     <section className={`at-vac-hero vz-${tone}`} aria-label={tk(t, 'title')}>
       <div className="at-vac-hero-top">
         <span className="at-vac-hero-buddy"><RobotPic v={v} tone={tone} pics={pics} size="hero" /></span>
@@ -303,14 +312,14 @@ export function VacuumPanel({ v, host, t, lang, onSettings, pics }: { v: Vacuum;
         <div className="at-vac-bar-btns">
           {active ? <button type="button" className="at-vac-side" aria-busy={ui.pending('stop') || undefined} aria-disabled={!can || ui.pending('stop') || undefined} onClick={() => { if (v.available) ui.run('stop', act.stop, undefined, phase); }}><span className="at-vac-side-ic"><Icon name="power" size={20} /></span><small>{tk(t, 'stop')}</small></button>
             : <button type="button" className="at-vac-side" aria-label={modeName ? `${tk(t, 'mode')}: ${modeName}` : tk(t, 'mode')} onClick={() => { const box = modeHead.current, h = box?.querySelector('h2') as HTMLElement | null, chip = box?.querySelector('.at-vac-mode[aria-pressed="true"]') as HTMLElement | null; /* by a ref: the live panel sits in a shadow root, where document.getElementById finds nothing */ h?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); (chip ?? h)?.focus({ preventScroll: true }); /* the focus lands on the mode that is on (a control, also where the section is already in view), on the heading when the robot has no modes */ }}><span className="at-vac-side-ic"><Icon name="settings" size={20} /></span><small>{modeName ?? tk(t, 'mode')}</small></button>}
-          <button type="button" className={`at-vac-big is-${main.key}`} aria-label={main.label} aria-busy={ui.pending('main') || undefined} aria-disabled={!can || ui.pending('main') || undefined} onClick={() => { if (v.available) ui.run('main', () => run(v, act, main.key, chosen, repeat), undefined, phase); }}>
+          <button type="button" className={`at-vac-big is-${main.key}`} aria-label={main.label} aria-busy={ui.pending('main') || undefined} aria-disabled={!can || ui.pending('main') || undefined} onClick={() => { if (!v.available) return; if (main.key === 'start' && can && !ui.pending('main')) setAsk(startQuestion(t, chosen.length, go)); else go(); }}>
             <Ring p={active ? v.progress ?? 0 : 0}><Icon name={main.icon} size={30} /></Ring><small>{main.label}</small></button>
           <button type="button" className="at-vac-side" aria-busy={ui.pending('dock') || undefined} aria-disabled={!can || v.phase === 'docked' || ui.pending('dock') || undefined} onClick={() => { if (v.available && v.phase !== 'docked') ui.run('dock', act.dock, undefined, phase); }}><span className="at-vac-side-ic is-home"><Icon name="home" size={20} /></span><small>{v.phase === 'docked' ? tk(t, 'onDock') : tk(t, 'dock')}</small></button>
         </div>
         <Err text={ui.err('main', 'dock', 'stop', 'locate')} />
       </div>
     </section>
-    <Rooms v={v} chosen={chosen} setChosen={setChosen} repeat={repeat} setRepeat={setRepeat} t={t} />
+    <Rooms v={v} chosen={chosen} setChosen={setChosen} repeat={repeat} setRepeat={setRepeat} t={t} admin={host.admin} />
     <div id="at-vac-mode" ref={modeHead}><ModeCard v={v} act={act} t={t} ui={ui} stale={stale} /></div>
     <Dock v={v} act={act} t={t} lang={lang} ui={ui} stale={stale} />
   </div>;

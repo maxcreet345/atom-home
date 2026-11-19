@@ -31,7 +31,7 @@ export interface SetupProps { registry: Registry; config: HouseConfig; onChange:
   /** the price of a kWh in Home Assistant's own Energy settings, when the house has one there (`prefTariff`): what the panel counts by until the first own tariff */ haPrice?: number | null;
   /** the sections this house has (the shell's `present`); not given: every section is offered in «Разделы» */ sections?: readonly string[] }
 /** A question before something is deleted or replaced: what exactly, a cancel, and the answer's own word on the button. */
-type Question = { text: string; yes: string; run: () => void };
+export type Question = { text: string; yes: string; run: () => void };
 type AskFn = (q: Question) => void;
 type Patch = (fn: (c: HouseConfig) => void) => void;
 /** The same edit, answering whether the house has it (release classic, step 4 — studio ST-03, CODEX-004): a form that sent something keeps it
@@ -82,7 +82,7 @@ export function Setup({ registry, config, onChange, admin, t, lang, warnings, ph
 /** The question itself, in the panel's own confirmation window (the look of `.hm-confirm`): focus goes to «Отмена», Tab stays inside,
  * Escape and a tap outside cancel, and the focus returns to the control that asked. The focused element is read from the window's own root
  * (`activeIn`): in the house the panel is inside a shadow root, and by `document.activeElement` Tab never left «Отмена». */
-function Ask({ q, t, onClose }: { q: Question; t: T; onClose: () => void }) {
+export function Ask({ q, t, onClose }: { q: Question; t: T; onClose: () => void }) {
   const anchor = useRef<HTMLSpanElement>(null), box = useRef<HTMLDivElement>(null), [host, setHost] = useState<Element | null>(null);
   useEffect(() => { setHost(anchor.current?.closest('.hm-shell') ?? document.body); }, []);
   useEffect(() => { if (!host) return; const back = activeIn(anchor.current); box.current?.querySelector<HTMLElement>('button')?.focus(); return () => { if (back?.isConnected) back.focus({ preventScroll: true }); }; }, [host]);

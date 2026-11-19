@@ -1,6 +1,6 @@
 /** Small decisions of the shell that need no DOM (tested under Node: tests/round2-nav.test.ts). */
 import type { Key, T } from '../i18n/index.ts';
-import type { Action } from '../runtime/actions.ts';
+import { starts, type Action } from '../runtime/actions.ts';
 import type { Security } from '../model/security.ts';
 import { sk, valveOpenAsk } from '../model/security-words.ts';
 
@@ -20,6 +20,8 @@ export function confirmWords(a: Action, device: string, t: T, security: Security
     const ask = valveOpenAsk(security, t);
     if (ask.leak) return { text: ask.text, no: sk(t, 'ask.valveKeep'), yes: sk(t, 'ask.valveOpenYes'), leak: true };
   }
+  // a clean started from an owner's button asks the vacuum's own question («Начать уборку всего дома? Робот поедет сразу»)
+  if (a.domain === 'vacuum' && a.id.startsWith('custom:') && starts(a.domain, a.service)) return { text: t('module.vac.startAskAll' as Key), no: t('confirm.no'), yes: t('module.vac.startYes' as Key), leak: false };
   if (a.question) { const yes = a.yes ?? (t(a.label as Key) === a.label ? a.label : t(a.label as Key)); return { text: a.question, no: t('confirm.no'), yes, leak: false }; }
   const special = `confirm.${a.domain === 'alarm_control_panel' ? 'alarm' : a.domain}.${a.id}` as Key, hasSpecial = t(special) !== special;
   const label = t(a.label as Key) === a.label ? a.label : t(a.label as Key);
