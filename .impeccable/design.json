@@ -1,0 +1,212 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-19T18:59:20+02:00",
+  "title": "Design System: Atom Home",
+  "extensions": {
+    "colorMeta": {
+      "lavender-accent": {
+        "role": "primary",
+        "displayName": "Лаванда «включено»"
+      },
+      "lavender-tint": {
+        "role": "primary",
+        "displayName": "Лавандовый тинт"
+      },
+      "alarm-red": {
+        "role": "secondary",
+        "displayName": "Тревожный красный"
+      },
+      "light-amber": {
+        "role": "secondary",
+        "displayName": "Тёплый янтарь"
+      },
+      "heat-orange": {
+        "role": "secondary",
+        "displayName": "Оранжевый нагрева"
+      },
+      "water-blue": {
+        "role": "secondary",
+        "displayName": "Синий воды"
+      },
+      "ok-green": {
+        "role": "secondary",
+        "displayName": "Зелёный нормы"
+      },
+      "wall-light": {
+        "role": "neutral",
+        "displayName": "Светлая стена"
+      },
+      "tile-light": {
+        "role": "neutral",
+        "displayName": "Плитка"
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Чернила"
+      },
+      "dark-tile": {
+        "role": "neutral",
+        "displayName": "Дымчатое стекло"
+      },
+      "teal-wall-mid": {
+        "role": "neutral",
+        "displayName": "Бирюзовые обои"
+      }
+    },
+    "shadows": [
+      {
+        "name": "rest",
+        "value": "0 1px 2px #0000000f, 0 4px 14px #0000000d",
+        "purpose": "Цель 19.11.2026: плитка и группа в покое, светлая тема."
+      },
+      {
+        "name": "lift",
+        "value": "0 2px 4px #00000014, 0 10px 24px #00000014",
+        "purpose": "Наведение и фокус: плитка приподнимается (HomeView)."
+      },
+      {
+        "name": "glass-edge",
+        "value": "inset 0 1px 0 #ffffff33",
+        "purpose": "Блик кромки дымчатого стекла, тёмная тема."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ah-spring",
+        "value": "cubic-bezier(.34,1.4,.64,1)",
+        "purpose": "Пружинное нажатие и возврат."
+      },
+      {
+        "name": "ah-ease",
+        "value": "cubic-bezier(.2,.8,.2,1)",
+        "purpose": "Перелив состояния, 220 мс."
+      },
+      {
+        "name": "breathe",
+        "value": "opacity 1→0.6→1, 1.2s",
+        "purpose": "Команда в пути."
+      },
+      {
+        "name": "sheet",
+        "value": "380ms spring, overshoot 1–2%",
+        "purpose": "Лист снизу."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "panel-size classes",
+        "value": "is-narrow / is-wide / pw-N / ph-N (ui/panel-size.ts), not @media"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Модуль в покое",
+      "kind": "card",
+      "refersTo": "tile",
+      "description": "Плитка прибора, бесцветная пока выключена.",
+      "html": "<button class=\"ds-tile\"><span class=\"ds-tile-g\">💡</span><b>Люстра</b><small>Выключено</small></button>",
+      "css": ".ds-tile{display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;width:120px;height:120px;padding:16px;border:0;border-radius:22px;background:#e3e3e8;color:#1c1c1e;font:600 .9375rem/1.25 -apple-system,system-ui,sans-serif;box-shadow:0 1px 2px #0000000f,0 4px 14px #0000000d;transition:transform .32s cubic-bezier(.34,1.4,.64,1),box-shadow .22s ease,background-color .22s ease;}.ds-tile small{font-size:.8125rem;font-weight:500;color:#606065}.ds-tile-g{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#ffffff99}.ds-tile:focus-visible{outline:3px solid #7b74d8;outline-offset:-3px}.ds-tile:hover,.ds-tile:focus-visible{transform:scale(1.02);box-shadow:0 2px 4px #00000014,0 10px 24px #00000014}.ds-tile:active{transform:scale(.97)}"
+    },
+    {
+      "name": "Модуль включён",
+      "kind": "card",
+      "refersTo": "tile-on",
+      "description": "Включённый прибор: лавандовый тинт.",
+      "html": "<button class=\"ds-tile-on\"><span class=\"ds-tile-g\">💡</span><b>Люстра</b><small>Включено · 80 %</small></button>",
+      "css": ".ds-tile-on{display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;width:120px;height:120px;padding:16px;border:0;border-radius:22px;background:#cfc9f4;color:#1c1c1e;font:600 .9375rem/1.25 -apple-system,system-ui,sans-serif;box-shadow:0 1px 2px #0000000f,0 4px 14px #0000000d;transition:transform .32s cubic-bezier(.34,1.4,.64,1),box-shadow .22s ease,background-color .22s ease;}.ds-tile-on small{font-size:.8125rem;font-weight:500;color:#3d3a6e}.ds-tile-on .ds-tile-g{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#ffc266}.ds-tile-on:hover,.ds-tile-on:focus-visible{transform:scale(1.02);box-shadow:0 2px 4px #00000014,0 10px 24px #00000014}.ds-tile-on:active{transform:scale(.97)}"
+    },
+    {
+      "name": "Сегменты",
+      "kind": "nav",
+      "refersTo": "segments",
+      "description": "Переключатель разделов, выбранный сегмент белый.",
+      "html": "<div class=\"ds-seg\"><button class=\"is-on\">Все</button><button>Климат</button><button>Уборка</button></div>",
+      "css": ".ds-seg{display:inline-flex;gap:2px;padding:3px;border-radius:14px;background:#e3e3e8;font:600 .875rem -apple-system,system-ui,sans-serif}.ds-seg button{min-height:38px;padding:0 14px;border:0;border-radius:12px;background:none;color:#1c1c1e;transition:transform .32s cubic-bezier(.34,1.4,.64,1),box-shadow .22s ease,background-color .22s ease;}.ds-seg button.is-on{background:#fff;box-shadow:0 1px 3px #0000001f}.ds-seg button:hover,.ds-seg button:focus-visible{transform:scale(1.02);box-shadow:0 2px 4px #00000014,0 10px 24px #00000014}.ds-seg button:active{transform:scale(.97)}"
+    },
+    {
+      "name": "Пилюля",
+      "kind": "chip",
+      "refersTo": "pill",
+      "description": "Показание или быстрое действие в комнате.",
+      "html": "<button class=\"ds-pill\">🌡 21,5°</button>",
+      "css": ".ds-pill{min-height:44px;padding:0 16px;border:0;border-radius:999px;background:#e3e3e8;color:#1c1c1e;font:600 .875rem -apple-system,system-ui,sans-serif;transition:transform .32s cubic-bezier(.34,1.4,.64,1),box-shadow .22s ease,background-color .22s ease;}.ds-pill:hover,.ds-pill:focus-visible{transform:scale(1.02);box-shadow:0 2px 4px #00000014,0 10px 24px #00000014}.ds-pill:active{transform:scale(.97)}"
+    },
+    {
+      "name": "Таб-бар",
+      "kind": "nav",
+      "refersTo": "tab-bar",
+      "description": "Нижняя навигация телефона.",
+      "html": "<nav class=\"ds-tab\"><a class=\"is-on\">Дом</a><a>Комнаты</a><a>Свет</a><a>Устройства</a><a>Ещё</a></nav>",
+      "css": ".ds-tab{display:flex;justify-content:space-around;width:360px;padding:6px 8px;background:#f6f6f8f2;backdrop-filter:blur(28px);border-top:1px solid #00000012;font:500 .75rem -apple-system,system-ui,sans-serif}.ds-tab a{padding:8px 6px;border-radius:12px;color:#606065;transition:transform .32s cubic-bezier(.34,1.4,.64,1),box-shadow .22s ease,background-color .22s ease;}.ds-tab a.is-on{color:#5a52bf}.ds-tab a:hover,.ds-tab a:focus-visible{transform:scale(1.02);box-shadow:0 2px 4px #00000014,0 10px 24px #00000014}.ds-tab a:active{transform:scale(.97)}"
+    },
+    {
+      "name": "Группа списка",
+      "kind": "card",
+      "refersTo": "group-list",
+      "description": "Белый список строк в листах и настройках.",
+      "html": "<div class=\"ds-group\"><div>Режим<span>Авто</span></div><div>Яркость экрана<span>Вкл.</span></div></div>",
+      "css": ".ds-group{display:grid;gap:1px;width:300px;border-radius:18px;overflow:hidden;background:#00000012;box-shadow:0 1px 2px #0000000f,0 4px 14px #0000000d;font:400 .9375rem -apple-system,system-ui,sans-serif}.ds-group div{display:flex;justify-content:space-between;padding:13px 16px;background:#fff;color:#1c1c1e}.ds-group span{color:#606065}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Тихий дом",
+    "overview": "**Creative North Star: \"Тихий дом\"**\n\nПока дома всё в порядке, панель молчит: спокойный серо-белый фон днём, глубокая бирюза ночью, плитки без цвета. Цвет появляется только как событие: лавандой загорается включённый прибор, жёлтым — горящий свет, оранжевым — нагрев, красным — тревога. Человек, проходящий мимо планшета на стене, по одному цвету понимает, нужно ли что-то делать.\n\nЭто интерфейс для ежедневной работы, а не витрина. Квадратные модули на одной сетке, как в Apple Home, крупное главное число, состояние сильнее кнопки. Выражение живёт в деталях: настоящие фото приборов на карточках, рисованная кошка у кормушки, живые иллюстрации у «Воздуха», отопления и пылесоса, мягкий пружинный отклик.\n\nВид закреплён заказчиком 11.11.2026: нынешние карточки, расположение кнопок и цвета обеих тем остаются. Стили «бумага» и стеклянный Vision как **внешний вид** отвергнуты. Из Apple HomeView и Vision Pro берётся только **ощущение отклика** (19.11.2026): мягкое приподнимание под пальцем, курсором или фокусом пульта, пружинное нажатие, плавные переходы.",
+    "keyCharacteristics": [
+      "Нейтральный фон, один смысловой цвет на плитку.",
+      "Две темы: светлая (серо-белая) и тёмная (дымчатое стекло на бирюзовых обоях).",
+      "Модули на сетке с автоматическим числом колонок, радиус 22 px, зазор 10 px.",
+      "Системный шрифт Apple / Segoe / Roboto, текст в `rem`.",
+      "Пружинный, приподнимающийся отклик на касание и фокус."
+    ],
+    "rules": [
+      {
+        "name": "Правило тишины",
+        "body": "Плитка в покое бесцветна. Цвет — это событие; если на экране спокойного дома что-то цветное, это ошибка.",
+        "section": "colors"
+      },
+      {
+        "name": "Правило одного значения",
+        "body": "Красный — только опасность. Недоступный прибор приглушается (гаснет значок и подложка, имя и «Нет связи» остаются ≥ 3:1), а не краснеет.",
+        "section": "colors"
+      },
+      {
+        "name": "Правило одного акцента",
+        "body": "Не больше одного смыслового цвета на плитку; значок в круге цветной только в активном состоянии.",
+        "section": "colors"
+      },
+      {
+        "name": "Правило rem",
+        "body": "Каждый кегль в `rem`: системный размер текста 85–150 % меняет всю панель, и колонок становится меньше, а слова не рвутся.",
+        "section": "typography"
+      },
+      {
+        "name": "Правило 13 px",
+        "body": "Ничего, что нужно прочитать, не мельче 0.8125rem (13 px). 0.75rem — только для единиц и служебных пометок.",
+        "section": "typography"
+      },
+      {
+        "name": "Правило мягкой тени",
+        "body": "Поверхность отделяется от фона тенью, а не цветом заливки. Белую плитку на белом фоне без тени не ставить; контраст поверхностей мерить.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** держать плитку в покое бесцветной, а цвет давать только включённому и требующему внимания.",
+      "**Do** отделять плитки и группы мягкой тенью в светлой теме и мерить контраст поверхностей.",
+      "**Do** ставить на карточку прибора его настоящее фото (кроме кормушки: там кошка).",
+      "**Do** давать каждому нажимаемому элементу отклик в духе HomeView: приподнимание на наведении и фокусе, пружинное сжатие при нажатии, «дыхание» во время команды.",
+      "**Do** задавать размеры текста и минимальную ширину модуля в `rem`, раскладку — от размера панели.",
+      "**Do** делать цели касания не меньше 44×44 px и видимое кольцо фокуса лавандового цвета."
+    ],
+    "donts": [
+      "**Don't** менять раскладку кнопок, вид карточек и цвета тем без прямой просьбы заказчика и без макета из реального кода.",
+      "**Don't** возвращать стили «бумага» и стеклянный Vision как внешний вид (отвергнуты 11.11.2026). От Vision Pro берётся только отклик.",
+      "**Don't** красить недоступный прибор красным: красный только для опасности.",
+      "**Don't** ставить больше одного смыслового цвета на плитку.",
+      "**Don't** делать светлое стекло в тёмной теме: только дымчатое, чтобы белый текст держал 4,5:1.",
+      "**Don't** использовать `@media` по ширине и `vw/vh` в стилях панели.",
+      "**Don't** анимировать что-то кроме `transform` и `opacity` и дольше 400 мс."
+    ]
+  }
+}
