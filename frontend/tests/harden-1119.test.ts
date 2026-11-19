@@ -45,5 +45,5 @@ test('the same words everywhere: the vacuum waits «Ждёт команды», a
   assert.equal(stateText(ent('camera', 'idle'), ru, 'ru'), 'На связи');
   assert.equal(stateText(ent('sensor', '21.5', {}, '°C'), ru, 'ru'), '21,5°');
   assert.equal(ru('module.boiler_ebus' as never), 'Котёл');
-  assert.equal(ru('sec.titleShort' as never), 'Безопасность');
+  assert.equal(ru('sec.titleShort' as never).replace(/\u00ad/g, ''), 'Безопасность'); // the compact rail breaks it at a soft hyphen
 });

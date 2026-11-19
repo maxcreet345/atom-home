@@ -45,7 +45,7 @@ export function RoomTile({ room, temperature, humidity, co2, lightsOn, onClick, 
   // a photo that does not load (the house was unreachable when it was asked for, the file is gone) gives way to the drawn picture — never the browser's broken-image mark
   const [failed, setFailed] = useState<string[]>([]);
   const own = room.photo && !failed.includes(room.photo) ? room.photo : null, kind = roomType(room.name) ?? 'other', uid = useId();
-  const svg = useMemo(() => own ? '' : roomArtSvg(kind, theme, false, uid), [own, kind, theme, uid]);
+  const lit = lightsOn > 0, svg = useMemo(() => own ? '' : roomArtSvg(kind, theme, false, uid, lit), [own, kind, theme, uid, lit]);
   // the lamps that are on stand before the name in the markup: on a slim tile they float to its right and the name wraps under them
   const top = <span className="hm-room-top">{lightsOn > 0 && <span className="hm-lit"><Icon name="light" size={14} />{lightsOn}</span>}<strong>{room.name || t('room.none')}</strong></span>;
   const bottom = <span className="hm-room-bottom">{temperature !== null && <b>{num(temperature, lang)}<i>°</i></b>}<small>{humidity === null ? '' : `${num(humidity, lang, 0)}%`}{co2 !== null ? <span className="hm-room-co2">{`${humidity === null ? '' : ' · '}CO₂ ${num(co2, lang, 0)}`}</span> : ''}</small></span>;
@@ -143,10 +143,13 @@ export function ThermostatTile({ device, name, sub, target: houseTarget, current
   const draft = useTargetDraft(houseTarget), target = draft.shown;
   const stepped = useRef(0), own = name ?? device.name, label = sub && !own.trim().toLowerCase().endsWith(sub.trim().toLowerCase()) ? `${own} · ${sub}` : own; // five «Радиатор» are told apart by their rooms
   const big = current, mode = !e.available ? t('state.unavailable') : on ? stateText(e, t, lang).split(' · ')[0] : t('state.off');
-  const line = target === null ? mode : `${mode} · ${t('ui.target')} ${num(target, lang)}°`;
+  // heating off (critique 19.11.2026, owner's choice): the big word is «Выкл», the room's temperature moves to the second line — from 2 m an
+  // 18,7° in 93 px read as «it is heating»
+  const offBig = e.available && !on && big !== null;
+  const line = offBig ? [`${num(big!, lang, big! % 1 ? 1 : 0)}° ${t('ui.now')}`, target === null ? null : `${t('ui.target')} ${num(target, lang)}°`].filter(Boolean).join(' · ') : target === null ? mode : `${mode} · ${t('ui.target')} ${num(target, lang)}°`;
   return <div className={`ah-tile ah-thermo kind-climate hm-card ${on ? 'is-on' : ''} ${e.available ? '' : 'is-off'}`} data-device-key={device.key} style={`--tile:${tileColor(device)}`}>
     <button type="button" className="ah-tile-hit" onClick={onOpen}>
-      <span className="ah-thermo-value" data-reading={big === null ? 'none' : 'room'}>{big === null ? <b className="is-text">{e.available ? t('state.unknown') : '—'}</b> : <b><Tick value={num(big, lang, big % 1 ? 1 : 0)} />°</b>}<small><Tick value={line} /></small></span>
+      <span className="ah-thermo-value" data-reading={big === null ? 'none' : offBig ? 'off' : 'room'}>{offBig ? <b className="is-text is-off">{t('mode.off')}</b> : big === null ? <b className="is-text">{e.available ? t('state.unknown') : '—'}</b> : <b><Tick value={num(big, lang, big % 1 ? 1 : 0)} />°</b>}<small><Tick value={line} /></small></span>
       <span className="ah-tile-text"><strong>{name ?? device.name}</strong><small>{sub && !(name ?? device.name).trim().toLowerCase().endsWith(sub.trim().toLowerCase()) ? sub : ''}</small></span>
     </button>
     {steps && <>{([[-1, 'is-down', 'ui.tempLower'], [1, 'is-up', 'ui.tempRaise']] as const).map(([dir, cls, key]) => { const next = target === null ? null : stepTarget(steps.range, target, dir), end = next === null || next === target; /* at the device's limit (a radiator at its 4°) there is nothing to do: off, as in the sheet */

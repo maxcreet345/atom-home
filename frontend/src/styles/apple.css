@@ -130,7 +130,7 @@
 /* thermostat 2×2 */
 .hm-shell .ah-thermo .ah-tile-hit{justify-content:space-between;padding:14px 12px 12px;gap:4px}
 .hm-shell .ah-thermo-value{flex:1;display:grid;place-content:center;gap:2px;text-align:center}
-.hm-shell .ah-thermo-value b{font-size:clamp(2.5rem,30cqw,6rem);font-weight:400;letter-spacing:-2px;line-height:1;font-variant-numeric:tabular-nums}.hm-shell .ah-thermo-value b.is-text{font-size:clamp(1.375rem,12cqw,2.5rem);font-weight:600;letter-spacing:-.5px;color:var(--ah-muted)}
+.hm-shell .ah-thermo-value b{font-size:clamp(2.5rem,30cqw,6rem);font-weight:400;letter-spacing:-2px;line-height:1;font-variant-numeric:tabular-nums}.hm-shell .ah-thermo-value b.is-text{font-size:clamp(1.375rem,12cqw,2.5rem);font-weight:600;letter-spacing:-.5px;color:var(--ah-muted)}.hm-shell .ah-thermo-value b.is-text.is-off{font-size:clamp(2rem,22cqw,4rem);font-weight:500;letter-spacing:-1px} /* heating off: «Выкл» large and grey (critique 19.11.2026) */
 .hm-shell .ah-thermo-value small{font-size:.75rem;color:var(--ah-muted)}
 .hm-shell .ah-thermo .ah-tile-text{padding:0 40px}.hm-shell .ah-thermo .ah-tile-text strong{font-size:.9375rem}
 .hm-shell .ah-chev{position:absolute;bottom:10px;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;color:var(--ah-ink)}
@@ -191,6 +191,11 @@
 .hm-shell .hm-live{position:absolute;top:8px;left:8px;display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;background:#000000a6;backdrop-filter:blur(8px);font-size:.75rem;font-weight:700;color:#fff}
 .hm-shell .hm-live i{width:7px;height:7px;border-radius:50%;background:#8e8e93}.hm-live.is-live i{background:var(--ah-red);box-shadow:0 0 0 3px #ff3b3040}
 .hm-shell .hm-camera-caption{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;gap:8px;padding:24px 12px 10px;background:linear-gradient(180deg,transparent,#000000a6);color:#fff}
+/* a camera with no picture is not the biggest black block of a calm home (critique 19.11.2026): the tile takes the ordinary surface, the words go grey */
+.hm-shell .hm-camera-tile:has(.hm-camera-wait:not(.is-poster)){background:var(--ah-tile)}
+.hm-shell .hm-camera-tile:has(.hm-camera-wait:not(.is-poster)) .hm-camera-frame{background:transparent}
+.hm-shell .hm-camera-tile:has(.hm-camera-wait:not(.is-poster)) .hm-camera-wait{color:var(--ah-muted)}
+.hm-shell .hm-camera-tile:has(.hm-camera-wait:not(.is-poster)) .hm-camera-caption{background:none;color:var(--ah-ink)}
 .hm-camera-caption strong{font-size:.875rem;font-weight:700}.hm-camera-caption small{flex:1;opacity:.8;font-size:.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ---------- 8. Lists & controls ---------- */
@@ -1172,7 +1177,7 @@
 .hm-shell .at-vac-tile-btns{display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:8px}
 .hm-shell .at-vac-go,.hm-shell .at-vac-home{position:relative;display:grid;place-items:center;align-content:center;gap:2px;min-height:84px;border:0;border-radius:20px;font:inherit;cursor:pointer;overflow:hidden;transition:transform .12s}
 .hm-shell .at-vac-go:active,.hm-shell .at-vac-home:active{transform:scale(.97)}
-.hm-shell .at-vac-go{background:linear-gradient(90deg,#9fd0ff var(--p,0%),var(--vz-chip) var(--p,0%));color:var(--ah-ink)}.hm-shell .at-vac-go.is-start{background:var(--vz-acc);color:#fff}
+.hm-shell .at-vac-go{background:linear-gradient(90deg,#9fd0ff var(--p,0%),var(--vz-chip) var(--p,0%));color:var(--ah-ink)}.hm-shell .at-vac-go.is-start{background:color-mix(in srgb,var(--vz-acc) 16%,var(--vz-chip));color:var(--vz-ink)}.hm-shell.ah-shell[data-theme="dark"] .at-vac-go.is-start{background:color-mix(in srgb,var(--vz-acc) 32%,transparent);color:#fff} /* at rest a tonal button, not the loudest fill on «Дом» (critique 19.11.2026, the rule of silence); the panel's own big button stays filled */
 .hm-shell.ah-shell[data-theme="dark"] .at-vac-go:not(.is-start){background:linear-gradient(90deg,rgba(76,157,255,.45) var(--p,0%),var(--vz-chip) var(--p,0%))}
 .hm-shell .at-vac-go span,.hm-shell .at-vac-home span{font-size:.78125rem;font-weight:600}
 .hm-shell .at-vac-go-pct{position:absolute;left:12px;bottom:8px;font-size:1.375rem;font-weight:600;letter-spacing:-.5px;color:var(--ah-ink);font-variant-numeric:tabular-nums}.hm-shell .at-vac-go-pct i{font-style:normal;font-size:.55em;margin-left:1px}
@@ -1296,7 +1301,7 @@
 .hm-shell .at-vac-tile-buddy .at-vac-pic{width:auto;height:auto}.hm-shell .at-vac-tile-buddy .at-vac-pic .at-vac-badge{right:-8px;top:-4px}
 /* filled controls carry white words: one fill dark enough for 4.5:1 in both themes */
 .hm-shell{--vz-fill:#0a64dc}.hm-shell.ah-shell[data-theme="dark"]{--vz-fill:#1a62d0}
-.hm-shell :is(.at-vac-go.is-start,.at-vac-here,.at-vac-dockbtn.is-on),.hm-shell .at-vac-big.is-start .at-vac-ring,.hm-shell .at-vac-room.is-on .at-vac-room-n,.hm-shell .at-vac-mode.is-on .at-vac-mode-ic:not(.is-smart_mode){background:var(--vz-fill)}
+.hm-shell :is(.at-vac-here,.at-vac-dockbtn.is-on),.hm-shell .at-vac-big.is-start .at-vac-ring,.hm-shell .at-vac-room.is-on .at-vac-room-n,.hm-shell .at-vac-mode.is-on .at-vac-mode-ic:not(.is-smart_mode){background:var(--vz-fill)}
 .hm-shell .at-vac-room em{background:#1d7f36}
 /* panel (max-width:600px) */.hm-shell:where(:not(.pw-601)) .at-vac-hero-top:has(.at-vac-pic){grid-template-columns:60px minmax(0,1fr) auto;gap:8px}.hm-shell:where(:not(.pw-601)) .at-vac-hero-buddy:has(.at-vac-pic){width:60px;height:52px}.hm-shell:where(:not(.pw-601)) .at-vac-hero-buddy .at-vac-pic img{max-width:60px;max-height:52px}.hm-shell:where(:not(.pw-601)) .at-vac-hero-text h2{font-size:1.3125rem}.hm-shell:where(:not(.pw-601)) .at-vac-corner{gap:4px}
 .hm-shell .at-vac-sec h2[tabindex]:focus-visible{outline:3px solid var(--ah-accent,#5e5ce6);outline-offset:3px;border-radius:6px}

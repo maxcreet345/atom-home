@@ -145,8 +145,10 @@ export const SCENE_VIEW: Record<SceneKind, readonly [number, number, number, num
 /** The scene as a whole SVG document. `ground`: the whole 240×160 drawing with the room's background behind it (a picture on its own,
  * «Настройка»'s fallback); without it, the scene alone in its own extent (`SCENE_VIEW`), standing at the right and the bottom of whatever box it
  * is given. `uid` keeps the gradients of several pictures on one page apart. */
-export function roomArtSvg(kind: SceneKind, theme: Theme, ground = false, uid = ''): string {
-  const p = palette(kind, theme), id = (x: string) => `ra-${x}${uid ? `-${uid.replace(/[^A-Za-z0-9_-]/g, '')}` : ''}`;
+/** `lit`: the room's lamps are really on (critique 19.11.2026): in the evening scene a lamp glows only then; with the lights off the scene is
+ * still evening, the bulbs dark. Undefined keeps the scene's own default (Настройка's preview, the photo fallback). */
+export function roomArtSvg(kind: SceneKind, theme: Theme, ground = false, uid = '', lit?: boolean): string {
+  const base = palette(kind, theme), p = lit === false && base.lit ? { ...base, lit: 0, bulb: base.metal } : base, id = (x: string) => `ra-${x}${uid ? `-${uid.replace(/[^A-Za-z0-9_-]/g, '')}` : ''}`;
   const defs = `<defs><radialGradient id="${id('g')}"><stop offset="0" stop-color="${p.glow}" stop-opacity=".85"/><stop offset="1" stop-color="${p.glow}" stop-opacity="0"/></radialGradient><linearGradient id="${id('b')}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${p.bg1}"/><stop offset="1" stop-color="${p.bg2}"/></linearGradient></defs>`;
   const body = SCENE[kind](p).replace(/url\(#g\)/g, `url(#${id('g')})`);
   if (ground) return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 160" width="240" height="160">${defs}<rect width="240" height="160" fill="url(#${id('b')})"/>${body}</svg>`;
