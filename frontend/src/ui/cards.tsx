@@ -48,7 +48,7 @@ export function RoomTile({ room, temperature, humidity, co2, lightsOn, onClick, 
   const lit = lightsOn > 0, svg = useMemo(() => own ? '' : roomArtSvg(kind, theme, false, uid, lit), [own, kind, theme, uid, lit]);
   // the lamps that are on stand before the name in the markup: on a slim tile they float to its right and the name wraps under them
   const top = <span className="hm-room-top">{lightsOn > 0 && <span className="hm-lit"><Icon name="light" size={14} />{lightsOn}</span>}<strong>{room.name || t('room.none')}</strong></span>;
-  const bottom = <span className="hm-room-bottom">{temperature !== null && <b>{num(temperature, lang)}<i>°</i></b>}<small>{humidity === null ? '' : `${num(humidity, lang, 0)}%`}{co2 !== null ? <span className="hm-room-co2">{`${humidity === null ? '' : ' · '}CO₂ ${num(co2, lang, 0)}`}</span> : ''}</small></span>;
+  const bottom = <span className="hm-room-bottom">{temperature !== null && <b>{num(temperature, lang)}°</b>}<small>{humidity === null ? '' : `${num(humidity, lang, 0)}%`}{co2 !== null ? <span className="hm-room-co2">{`${humidity === null ? '' : ' · '}CO₂ ${num(co2, lang, 0)}`}</span> : ''}</small></span>;
   if (own) return <button type="button" className="hm-card hm-room at-room is-photo" data-room-id={room.id} onClick={onClick} title={label}>
     <img className="hm-photo" key={own} src={own} width={960} height={640} alt="" decoding="async" loading="lazy" onError={() => setFailed(f => f.includes(own) ? f : [...f, own])} />{top}{bottom}
   </button>;

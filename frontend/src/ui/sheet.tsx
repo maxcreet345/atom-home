@@ -44,7 +44,7 @@ export function ModeRow({ device, action, runner, t, nameOf, offline }: Common &
   // a group of buttons with a pressed one, not radios: a radio is chosen by the arrow keys, and here a choice is a command to the device
   return <div className="ah-modes" role="group" aria-label={label(action, t)}>
     <small className="ah-modes-title">{label(action, t)}</small>
-    <div className="ah-modes-row">{opts.map(o => { const key = o.toLowerCase().replace(/[\s-]+/g, '_'), active = String(action.current) === o, icon = MODE_ICON[key]; return <button type="button" aria-pressed={active} className={`ah-mode ${active ? 'is-active' : ''}`} {...held(busy, offline)} disabled={!device.primary.available} onClick={() => { if (!busy) void runner.run(device, action, o); }}><span className="ah-mode-glyph">{icon ? <Icon name={icon} size={22} /> : <b>{optionLabel(o, t, nameOf).slice(0, 1).toUpperCase()}</b>}</span><span className="ah-mode-label">{optionLabel(o, t, nameOf)}</span></button>; })}</div>
+    <div className="ah-modes-row">{opts.map(o => { const key = o.toLowerCase().replace(/[\s-]+/g, '_'), active = String(action.current) === o, icon = MODE_ICON[key]; return <button type="button" aria-pressed={active} className={`ah-mode ${active ? 'is-active' : ''} ${key === 'off' ? 'is-off-mode' : ''}`} {...held(busy, offline)} disabled={!device.primary.available} onClick={() => { if (!busy) void runner.run(device, action, o); }}><span className="ah-mode-glyph">{icon ? <Icon name={icon} size={22} /> : <b>{optionLabel(o, t, nameOf).slice(0, 1).toUpperCase()}</b>}</span><span className="ah-mode-label">{optionLabel(o, t, nameOf)}</span></button>; })}</div>
   </div>;
 }
 /** Slider row with the current value; commits on release, shows the draft while dragging. */

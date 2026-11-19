@@ -358,6 +358,8 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
   // «Всё ли в порядке?» — the house status strip above Home's cards (model/house-status.ts; release «classic», from design 2026 phase 2)
   const boilerMod = modules.find(m => m.def.id === 'boiler_ebus'), boilerP = boilerMod?.entities.pressure ? Number(registry.states[boilerMod.entities.pressure]?.state) : NaN;
   const status: HouseStatus = houseStatus({ online: host.online, security, heating, vacuum, boiler: boilerMod ? { pressure: Number.isFinite(boilerP) ? boilerP : null } : null, devices: enabled, roomName, nameOf: d => inRoomName(d, roomName(d.roomId)), pages: new Set(pages) }, t);
+  const SEC_KINDS = new Set(['alarm', 'entry', 'gas', 'smoke', 'co', 'leak', 'offline', 'armedOpen', 'quiet']), secItems = status.items.filter(i => SEC_KINDS.has(i.kind));
+  const secStatus: HouseStatus = { tone: secItems.some(i => i.tone === 'danger') ? 'danger' : secItems.length ? 'warn' : 'ok', title: secItems.length ? t('status.attention' as Key, { n: secItems.length }) : t('status.secOk' as Key), items: secItems };
   const title = view.section === 'setup' ? t('setup.title') : view.section === 'rooms' && view.room ? roomName(view.room) : view.section === 'home' ? home.name : inSystems ? t('section.systems') /* «Устройства» */ : t(`section.${view.section}` as Key);
   const subtitle = view.section === 'home' ? `${t(head.greeting)} · ${date}` : view.section === 'rooms' && !view.room ? t('rooms.count', { n: rooms.length }) : '';
   const pageKey = pageOf(view);
@@ -465,6 +467,8 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
         {view.section === 'security' && officeSec && <OfficeSecurityPanel s={officeSec} host={host} t={t} lang={lang} now={now.getTime()} admin={!!host.admin} title={config.home.name} />}
         {view.section === 'security' && officeSec && camLink}
         {view.section === 'security' && security && <SecurityPanel s={security} registry={registry} config={config} host={host} commands={commands} t={t} lang={lang} now={now.getTime()} admin={!!host.admin} motion={secMotion} aside={camLink} />}
+        {/* «Безопасность» answers «всё спокойно?» first (critique 19.11.2026): the house's status, only its safety items */}
+        {view.section === 'security' && !security && !officeSec && <HouseStatusStrip status={secStatus} go={go} t={t} className="at-sec-verdict" />}
         {view.section === 'security' && !security && !officeSec && <SecurityDevices devices={secDevices} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} rooms={home.rooms} after={camLink} />}
         {view.section === 'climate' && heating && <HeatingPanel h={heating} host={host} t={t} lang={lang} now={now.getTime()} sensors={climateSensors(registry, home.rooms.map(r => r.id))} />}
         {view.section === 'climate' && !heating && office && <OfficeClimatePanel c={office} host={host} t={t} lang={lang} now={now.getTime()} />}
@@ -566,6 +570,9 @@ const thermoSteps = (d: HomeDevice, temp: Action, runner: Runner, t: ReturnType<
 /** Inside a room the owner's «Свет · Кухня» reads as «Свет». */
 /** The rule of silence (DESIGN.md «Тихий дом», critique 19.11.2026): a reading at rest has a grey icon; colour is an event — lights on, heating on, a warning. */
 const IDLE = '#8e8e93';
+/** A lamp whose name, without its room, is only «Свет» is called by its room (critique 19.11.2026: eight tiles «Свет» told apart only by a header):
+ * «Ванная» on a bulb tile under «Свет». A lamp with a name of its own («Люстра детской», «Свет коридора») keeps it. */
+const plainLamp = (name: string, room: string, t: (k: Key) => string) => room && name.trim().toLowerCase() === t('kind.light').toLowerCase() ? room : name;
 const inRoomName = (d: HomeDevice, room: string) => nameUnderRoom(shortLabel(d.name), room);
 /** H5 of the audit: the model in brackets («Датчик окна (SNZB-04PR2)») belongs to the sheet, not to a 150 px tile. */
 const shortLabel = (name: string) => { const s = name.replace(/\s*\([^)]*\)/g, '').replace(/\s{2,}/g, ' ').trim(); return s.length >= 3 ? s : name.trim(); };
@@ -587,7 +594,7 @@ function Overview({ home, registry, config, modules, player, tileState, host, ru
   const d = home.devices.filter(x => x.enabled);
   const secTile = !!(security || officeSec) && !config.sections.security?.hidden; // the Security tile, when shown, tells leaks and doors-and-windows itself
   const roomOf = (x: HomeDevice) => home.rooms.find(r => r.id === x.roomId)?.name || t('room.none');
-  const leaks = d.filter(x => x.kind === 'leak'), wet = leaks.filter(x => x.primary.state === 'on'), leaksMute = leaks.length > 0 && leaks.every(x => !x.primary.available || x.primary.state === 'unknown');
+  const leaks = d.filter(x => x.kind === 'leak'), wet = leaks.filter(x => x.primary.state === 'on'), leaksMute = leaks.length > 0 && leaks.every(x => !x.primary.available); // a sensor that has not reported yet is calm (decided earlier): «Сухо», only sensors without a link make it «—»
   const co2 = d.flatMap(x => x.metrics).find(m => m.deviceClass === 'carbon_dioxide' && m.available && Number.isFinite(Number(m.state)));
   const co2v = co2 ? Number(co2.state) : null, air = co2Level(co2v, t), co2Dev = co2 ? d.find(x => x.metrics.includes(co2)) : undefined;
   const boilers = boilerDeviceIds(modules, registry);
@@ -710,7 +717,7 @@ function LightsPage({ devices, rooms, runner, toggle, go, t, lang, roomName, adm
   if (!devices.length) return <Empty go={go} t={t} admin={admin} />;
   const order = [...rooms.map(r => r.id), NO_ROOM], groups = [...new Set(devices.map(d => d.roomId))].sort((a, b) => (order.indexOf(a) + 1 || 999) - (order.indexOf(b) + 1 || 999));
   return <div className="hm-light-page"><div className="hm-toolbar at-lights-bar"><span>{on.length ? t('overview.lights.on', { n: on.length }) : t('overview.lights.off')}</span>{on.length > 0 && <button type="button" className="hm-pill" onClick={() => void runner.run(on[0], { id: 'all_off', label: t('ui.lightsOff'), kind: 'button', domain: 'homeassistant', service: 'turn_off', entityId: on.map(d => d.primary.id).join(','), confirm: true, risk: 'normal' })}>{t('ui.lightsOff')}</button>}</div>
-    <div className="at-lights-grid">{groups.map(roomId => { const list = devices.filter(d => d.roomId === roomId), lit = list.filter(d => isOn(d.primary)).length, room = roomName(roomId), span = Math.min(list.length, 3); return <Block title={room} className={`at-lights-room span-${span}`} action={<small className="hm-muted">{list.length > 1 && lit ? `${lit} / ${list.length}` : ''}</small>}><Tiles devices={list} section="lights" runner={runner} toggle={toggle} go={go} t={t} lang={lang} nameOf={d => canToggle(d) ? inRoomName(d, room) : d.name} /></Block>; })}</div></div>;
+    <div className="at-lights-grid">{groups.map(roomId => { const list = devices.filter(d => d.roomId === roomId), lit = list.filter(d => isOn(d.primary)).length, room = roomName(roomId), span = Math.min(list.length, 3); return <Block title={room} className={`at-lights-room span-${span}`} action={<small className="hm-muted">{list.length > 1 && lit ? `${lit} / ${list.length}` : ''}</small>}><Tiles devices={list} section="lights" runner={runner} toggle={toggle} go={go} t={t} lang={lang} nameOf={d => canToggle(d) ? plainLamp(inRoomName(d, room), room, t) : d.name} /></Block>; })}</div></div>;
 }
 function ClimatePage({ devices, runner, go, t, lang, roomName, admin }: Common & { devices: HomeDevice[]; roomName: (id: string) => string }) {
   if (!devices.length) return <Empty go={go} t={t} admin={admin} />;
@@ -748,7 +755,7 @@ function EnergyPage({ devices, go, t, lang, roomName, admin, boilers }: { device
   const max = Math.max(1, ...devices.map(d => pw(d) ?? 0));
   return <div className="hm-energy"><div className="hm-energy-lines">{devices.map(d => { const w = pw(d); return <button type="button" className="hm-card hm-line" data-device-key={d.key} onClick={() => go({ section: 'energy', device: d.key })}>
     <span className="hm-line-head"><span className="ah-glyph is-small" style="--tile:#30d158"><Icon name="energy" size={16} /></span><strong>{inRoomName(d, roomName(d.roomId))}</strong><span className="hm-badge">{roomName(d.roomId)}</span></span>
-    <b>{w === null ? '—' : w >= 1000 ? `${num(w / 1000, lang, 2)} ${unit('kW')}` : `${num(w, lang, 0)} ${unit('W')}`}</b><span className="hm-meter"><i style={`width:${Math.round(100 * (w ?? 0) / max)}%`} /></span>
+    <b>{w === null ? '—' : w >= 1000 ? `${num(w / 1000, lang, 2)} ${unit('kW')}` : `${num(w, lang, 0)} ${unit('W')}`}</b>{devices.length > 1 && <span className="hm-meter"><i style={`width:${Math.round(100 * (w ?? 0) / max)}%`} /></span> /* a share of the biggest: with one meter it is always full and says nothing (critique 19.11.2026) */}
     <span className="hm-line-facts">{d.metrics.filter(m => m.deviceClass !== 'power').slice(0, 4).map(m => <span><small>{caption(m, d)}</small> {reading(m)}</span>)}</span>
   </button>; })}</div></div>;
 }
@@ -778,7 +785,7 @@ function SystemsPage({ status, all, devices, verdict, runner, toggle, go, t, lan
   if (!rendered.length) return <>{above}<div className="hm-systems">{bar}{strip}{strip ? null : <p className="hm-muted at-empty">{attn ? t('systems.allFine') : query ? t('systems.nothing') : t('ui.nodevices')}</p>}</div></>;
   // H3 of the audit: inside a group the tiles go room by room, named without the room and the model
   const roomOrder = [...rooms.map(r => r.id), NO_ROOM], byRoom = (list: HomeDevice[]) => [...new Set(list.map(d => d.roomId))].sort((a, b) => (roomOrder.indexOf(a) + 1 || 999) - (roomOrder.indexOf(b) + 1 || 999)).map(roomId => ({ roomId, room: roomName(roomId), list: list.filter(d => d.roomId === roomId) }));
-  const nameIn = (d: HomeDevice, room: string) => inRoomName({ ...d, name: look(d)?.name ?? d.name }, room);
+  const nameIn = (d: HomeDevice, room: string) => plainLamp(inRoomName({ ...d, name: look(d)?.name ?? d.name }, room), room, t);
   return <>{above}<div className="hm-systems">{bar}{strip}{attn && shown.length > 0 && <h2 className="at-attn-more">{t('systems.attentionMore', { n: shown.length })}</h2>}{rendered.map(([id, title]) => { const list = shown.filter(d => groupOf(d) === id); const parts = byRoom(list); return <Block title={title}><div className={id === 'appliances' && parts.length <= 1 ? 'ah-grid at-appliances' /* the cards and the plain tiles share one grid: the robot stands beside the feeder, not on a row of its own (critique 19.11.2026) */ : 'at-group-body'}>{id === 'appliances' && modulesHere.length > 0 && <div className="ah-grid at-module-row">{modulesHere}</div>}{list.length === 0 ? null : parts.length > 1 ? /* the rooms of a group stand side by side like the rooms of «Свет» (the same grid), not one room per row with most of the row empty */ <div className="at-sys-rooms">{parts.map(p => <div className={`at-sys-room span-${Math.min(p.list.length, 3)}`}><h3>{p.room}</h3><Tiles devices={p.list} section="systems" runner={runner} toggle={toggle} go={go} t={t} lang={lang} nameOf={d => nameIn(d, p.room)} look={look} /></div>)}</div> : <Tiles devices={list} section="systems" runner={runner} toggle={toggle} go={go} t={t} lang={lang} nameOf={d => nameIn(d, roomName(d.roomId))} roomOf={d => canToggle(d) ? roomName(d.roomId) : undefined as unknown as string} look={look} />}</div></Block>; })}</div></>;
 }
 /** «Безопасность» of a house with no alarm of its own (no Alarmo, no office areas): its own alarm panels, doors and windows, water, smoke and

@@ -31,6 +31,8 @@ export const num = (v: number | null | undefined, lang: Lang, digits = 1) => v =
 export function unitWord(code: string, t: T): string { const k = `ep.unit.${code.toLowerCase()}` as Key, s = t(k); return s === k ? code : s; }
 export function stateText(e: EntityRef, t: T, lang: Lang): string {
   if (!e.available) return t('state.unavailable');
+  // a leak sensor that has not reported yet is calm (decided earlier, tests/house-status.test.ts): «ждёт первого срабатывания», as «Безопасность» with Alarmo says, not a grey «Нет данных» (critique 19.11.2026)
+  if (e.state === 'unknown' && e.domain === 'binary_sensor' && e.deviceClass === 'moisture') return t('sec.waitFirst' as Key);
   if (e.state === 'unknown') return t('state.unknown');
   if (e.domain === 'climate') { const key = `state.${e.state}` as Key; const mode = t(key) === key ? e.state : t(key); const cur = typeof e.attributes.current_temperature === 'number' ? ` · ${num(e.attributes.current_temperature, lang)}°` : ''; return `${mode}${cur}`; }
   // a moment in time is told as one («9 окт., 21:11»), not as the UTC string Home Assistant stores

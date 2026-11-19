@@ -915,3 +915,28 @@
 /* the chosen place in the rail is lavender (DESIGN.md: the brand's one colour marks «where I am») */
 .hm-shell .hm-sidebar nav .hm-nav-ind{background:color-mix(in srgb,var(--ah-accent) 16%,transparent)}
 .hm-shell .hm-sidebar nav button.is-active{color:var(--ah-accent-ink)}
+/* «Выкл» chosen is chosen, not «on» (critique 19.11.2026): a dark-ink circle, not the lavender of «включено»; the word stays ink */
+.hm-shell .ah-mode.is-active.is-off-mode{color:var(--ah-ink)}
+.hm-shell .ah-mode.is-active.is-off-mode .ah-mode-glyph{background:var(--ah-ink);color:var(--ah-sheet)}
+/* ---- round 2 of the critique (19.11.2026) ---- */
+/* a switch that is on is lavender like every «включено» of the panel, not iOS green */
+.hm-shell .hm-switch.is-on{background:var(--ah-accent)}
+/* the owner's quick buttons at rest: a grey glyph (the rule of silence); they colour while they run */
+.hm-shell .hm-scene:not(.is-pending):not(.is-done) .hm-scene-icon{color:var(--ah-glyph)}
+/* a refused command is a warning, not a danger: amber words, red stays for leaks, gas and the alarm */
+.hm-shell .at-vac-tile-head small.is-err{color:#9a5200}
+.hm-shell.ah-shell[data-theme="dark"] .at-vac-tile-head small.is-err{color:#ffc266}
+/* a phone: the toast takes the width of the screen, not a narrow column of five lines */
+.hm-shell.is-narrow .hm-toast{left:12px;right:12px;transform:none;max-width:none;width:auto}
+/* a phone on its side: the rail is one column of icons with their words, ~88 px instead of two columns of 140 px */
+.hm-shell.is-wide.is-short:not(.ph-421) .hm-sidebar nav{grid-template-columns:64px}
+.hm-shell.is-wide.is-short:not(.ph-421) .hm-sidebar nav button{min-height:40px}
+/* «Все ›» beside a section's title: a finger's 44 px */
+.hm-shell .hm-text-btn{min-height:44px}
+/* the sheet stands out from the page in the dark theme too */
+.hm-shell.ah-shell[data-theme="dark"] .hm-scrim{background:#000000a6}
+/* a tile's second line («Выключено · 18,6°», «ждёт первого срабатывания») takes two lines instead of «…» */
+.hm-shell .ah-grid.hm-light-grid .ah-tile .ah-tile-text small{white-space:normal;text-overflow:clip;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+/* no map yet: a short line, not a third of the screen of empty card */
+.hm-shell .at-vac-map:has(>.at-vac-note){min-height:0;padding:14px 10px}
+.hm-shell .ah-grid.hm-light-grid .ah-tile .ah-tile-text small .ah-tick>span{white-space:normal;text-overflow:clip;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}

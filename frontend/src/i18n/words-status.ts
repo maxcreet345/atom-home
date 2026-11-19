@@ -3,7 +3,7 @@
 // Spread into ru.ts / en.ts / ro.ts; en and ro are typed by ru. Plural forms: "{n} zero/many|{n} one|{n} few|{n} many" (i18n/index.ts).
 const ru = {
   // ---- the house status strip
-  'status.ok': 'Всё в порядке', 'status.attention': 'Нужно внимание: {n}', 'status.label': 'Состояние дома',
+  'status.secOk': 'Безопасность: всё спокойно', 'status.ok': 'Всё в порядке', 'status.attention': 'Нужно внимание: {n}', 'status.label': 'Состояние дома',
   'status.alarm': 'Тревога', 'status.alarmAt': 'Тревога · {room}', 'status.entry': 'Вход: снимите охрану',
   'status.gasAt': 'Газ · {room}', 'status.gasN': 'Газ: {n} датчиков|Газ: {n} датчик|Газ: {n} датчика|Газ: {n} датчиков',
   'status.smokeAt': 'Дым · {room}', 'status.smokeN': 'Дым: {n} датчиков|Дым: {n} датчик|Дым: {n} датчика|Дым: {n} датчиков',
@@ -22,7 +22,7 @@ const ru = {
   'take.ring': 'Кто-то у двери', 'take.video': 'Открыть видео', 'take.later': 'Позже',
 };
 const en: typeof ru = {
-  'status.ok': 'All is well', 'status.attention': 'Needs attention: {n}', 'status.label': 'The house',
+  'status.secOk': 'Safety: all calm', 'status.ok': 'All is well', 'status.attention': 'Needs attention: {n}', 'status.label': 'The house',
   'status.alarm': 'Alarm', 'status.alarmAt': 'Alarm · {room}', 'status.entry': 'Entry: disarm now',
   'status.gasAt': 'Gas · {room}', 'status.gasN': 'Gas: {n} sensors|Gas: {n} sensor|Gas: {n} sensors|Gas: {n} sensors',
   'status.smokeAt': 'Smoke · {room}', 'status.smokeN': 'Smoke: {n} sensors|Smoke: {n} sensor|Smoke: {n} sensors|Smoke: {n} sensors',
@@ -40,7 +40,7 @@ const en: typeof ru = {
   'take.ring': 'Someone at the door', 'take.video': 'Open video', 'take.later': 'Later',
 };
 const ro: typeof ru = {
-  'status.ok': 'Totul e în regulă', 'status.attention': 'Necesită atenție: {n}', 'status.label': 'Casa',
+  'status.secOk': 'Siguranță: totul e liniștit', 'status.ok': 'Totul e în regulă', 'status.attention': 'Necesită atenție: {n}', 'status.label': 'Casa',
   'status.alarm': 'Alarmă', 'status.alarmAt': 'Alarmă · {room}', 'status.entry': 'Intrare: dezarmați',
   'status.gasAt': 'Gaz · {room}', 'status.gasN': 'Gaz: {n} senzori|Gaz: {n} senzor|Gaz: {n} senzori|Gaz: {n} de senzori',
   'status.smokeAt': 'Fum · {room}', 'status.smokeN': 'Fum: {n} senzori|Fum: {n} senzor|Fum: {n} senzori|Fum: {n} de senzori',
