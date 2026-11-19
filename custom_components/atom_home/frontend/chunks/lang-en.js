@@ -1779,6 +1779,8 @@ var e = {
 	"scene.does.wholeHome": "Whole home",
 	"scene.does.devices": "{n} devices|{n} device|{n} devices|{n} devices",
 	"scene.does.lamps": "{n} lights|{n} light|{n} lights|{n} lights",
+	"alarm.hours": "Hours",
+	"alarm.minutes": "Minutes",
 	"module.vac.title": "Vacuum",
 	"module.vac.open": "Open",
 	"module.vac.hm": "{h} h {m} min",
