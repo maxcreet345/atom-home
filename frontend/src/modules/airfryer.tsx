@@ -12,7 +12,7 @@ import { num, type Lang } from '../ui/format.ts';
 /** Xiaomi Smart Air Fryer (xiaomi.fryer.*), one card and one sheet instead of nineteen entities: what it is doing and how long is left on
  * top with «Пауза / Продолжить / Отменить», Mi Home's thirteen programs as a grid (owner 17.11.2026, studied on the owner's phone), each
  * opening its own screen with exactly the parameters Mi Home gives it and «Начать», and behind the gear the fryer's settings. The functions are the model's own MIOT
- * spec (status 0–14, 13 programs, 40–220 °C in steps of 5, 1–1440 min). The fryer is on Wi-Fi only while it is switched on at its button:
+ * spec (status 0–14, 13 programs, 40–220° in steps of 5, 1–1440 min). The fryer is on Wi-Fi only while it is switched on at its button:
  * a fryer that is not there says so and offers nothing to press. */
 type Props = { registry: Registry; entities: ModuleEntities; options: ModuleOptions; host: Host; t: T; lang: Lang };
 const kk = (t: T, k: string, p?: Record<string, string | number>) => t(`module.airfryer.${k}` as Key, p);
@@ -39,7 +39,7 @@ const optName = (t: T, group: 'mode' | 'texture' | 'layers', raw: string) => { c
 export function minutesText(t: T, min: number): string { const m = Math.max(0, Math.round(min)), h = Math.floor(m / 60), r = m % 60; return h === 0 ? kk(t, 'min', { n: r }) : r === 0 ? kk(t, 'hr', { n: h }) : `${kk(t, 'hr', { n: h })} ${kk(t, 'min', { n: r })}`; }
 function read({ registry, entities, host }: Props) {
   const st = (role: string) => { const id = entities[role]; return id ? registry.states[id] : undefined; };
-  // nothing is not zero: Number('') and Number(null) are 0, and «0 °C, 0 мин» would be shown and sent
+  // nothing is not zero: Number('') and Number(null) are 0, and «0°, 0 мин» would be shown and sent
   const n = (v: unknown) => { if (v === null || v === undefined || (typeof v === 'string' && !v.trim()) || typeof v === 'boolean') return null; const x = Number(v); return Number.isFinite(x) ? x : null; };
   const phase = fryerPhase(st('status')?.state, host.online), available = phase !== 'off';
   const live = (role: string) => available ? n(st(role)?.state) : null;
@@ -181,7 +181,7 @@ export function FryerSheet(props: Props & { room?: string; onClose: () => void; 
     <button type="button" className="hm-round" aria-label={`${label}: +${r.step}`} disabled={no || value === null || value >= r.max} onClick={() => onSet(Math.min(r.max, value! + r.step))}>+</button></div>;
   // while it cooks: the temperature and the time may still be changed, as on the fryer itself
   const live = (E.temp || E.time) && <div className="at-kt-card at-af-card"><h3>{kk(t, 'params')}</h3>
-    {E.temp && <div className="ah-row hm-setting at-kt-row"><span className="ah-row-text"><strong>{kk(t, 'temp')}</strong></span>{stepperOf(kk(t, 'temp'), temp, f.tempRange, '°C', v => steps.step('temp', v), off)}</div>}
+    {E.temp && <div className="ah-row hm-setting at-kt-row"><span className="ah-row-text"><strong>{kk(t, 'temp')}</strong></span>{stepperOf(kk(t, 'temp'), temp, f.tempRange, '°', v => steps.step('temp', v), off)}</div>}
     {E.time && <div className="ah-row hm-setting at-kt-row"><span className="ah-row-text"><strong>{kk(t, 'time')}</strong></span>{stepperOf(kk(t, 'time'), time, { min: 1, max: 1440, step: 1 }, kk(t, 'mUnit'), v => steps.step('time', v), off)}</div>}
   </div>;
   // Mi Home's «Режимы устройства»: every program at once (no pages to swipe), a tap opens the program's own screen
@@ -222,7 +222,7 @@ export function FryerSheet(props: Props & { room?: string; onClose: () => void; 
         {p.weight && E.weight && row(kk(t, 'amount'), stepperOf(kk(t, 'amount'), c.weight, f.weightRange, kk(t, 'gUnit'), v => set({ weight: v }), off))}
         {p.layers && E.layers && lay.length > 0 && row(kk(t, 'amount'), seg(kk(t, 'amount'), lay, c.layers, 'layers', o => set({ layers: o })), true)}
         {p.texture && E.texture && tex.length > 0 && row(kk(t, 'texture'), seg(kk(t, 'texture'), tex, c.texture, 'texture', o => set({ texture: o })), true)}
-        {E.temp && row(kk(t, 'tempRow'), stepperOf(kk(t, 'tempRow'), c.temp, { ...f.tempRange, max: Math.min(f.tempRange.max, p.maxTemp ?? f.tempRange.max) }, '°C', v => set({ temp: v }), off))}
+        {E.temp && row(kk(t, 'tempRow'), stepperOf(kk(t, 'tempRow'), c.temp, { ...f.tempRange, max: Math.min(f.tempRange.max, p.maxTemp ?? f.tempRange.max) }, '°', v => set({ temp: v }), off))}
         {p.time && E.time && <div className="ah-row hm-setting at-kt-row is-col"><div className="at-af-line"><span className="ah-row-text"><strong>{kk(t, 'timeRow')}</strong></span>{stepperOf(kk(t, 'timeRow'), c.time, { min: 1, max: 1440, step: p.time >= 120 ? 30 : 1 }, kk(t, 'mUnit'), v => set({ time: v }), off)}</div>
           {p.time < 120 && <div className="at-kt-chips">{TIME_CHIPS.map(v => <button type="button" className={v === c.time ? 'is-on' : ''} aria-pressed={v === c.time} disabled={off} onClick={() => set({ time: v })}>{v}</button>)}</div>}</div>}
       </div></div></div>

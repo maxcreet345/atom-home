@@ -112,7 +112,7 @@ export function AccessoryTile({ device, name, sub, room, pending, onToggle, onOp
   // second line: the room for things you switch; the state (plus the room unless the name already ends with it) for everything else
   const roomShown = roomBeside(label, room);
   // a thing you switch says «Вкл · Ванная» / «Выкл · Ванная»: on or off is never told by the glyph's colour alone, and an unknown state is not «off»
-  const switched = !e.available ? t('state.unavailable') : e.state === 'on' ? t('mode.on') : e.state === 'off' ? t('mode.off') : tileStatus(device, t, lang);
+  const switched = !e.available ? t('state.unavailable') : e.state === 'on' ? t('state.on') : e.state === 'off' ? t('state.off') : tileStatus(device, t, lang); // a tile says «Выключено»; «Выкл» is for small mode buttons (critique 19.11.2026)
   const line2 = sub ?? (device.kind === 'climate' || device.kind === 'light' ? tileStatus(device, t, lang) : onToggle ? [switched, roomShown].filter(Boolean).join(' · ') : [tileStatus(device, t, lang), roomShown].filter(Boolean).join(' · '));
   // where the page's heading carries the room («Свет» under «Ванная»), assistive tech gets the device's full name: eight buttons «Свет» tell nothing apart
   const full = label !== ownName && ownName ? ownName : label;
@@ -142,7 +142,7 @@ export function ThermostatTile({ device, name, sub, target: houseTarget, current
   // quick taps add up: the draft is shown at once, one command with the last value goes out after a pause; a command on its way never blocks the next tap
   const draft = useTargetDraft(houseTarget), target = draft.shown;
   const stepped = useRef(0), own = name ?? device.name, label = sub && !own.trim().toLowerCase().endsWith(sub.trim().toLowerCase()) ? `${own} · ${sub}` : own; // five «Радиатор» are told apart by their rooms
-  const big = current, mode = !e.available ? t('state.unavailable') : on ? stateText(e, t, lang).split(' · ')[0] : t('mode.off');
+  const big = current, mode = !e.available ? t('state.unavailable') : on ? stateText(e, t, lang).split(' · ')[0] : t('state.off');
   const line = target === null ? mode : `${mode} · ${t('ui.target')} ${num(target, lang)}°`;
   return <div className={`ah-tile ah-thermo kind-climate hm-card ${on ? 'is-on' : ''} ${e.available ? '' : 'is-off'}`} data-device-key={device.key} style={`--tile:${tileColor(device)}`}>
     <button type="button" className="ah-tile-hit" onClick={onOpen}>
@@ -172,8 +172,8 @@ export function ClockTile({ now, lang }: { now: Date; lang: Lang }) {
   </div>;
 }
 /** 1×1 scene module (owner's quick button). */
-export function SceneTile({ icon, label, onClick, t, busy, done }: { icon: string; label: string; onClick: () => void; t: T; /** the house has just accepted the command: «Готово» for a moment (a refusal is the shell's toast) */ done?: boolean; /** the command is on its way: the tile waits like a lamp's does, and a second tap sends nothing */ busy?: boolean }) {
-  return <div className={`ah-tile ah-scene hm-card hm-scene hm-scene-custom ${busy ? 'is-pending' : ''} ${done && !busy ? 'is-done' : ''}`}><button type="button" className="ah-tile-hit hm-scene-hit" {...held(busy)} onClick={() => { if (!busy) onClick(); }}><span className="ah-glyph hm-scene-icon"><Icon name={icon} size={34} /></span><span className="ah-tile-text"><strong>{label}</strong><small aria-live="polite">{busy ? t('ui.sending') : done ? t('ui.done') : t('ui.scene')}</small></span></button></div>;
+export function SceneTile({ icon, label, onClick, t, busy, done, sub }: { icon: string; label: string; onClick: () => void; t: T; /** what it does («9 ламп», «Весь дом»), instead of the word «Сценарий» (critique 19.11.2026) */ sub?: string; /** the house has just accepted the command: «Готово» for a moment (a refusal is the shell's toast) */ done?: boolean; /** the command is on its way: the tile waits like a lamp's does, and a second tap sends nothing */ busy?: boolean }) {
+  return <div className={`ah-tile ah-scene hm-card hm-scene hm-scene-custom ${busy ? 'is-pending' : ''} ${done && !busy ? 'is-done' : ''}`}><button type="button" className="ah-tile-hit hm-scene-hit" {...held(busy)} onClick={() => { if (!busy) onClick(); }}><span className="ah-glyph hm-scene-icon"><Icon name={icon} size={34} /></span><span className="ah-tile-text"><strong>{label}</strong><small aria-live="polite">{busy ? t('ui.sending') : done ? t('ui.done') : sub ?? t('ui.scene')}</small></span></button></div>;
 }
 /** 1×1 reading module: big value, label underneath (energy, weather, air). */
 export function ValueTile({ icon, value, unit, label, sub, color, onClick, className = '' }: { icon: string; value: string; unit?: string; label: string; sub?: string; color: string; onClick?: () => void; className?: string }) {

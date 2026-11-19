@@ -848,7 +848,7 @@
 .hm-shell.is-wide:not(.ph-421) .hm-sidebar nav button svg{width:20px;height:20px}
 .hm-shell .hm-sidebar nav .at-nav-short{display:none}
 .hm-shell.is-wide:not(.ph-421) .hm-sidebar nav .at-nav-long{display:none}
-.hm-shell.is-wide:not(.ph-421) .hm-sidebar nav .at-nav-short{display:block}
+.hm-shell.is-wide:not(.ph-421) .hm-sidebar nav .at-nav-short{display:block;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.1;hyphens:manual;text-align:center} /* «Безопас-ность» breaks at its soft hyphen in the 64 px column instead of «Безопасн…» (critique 19.11.2026: one name for the section) */
 .hm-shell.daily-shell.is-wide:not(.ph-421){grid-template-columns:auto minmax(0,1fr)} /* the rail's column follows its two columns instead of hiding the second under the page */
 .hm-shell .at-search input{text-overflow:ellipsis} /* «Найти устройство…» ends in «…» on a 320 px phone instead of a cut letter */
 .hm-shell .ah-tile-text{min-width:0;max-width:100%}.hm-shell .ah-tile-text small{display:block;max-width:100%} /* a centred tile's second line ends in «…», not a cut letter («Нет данных · Ван») */

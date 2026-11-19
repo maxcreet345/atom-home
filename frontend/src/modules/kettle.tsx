@@ -25,7 +25,7 @@ export function parseModes(raw: unknown, idPrefix: string): KettleMode[] {
 }
 function read({ registry, entities, host }: Props) {
   const st = (role: string) => { const id = entities[role]; return id ? registry.states[id] : undefined; };
-  // nothing is not zero: Number('') and Number(null) are 0, and «heat to 0 °C» would be shown and sent
+  // nothing is not zero: Number('') and Number(null) are 0, and «heat to 0°» would be shown and sent
   const n = (v: unknown) => { if (v === null || v === undefined || (typeof v === 'string' && !v.trim()) || typeof v === 'boolean') return null; const x = Number(v); return Number.isFinite(x) ? x : null; };
   const heater = st('heater'), a = heater?.attributes ?? {};
   const available = !!heater && heater.state !== 'unavailable' && host.online;
@@ -112,7 +112,7 @@ export function KettleSheet(props: Props & { room?: string; onClose: () => void;
   // a switch whose own entity says nothing is not «выкл»: the row says so in words and offers nothing to flip blindly
   const toggle = (role: string, label: string, hint?: string) => { const id = E[role]; if (!id) return null; const state = k.st(role)?.state, on = onOffOf(state); return <div className="ah-row hm-setting at-kt-row" data-kettle-switch={role}><span className="ah-row-text"><strong>{label}</strong>{hint && <small>{hint}</small>}</span>{on === null ? <small>{t(state === 'unknown' ? 'state.unknown' : 'state.unavailable')}</small> : <button type="button" role="switch" className={`at-kt-sw ${on ? 'is-on' : ''}`} aria-checked={on} aria-label={label} aria-busy={ui.busy === role} disabled={!k.available || ui.busy !== null} onClick={() => void ui.run(role, [['switch', on ? 'turn_off' : 'turn_on', { entity_id: id }]])}><i /></button>}</div>; };
   const setNum = (role: string, value: number) => { const id = E[role]; if (id) void ui.run(role, [['number', 'set_value', { entity_id: id, value }]]); };
-  const stepper = (label: string, value: number | null, min: number, max: number, step: number, onSet: (v: number) => void, unit = '°C') => { const off = !k.available || value === null || ui.busy !== null; return <div className="at-kt-stepper" role="group" aria-label={label}>
+  const stepper = (label: string, value: number | null, min: number, max: number, step: number, onSet: (v: number) => void, unit = '°') => { const off = !k.available || value === null || ui.busy !== null; return <div className="at-kt-stepper" role="group" aria-label={label}>
     <button type="button" className="hm-round" aria-label={`${label}: −${step}`} disabled={off || value! <= min} onClick={() => onSet(Math.max(min, value! - step))}>−</button>
     <b>{!k.available || value === null ? '—' : <>{num(value, lang, 0)}<i>{unit}</i></>}</b>
     <button type="button" className="hm-round" aria-label={`${label}: +${step}`} disabled={off || value! >= max} onClick={() => onSet(Math.min(max, value! + step))}>+</button></div>; };
@@ -126,7 +126,7 @@ export function KettleSheet(props: Props & { room?: string; onClose: () => void;
   const hero = <section className={`at-kt-hero is-${k.phase}`}>
     <ProductPhoto src={photo} className="at-kt-hero-pic" eager />
     <small>{kk(t, 'water')}</small>
-    <p className="at-kt-temp"><b>{k.temp === null ? '—' : num(k.temp, lang, 0)}</b>{k.temp !== null && <i>°C</i>}</p>
+    <p className="at-kt-temp"><b>{k.temp === null ? '—' : num(k.temp, lang, 0)}</b>{k.temp !== null && <i>°</i>}</p>
     <p className="at-kt-status" role="status">{status}</p>
     {progress !== null && <span className="at-kt-bar" role="progressbar" aria-label={status} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}><i style={{ width: `${Math.round(progress * 100)}%` }} /></span>}
     {active && <button type="button" className="hm-pill at-kt-stop" disabled={ui.busy !== null} onClick={() => void stop()}>{kk(t, 'stop')}</button>}
@@ -139,7 +139,7 @@ export function KettleSheet(props: Props & { room?: string; onClose: () => void;
       {row('boil', 'boil', kk(t, 'boil'), k.keepOn && k.keepTemp !== null ? kk(t, 'boilKeep', { t: k.keepTemp }) : kk(t, 'boilHint'), <>{go('boil', k.boilTemp, null)}</>)}
     </div>
     {k.modes.length > 0 && <div className="at-kt-card"><h3>{kk(t, 'extended')}</h3>
-      {k.modes.map(m => row(m.id, 'mode', modeName(t, m.name), m.keep ? kk(t, 'modeHint', { t: m.heat, h: hours(m.minutes) }) : `${m.heat} °C`, <><p className="at-kt-note">{m.keep ? kk(t, 'modeLong', { t: m.heat, k: m.keepTemp, h: hours(m.minutes) }) : kk(t, 'modeShort', { t: m.heat })}{m.keep && (!k.keepOn || k.keepTemp !== m.keepTemp || k.keepTime !== m.minutes) ? ` ${kk(t, 'modeChanges')}` : ''}</p>{go(m.id, m.heat, m.keep ? { temp: m.keepTemp, minutes: m.minutes } : null)}</>))}
+      {k.modes.map(m => row(m.id, 'mode', modeName(t, m.name), m.keep ? kk(t, 'modeHint', { t: m.heat, h: hours(m.minutes) }) : `${m.heat}°`, <><p className="at-kt-note">{m.keep ? kk(t, 'modeLong', { t: m.heat, k: m.keepTemp, h: hours(m.minutes) }) : kk(t, 'modeShort', { t: m.heat })}{m.keep && (!k.keepOn || k.keepTemp !== m.keepTemp || k.keepTime !== m.minutes) ? ` ${kk(t, 'modeChanges')}` : ''}</p>{go(m.id, m.heat, m.keep ? { temp: m.keepTemp, minutes: m.minutes } : null)}</>))}
     </div>}
   </>;
   const settings = <div className="at-kt-card at-kt-set">
@@ -181,7 +181,7 @@ export const kettle: ModuleDef = {
     const line = k.phase === 'off' ? kk(t, 'tileOff') : k.phase === 'lifted' ? kk(t, 'tileLifted') : k.phase === 'heating' ? kk(t, k.target >= 99 ? 'tileBoil' : 'tileHeat', { t: k.target }) : k.phase === 'keep' ? kk(t, 'tileKeep', { t: k.keepTemp === null ? '—' : k.keepTemp }) : k.phase === 'cooling' ? kk(t, 'tileCool') : kk(t, 'idle');
     // like Mi Home's tile: the kettle's picture, its name, the state with the water's temperature
     const temp = k.temp === null ? '' : ` · ${num(k.temp, lang, 0)}°`;
-    return <div className={`ah-tile hm-card at-kt-tile is-${k.phase}`} data-module-card="kettle"><button type="button" className="ah-tile-hit" onClick={onOpen} disabled={!onOpen} aria-label={`${kk(t, 'title')}: ${line}${k.temp === null ? '' : `, ${Math.round(k.temp)} °C`}`}>
+    return <div className={`ah-tile hm-card at-kt-tile is-${k.phase}`} data-module-card="kettle"><button type="button" className="ah-tile-hit" onClick={onOpen} disabled={!onOpen} aria-label={`${kk(t, 'title')}: ${line}${k.temp === null ? '' : `, ${Math.round(k.temp)}°`}`}>
       <span className="at-kt-tile-art"><ProductPhoto src={photo}><KettleArt phase={k.phase} temp={null} /></ProductPhoto></span>
       <span className="ah-tile-text"><strong>{kk(t, 'title')}</strong><small>{line}{k.phase === 'off' ? '' : temp}</small></span></button></div>;
   },

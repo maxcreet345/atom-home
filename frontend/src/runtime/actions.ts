@@ -111,6 +111,17 @@ export function mandatoryRisk(service: string, target: Record<string, unknown> =
   if (domain === 'homeassistant' && (aims('lock') || aims('alarm_control_panel')) && verb !== 'update_entity') return 'security';
   return null;
 }
+/** What an owner's button does, in a few words for its tile («9 ламп», «Весь дом», «Пылесос»); null when the panel cannot tell (the tile then says «Сценарий»). */
+export function buttonDoes(b: CustomButton, t: (k: string, p?: Record<string, string | number>) => string): string | null {
+  const [domain, verb] = b.service.split('.'), raw = { ...(b.target ?? {}), ...(b.data ?? {}) }.entity_id as unknown;
+  const ids = (Array.isArray(raw) ? raw : typeof raw === 'string' ? raw.split(',') : []).filter((x): x is string => typeof x === 'string').map(x => x.trim()).filter(Boolean);
+  if (domain === 'vacuum') return starts(domain, verb) ? t('scene.does.wholeHome') : t('art.vacuum');
+  // lamps: light.*, and the light's own relay (switch.*) on a button the owner drew as a light
+  const lamps = ids.filter(x => x.startsWith('light.') || (b.icon === 'light' && x.startsWith('switch.'))).length;
+  if (lamps && lamps === ids.length) return lamps === 1 ? t('kind.light') : t('scene.does.lamps', { n: lamps });
+  if (ids.length > 1) return t('scene.does.devices', { n: ids.length });
+  return null;
+}
 /** Starting a robot vacuum always asks first, whatever the button's own flag says (critique 19.11.2026; docs/UX-GUIDE.md: «запущенная уборка
  * в 3 ночи» is a costly mistake): the robot leaves at once. Sending it home or pausing stays one tap. */
 export const starts = (domain: string, service: string) => domain === 'vacuum' && (service === 'start' || service === 'clean_spot');

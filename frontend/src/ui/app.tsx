@@ -5,7 +5,7 @@ import type { HouseConfig } from '../model/config.ts';
 import { rememberDiscover, roomClimate, NO_ROOM, type Home, type HomeDevice, type Room, type EntityRef } from '../model/discover.ts';
 import { SECTIONS, type Section, type Kind } from '../model/kinds.ts';
 import type { Host, AutomationRow } from '../runtime/host.ts';
-import { actionsFor, serviceCall, customAction, type Action } from '../runtime/actions.ts';
+import { actionsFor, serviceCall, customAction, buttonDoes, type Action } from '../runtime/actions.ts';
 import { translator, hasDictionary, type Key } from '../i18n/index.ts';
 import { RoomTile, AccessoryTile, ThermostatTile, ClockTile as PlainClockTile, SceneTile, ValueTile, Section as Block, artOf } from './cards.tsx';
 import { ClockTile, ClockSheet, beep } from '../modules/clock.tsx';
@@ -32,7 +32,7 @@ import { HeadTools } from './head-tools.tsx';
 import { panelLayout, panelInput, peopleChips } from './panel-size.ts';
 import { setHouseZone, houseDate, dateFormat } from '../runtime/zone.ts';
 import { meterName } from '../model/energy-load.ts';
-import { CamerasTile, CamerasPanel, type CamView } from './cameras.tsx';
+import { CamerasTile, CamerasPanel, useShown, type CamView } from './cameras.tsx';
 import { HeatingTile, HeatingPanel } from './heating.tsx';
 import { climateSensors } from '../model/climate-sensors.ts';
 import { GasCard } from './gas-card.tsx';
@@ -240,7 +240,7 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
   const seenCamEvents = useRef(new Map<string, CamEvent>()); // detections this screen saw on (see holdEnded)
   // Every camera of the house in the modules' order (the main one first: C700, then the doorbell, then the rest), with what it reports now.
   const camViews: CamView[] = (() => { const rank = (d: HomeDevice) => { const m = modFor(d); return m ? modules.indexOf(m) * 10 + camerasOf(m).indexOf(d.primary.id) : 1e6; };
-    const list = enabled.filter(d => d.kind === 'camera' && (d.primary.available || !!modFor(d)?.def.Player)).sort((a, b) => rank(a) - rank(b)).map(d => { const m = modFor(d), sensors = sensorsOf(registry, m?.def.sensors?.(m.entities, d.primary.id) ?? []), room = home.rooms.find(r => r.id === d.roomId)?.name ?? ''; const own = inRoomName(d, room); return { device: d, name: /^(камера|camera|cameră)$/i.test(own) && room ? room : own /* «Компьютерная · Камера» is the office's camera */, state: tileState(d), sensors, events: currentEvents(registry.states, d.key, sensors), online: d.primary.available || tileState(d)?.closed === true /* a closed lens is not a lost camera: its stream goes away on purpose */ }; });
+    const list = enabled.filter(d => d.kind === 'camera' && (d.primary.available || !!modFor(d)?.def.Player)).sort((a, b) => rank(a) - rank(b)).map(d => { const m = modFor(d), sensors = sensorsOf(registry, m?.def.sensors?.(m.entities, d.primary.id) ?? []), room = home.rooms.find(r => r.id === d.roomId)?.name ?? ''; const own = inRoomName(d, room); return { device: d, name: /^(камера|camera|cameră)$/i.test(own) && room ? room : own /* «Компьютерная · Камера» is the office's camera */, state: tileState(d), sensors, events: currentEvents(registry.states, d.key, sensors), online: (d.primary.available && !(m?.entities.camera && registry.states[m.entities.camera]?.state === 'unavailable')) || tileState(d)?.closed === true /* a closed lens is not a lost camera: its stream goes away on purpose. A go2rtc camera whose own HA camera is gone is «Нет связи» on its tile, and so here too (critique 19.11.2026) */ }; });
     const held = holdEnded(seenCamEvents.current, list.flatMap(v => v.events), Date.now());
     return list.map(v => ({ ...v, events: held.filter(e => e.camera === v.device.key) })); })();
   // A ring opens the doorbell sheet on every device and closes it again after the module's seconds; any touch of the sheet keeps it. With another sheet open, a banner offers to switch instead.
@@ -575,7 +575,9 @@ type Look = { name?: string; sub?: string; device?: HomeDevice; toggle?: boolean
 function Tiles({ devices, section, room, runner, toggle, go, t, lang, nameOf, roomOf, look }: Common & { devices: HomeDevice[]; section: Section; room?: string | null; toggle: (d: HomeDevice) => void; nameOf?: (d: HomeDevice) => string; roomOf?: (d: HomeDevice) => string; look?: (d: HomeDevice) => Look | undefined }) {
   // two tiles that would read the same («Датчик окна» twice: the contact and its case) say what each one measures
   const said = devices.map(d => nameOf?.(d) ?? d.name), twice = (i: number) => said.some((n, j) => j !== i && n === said[i]);
-  const named = (d: HomeDevice, i: number) => { if (!twice(i)) return nameOf?.(d); const what = metricLabel(d.primary, t); return what && what !== d.primary.name && what !== said[i] ? `${said[i]} · ${what}` : said[i]; };
+  // two of the same in different rooms say the room («Протечка · Ванная»), not the measure («Протечка · Влага»: a leak sensor only ever measures that; critique 19.11.2026)
+  const named = (d: HomeDevice, i: number) => { if (!twice(i)) return nameOf?.(d); const other = devices.some((x, j) => j !== i && said[j] === said[i] && x.roomId !== d.roomId), where = other ? roomOf?.(d) : undefined;
+    if (where && where !== said[i]) return `${said[i]} · ${where}`; if (d.kind === 'leak') return said[i]; const what = metricLabel(d.primary, t); return what && what !== d.primary.name && what !== said[i] ? `${said[i]} · ${what}` : said[i]; };
   // the name the page gives (under a room's header without the room, 1.27.0) wins over the look's own: the look's name is what the page's naming starts from
   return <Cascade className="ah-grid hm-light-grid">{devices.map((d, i) => { const l = look?.(d), sw = l?.switches ?? d; return <AccessoryTile device={l?.device ?? d} name={nameOf ? named(d, i) : l?.name ?? named(d, i)} sub={l?.sub} room={roomOf?.(d)} pending={runner.busy.has(sw.key)} onToggle={canToggle(sw) && l?.toggle !== false ? () => toggle(sw) : undefined} onOpen={l?.open ?? (() => go({ section, room: room ?? null, device: d.key }))} t={t} lang={lang} />; })}</Cascade>;
 }
@@ -620,7 +622,7 @@ function Overview({ home, registry, config, modules, player, tileState, host, ru
     {vacuum && <Guard where="tile:vacuum" kind="tile" t={t}><VacuumTile pics={vacPics} v={vacuum} host={host} t={t} lang={lang} onOpen={() => go({ section: 'cleaning' })} /></Guard>}
     {cameras.slice(0, 1).map(c => { const st = tileState(c); return <Guard where="tile:camera" kind="tile" t={t}><CameraTile device={c} state={st} player={st?.closed ? null : player(c, 'tile')} onOpen={() => go({ section: 'home', device: c.key })} t={t} lang={lang} large /></Guard>; })}
     {modules.filter(m => m.def.placement.includes('overview')).map(m => { if (m.def.sheetKey) return <Guard where={`card:${m.def.id}`} kind="tile" t={t}><m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} compact rooms={home.rooms} onOpen={() => go({ section: 'home', device: m.def.sheetKey })} /></Guard>; const target = (m.def.placement.find(p => p !== 'overview') ?? 'systems') as Section, name = t(`module.${m.def.id}` as Key); return <div className="ah-tile ah-module"><button type="button" className="ah-tile-hit at-module-hit" aria-label={`${t('ui.open')}: ${name === `module.${m.def.id}` ? t(`section.${target}` as Key) : name}`} onClick={() => go({ section: target })} /><div className="at-module-body"><Guard where={`card:${m.def.id}`} kind="tile" t={t}><m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} compact /></Guard></div></div>; })}
-    {config.buttons.slice(0, 6).map(b => { const a = customAction(b); return <SceneTile icon={b.icon ?? 'more'} label={b.label} t={t} busy={runner.busy.has(`button:${b.id}`)} done={sceneDone === `button:${b.id}`} onClick={() => void runner.run({ key: `button:${b.id}`, name: b.label, primary: { available: true } } as HomeDevice, a)} />; })}
+    {config.buttons.slice(0, 6).map(b => { const a = customAction(b); return <SceneTile icon={b.icon ?? 'more'} label={b.label} t={t} sub={buttonDoes(b, (k, p) => t(k as Key, p)) ?? undefined} busy={runner.busy.has(`button:${b.id}`)} done={sceneDone === `button:${b.id}`} onClick={() => void runner.run({ key: `button:${b.id}`, name: b.label, primary: { available: true } } as HomeDevice, a)} />; })}
     {weather && <ValueTile icon="air" value={wtemp === null ? '—' : num(wtemp, lang, 0)} unit={wtemp === null ? undefined : '°'} label={t('section.weather')} sub={(k => t(k) === k ? stateText(weather.primary, t, lang) : t(k))(`clock.weather.${weather.primary.state}` as Key)} color="#32ade6" onClick={() => go({ section: 'systems', device: weather.key })} className="at-weather" />}
     {co2 && !modules.some(m => m.def.sheetKey === 'air') && <ValueTile icon="air" value={num(co2v!, lang, 0)} unit="ppm" label={t('overview.air')} sub={air.label} color={air.tone === 'danger' ? '#ff3b30' : air.tone === 'warning' ? '#ff9f0a' : '#30d158'} onClick={() => go({ section: 'systems', device: co2Dev?.key ?? null })} className={`hm-status tone-${air.tone}`} />}
     <Guard where="tile:energy" kind="tile" t={t}><EnergyTile devices={d} boilers={boilers} grid={grid} host={host} t={t} lang={lang} onClick={() => go({ section: 'energy' })} /></Guard>
@@ -786,7 +788,8 @@ function SecurityDevices({ devices, runner, toggle, go, t, lang, roomName, rooms
   return <div className="hm-systems at-sec-devices">{after}{groups.map(([title, has]) => { const list = sorted.filter(has); return list.length ? <Block title={title}><Tiles devices={list} section="security" runner={runner} toggle={toggle} go={go} t={t} lang={lang} nameOf={d => inRoomName(d, roomName(d.roomId))} roomOf={d => roomName(d.roomId)} /></Block> : null; })}</div>;
 }
 /** The way from «Безопасность» to the cameras: how many there are and whether they answer; the «Камеры» panel, or the one camera's own sheet. */
-function CamerasLink({ views, t, onOpen }: { views: CamView[]; t: ReturnType<typeof translator>; onOpen: () => void }) {
+function CamerasLink({ views: all, t, onOpen }: { views: CamView[]; t: ReturnType<typeof translator>; onOpen: () => void }) {
+  const views = useShown(all); // a camera with no picture is not «на связи» here either: one truth with its tile (critique 19.11.2026)
   if (!views.length) return null;
   const online = views.filter(v => v.online).length, sub = [t('cams.count', { n: views.length }), online === views.length ? t('cams.allOnline') : t('cams.someOnline', { n: online, all: views.length })].join(' · ');
   return <button type="button" className={`hm-card at-sec-cams ${online < views.length ? 'is-warn' : ''}`} onClick={onOpen}><span className="ah-glyph at-sec-cams-glyph"><Icon name="video" size={24} /></span><span className="at-sec-cams-text"><strong>{t('cams.title')}</strong><small>{sub}</small></span><Icon name="next" size={20} /></button>;

@@ -20,9 +20,9 @@ export const boilerEbus: ModuleDef = {
     return <section className="hm-card at-boiler">
       <div className="at-boiler-head"><span className={`at-module-art ${burning ? 'is-on' : ''}`}><ProductPhoto src={shot}><DeviceArt type="boiler" fill /></ProductPhoto></span><div><strong>{t('module.boiler_ebus')}</strong><small>{burning ? t('module.boiler.burning') : flame === 'off' ? t('module.boiler.idle') : t('state.unknown')}</small></div><span className={`hm-badge ${low || high ? 'tone-warning' : 'tone-calm'}`}>{pressure === null ? '—' : `${num(pressure, lang, 2)} ${unitWord('bar', t)}`}</span></div>
       <div className="at-boiler-grid">
-        {tile('flow', t('module.boiler.flow'), '°C', val('flowSet') !== null ? `${t('ui.target')} ${num(val('flowSet'), lang, 0)}°` : undefined)}
-        {entities.return && tile('return', t('module.boiler.return'), '°C', val('flow') !== null && val('return') !== null ? `Δ ${num(Math.abs(val('flow')! - val('return')!), lang, 1)}°` : undefined)}
-        {entities.hwc && tile('hwc', t('module.boiler.hwc'), '°C', val('hwcSet') !== null ? `${t('ui.target')} ${num(val('hwcSet'), lang, 0)}°` : undefined)}
+        {tile('flow', t('module.boiler.flow'), '°', val('flowSet') !== null ? `${t('ui.target')} ${num(val('flowSet'), lang, 0)}°` : undefined)}
+        {entities.return && tile('return', t('module.boiler.return'), '°', val('flow') !== null && val('return') !== null ? `Δ ${num(Math.abs(val('flow')! - val('return')!), lang, 1)}°` : undefined)}
+        {entities.hwc && tile('hwc', t('module.boiler.hwc'), '°', val('hwcSet') !== null ? `${t('ui.target')} ${num(val('hwcSet'), lang, 0)}°` : undefined)}
         {tile('pressure', t('module.boiler.pressure'), unitWord('bar', t), low ? t('module.boiler.low') : high ? t('module.boiler.high') : t('module.boiler.norm'), low || high ? 'is-warning' : '')}
       </div>
     </section>;

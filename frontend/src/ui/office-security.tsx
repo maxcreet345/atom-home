@@ -157,7 +157,7 @@ function DevRows({ i, t, lang }: { i: OsecItem; t: T; lang: Lang }) {
     <Row k={ok(t, 'row.link')} v={i.offline ? ok(t, 'offline') : i.nodata.includes('link') ? ok(t, 'noData') : ok(t, 'row.online')} bad={i.offline || (i.nodata.includes('link') && 'warn')} />
     {i.signal && <Row k={ok(t, 'row.signal')} v={ok(t, `sig.${i.signal}`)} bad={i.signal === 'weak'} />}
     {i.level !== null && <Row k={ok(t, 'row.battery')} v={`${Math.round(i.level)} %`} bad={i.level <= 20 || i.battery} />}
-    {i.temp !== null && <Row k={ok(t, 'row.temp')} v={`${Math.round(i.temp)} °C`} />}
+    {i.temp !== null && <Row k={ok(t, 'row.temp')} v={`${Math.round(i.temp)}°`} />}
     {i.problem && !i.offline && <Row k={ok(t, 'row.fault')} v={ok(t, 'problem')} bad />}
   </div>;
 }

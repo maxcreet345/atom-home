@@ -10,7 +10,7 @@ import { ago, eventFilter, historyEvents, houseTime, TONE, topEvent, type CamEve
 import { decode, encode } from '../runtime/route.ts';
 import { playerDown } from '../modules/camera-state.ts';
 /** The views as the frames show them: a camera whose tile has no picture (see `playerDown`) is not «на связи», whatever its entity says. Re-renders when a player changes its mind. */
-function useShown(views: CamView[]): CamView[] {
+export function useShown(views: CamView[]): CamView[] {
   const [, bump] = useState(0);
   useEffect(() => playerDown.subscribe(() => bump(n => n + 1)), []);
   return views.map(v => v.online && v.state?.closed !== true && playerDown.has(v.device.primary.id) ? { ...v, online: false } : v);

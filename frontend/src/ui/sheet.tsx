@@ -110,7 +110,7 @@ function Settings({ device, runner, t, lang, host, offline }: Common & { host?: 
   const ICON: Record<string, string> = { switch: 'power', input_boolean: 'power', number: 'settings', input_number: 'settings', select: 'more', input_select: 'more' };
   return <>
     {buttons.length > 0 && <div className="ah-group"><small className="ah-group-title">{device.kind === 'vacuum' ? t('ui.rooms') : t('ui.actions')}</small><div className="hm-chips at-actions">{buttons.map(({ p, a }) => <button type="button" className="hm-pill" {...held(runner.busy.has(device.key), offline)} disabled={!p.available || !device.primary.available} onClick={() => { if (!runner.busy.has(device.key)) void runner.run(device, a); }}>{chip(p.name)}</button>)}</div></div>}
-    {(others.length > 0 || readOnly.length > 0) && <Fold title={`${t('ui.settings')} (${others.length + readOnly.length})`}>
+    {(others.length > 0 || readOnly.length > 0) && <Fold title={admin ? `${t('ui.settings')} (${others.length + readOnly.length})` : t('ui.details') /* the family has readings here, not settings (critique 19.11.2026) */}>
       {others.map(({ p, a }) => <SettingRow device={device} action={a} runner={runner} t={t} lang={lang} icon={ICON[p.domain]} color={a.kind === 'toggle' ? (a.current === true ? '#30d158' : '#8e8e93') : '#7b74d8'} nameOf={namesOf(host)} offline={offline} />)}
       {readOnly.map(p => <div className="ah-row hm-setting"><span className="ah-row-text"><strong>{human(short(p.name, device), t)}</strong></span><small>{stateText(p, t, lang)}</small></div>)}
     </Fold>}
