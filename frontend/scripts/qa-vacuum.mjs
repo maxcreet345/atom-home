@@ -64,32 +64,34 @@ if (!ONLY || process.env.QA_AXE) for (const theme of ['light', 'dark']) for (con
 }
 // 3. the words in three languages, and what the owner reads
 for (const lang of ['ru', 'en', 'ro']) for (const hash of ['#home', '#cleaning', '#cleaning?filter=settings']) { const p = await open({ scenario: 'warn', lang, hash }); const t = await p.page.evaluate(() => document.querySelector('.hm-main')?.innerText ?? ''); check(`no missing words ${lang} ${hash}`, !/module\.vac/.test(t), t.match(/module\.vac\.[\w.]+/g)); await p.ctx.close(); }
+/** A start asks first since the critique of 19.11.2026 («Начать уборку…? Робот поедет сразу»): the press answers «Начать» when the question comes. */
+const press = async (page, sel, opts) => { await page.locator(sel).click(opts); await page.waitForTimeout(80); const yes = page.locator('.hm-confirm [data-answer="yes"]'); if (await yes.count()) await yes.click(); };
 { const p = await open({}); const t = await p.page.locator('.at-vac-tile').innerText();
   check('cleaning tile: room and progress', /Убирает · Кухня · \d+ %/.test(t), t); await p.page.waitForTimeout(600); check(PICS ? 'cleaning tile: the Roborock render, not the drawing' : 'cleaning tile: the render is not on this machine — the drawn robot stands in, no broken picture', PICS ? await p.page.locator('.at-vac-tile .at-vac-pic.is-out img').count() === 1 : await p.page.locator('.at-vac-tile svg.at-vac-buddy').count() === 1 && await p.page.locator('.at-vac-tile .at-vac-pic img').count() === 0); await p.ctx.close(); }
 { const p = await open({ scenario: 'docked' }); await p.page.waitForTimeout(600); check(PICS ? 'docked tile: the robot on its dock' : 'docked tile: the render is not on this machine — the drawn robot stands in, no broken picture', PICS ? await p.page.locator('.at-vac-tile .at-vac-pic.is-home img').count() === 1 : await p.page.locator('.at-vac-tile svg.at-vac-buddy').count() === 1 && await p.page.locator('.at-vac-tile .at-vac-pic img').count() === 0); await p.ctx.close(); }
 { const p = await open({ scenario: 'drawn' }); check('without renders the drawn robot stands in', await p.page.locator('.at-vac-tile svg.at-vac-buddy').count() === 1); await p.ctx.close(); }
 { const p = await open({ scenario: 'warn', hash: '#cleaning' }); const t = await p.page.locator('.at-vac-panel').innerText();
   check('warn: the dock says what is wrong', t.includes('База: бак грязной воды полон'), t.slice(0, 300)); check('warn: the sensors are due', t.includes('Пора менять: Датчики')); await p.ctx.close(); }
-{ const p = await open({ scenario: 'error' }); check('error: the words', (await p.page.locator('.at-vac-tile').innerText()).includes('Ошибка: застрял')); await p.page.locator('.at-vac-go').click(); await p.page.waitForTimeout(150); const l = await log(p.page); check('error: «Продолжить» resumes once freed', l.length === 1 && l[0].s === 'start', l); await p.ctx.close(); }
+{ const p = await open({ scenario: 'error' }); check('error: the words', (await p.page.locator('.at-vac-tile').innerText()).includes('Ошибка: застрял')); await press(p.page, '.at-vac-go'); await p.page.waitForTimeout(150); const l = await log(p.page); check('error: «Продолжить» resumes once freed', l.length === 1 && l[0].s === 'start', l); await p.ctx.close(); }
 { const p = await open({ scenario: 'unlinked', hash: '#cleaning' }); check('unlinked: the rooms say they need linking', (await p.page.locator('.at-vac-panel').innerText()).includes('не связаны с зонами HA')); await p.ctx.close(); }
 { const p = await open({ hash: '#cleaning' }); check('nine rooms in the robot\'s order', (await p.page.locator('.at-vac-room:not(.is-all) span').allInnerTexts()).join(',').replace(/\u00a0/g, ' ') === 'Гостиная,Коридор у спальни,Спальня,Прихожая,Детская,Коридор у ванной,Кухня,Компьютерная,Ванная');
   check('the room it is in now is marked', (await p.page.locator('.at-vac-room.is-here').innerText()).includes('Кухня')); await p.ctx.close(); }
 // 4. every button sends one command, with the right data
 const E = 'vacuum.living_robot_vacuum';
-{ const p = await open({}); await p.page.locator('.at-vac-tile .at-vac-go').click(); await p.page.waitForTimeout(150); const l = await log(p.page);
+{ const p = await open({}); await press(p.page, '.at-vac-tile .at-vac-go'); await p.page.waitForTimeout(150); const l = await log(p.page);
   check('cleaning tile main: pause', l.length === 1 && l[0].s === 'pause' && l[0].entity_id === E, l);
   await p.page.locator('.at-vac-tile .at-vac-home').click(); await p.page.waitForTimeout(150); const d = (await log(p.page)).slice(1);
   check('tile «На базу»: return_to_base', d.length === 1 && d[0].s === 'return_to_base', d); await p.ctx.close(); }
-{ const p = await open({ scenario: 'paused' }); await p.page.locator('.at-vac-tile .at-vac-go').click(); await p.page.waitForTimeout(150); const l = await log(p.page);
+{ const p = await open({ scenario: 'paused' }); await press(p.page, '.at-vac-tile .at-vac-go'); await p.page.waitForTimeout(150); const l = await log(p.page);
   check('paused tile main: start (resume)', l.length === 1 && l[0].s === 'start', l); await p.ctx.close(); }
-{ const p = await open({ scenario: 'docked' }); await p.page.locator('.at-vac-tile .at-vac-go').click(); await p.page.waitForTimeout(150); const l = await log(p.page);
+{ const p = await open({ scenario: 'docked' }); await press(p.page, '.at-vac-tile .at-vac-go'); await p.page.waitForTimeout(150); const l = await log(p.page);
   check('docked tile main: start the whole flat', l.length === 1 && l[0].s === 'start', l);
   await p.page.locator('.at-vac-tile .at-vac-home').click({ force: true }); await p.page.waitForTimeout(150); check('docked «На базе» sends nothing', (await log(p.page)).length === 1); await p.ctx.close(); }
 { const p = await open({ scenario: 'docked', hash: '#cleaning' }); const rooms = p.page.locator('.at-vac-room:not(.is-all)');
   await rooms.nth(6).click(); await rooms.nth(0).click(); check('the main button counts the rooms', (await p.page.locator('.at-vac-big').innerText()).includes('Убрать 2 комнаты'));
-  await p.page.locator('.at-vac-big').click(); await p.page.waitForTimeout(150); const l = await log(p.page);
+  await press(p.page, '.at-vac-big'); await p.page.waitForTimeout(150); const l = await log(p.page);
   check('two rooms ×1: clean_area in the order chosen', l.length === 1 && l[0].s === 'clean_area' && JSON.stringify(l[0].cleaning_area_id) === '["kukhnia","gostinaia"]', l);
-  await p.page.locator('.at-vac-repeat button', { hasText: '×2' }).click(); await p.page.locator('.at-vac-big').click(); await p.page.waitForTimeout(150); const r = (await log(p.page)).slice(1);
+  await p.page.locator('.at-vac-repeat button', { hasText: '×2' }).click(); await press(p.page, '.at-vac-big'); await p.page.waitForTimeout(150); const r = (await log(p.page)).slice(1);
   check('two rooms ×2: app_segment_clean with repeat', r.length === 1 && r[0].s === 'send_command' && r[0].command === 'app_segment_clean' && JSON.stringify(r[0].params) === '[{"segments":[7,1],"repeat":2}]', r);
   await p.page.locator('.at-vac-room.is-all').click(); check('«Вся квартира» clears the choice', (await p.page.locator('.at-vac-room.is-on').count()) === 1);
   await p.page.locator('.at-vac-mode', { hasText: 'Пылесос и швабра' }).click(); await p.page.waitForTimeout(150); const m = (await log(p.page)).slice(2);
@@ -116,21 +118,21 @@ const E = 'vacuum.living_robot_vacuum';
   await p.page.locator('.at-vac-routine').click(); await p.page.waitForTimeout(150); const r = (await log(p.page)).slice(2);
   check('«Полная уборка»: the Roborock routine button', r.length === 1 && r[0].s === 'press' && /polnaia_uborka/.test(r[0].entity_id), r);
   await p.page.locator('.at-vac-set-head .hm-back').click(); await p.page.waitForTimeout(300); check('back returns to the panel', await p.page.locator('.at-vac-panel:not(.is-settings)').count() === 1); await p.ctx.close(); }
-{ const p = await open({ scenario: 'docked', hash: '#cleaning' }); await p.page.locator('.at-vac-repeat button', { hasText: '×2' }).click(); await p.page.locator('.at-vac-big').click(); await p.page.waitForTimeout(150); const l = await log(p.page);
+{ const p = await open({ scenario: 'docked', hash: '#cleaning' }); await p.page.locator('.at-vac-repeat button', { hasText: '×2' }).click(); await press(p.page, '.at-vac-big'); await p.page.waitForTimeout(150); const l = await log(p.page);
   check('whole flat ×2: every linked room twice', l.length === 1 && l[0].command === 'app_segment_clean' && JSON.stringify(l[0].params) === '[{"segments":[1,2,3,4,5,6,7,9,10],"repeat":2}]', l); await p.ctx.close(); }
 // 5. a refused command is said
-{ const p = await open({ accept: false }); await p.page.locator('.at-vac-tile .at-vac-go').click(); await p.page.waitForTimeout(400);
-  const said = await p.page.locator('.at-vac-tile .at-heat-err').innerText(); check('a refused command is said on the tile, in a sentence', /[а-яё]{4}/i.test(said) && !/object|undefined/i.test(said), said); await p.ctx.close(); }
+{ const p = await open({ accept: false }); await press(p.page, '.at-vac-tile .at-vac-go'); await p.page.waitForTimeout(400);
+  const said = await p.page.locator('.at-vac-tile-head small.is-err').innerText(); check('a refused command is said on the tile, in a sentence', /[а-яё]{4}/i.test(said) && !/object|undefined/i.test(said), said); await p.ctx.close(); }
 // 6. the offline robot offers nothing to press
-{ const p = await open({ scenario: 'offline' }); check('offline: start not pressable', await p.page.locator('.at-vac-go').getAttribute('aria-disabled') === 'true'); await p.page.locator('.at-vac-go').click({ force: true }); await p.page.waitForTimeout(150); check('offline: nothing sent', (await log(p.page)).length === 0); await p.ctx.close(); }
+{ const p = await open({ scenario: 'offline' }); check('offline: start not pressable', await p.page.locator('.at-vac-go').getAttribute('aria-disabled') === 'true'); await press(p.page, '.at-vac-go', { force: true }); await p.page.waitForTimeout(150); check('offline: nothing sent', (await log(p.page)).length === 0); await p.ctx.close(); }
 { const p = await open({ scenario: 'offline', hash: '#cleaning' });
   const off = await p.page.evaluate(() => ({ modes: [...document.querySelectorAll('.at-vac-mode')].map(b => b.getAttribute('aria-disabled')), chips: [...document.querySelectorAll('#at-vac-mode .at-vac-seg button')].map(b => b.disabled), stop: document.querySelector('.at-vac-side')?.getAttribute('aria-disabled') ?? null }));
   check('offline: every mode and every chip is locked', off.modes.length > 0 && off.modes.every(x => x === 'true') && off.chips.every(Boolean), off);
   await p.page.evaluate(() => { document.querySelectorAll('.at-vac-mode, #at-vac-mode .at-vac-seg button, .at-vac-routine, .at-vac-dockbtn').forEach(b => b.click()); }); await p.page.waitForTimeout(250);
   check('offline: pressing them sends nothing', (await log(p.page)).length === 0, await log(p.page)); await p.ctx.close(); }
 // 7. the house itself off the line (the robot is fine): nothing is sent, and the tile says why
-{ const p = await open({ scenario: 'docked' }); await p.page.evaluate(() => window.atomPreview.setOnline(false)); await p.page.waitForTimeout(200); await p.page.locator('.at-vac-tile .at-vac-go').click({ force: true }); await p.page.waitForTimeout(400);
-  const said = await p.page.locator('.at-vac-tile .at-heat-err').innerText().catch(() => ''); check('house offline: no command leaves the panel', (await log(p.page)).length === 0, await log(p.page)); check('house offline: the tile says «Нет связи с домом» (or the shell does)', /Нет связи с домом/.test(said) || /Нет связи с домом/.test(await p.page.evaluate(() => document.body.innerText)), said); await p.ctx.close(); }
+{ const p = await open({ scenario: 'docked' }); await p.page.evaluate(() => window.atomPreview.setOnline(false)); await p.page.waitForTimeout(200); await press(p.page, '.at-vac-tile .at-vac-go', { force: true }); await p.page.waitForTimeout(400);
+  const said = await p.page.locator('.at-vac-tile-head small.is-err').innerText().catch(() => ''); check('house offline: no command leaves the panel', (await log(p.page)).length === 0, await log(p.page)); check('house offline: the tile says «Нет связи с домом» (or the shell does)', /Нет связи с домом/.test(said) || /Нет связи с домом/.test(await p.page.evaluate(() => document.body.innerText)), said); await p.ctx.close(); }
 // settings: the last volume picked is the one the robot ends on; a refusal puts the slider back; «‹ Пылесос» is a step back in history, not a new entry
 { const p = await open({ scenario: 'docked', hash: '#cleaning?filter=settings' }); await p.page.waitForSelector('.at-vac-range'); await p.page.evaluate(() => window.atomPreview.setDelay(800));
   const setVol = v => p.page.evaluate(n => { const el = document.querySelector('.at-vac-range'); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; set.call(el, String(n)); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }, v);
@@ -202,8 +204,8 @@ const MODE = 'select.living_robot_vacuum_cleaning_mode';
   await p.page.locator('#at-vac-mode .at-vac-seg button:not(.is-on)').first().click({ force: true }); await p.page.waitForTimeout(250);
   check('round2 l89: a mode chip off the line says it in the mode card', /Нет связи с домом/.test(await p.page.locator('#at-vac-mode .at-heat-err').innerText().catch(() => '')));
   check('round2 l89: nothing was sent', (await log(p.page)).length === 0, await log(p.page)); await p.ctx.close();
-  const t = await open({ scenario: 'docked' }); await t.page.evaluate(() => window.atomPreview.setOnline(false)); await t.page.waitForTimeout(200); await t.page.locator('.at-vac-tile .at-vac-go').click({ force: true }); await t.page.waitForTimeout(300);
-  check('round2 l89: the tile\'s own line says «Нет связи с домом»', /Нет связи с домом/.test(await t.page.locator('.at-vac-tile .at-heat-err').innerText().catch(() => '')) && (await log(t.page)).length === 0); await t.ctx.close(); }
+  const t = await open({ scenario: 'docked' }); await t.page.evaluate(() => window.atomPreview.setOnline(false)); await t.page.waitForTimeout(200); await press(t.page, '.at-vac-tile .at-vac-go', { force: true }); await t.page.waitForTimeout(300);
+  check('round2 l89: the tile\'s own line says «Нет связи с домом»', /Нет связи с домом/.test(await t.page.locator('.at-vac-tile-head small.is-err').innerText().catch(() => '')) && (await log(t.page)).length === 0); await t.ctx.close(); }
 { // l0: the browser's «Back» from the settings puts the focus on the gear, as «‹ Пылесос» does
   const p = await open({ scenario: 'docked', hash: '#cleaning' }); await p.page.locator('.at-vac-corner .at-vac-icon').last().click(); await p.page.waitForSelector('.at-vac-panel.is-settings'); await p.page.waitForTimeout(200);
   await p.page.goBack(); await p.page.waitForSelector('.at-vac-panel:not(.is-settings)'); await p.page.waitForTimeout(300);
@@ -213,7 +215,7 @@ const MODE = 'select.living_robot_vacuum_cleaning_mode';
   await p.page.reload(); await p.page.waitForFunction(() => window.ready === true, null, { timeout: 15000 }); await p.page.waitForSelector('.at-vac-room'); await p.page.evaluate(() => window.atomPreview.host.setAccept(true)); await p.page.waitForTimeout(300);
   const kept = await p.page.evaluate(() => ({ on: [...document.querySelectorAll('.at-vac-room:not(.is-all).is-on')].map(b => `${b.querySelector('.at-vac-room-n')?.textContent}:${b.querySelector('span')?.textContent}`), repeat: document.querySelector('.at-vac-repeat button[aria-pressed="true"]')?.textContent, big: document.querySelector('.at-vac-big')?.textContent ?? '' }));
   check('round2 l92: after a reload the two rooms, their order and ×2 are still chosen', kept.on.length === 2 && kept.on.some(x => /^1:Кухня/.test(x)) && kept.on.some(x => /^2:Гостиная/.test(x)) && kept.repeat === '×2' && /Убрать 2 комнаты/.test(kept.big), kept);
-  await p.page.locator('.at-vac-big').click(); await p.page.waitForTimeout(200); const l = await log(p.page);
+  await press(p.page, '.at-vac-big'); await p.page.waitForTimeout(200); const l = await log(p.page);
   check('round2 l92: …and the command is the same as before the reload', l.length === 1 && l[0].command === 'app_segment_clean' && JSON.stringify(l[0].params) === '[{"segments":[7,1],"repeat":2}]', l); await p.ctx.close(); }
 for (const lang of ['ru', 'en', 'ro']) { // l118: the time fields follow the panel's language where the browser allows; f54: the suction words of en / ro stay whole on a phone
   const s = await open({ scenario: 'docked', lang, hash: '#cleaning?filter=settings' }); const langs = await s.page.evaluate(() => [...document.querySelectorAll('.at-vac-times input[type=time]')].map(i => i.getAttribute('lang')));
