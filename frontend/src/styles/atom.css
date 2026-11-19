@@ -883,3 +883,21 @@
 .hm-shell .at-gas.is-off .at-gas-note{color:var(--ah-red)}
 .hm-shell .at-cs-name.is-street{display:flex;flex-direction:column;white-space:normal}.hm-shell .at-cs-name.is-street span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hm-shell .at-cs-tile:not(.is-street) .at-cs-name{padding-bottom:calc(.8125rem * 1.25)} /* the rooms' readings stand on the street's line */
+/* A phone on its side (critique 19.11.2026, `is-short`: the panel is 360–420 px tall): the header is one row and «Нужно внимание» one row with its
+   reasons side by side (they scroll sideways), so the first screen shows tiles, not only the header and the strip */
+.hm-shell.is-short.hm-route-home .hm-head{flex-wrap:nowrap;align-items:center;margin-bottom:8px}
+.hm-shell.is-short.is-wide.hm-route-home .hm-head-title,.hm-shell.is-short.hm-route-home .hm-head-title{flex:1 1 0;min-width:0}
+.hm-shell.is-short.hm-route-home .hm-head-title :is(h1,p){white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-shell.is-short .ah-status{flex-wrap:nowrap;min-height:0;padding:6px 10px;gap:10px;margin-bottom:8px}
+.hm-shell.is-short .ah-status-head{flex:none;gap:8px}
+.hm-shell.is-short .ah-status-glyph{width:36px;height:36px}
+.hm-shell.is-short .ah-status-title{font-size:1rem;white-space:nowrap}
+.hm-shell.is-short .ah-status-chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain;scroll-snap-type:x proximity}
+.hm-shell.is-short .ah-status-chips>li{flex:none;scroll-snap-align:start}
+/* the sheet's head with its «Закрыть» stays at the top while the sheet scrolls (critique 19.11.2026: in the feeder's long sheet the cross scrolled away
+   on a phone); it covers the content under it with the sheet's own colour, edge to edge */
+.hm-shell .hm-sheet-body>.hm-sheet-head{position:sticky;top:0;z-index:4;margin:-18px -18px 0;padding:18px 18px 10px;background:var(--ah-sheet)}
+/* larger system text (130–150 %) on a phone (critique 19.11.2026): the greeting takes two lines and the people's summary wraps, instead of
+   «Добрый вечер · четверг, 19…» and «нет дан…» */
+.hm-shell:where(:not(.pw-381)):not(.is-short) .hm-head p{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.hm-shell.is-narrow .at-people-sum{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.1}
