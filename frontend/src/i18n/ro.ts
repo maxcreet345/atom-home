@@ -490,6 +490,8 @@ export const ro: Dictionary = {
   'scene.does.wholeHome': "Toată casa",
   'scene.does.devices': "{n} dispozitive|{n} dispozitiv|{n} dispozitive|{n} de dispozitive",
   'scene.does.lamps': "{n} becuri|{n} bec|{n} becuri|{n} de becuri",
+  'alarm.hours': "Ora",
+  'alarm.minutes': "Minute",
   'module.vac.title': "Aspirator",
   'module.vac.open': "Deschide",
   'module.vac.hm': "{h} h {m} min",

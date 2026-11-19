@@ -490,6 +490,8 @@ export const ru = {
   'scene.does.wholeHome': "Весь дом",
   'scene.does.devices': "{n} устройств|{n} устройство|{n} устройства|{n} устройств",
   'scene.does.lamps': "{n} ламп|{n} лампа|{n} лампы|{n} ламп",
+  'alarm.hours': "Часы",
+  'alarm.minutes': "Минуты",
   'module.vac.title': "Пылесос",
   'module.vac.open': "Открыть",
   'module.vac.hm': "{h} ч {m} мин",

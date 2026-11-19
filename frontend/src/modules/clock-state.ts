@@ -66,8 +66,12 @@ export function dialMinutes(x: number, y: number, cx: number, cy: number, max = 
 export interface ClockSettings { style: 'analog' | 'digital'; seconds: boolean; arc: boolean; beep: boolean }
 export const DEFAULT_CLOCK: ClockSettings = { style: 'analog', seconds: true, arc: true, beep: true };
 export const CLOCK_KEY = 'atom-home:clock';
-export function readClockSettings(): ClockSettings { try { const raw = localStorage.getItem(CLOCK_KEY); if (!raw) return DEFAULT_CLOCK; const v = JSON.parse(raw) as Partial<ClockSettings>; return { style: v.style === 'digital' ? 'digital' : 'analog', seconds: v.seconds !== false, arc: v.arc !== false, beep: v.beep !== false }; } catch { return DEFAULT_CLOCK; } }
-export function writeClockSettings(s: ClockSettings): void { try { localStorage.setItem(CLOCK_KEY, JSON.stringify(s)); } catch { /* private mode */ } }
+/** Read once and kept (the tile asks every second in the digital and timer modes): parsed again only after a write or another tab's change. */
+let clockCache: ClockSettings | null = null;
+if (typeof window !== 'undefined') window.addEventListener?.('storage', e => { if (e.key === CLOCK_KEY) clockCache = null; });
+export function readClockSettings(): ClockSettings { return clockCache ??= readClockSettingsRaw(); }
+function readClockSettingsRaw(): ClockSettings { try { const raw = localStorage.getItem(CLOCK_KEY); if (!raw) return DEFAULT_CLOCK; const v = JSON.parse(raw) as Partial<ClockSettings>; return { style: v.style === 'digital' ? 'digital' : 'analog', seconds: v.seconds !== false, arc: v.arc !== false, beep: v.beep !== false }; } catch { return DEFAULT_CLOCK; } }
+export function writeClockSettings(s: ClockSettings): void { clockCache = s; try { localStorage.setItem(CLOCK_KEY, JSON.stringify(s)); } catch { /* private mode */ } }
 /** Where a person is, for the «who is home» row. */
 export function personState(row: StateRow | undefined): { home: boolean; zone: string | null; unknown?: true } {
   const s = row?.state ?? 'unknown';
@@ -147,3 +151,4 @@ export async function snoozeAlarm(host: BannerHost, minutes = 9): Promise<void> 
   if (!host.online || !host.ws) throw new CommandError();
   await host.ws({ type: 'atom_home/alarm/snooze', minutes });
 }
+

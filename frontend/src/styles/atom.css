@@ -940,3 +940,21 @@
 /* no map yet: a short line, not a third of the screen of empty card */
 .hm-shell .at-vac-map:has(>.at-vac-note){min-height:0;padding:14px 10px}
 .hm-shell .ah-grid.hm-light-grid .ah-tile .ah-tile-text small .ah-tick>span{white-space:normal;text-overflow:clip;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+/* ---- clock audit (19.11.2026) ---- */
+.hm-shell{--ah-orange:#ff9f0a;--ah-off:#8e8e93}
+/* the alarm's time: two 24-hour fields «07 : 00» in the look of the old time field */
+.hm-shell .at-alarm-hm{display:inline-flex;align-items:center;gap:2px;padding:4px 10px;border-radius:14px;border:1px solid var(--ah-line);background:var(--ah-inset,#0000000f)}
+.hm-shell .at-alarm-hm select{appearance:none;-webkit-appearance:none;min-height:48px;padding:0 4px;border:0;border-radius:10px;background:none;color:var(--ah-ink);font:inherit;font-size:2.125rem;font-weight:700;letter-spacing:-1px;font-variant-numeric:tabular-nums;text-align:center;cursor:pointer}
+.hm-shell .at-alarm-hm select:focus-visible{outline:3px solid var(--ah-accent);outline-offset:-2px}
+.hm-shell .at-alarm-hm b{font-size:2rem;font-weight:700;color:var(--ah-muted)}
+/* a window's head: one control, the title stays centred */
+.hm-shell .at-win-gap{flex:none;width:44px;height:44px}
+/* the custom-minutes dial takes the keyboard's and the remote's focus */
+.hm-shell .at-clock-dial:focus-visible{outline:3px solid var(--ah-accent);outline-offset:4px;border-radius:50%}
+/* a finger's 44 px in the clock's screens (touch only: a mouse keeps the compact sizes) */
+@media (any-pointer:coarse){
+  .hm-shell .at-clock :is(.hm-pill.is-small,.at-clock-new,.at-alarm-add),.hm-shell .at-win :is(.hm-pill,.hm-pill.is-small,.at-door-seg button,.at-clock-label-input,.at-clock-ctl){min-height:44px}
+  .hm-shell .at-clock-ctl{min-width:44px}
+  .hm-shell .at-win .hm-switch,.hm-shell .at-clock .hm-switch{position:relative}
+  .hm-shell .at-win .hm-switch::before,.hm-shell .at-clock .hm-switch::before{content:'';position:absolute;inset:-7px -2px}
+}
