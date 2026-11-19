@@ -315,6 +315,11 @@
 .hm-shell .at-lights-room .ah-grid{grid-template-columns:repeat(1,minmax(0,1fr))}.hm-shell .at-lights-room.span-2 .ah-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hm-shell .at-lights-room.span-3 .ah-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 .hm-shell .at-lights-room .hm-section-head h2{font-size:.875rem;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hm-shell .at-lights-room .hm-section-head{gap:6px;min-width:0}
+.hm-shell .at-appliances>.ah-grid{display:contents}
+.hm-shell .at-group-body{display:contents}
+.hm-shell .at-sys-room>h3{padding-bottom:6px;margin-bottom:8px;border-bottom:1px solid var(--ah-line)}
+/* the room's header reaches over exactly its own tiles (critique 19.11.2026): a hairline under the name as wide as the room's columns, so «Детская» visibly owns two tiles and «Кладовка» one */
+.hm-shell .at-lights-room>.hm-section-head{padding-bottom:6px;margin-bottom:8px;border-bottom:1px solid var(--ah-line)}
 
 /* audit 04.11.2026: H2 room pills wrap on phones; H3 room sub-blocks in Systems; H5 no hyphenation in tile names; H7 visible «···»; C2 no native play overlay, «no connection» state; N5 empty states */
 .is-narrow .ah-room-pills{flex-wrap:wrap;overflow:visible;margin-inline:0;padding-inline:0}

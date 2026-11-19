@@ -410,7 +410,7 @@
 .hm-shell .ah-module .hm-status-text strong,.hm-shell .ah-value-num{white-space:nowrap}
 /* panel (max-width:380px) */.hm-shell:where(:not(.pw-381)) .hm-head h1{font-size:1.5rem}.hm-shell:where(:not(.pw-381)) .hm-head p{font-size:.8125rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* a module narrower than 130 px (a phone's three columns, a phone on its side) is compact whatever the screen is: the tile's own width decides */
-@container (max-width:130px){.hm-shell .ah-module .hm-status-text strong{font-size:clamp(1.125rem,19cqw,1.625rem)}.hm-shell .ah-value .ah-tile-text small{-webkit-line-clamp:1;white-space:nowrap;display:block;overflow:hidden;text-overflow:ellipsis}.hm-shell .ah-value-num b{font-size:clamp(1.375rem,22cqw,2.125rem)}}
+@container (max-width:130px){.hm-shell .ah-module .hm-status-text strong{font-size:clamp(1.125rem,19cqw,1.625rem)}.hm-shell .ah-value .ah-tile-text small{-webkit-line-clamp:2;white-space:normal;line-height:1.15} /* two short lines on a 105 px phone tile, not «нет данных …» (critique 19.11.2026) */.hm-shell .ah-value-num b{font-size:clamp(1.375rem,22cqw,2.125rem)}}
 
 /* Home face: group tiles and the rooms strip */
 .hm-shell .ah-group-tile .ah-value-num b{font-size:clamp(1.625rem,24cqw,2.5rem)}
@@ -1165,6 +1165,8 @@
 @media (prefers-reduced-motion:reduce){.hm-shell .at-vac-buddy.is-clean,.hm-shell .at-vac-spark,.hm-shell .at-vac-brush{animation:none}}
 /* the tile (2×2, a phone's full width) */
 .hm-shell .ah-grid>.at-vac-tile{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}.hm-shell.is-narrow .ah-grid>.at-vac-tile,.hm-shell.is-compact .ah-grid>.at-vac-tile{grid-column:1/-1;grid-row:auto}
+/* full width, its height follows the content: the drawn robot needs its own height, a flex basis of 0 left it 0 px tall on phones (critique 19.11.2026) */
+.hm-shell:is(.is-narrow,.is-compact) .ah-grid>.at-vac-tile .at-vac-tile-buddy:not(:has(.at-vac-pic)){flex:none;height:clamp(84px,30cqw,130px)}
 .hm-shell .at-vac-tile{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:8px;padding:13px 14px 12px;background:linear-gradient(155deg,var(--vz-1),var(--vz-2));container-type:inline-size}
 .hm-shell.ah-shell[data-theme="dark"] .at-vac-tile{background:linear-gradient(155deg,var(--vz-1),var(--vz-2)),linear-gradient(#0c141c59,#0c141c59)}
 .hm-shell .at-vac-open{position:absolute;inset:0;z-index:0;border:0;background:none;border-radius:inherit;cursor:pointer}.hm-shell .at-vac-open:focus-visible{outline:3px solid var(--ah-accent,#5e5ce6);outline-offset:-3px}
