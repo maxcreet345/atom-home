@@ -901,3 +901,17 @@
    «Добрый вечер · четверг, 19…» and «нет дан…» */
 .hm-shell:where(:not(.pw-381)):not(.is-short) .hm-head p{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .hm-shell.is-narrow .at-people-sum{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.1}
+/* ---- polish (critique 19.11.2026; DESIGN.md «Тихий дом»: the rule of the soft shadow, the response like Apple HomeView / Vision Pro) ----
+   Light theme: a surface stands off the wall by a soft short shadow, not by its fill (tile on wall was 1,15:1). Dark theme keeps its smoked glass. */
+.hm-shell.ah-shell:not([data-theme="dark"]){--ah-tile-shadow:0 1px 3px #00000017,0 6px 18px #00000012;--ah-lift-shadow:0 2px 6px #0000001a,0 12px 28px #0000001a}
+.hm-shell.ah-shell[data-theme="dark"]{--ah-lift-shadow:inset 0 1px 0 #ffffff40,0 10px 28px #0000004d}
+.hm-shell.ah-shell:not([data-theme="dark"]) :is(.ah-group,.hm-room,.ah-status){box-shadow:var(--ah-tile-shadow)}
+/* the response: under the pointer, the remote's or the keyboard's focus a tile lifts a little; a press sinks it with a spring */
+.hm-shell :is(.ah-tile,.hm-room){transition:background-color .22s ease,box-shadow .22s ease,transform .32s var(--ah-spring)}
+@media (hover:hover) and (pointer:fine){.hm-shell :is(.ah-tile,.hm-room):hover{transform:translateY(-1px) scale(1.02);box-shadow:var(--ah-lift-shadow)}}
+.hm-shell :is(.ah-tile:has(:focus-visible),.hm-room:focus-visible){transform:translateY(-1px) scale(1.02);box-shadow:var(--ah-lift-shadow)}
+.hm-shell :is(.ah-tile,.hm-room):active{transform:scale(.97);transition-duration:.08s}
+@media (prefers-reduced-motion:reduce){.hm-shell :is(.ah-tile,.hm-room):is(:hover,:focus-visible,:has(:focus-visible),:active){transform:none}}
+/* the chosen place in the rail is lavender (DESIGN.md: the brand's one colour marks «where I am») */
+.hm-shell .hm-sidebar nav .hm-nav-ind{background:color-mix(in srgb,var(--ah-accent) 16%,transparent)}
+.hm-shell .hm-sidebar nav button.is-active{color:var(--ah-accent-ink)}
