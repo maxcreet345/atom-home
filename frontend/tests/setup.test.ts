@@ -32,7 +32,7 @@ test('an import is checked before it may replace anything: broken, truncated and
   const c = defaultConfig('Дом'); c.rooms.kitchen = { name: 'Кухня' }; c.devices['e:light.a'] = { enabled: false }; c.buttons.push({ id: 'b1', label: 'Ночь', service: 'light.turn_off', confirm: true });
   c.alarms.push({ id: 'a1', room: 'kitchen', time: '07:00', days: [1], enabled: true, label: '', alice: 'off', phrase: '', station: '', light: false, lightEntity: '', fadeMin: 15, push: false, repeats: 0, repeatEveryMin: 5 }); c.energy.tariffs.push({ from: '2026-01-01', lei: 3.5 });
   const text = exportConfig(c), ok = checkImport(text);
-  assert.ok(ok.ok); if (ok.ok) { assert.deepEqual(ok.config, c); assert.deepEqual(configCounts(ok.config), { rooms: 1, devices: 1, buttons: 1, alarms: 1, tariffs: 1 }); }
+  assert.ok(ok.ok); if (ok.ok) { assert.deepEqual(ok.config, c); assert.deepEqual(configCounts(ok.config), { rooms: 1, devices: 1, buttons: 1, alarms: 1, tariffs: 1, cards: 0 }); }
   for (const [raw, problem] of [['', 'empty'], ['   \n', 'empty'], [text.slice(0, text.length / 2), 'not_json'], ['{not json', 'not_json'], ['x'.repeat(600 * 1024), 'too_large'],
     ['null', 'not_config'], ['[1,2]', 'not_config'], ['"text"', 'not_config'], ['{}', 'not_config'], ['{"name":"package"}', 'not_config'], ['{"schemaVersion":2,"home":{"name":"X"}}', 'not_config'],
     ['{"schemaVersion":1}', 'not_config'], ['{"schemaVersion":1,"home":{"name":"X"},"rooms":[]}', 'not_config'], ['{"schemaVersion":1,"home":{"name":"X"},"buttons":{}}', 'not_config']] as const) {

@@ -67,12 +67,12 @@ export function checkImport(raw: string): { ok: true; config: HouseConfig; warni
   if (!raw.trim()) return { ok: false, problem: 'empty' };
   if (raw.length > 512 * 1024) return { ok: false, problem: 'too_large' };
   let v: unknown; try { v = JSON.parse(raw); } catch { return { ok: false, problem: 'not_json' }; }
-  const maps = ['rooms', 'devices', 'entities', 'modules', 'sections', 'energy'], lists = ['buttons', 'alarms'];
+  const maps = ['rooms', 'devices', 'entities', 'modules', 'sections', 'energy', 'profileInstances'], lists = ['buttons', 'alarms'];
   if (!plainObject(v) || v.schemaVersion !== 1 || !plainObject(v.home) || typeof v.home.name !== 'string' || maps.some(k => v[k] !== undefined && !plainObject(v[k])) || lists.some(k => v[k] !== undefined && !Array.isArray(v[k]))) return { ok: false, problem: 'not_config' };
   return { ok: true, ...normaliseConfig(v) };
 }
 /** What an import replaces, in numbers the confirmation shows as «было → станет». */
-export const configCounts = (c: HouseConfig) => ({ rooms: Object.keys(c.rooms).length, devices: Object.keys(c.devices).length, buttons: c.buttons.length, alarms: c.alarms.length, tariffs: c.energy.tariffs.length });
+export const configCounts = (c: HouseConfig) => ({ rooms: Object.keys(c.rooms).length, devices: Object.keys(c.devices).length, buttons: c.buttons.length, alarms: c.alarms.length, tariffs: c.energy.tariffs.length, cards: Object.keys(c.profileInstances ?? {}).length });
 /** Import never throws: malformed input yields the default config plus warnings the UI shows. */
 export function importConfig(raw: string): { config: HouseConfig; warnings: string[] } {
   if (raw.length > 512 * 1024) return { config: normaliseConfig(null).config, warnings: ['import: file larger than 512 KB'] };

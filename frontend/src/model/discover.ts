@@ -24,6 +24,8 @@ const makeRef = (e: EntityRow, s: StateRow | undefined, kind: Kind | null, nameO
   state: s?.state ?? 'unavailable', attributes: s?.attributes ?? {}, unit: e.unit ?? (s?.attributes.unit_of_measurement as string | undefined) ?? null,
   available: !!s && s.state !== 'unavailable', lastChanged: s?.last_changed ?? '',
 });
+/** The same reference `discover` makes, for a card built from an installer's bindings (model/card-catalog.ts). */
+export const entityRefOf = makeRef;
 const deviceName = (d: DeviceRow) => d.name?.trim() || d.model || d.id;
 
 /** Build the household model from the HA registries, the live states and the house configuration. `claimed` entities belong to a module's card. Pure; safe to call on every state change. */

@@ -1,6 +1,7 @@
 import { wordsCameras } from './words-cameras.ts';
 import { wordsClimate } from './words-climate.ts';
 import { wordsSetup } from './words-setup.ts';
+import { wordsCatalog } from './words-catalog.ts';
 import { wordsStatus } from './words-status.ts';
 export const ru = {
   // C-1 of the audit of 17.11.2026: what a part of the panel that failed to draw says instead of a blank screen
@@ -1061,5 +1062,6 @@ export const ru = {
   ...wordsCameras.ru,
   ...wordsClimate.ru,
   ...wordsSetup.ru,
+  ...wordsCatalog.ru,
 };
 export type Dictionary = typeof ru;

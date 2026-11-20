@@ -7,7 +7,7 @@ import { errorText, unitWord, type Lang } from './format.ts';
 import { houseDate } from '../runtime/zone.ts';
 import { Icon } from './primitives.tsx';
 import { DeviceArt } from './device-art.tsx';
-import { boilerMark, dayOf, heatTone, heatingRooms, houseSet, hystMax, outdoorText, pressureWord, problemRoom, returnDate, roomLocked, scenarioNow, vacationArming, type HeatRoom, type Heating, type HeatTone, type Scenario } from '../model/heating.ts';
+import { partsOf, boilerMark, dayOf, heatTone, heatingRooms, houseSet, hystMax, outdoorText, pressureWord, problemRoom, returnDate, roomLocked, scenarioNow, vacationArming, type HeatRoom, type Heating, type HeatTone, type Scenario } from '../model/heating.ts';
 import { heatingActions, vacationDisarms } from '../model/heating-act.ts';
 import { stepCore, stepValue, type StepCore } from '../model/heating-step.ts';
 import { CommandError } from '../runtime/commands.ts';
@@ -96,7 +96,7 @@ function sentence(h: Heating, t: T, lang: Lang): string {
   if (!h.system) return tk(t, 'offSentence');
   if (!h.thermostatOnline) return tk(t, 'screenOff');
   // a boiler whose bus is silent, or whose relay does not answer, is said on the tile too, after a lost head and beside the rooms' state
-  const off = h.rooms.filter(r => r.action === 'offline'), tail = !h.boiler.online ? tk(t, 'boilerSilent') : h.boiler.relay === null ? tk(t, 'relaySilent') : '';
+  const off = h.rooms.filter(r => r.action === 'offline'), tail = !partsOf(h).boiler ? '' : !h.boiler.online ? tk(t, 'boilerSilent') : h.boiler.relay === null ? tk(t, 'relaySilent') : '';
   if (off.length) return [tk(t, 'noLink', { rooms: off.map(r => r.name).join(', ') }), tail].filter(Boolean).join(' · ');
   if (h.boiler.pressureLow || h.boiler.pressureHigh) return tk(t, h.boiler.pressureLow ? 'pressureLow' : 'pressureHigh', { v: h.boiler.pressure === null ? '—' : h.boiler.pressure.toLocaleString(LOC[lang], { maximumFractionDigits: 2 }) });
   const n = heatingRooms(h), win = h.rooms.filter(r => r.action === 'window');
@@ -165,7 +165,7 @@ export function HeatingTile({ h, host, t, lang, onOpen, now }: { h: Heating; hos
     <span className="at-heat-tile-buddy"><Radiator tone={tone} /></span>
     <div className="at-heat-tile-head"><strong>{tk(t, 'title')}</strong><small>{sentence(h, t, lang)}</small><Err text={ui.err('house', 'mode', 'power')} /></div>
     <div className="at-heat-tile-mid">
-      {h.system || !h.systemKnown ? <><ModeSwitch h={h} t={t} busy={ui.pending('mode')} stale={offline} onStale={() => ui.refuse('mode')} onMode={m => ui.run('mode', () => act.mode(m))} />
+      {h.system || !h.systemKnown ? <>{partsOf(h).mode && <ModeSwitch h={h} t={t} busy={ui.pending('mode')} stale={offline} onStale={() => ui.refuse('mode')} onMode={m => ui.run('mode', () => act.mode(m))} />}
         <Stepper value={st.shown} text={text} onStep={st.step} t={t} label={tk(t, 'houseTemp')} wait={offline} onWait={() => ui.refuse('house')} atMin={st.atMin} atMax={st.atMax} pending={st.pending} />
         <small className="at-heat-cap">{caption(h, t)}</small></> :
         <><b className="at-heat-offword">{tk(t, 'offWord')}</b>{h.systemKnown && <Power on={false} busy={ui.pending('power')} stale={offline} onStale={() => ui.refuse('power')} offline={!h.thermostatOnline} t={t} onPower={v => ui.run('power', () => act.power(v))} />}</>}
@@ -277,11 +277,11 @@ export function HeatingPanel({ h, host, t, lang, now, sensors }: { h: Heating; h
       <div className="at-heat-hero-ctl">
         {h.system || !h.systemKnown ? <div className="at-heat-hero-temp"><Stepper value={st.shown} text={text} onStep={st.step} t={t} label={tk(t, 'houseTemp')} wait={offline} onWait={() => ui.refuse('house')} atMin={st.atMin} atMax={st.atMax} pending={st.pending} /><small className="at-heat-cap">{caption(h, t)}</small></div> : <div className="at-heat-hero-temp"><b className="at-heat-offword">{tk(t, 'offWord')}</b><small className="at-heat-cap">{tk(t, 'offHint')}</small></div>}
         <ul className="at-heat-hero-facts">
-        <li className={(m => m ? `is-${m}` : '')(boilerMark(h.boiler))}><Icon name={!h.boiler.online || h.boiler.relay === null ? 'warning' : 'flame'} size={15} />{!h.boiler.online ? tk(t, 'f.boilerOff') : h.boiler.relay === null ? tk(t, 'b.relayLost') : h.boiler.flame ? tk(t, 'f.burning', { v: setT(h.boiler.flow === null ? null : Math.round(h.boiler.flow), lang) }) : h.boiler.flame === null ? tk(t, 'b.flameUnknown') : tk(t, 'f.rest')}</li>
+        {partsOf(h).boiler && <li className={(m => m ? `is-${m}` : '')(boilerMark(h.boiler))}><Icon name={!h.boiler.online || h.boiler.relay === null ? 'warning' : 'flame'} size={15} />{!h.boiler.online ? tk(t, 'f.boilerOff') : h.boiler.relay === null ? tk(t, 'b.relayLost') : h.boiler.flame ? tk(t, 'f.burning', { v: setT(h.boiler.flow === null ? null : Math.round(h.boiler.flow), lang) }) : h.boiler.flame === null ? tk(t, 'b.flameUnknown') : tk(t, 'f.rest')}</li>}
         <li><Icon name="thermo" size={15} />{h.thermostatOnline ? tk(t, 'f.screen') : tk(t, 'f.screenOff')}</li>
         <li className={openN || deafN ? 'is-warn' : ''}><Glyph d={WIN} />{[openN ? tk(t, 'f.winOpen', { n: openN }) : '', deafN ? tk(t, 'f.winSilent', { n: deafN }) : ''].filter(Boolean).join(' · ') || tk(t, 'f.winClosed')}</li>
       </ul>
-        <div className="at-heat-hero-side">{(h.system || !h.systemKnown) && <ModeSwitch h={h} t={t} busy={ui.pending('mode')} stale={offline} onStale={() => ui.refuse('mode')} onMode={m => ui.run('mode', () => act.mode(m))} />}<small className="at-heat-modehint">{h.mode === 'manual' ? tk(t, 'manualHint') : tk(t, 'autoHint')}</small>
+        <div className="at-heat-hero-side">{(h.system || !h.systemKnown) && partsOf(h).mode && <ModeSwitch h={h} t={t} busy={ui.pending('mode')} stale={offline} onStale={() => ui.refuse('mode')} onMode={m => ui.run('mode', () => act.mode(m))} />}{partsOf(h).mode && <small className="at-heat-modehint">{h.mode === 'manual' ? tk(t, 'manualHint') : tk(t, 'autoHint')}</small>}
           {h.systemKnown && <Power on={h.system} busy={ui.pending('power')} stale={offline} onStale={() => ui.refuse('power')} offline={!h.thermostatOnline} t={t} onPower={v => ui.run('power', () => act.power(v))} />}</div>
       </div>
 
@@ -289,8 +289,8 @@ export function HeatingPanel({ h, host, t, lang, now, sensors }: { h: Heating; h
     <section className="at-heat-sec"><div className="hm-section-head"><h2>{tk(t, 'rooms')}</h2><small className="at-heat-sec-hint">{roomLocked(h) ? tk(t, 'roomVac') : h.mode === 'manual' ? tk(t, 'roomsManual') : tk(t, 'roomsAuto')}</small></div>
       <div className="at-heat-rooms">{h.rooms.map(r => <RoomCard r={r} h={h} act={act} t={t} lang={lang} now={now} ui={ui} offline={offline} />)}</div></section>
     {sensors && <ClimateSensorsBlock s={sensors} t={t} lang={lang} />}
-    <Scenarios h={h} act={act} t={t} lang={lang} ui={ui} now={now} offline={offline} />
-    <BoilerCard h={h} t={t} lang={lang} />
+    {partsOf(h).scenarios && <Scenarios h={h} act={act} t={t} lang={lang} ui={ui} now={now} offline={offline} />}
+    {partsOf(h).boiler && <BoilerCard h={h} t={t} lang={lang} />}
     {h.hyst && (host.admin ? <Hysteresis h={h} act={act} t={t} lang={lang} ui={ui} offline={offline} /> : <HysteresisLine h={h} t={t} lang={lang} />)}
   </div>;
 }

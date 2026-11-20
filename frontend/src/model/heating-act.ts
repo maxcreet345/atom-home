@@ -1,19 +1,21 @@
 /* What the heating panel can do (docs/HEATING.md §D): every command is one HA service the automations already understand. Pure: tested under Node. */
-import { NO_RETURN_DAY, type Heating, type HeatRoom } from './heating.ts';
+import { NO_RETURN_DAY, idsOf, type Heating, type HeatRoom } from './heating.ts';
 type Call = (domain: string, service: string, data: Record<string, unknown>) => Promise<unknown>;
 export function heatingActions(h: Heating, host: { call: Call }) {
-  const call: Call = (d, s, data) => host.call(d, s, data);
+  const call: Call = (d, s, data) => host.call(d, s, data), ids = idsOf(h);
+  const manualOf = (r: HeatRoom) => r.ids ? r.ids.manual : `input_number.${r.key}_heating_manual_temp`, timerOf = (r: HeatRoom) => r.ids ? r.ids.timer : `timer.${r.key}_heating_override`;
   return {
     /** «Авто»: the common temperature — in «Дома» it is the «Дома» temperature, in another scenario a change until the scenario ends (as on the thermostat).
      * «Ручной»: every room gets it at once. */
-    house: (v: number): Promise<unknown> => h.mode === 'manual' ? Promise.all(h.rooms.map(r => call('input_number', 'set_value', { entity_id: `input_number.${r.key}_heating_manual_temp`, value: v }))) :
+    house: (v: number): Promise<unknown> => h.mode === 'manual' ? Promise.all(h.rooms.filter(r => manualOf(r)).map(r => call('input_number', 'set_value', { entity_id: manualOf(r)!, value: v }))) :
+      !ids.legacy ? (ids.homeTemp ? call(ids.homeTemp.split('.')[0], 'set_value', { entity_id: ids.homeTemp, value: v }) : call('climate', 'set_temperature', { entity_id: h.thermostat, temperature: v })) :
       h.scenario === 'home' ? call('input_number', 'set_value', { entity_id: 'input_number.heating_home_temp', value: v }) :
       Promise.all([call('input_number', 'set_value', { entity_id: 'input_number.heating_scenario_override_temp', value: v }), call('input_boolean', 'turn_on', { entity_id: 'input_boolean.heating_scenario_override' })]),
-    mode: (m: 'auto' | 'manual') => call('input_select', 'select_option', { entity_id: 'input_select.heating_mode', option: m === 'manual' ? 'Ручной' : 'Авто' }),
-    power: (on: boolean) => call('climate', 'set_hvac_mode', { entity_id: h.thermostat, hvac_mode: on ? 'heat' : 'off' }),
+    mode: (m: 'auto' | 'manual') => ids.mode && ids.modeAuto && ids.modeManual ? call(ids.mode.split('.')[0], 'select_option', { entity_id: ids.mode, option: m === 'manual' ? ids.modeManual : ids.modeAuto }) : Promise.reject(new Error('no mode')),
+    power: (on: boolean) => ids.system ? call(ids.system.split('.')[0], on ? 'turn_on' : 'turn_off', { entity_id: ids.system }) : call('climate', 'set_hvac_mode', { entity_id: h.thermostat, hvac_mode: on ? 'heat' : 'off' }),
     /** the head itself: in «Авто» the automation keeps it three hours, in «Ручной» it becomes the room's temperature */
     room: (r: HeatRoom, v: number) => call('climate', 'set_temperature', { entity_id: r.trv, temperature: v }),
-    back: (r: HeatRoom) => call('timer', 'cancel', { entity_id: `timer.${r.key}_heating_override` }),
+    back: (r: HeatRoom) => timerOf(r) ? call('timer', 'cancel', { entity_id: timerOf(r)! }) : Promise.reject(new Error('no timer')),
     /** the heads' hysteresis for the whole house: the helpers only, the heating automation puts it on every head */
     hyst: (k: 'down' | 'up', v: number) => call('input_number', 'set_value', { entity_id: `input_number.heating_hyst_${k}`, value: v }),
     /** «Отпуск» is the house's: with the security's own «Отпуск» it arms or disarms that, and the heating follows (heating_security).

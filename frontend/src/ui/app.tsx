@@ -2,6 +2,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'pr
 import { Icon } from './primitives.tsx';
 import type { Registry } from '../model/registry.ts';
 import type { HouseConfig } from '../model/config.ts';
+import { normaliseConfig } from '../model/config.ts';
 import { rememberDiscover, roomClimate, NO_ROOM, type Home, type HomeDevice, type Room, type EntityRef } from '../model/discover.ts';
 import { SECTIONS, type Section, type Kind } from '../model/kinds.ts';
 import type { Host, AutomationRow } from '../runtime/host.ts';
@@ -73,6 +74,9 @@ import { shellAlarm, announcement, sk } from '../model/security-words.ts';
 import { houseStatus, type HouseStatus } from '../model/house-status.ts';
 import { HouseStatusStrip } from './house-status.tsx';
 import { people } from '../model/people.ts';
+import { instanceViews, INSTANCE_PREFIX, type InstanceView } from '../model/card-catalog.ts';
+import { heatLayoutOf } from '../model/heating-layout.ts';
+import { CardCatalog, AddCardButton, LostNote } from './catalog.tsx';
 /** The menu (1.27.0, owner 11.11.2026: «в левое меню добавь панель Энергия, Безопасность», «Системы … так и назови: Устройства»):
  * Дом · Комнаты · Свет · Устройства · Энергия · Безопасность (+ Настройка for admins). «Климат», «Уборка» and «Камеры» are segments of
  * «Устройства»; the old addresses (#systems, #climate, #cleaning, #camera, #energy, #security, ?filter=) stay what they were. */
@@ -146,9 +150,14 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
   // PERF-1 of the audit: a state change of Home Assistant does not rebuild the house. The modules found are the same list until one of them
   // changes; the house model (model/discover.ts) answers from memory unless a state changed its shape, renewing only the cards a value touched.
   const findModules = useMemo(() => rememberModules(), []), modules = findModules(registry, config); // the same array until the modules themselves change (modules/index.ts)
-  const claimed = useMemo(() => claimedEntities(registry, config, modules), [config, modules]);
+  const claimed = useMemo(() => claimedEntities(registry, config, modules), [config, modules, registry.entities]);
   const discoverHome = useMemo(() => rememberDiscover(), []);
-  const home = useMemo(() => discoverHome(registry, config, claimed), [registry, config, claimed]);
+  const found = useMemo(() => discoverHome(registry, config, claimed), [registry, config, claimed]);
+  // the cards the installer added from the catalog (model/card-catalog.ts): each its own device of the house, drawn by the panel's own tile and
+  // sheet; a card whose required fields are not bound is not drawn for the residents. The heating scheme is drawn by the heating screen.
+  const cardViews = useMemo<InstanceView[]>(() => config.profileInstances ? instanceViews(registry, config.profileInstances, a => found.rooms.find(r => r.id === a)?.name ?? null, undefined, k => t(k as Key)) : [], [registry, config.profileInstances, found.rooms, t]);
+  const home = useMemo(() => { const own = cardViews.filter(v => !v.incomplete.length && v.profile.renderer !== 'heatingRooms').map(v => ({ ...v.device, photo: config.devices[`d:${v.device.haDeviceId}`]?.photo ?? (v.instance.legacyKey ? config.devices[v.instance.legacyKey]?.photo : null) ?? null }));
+    return own.length ? { ...found, devices: [...found.devices, ...own] } : found; }, [found, cardViews, config.devices]);
   const [view, setView] = useState<View>(() => decode(navigationWindow.location.hash));
   /** The module that plays a camera: its own `camera`, or one of its `cameras` (a two-lens camera). */
   const camerasOf = (m: ActiveModule) => m.def.cameras?.(m.entities) ?? (m.entities.camera ? [m.entities.camera] : []);
@@ -284,7 +293,9 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
   // the Roborock renders of this house's robot (Atom Home photos, set once per house); the preview hands its own
   const vacPics = useMemo(() => { const o = config.modules.vacuum?.options ?? {}, dev = vacuum ? home.devices.find(d => d.primary.id === vacuum.entity) : undefined, url = (n?: string) => n ? `/atom_home_photos/${n}` : null;
     return { robot: host.previewFrame?.('vacuum:robot') ?? url(o.robot) ?? dev?.photo ?? photoOf(vacuum?.entity) ?? null, dock: host.previewFrame?.('vacuum:dock') ?? url(o.dock) }; }, [config, vacuum?.entity, home, photoOf]);
-  const heating = useMemo(() => readHeating(registry, now.getTime()), [registry, Math.floor(now.getTime() / 60000)]); // the house's heating (HEATING.md): its own tile and the «Климат» panel
+  // a «Центральный термостат и комнаты» card, when the installer added one, is the house's heating; without it the house's own reading as before
+  const heatCard = cardViews.find(v => v.profile.renderer === 'heatingRooms' && !v.incomplete.length);
+  const heating = useMemo(() => readHeating(registry, now.getTime(), heatCard ? heatLayoutOf(heatCard.instance) : undefined), [registry, Math.floor(now.getTime() / 60000), heatCard?.instance]); // the house's heating (HEATING.md): its own tile and the «Климат» panel
   // a working building heated by air conditioners (atom-okapi/HEATING.md): its own tile and the «Климат» panel, unless the section is hidden
   const office = useMemo(() => config.sections.climate?.hidden ? null : readOfficeClimate(registry, now.getTime()), [registry, config, Math.floor(now.getTime() / 60000)]);
   // HA's grid connections make a device a feed for the Energy tile (a building on Tasmota POW inputs, 09.11.2026); read once, empty until then
@@ -345,6 +356,9 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
   const tabNav = useNavIndicator<HTMLElement>([view.section, wide, viewport.width]);
   const device = view.device ? enabled.find(d => d.key === view.device) ?? applianceByKey.get(view.device) : undefined;
   const clockOpen = view.device === 'clock' && !!clockMod;
+  // «＋ Добавить карточку» (`add-card`) and «Настроить карточку» (`card:<id>`): an administrator's sheet, kept in the address like every sheet
+  const catalogOpen = !!host.admin && !!view.device && (view.device === 'add-card' || view.device.startsWith('card:'));
+  const cardOf = (d: HomeDevice | undefined) => d?.key.startsWith(INSTANCE_PREFIX) ? cardViews.find(v => v.device.key === d.key) : undefined;
   const feederMod = modules.find(m => m.def.sheetKey === 'feeder'), feederOpen = view.device === 'feeder' && !!feederMod;
   const airMod = modules.find(m => m.def.sheetKey === 'air'), airOpen = view.device === 'air' && !!airMod;
   const kettleMod = modules.find(m => m.def.sheetKey === 'kettle'), kettleOpen = view.device === 'kettle' && !!kettleMod;
@@ -374,7 +388,7 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
   const mainRef = useRef<HTMLElement>(null), sheetRef = useRef<HTMLElement>(null), confirmRef = useRef<HTMLDivElement>(null), sheetOpener = useRef<HTMLElement | null>(null), confirmOpener = useRef<HTMLElement | null>(null);
   const activeIn = (el: HTMLElement | null) => ((el?.getRootNode() as Document | ShadowRoot | undefined)?.activeElement as HTMLElement | null) ?? null;
   const focusFirst = (el: HTMLElement | null) => (el?.querySelector<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled])') ?? el?.querySelector<HTMLElement>('[tabindex]:not([tabindex="-1"])'))?.focus({ preventScroll: true });
-  const sheetOpen = !!device || clockOpen || feederOpen || airOpen || kettleOpen || fryerOpen;
+  const sheetOpen = !!device || clockOpen || feederOpen || airOpen || kettleOpen || fryerOpen || catalogOpen;
   const lastInMain = useRef<HTMLElement | null>(null); // `main` is already inert when the effect runs, so the opener is remembered as focus moves, not read afterwards
   // a sheet opened by touch or mouse takes the focus itself (no ring around its «×»); opened from the keyboard, its first control does
   const byKeys = useRef(false);
@@ -462,7 +476,7 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
         {view.section === 'home' && <Overview listedCount={listed.length + applianceModules.length} sceneDone={done} shownRooms={rooms} vacPics={vacPics} vacuum={vacuum} security={security} officeSec={officeSec} heating={heating} office={office} grid={grid} home={home} registry={registry} config={config} modules={modules} player={player} tileState={tileState} host={host} runner={runner} toggle={toggle} go={go} t={t} lang={lang} now={now} camViews={camViews} />}
         {view.section === 'rooms' && !view.room && rooms.length === 0 && <p className="hm-muted at-empty">{t('ui.firstRun')}</p>}
         {view.section === 'rooms' && !view.room && <RoomsGrid count={rooms.length} size={`${viewport.width}x${viewport.height}:${bannersH}`}>{rooms.map(r => { const c = roomClimate(home, registry, r.id); return <RoomTile room={r} temperature={c.temperature} humidity={c.humidity} co2={c.co2} lightsOn={c.lights.filter(l => isOn(l.primary)).length} onClick={() => go({ section: 'rooms', room: r.id })} t={t} lang={lang} label={r.name || t('room.none')} theme={config.home.theme} />; })}</RoomsGrid>}
-        {view.section === 'rooms' && view.room && <RoomPage appliances={appliances} commands={commands} camViews={camViews} player={player} tileState={tileState} vacPics={vacPics} modules={modules} heating={heating} vacuum={vacuum} host={host} now={now.getTime()} home={home} registry={registry} roomId={view.room} runner={runner} toggle={toggle} go={go} t={t} lang={lang} alarms={clockMod && registry.entities.some(e => e.entity_id.startsWith('media_player.') && e.platform === 'yandex_station' && !e.disabled_by && (e.area_id ?? registry.devices.find(d => d.id === e.device_id)?.area_id) === view.room) ? config.alarms.filter(a => a.room === view.room) : null} />}
+        {view.section === 'rooms' && view.room && <RoomPage cards={cardViews} appliances={appliances} commands={commands} camViews={camViews} player={player} tileState={tileState} vacPics={vacPics} modules={modules} heating={heating} vacuum={vacuum} host={host} now={now.getTime()} home={home} registry={registry} roomId={view.room} runner={runner} toggle={toggle} go={go} t={t} lang={lang} alarms={clockMod && registry.entities.some(e => e.entity_id.startsWith('media_player.') && e.platform === 'yandex_station' && !e.disabled_by && (e.area_id ?? registry.devices.find(d => d.id === e.device_id)?.area_id) === view.room) ? config.alarms.filter(a => a.room === view.room) : null} />}
         {view.section === 'lights' && <LightsPage devices={enabled.filter(d => d.kind === 'light')} rooms={home.rooms} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} admin={host.admin} />}
         {view.section === 'security' && officeSec && <OfficeSecurityPanel s={officeSec} host={host} t={t} lang={lang} now={now.getTime()} admin={!!host.admin} title={config.home.name} />}
         {view.section === 'security' && officeSec && camLink}
@@ -497,6 +511,11 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
     {clockOpen && clockMod && (() => { const close = closeSheet; const sheetWide = wide && landscape && viewport.width >= 800;
       return <div className="hm-scrim" key="sheet" inert={!!confirm || undefined} onClick={e => { if (e.target === e.currentTarget) close(); }}><section className={`hm-sheet ${sheetWide ? 'is-split' : ''}`} role="dialog" aria-modal="true" aria-label={t('clock.title')} ref={sheetRef} tabIndex={-1} {...swipe(close)}>
         <Guard where="sheet:ClockSheet" kind="sheet" t={t} onClose={close}><ClockSheet registry={registry} entities={clockMod.entities} host={host} t={t} lang={lang} runner={runner} onClose={close} wide={sheetWide} rooms={home.rooms.filter(r => !r.hidden).map(r => ({ id: r.id, name: r.name || t('room.none') }))} room={view.room} alarms={config.alarms} onAlarms={applyAlarms} config={config} /></Guard></section></div>; })()}
+    {catalogOpen && (() => { const close = closeSheet, editId = view.device!.startsWith('card:') ? view.device!.slice(5) : null;
+      // the edit is made on the settings as they are at the moment of saving, and answers whether the house has it (a refused save keeps the form)
+      const saveCard = async (fn: (c: HouseConfig) => void) => { const next = structuredClone(config); fn(next); try { await applyConfig(normaliseConfig(next).config); return true; } catch { return false; } };
+      return <div className="hm-scrim" key="sheet" inert={!!confirm || undefined} onClick={e => { if (e.target === e.currentTarget) close(); }}><section className="hm-sheet at-cards-sheet" role="dialog" aria-modal="true" aria-label={t('cat.title' as Key)} ref={sheetRef} tabIndex={-1}>
+        <Guard where="sheet:catalog" kind="sheet" t={t} onClose={close}><CardCatalog key={view.device} registry={registry} config={config} rooms={home.rooms} t={t} lang={lang} host={host} roomId={view.section === 'rooms' ? view.room ?? null : null} editId={editId} save={saveCard} onClose={close} /></Guard></section></div>; })()}
     {airOpen && (() => { const close = closeSheet, airWide = landscape && viewport.width >= 700;
       return <div className="hm-scrim" key="sheet" inert={!!confirm || undefined} onClick={e => { if (e.target === e.currentTarget) close(); }}><section className="hm-sheet" role="dialog" aria-modal="true" aria-label={t('module.air.title' as Key)} ref={sheetRef} tabIndex={-1} {...swipe(close)}>
         <Guard where="sheet:AirSheet" kind="sheet" t={t} onClose={close}><AirSheet registry={registry} rooms={home.rooms} host={host} t={t} lang={lang} onClose={close} wide={airWide} /></Guard></section></div>; })()}
@@ -516,7 +535,9 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
       const roomy = device.kind === 'light' && wide && landscape && viewport.width >= 800; // a dimmable lamp's sheet: slider left, temperature and ambient light right
       const sheetWide = !!mod && wide && landscape && viewport.width >= 800; // a phone on its side (874×402) splits too: video left, controls right, instead of a video that fills the whole height
       return <div className="hm-scrim" key="sheet" inert={!!confirm || undefined} onClick={e => { if (e.target === e.currentTarget) close(); }}><section className={`hm-sheet ${sheetWide ? 'is-split' : ''} ${roomy ? 'is-roomy' : ''} ${autoClose?.key === device.key ? 'is-alarm' : ''}`} role="dialog" aria-modal="true" aria-label={device.name} ref={sheetRef} tabIndex={-1} {...swipe(close)} onPointerDownCapture={() => { if (autoClose?.key === device.key) setAutoClose(null); }} onKeyDownCapture={() => { if (autoClose?.key === device.key) setAutoClose(null); }}>
-        <Guard key={device.key} where={`sheet:${device.key}`} kind="sheet" t={t} onClose={close}>{mod?.def.Sheet ? <mod.def.Sheet device={device} registry={registry} entities={mod.entities} options={mod.options} host={host} t={t} lang={lang} runner={runner} onClose={close} room={roomName_} stage={stage} wide={sheetWide} setOption={setModuleOption(mod.def.id)} autoClose={autoCloseFor(device.key)} /> : <DeviceSheet device={device} runner={runner} onClose={close} t={t} lang={lang} stage={stage} host={host} room={roomName_} automations={automationsFor(device)} title={inRoomName(device, roomName_ ?? '')} />}</Guard>
+        {(c => c && <LostNote lost={c.lost} profile={c.profile} t={t} onFix={host.admin ? () => go({ ...viewNow.current, device: `card:${c.id}` }) : undefined} />)(cardOf(device))}
+        <Guard key={device.key} where={`sheet:${device.key}`} kind="sheet" t={t} onClose={close}>{mod?.def.Sheet ? <mod.def.Sheet device={device} registry={registry} entities={mod.entities} options={mod.options} host={host} t={t} lang={lang} runner={runner} onClose={close} room={roomName_} stage={stage} wide={sheetWide} setOption={setModuleOption(mod.def.id)} autoClose={autoCloseFor(device.key)} /> : <DeviceSheet device={device} runner={runner} onClose={close} t={t} lang={lang} stage={stage} host={host} room={roomName_} automations={automationsFor(device)} title={inRoomName(device, roomName_ ?? '')} kindLabel={(c => c?.profile.kindKey ? t(c.profile.kindKey as Key) : undefined)(cardOf(device))} />}</Guard>
+        {host.admin && cardOf(device) && <div className="at-cards-editbar"><button type="button" className="hm-pill" data-action="edit-card" onClick={() => go({ ...viewNow.current, device: `card:${cardOf(device)!.id}` })}>{t('cat.edit' as Key)}</button></div>}
       </section></div>;
     })()}
     {confirm && (() => { // AUTO-1 of the audit: the question names the consequence («Вода пойдёт сразу»), the button carries the verb and the risk colour
@@ -590,6 +611,8 @@ function Tiles({ devices, section, room, runner, toggle, go, t, lang, nameOf, ro
   // the name the page gives (under a room's header without the room, 1.27.0) wins over the look's own: the look's name is what the page's naming starts from
   return <Cascade className="ah-grid hm-light-grid">{devices.map((d, i) => { const l = look?.(d), sw = l?.switches ?? d; return <AccessoryTile device={l?.device ?? d} name={nameOf ? named(d, i) : l?.name ?? named(d, i)} sub={l?.sub} room={roomOf?.(d)} pending={runner.busy.has(sw.key)} onToggle={canToggle(sw) && l?.toggle !== false ? () => toggle(sw) : undefined} onOpen={l?.open ?? (() => go({ section, room: room ?? null, device: d.key }))} t={t} lang={lang} />; })}</Cascade>;
 }
+/** The air sensor a catalog thermostat was given to show (`heating.single`): its reading is the room's temperature, the thermostat's own is not. */
+const airOf = (x: HomeDevice): number | null => { if (!x.key.startsWith(INSTANCE_PREFIX)) return null; const m = x.metrics.find(e => e.deviceClass === 'temperature' && e.available); const v = m ? Number(m.state) : NaN; return Number.isFinite(v) ? v : null; };
 function Overview({ home, registry, config, modules, player, tileState, host, runner, toggle, go, t, lang, now, camViews, heating, office, grid, security, officeSec, vacuum, vacPics, shownRooms, sceneDone, listedCount }: Common & { /** how many devices «Устройства» lists (its tile says the same number) */ listedCount: number; /** the scene whose command the house has just accepted (`button:<id>`) */ sceneDone?: string | null; /** the rooms of the «Комнаты» page: the strip shows the same ones */ shownRooms: Room[]; vacuum: ReturnType<typeof readVacuum>; vacPics: { robot: string | null; dock: string | null }; security: ReturnType<typeof readSecurity>; officeSec: ReturnType<typeof readOfficeSecurity>; heating: ReturnType<typeof readHeating>; office: ReturnType<typeof readOfficeClimate>; grid: ReadonlySet<string>; home: Home; registry: Registry; config: HouseConfig; modules: ActiveModule[]; player: (dev: HomeDevice, mode: 'tile' | 'stage') => JSX.Element | null; tileState: (dev: HomeDevice) => TileState | null; host: Host; toggle: (d: HomeDevice) => void; now: Date; camViews: CamView[] }) {
   const d = home.devices.filter(x => x.enabled);
   const secTile = !!(security || officeSec) && !config.sections.security?.hidden; // the Security tile, when shown, tells leaks and doors-and-windows itself
@@ -602,7 +625,8 @@ function Overview({ home, registry, config, modules, player, tileState, host, ru
   const camFocus = camViews.length > 1; // which camera is big is the card's own choice (owner, 14.11.2026: it changes only when a small one is tapped)
   // the owner's wish (04.11.2026): the home face shows the house thermostat (the boiler's), never a room's radiator head
   const isTrv = (x: HomeDevice) => artOf(x) === 'radiator';
-  const climate = d.filter(x => x.kind === 'climate').sort((a, b) => Number(isTrv(a)) - Number(isTrv(b)))[0], cameras = camFocus ? [] : camViews.map(v => v.device), weather = d.find(x => x.kind === 'weather');
+  // a catalog thermostat shows on Home only where the installer put it (model/card-catalog.ts: `favorite` = placed on Home)
+  const climate = d.filter(x => x.kind === 'climate' && !(x.key.startsWith(INSTANCE_PREFIX) && !x.favorite)).sort((a, b) => Number(isTrv(a)) - Number(isTrv(b)))[0], cameras = camFocus ? [] : camViews.map(v => v.device), weather = d.find(x => x.kind === 'weather');
   const wtemp = weather && typeof weather.primary.attributes.temperature === 'number' ? weather.primary.attributes.temperature : null;
   // Home face = favourites + one summary module per group (Xiaomi Home «Освещение · всё выключено»), rooms underneath; everything else lives in Rooms and Systems.
   const favourites = d.filter(x => x.favorite && x !== climate && x.kind !== 'camera' && x.kind !== 'weather');
@@ -615,7 +639,7 @@ function Overview({ home, registry, config, modules, player, tileState, host, ru
   ];
   const groups = groupDefs.filter(g => !((heating || office) && g.id === 'climate') && !(vacuum && g.id === 'cleaning')).map(g => { const list = d.filter(x => g.kinds.includes(x.kind) && !x.favorite && x !== climate); return { ...g, count: g.id === 'systems' ? listedCount : list.length, on: g.on ? list.filter(g.on).length : undefined, label: t(`section.${g.section}` as Key) }; }).filter(g => g.count > 0 && !config.sections[g.section]?.hidden);
   const openings = d.filter(x => x.kind === 'opening' && x.primary.available), opened = openings.filter(x => x.primary.state === 'on').length; // H4: windows and doors instead of «104 devices»
-  const temp = climate ? (typeof climate.primary.attributes.temperature === 'number' ? climate.primary.attributes.temperature : null) : null, cur = climate ? (typeof climate.primary.attributes.current_temperature === 'number' ? climate.primary.attributes.current_temperature : null) : null;
+  const temp = climate ? (typeof climate.primary.attributes.temperature === 'number' ? climate.primary.attributes.temperature : null) : null, cur = climate ? (airOf(climate) ?? (typeof climate.primary.attributes.current_temperature === 'number' ? climate.primary.attributes.current_temperature : null)) : null;
   const tempAction = climate ? actionsFor(climate).find(a => a.id === 'temperature') : undefined;
   // − / + of the house thermostat: quick taps add up into one command (the tile keeps the draft); a thermostat that is off asks before it heats
   const steps = climate && tempAction ? thermoSteps(climate, tempAction, runner, t, lang) : undefined;
@@ -641,6 +665,7 @@ function Overview({ home, registry, config, modules, player, tileState, host, ru
     {groups.map(g => g.id === 'systems' && openings.length && !secTile ? <ValueTile icon="door" value={opened ? String(opened) : t('overview.allClosed')} unit={opened ? `/ ${openings.length}` : undefined} label={t('overview.openings')} sub={opened ? t('overview.opened', { n: opened }) : t('overview.doorsWindows', { n: openings.length })} color={opened ? '#ff9f0a' : IDLE} onClick={() => go({ section: 'systems', filter: opened ? 'attention' : null })} className={`ah-group-tile kind-${g.id}`} /> : <ValueTile icon={g.icon} value={g.on !== undefined ? String(g.on) : g.id === 'cleaning' && g.count === 1 ? stateText(d.find(x => x.kind === 'vacuum')!.primary, t, lang).split(' · ')[0] : String(g.count)} unit={g.on !== undefined ? `/ ${g.count}` : undefined} label={g.label} sub={g.on !== undefined ? t('overview.on', { n: g.on }) : t('overview.devices', { n: g.count })} color={g.on ? (g.id === 'lights' ? '#ffcc00' : g.color) : IDLE} onClick={() => go({ section: g.section })} className={`ah-group-tile kind-${g.id}`} />)}
     {favourites.map(x => tile(x, x.kind === 'climate' ? 'climate' : 'home'))}
     {d.length === 0 && rooms.length === 0 && <p className="hm-muted at-empty at-first-run">{t('ui.firstRun')}</p>}
+    {host.admin && <div className="at-add-card-row"><AddCardButton t={t} onClick={() => go({ section: 'home', device: 'add-card' })} /></div>}
     {rooms.length > 0 && <div className="ah-rooms-strip"><div className="hm-section-head"><h2>{t('section.rooms')}</h2><button type="button" className="hm-text-btn" onClick={() => go({ section: 'rooms' })}>{t('ui.all')}<Icon name="next" size={18} /></button></div>
       <div className="hm-room-grid" style={{ '--n': Math.min(rooms.length, 8) }}>{rooms.slice(0, 8).map(r => { const c = roomClimate(home, registry, r.id); return <RoomTile room={r} temperature={c.temperature} humidity={c.humidity} co2={c.co2} lightsOn={c.lights.filter(l => isOn(l.primary)).length} onClick={() => go({ section: 'rooms', room: r.id })} t={t} lang={lang} label={r.name || t('room.none')} theme={config.home.theme} />; })}</div></div>}
   </Cascade>;
@@ -655,7 +680,7 @@ function CameraTile({ device, player, state, onOpen, t, lang, large }: { device:
       <div className="hm-camera-caption"><strong>{device.name}</strong><small>{state?.line ?? modelText(device.model) ?? ''}</small><Icon name="next" size={18} /></div></div>
   </div>;
 }
-function RoomPage({ home, registry, roomId, runner, toggle, go, t, lang, alarms, heating, vacuum, host, now, modules, player, tileState, vacPics, camViews, commands, appliances }: Common & { appliances: ReadonlyMap<string, HomeDevice>; commands: import('../runtime/commands.ts').Commands; home: Home; registry: Registry; roomId: string; toggle: (d: HomeDevice) => void; alarms: Alarm[] | null; heating: ReturnType<typeof readHeating>; vacuum: ReturnType<typeof readVacuum>; host: Host; now: number; modules: ActiveModule[]; player: (dev: HomeDevice, mode: 'tile' | 'stage') => JSX.Element | null; tileState: (dev: HomeDevice) => TileState | null; vacPics: { robot: string | null; dock: string | null }; camViews: CamView[] }) {
+function RoomPage({ home, registry, roomId, runner, toggle, go, t, lang, alarms, heating, vacuum, host, now, modules, player, tileState, vacPics, camViews, commands, appliances, cards }: Common & { /** the catalog's cards (model/card-catalog.ts) */ cards: InstanceView[]; appliances: ReadonlyMap<string, HomeDevice>; commands: import('../runtime/commands.ts').Commands; home: Home; registry: Registry; roomId: string; toggle: (d: HomeDevice) => void; alarms: Alarm[] | null; heating: ReturnType<typeof readHeating>; vacuum: ReturnType<typeof readVacuum>; host: Host; now: number; modules: ActiveModule[]; player: (dev: HomeDevice, mode: 'tile' | 'stage') => JSX.Element | null; tileState: (dev: HomeDevice) => TileState | null; vacPics: { robot: string | null; dock: string | null }; camViews: CamView[] }) {
   // a device a module draws (the kettle, the cat feeder): its room card opens the module's own sheet, wherever else the module shows
   const sheetOf = (deviceId: string) => modules.find(m => m.def.sheetKey && m.entities.device === deviceId)?.def.sheetKey;
   // the room page the owner chose on 09.11.2026 (docs/ROOM.md): readings on top, one card per device, the room's radiator and power
@@ -663,7 +688,13 @@ function RoomPage({ home, registry, roomId, runner, toggle, go, t, lang, alarms,
   // a device that already has its own card is drawn by that very card, here as on Home and in its panel (owner, 09.11.2026): the kettle, the feeder, the robot, a camera
   const roomCams = camViews.filter(v => v.device.roomId === roomId);
   let things: Thing[] = [];
+  // a catalog card of this appliance: drawn by its own tile here, the same one Home shows; not placed in the room — no card here at all
+  const shownHere = (v: InstanceView) => v.instance.placement.includes('room') && !v.incomplete.length && v.profile.renderer !== 'heatingRooms';
+  const cardTile = (v: InstanceView) => { const x = home.devices.find(dv => dv.key === v.device.key) ?? v.device; return <Guard where={`card:${v.id}`} kind="tile" t={t}><AccessoryTile device={x} name={x.name} pending={runner.busy.has(x.key)} onToggle={canToggle(x) ? () => toggle(x) : undefined} onOpen={() => go({ section: 'rooms', room: roomId, device: x.key })} t={t} lang={lang} /></Guard>; };
+  const extra = cards.filter(v => shownHere(v) && v.device.roomId === roomId && !(v.instance.deviceId && registry.devices.find(dv => dv.id === v.instance.deviceId)?.area_id === roomId)).map(cardTile);
   const ownCard = (th: Thing, all: Thing[]) => { things = all;
+    const card = cards.find(v => v.instance.deviceId === th.key);
+    if (card) return shownHere(card) && card.device.roomId === roomId ? cardTile(card) : false;
     const m = modules.find(x => x.entities.device === th.key);
     if (m) return m.def.sheetKey ? <Guard where={`card:${m.def.id}`} kind="tile" t={t}><m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} compact rooms={home.rooms} onOpen={() => go({ section: 'rooms', room: roomId, device: m.def.sheetKey })} /></Guard> : <Guard where={`card:${m.def.id}`} kind="tile" t={t}><m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} /></Guard>;
     if (th.kind === 'vacuum' && vacuum && th.ids.includes(vacuum.entity)) return <Guard where="tile:vacuum" kind="tile" t={t}><VacuumTile pics={vacPics} v={vacuum} host={host} t={t} lang={lang} onOpen={() => go({ section: 'cleaning' })} /></Guard>;
@@ -674,7 +705,7 @@ function RoomPage({ home, registry, roomId, runner, toggle, go, t, lang, alarms,
     }
     return null;
   };
-  return <RoomView ownCard={ownCard} reg={registry} roomId={roomId} roomName={home.rooms.find(r => r.id === roomId)?.name ?? ''} heating={heating} vacuum={vacuum} host={host} t={t} lang={lang} now={now} alarms={alarms}
+  return <RoomView extra={extra} addCard={host.admin ? <AddCardButton t={t} onClick={() => go({ section: 'rooms', room: roomId, device: 'add-card' })} /> : undefined} ownCard={ownCard} reg={registry} roomId={roomId} roomName={home.rooms.find(r => r.id === roomId)?.name ?? ''} heating={heating} vacuum={vacuum} host={host} t={t} lang={lang} now={now} alarms={alarms}
     deviceOf={byMain} toggle={toggle} commands={commands} act={(d, id) => { const a = actionsFor(d).find(x => x.id === id); if (a) void runner.run(d, a); }} hidden={th => { const ds = home.devices.filter(d => th.ids.includes(d.primary.id)); return ds.length > 0 && ds.every(d => !d.enabled); }} open={d => go({ section: 'rooms', room: roomId, device: d.key })} busy={d => runner.busy.has(d.key)} onHeating={() => go({ section: 'climate' })} onAlarms={() => go({ section: 'rooms', room: roomId, device: 'clock' })} sheetOf={sheetOf} openSheet={key => go({ section: 'rooms', room: roomId, device: key })} applianceOf={key => appliances.get(key)} />;
 }
 /** The whole house's consumers now, room by room, plus the car's charger from the mains (HA's Energy → «Сейчас»): the busiest on top. */

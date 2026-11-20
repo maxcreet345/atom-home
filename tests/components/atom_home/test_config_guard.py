@@ -107,6 +107,54 @@ class TariffGuard(unittest.TestCase):
         self.assertNotIn("state.write(", handler, "alarms/set must not send a whole config of its own")
 
 
+CARDS = {**BASE, "profileInstances": {"c1": {"profileId": "xiaomi.purifier4", "profileVersion": "1.0.0", "deviceId": "dev1", "bindings": {"fan": "fan.living_air_purifier"}, "placement": ["home", "room"]}}}
+CARDS_DROPPED = dict(BASE)  # what a 1.31.1 panel saves back: its normaliser has no `profileInstances`
+
+
+class CardCatalogGuard(unittest.TestCase):
+    """The cards added from the catalog (20.11.2026): kept as they arrive, and a panel that does not know them cannot save them away."""
+    NEW = [const.CLIENT_FEATURE_ROOM_FEED, const.CLIENT_FEATURE_TARIFF, const.CLIENT_FEATURE_CARDS]
+
+    def test_feature_name_is_what_the_panel_sends(self):
+        ha_store = (pathlib.Path(__file__).parents[3] / "frontend/src/runtime/ha-store.ts").read_text(encoding="utf-8")
+        self.assertIn(f"CARDS_FEATURE = '{const.CLIENT_FEATURE_CARDS}'", ha_store)
+        self.assertIn("CARDS_FEATURE, ...", ha_store, "the panel always declares it")
+
+    def test_cards_are_detected(self):
+        self.assertFalse(cs.has_profile_instances(None))
+        self.assertFalse(cs.has_profile_instances(BASE))
+        self.assertFalse(cs.has_profile_instances({**BASE, "profileInstances": {}}))
+        self.assertFalse(cs.has_profile_instances({**BASE, "profileInstances": []}))
+        self.assertTrue(cs.has_profile_instances(CARDS))
+
+    def test_the_cards_round_trip_unchanged(self):
+        save = Saved()
+        s = cs.ConfigState(BASE, 1, save)
+        self.assertEqual(run(s.write(CARDS, 1, self.NEW)), 2)
+        self.assertEqual(save.calls[-1], {"config": CARDS, "revision": 2})
+        self.assertEqual(s.config["profileInstances"], CARDS["profileInstances"])
+
+    def test_an_old_panel_cannot_wipe_the_cards(self):
+        save = Saved()
+        s = cs.ConfigState(CARDS, 5, save)
+        for features in (None, [], [const.CLIENT_FEATURE_ROOM_FEED, const.CLIENT_FEATURE_TARIFF]):
+            with self.assertRaises(cs.ConfigWriteError) as err:
+                run(s.write(CARDS_DROPPED, 5, features))
+            self.assertEqual(err.exception.code, "client_outdated")
+        self.assertEqual((s.config, s.revision, len(save.calls)), (CARDS, 5, 0), "a refused save writes nothing")
+        self.assertEqual(run(s.write(CARDS_DROPPED, 5, self.NEW)), 6, "a new panel may remove the last card on purpose")
+
+    def test_a_house_without_cards_is_not_affected(self):
+        s = cs.ConfigState(BASE, 1, Saved())
+        self.assertEqual(run(s.write(BASE, 1, [const.CLIENT_FEATURE_ROOM_FEED])), 2, "no card stored: an older panel still saves")
+
+    def test_alarms_set_keeps_the_cards(self):
+        save = Saved()
+        s = cs.ConfigState(CARDS, 3, save)
+        run(s.write_alarms(lambda _stored: [{"id": "a1", "time": "07:00"}], 3))
+        self.assertEqual(s.config["profileInstances"], CARDS["profileInstances"])
+
+
 class AlarmsOnly(unittest.TestCase):
     """`alarms/set` and the server's own «rang once» write: only the `alarms` key, on top of whatever is stored at that moment."""
     STORED = {**BASE, "home": {"name": "Criuleni", "theme": "light"}, "rooms": {"kukhnia": {"feed": "apt9"}}, "alarms": [{"id": "a1", "time": "07:00"}]}

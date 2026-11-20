@@ -1,5 +1,6 @@
 import type { Section } from './kinds.ts';
 import type { Kind } from './kinds.ts';
+import { normaliseInstances, type ProfileInstance } from './card-catalog.ts';
 
 export type Language = 'ru' | 'ro' | 'en';
 export interface RoomOverride { name?: string; photo?: string | null; hidden?: boolean; order?: number; /** the house feed (an SPM channel key) the room hangs on: the Energy panel splits the rooms by apartment with it */ feed?: string }
@@ -25,6 +26,8 @@ export interface HouseConfig {
   modules: Record<string, ModuleOverride>;
   alarms: Alarm[];
   energy: { tariffs: Tariff[] };
+  /** cards the installer added from the catalog (model/card-catalog.ts), by their own stable id; absent in a house that never added one */
+  profileInstances?: Record<string, ProfileInstance>;
 }
 export function defaultConfig(name = 'Мой дом'): HouseConfig {
   return { schemaVersion: 1, home: { name, logo: null, language: 'ru', theme: 'light' }, rooms: {}, devices: {}, entities: {}, buttons: [], sections: {}, modules: {}, alarms: [], energy: { tariffs: [] } };
@@ -63,6 +66,8 @@ export function normaliseConfig(input: unknown): { config: HouseConfig; warnings
   }
   out.alarms = normaliseAlarms(input.alarms);
   out.energy = { tariffs: normaliseTariffs(plain(input.energy) ? input.energy.tariffs : undefined) };
+  // added only when the house has some: a house that never used the catalog saves exactly what it saved before
+  if (input.profileInstances !== undefined) { const inst = normaliseInstances(input.profileInstances, w => warnings.push(w)); if (Object.keys(inst).length) out.profileInstances = inst; }
   if (plain(input.sections)) for (const [k, v] of Object.entries(input.sections)) if (plain(v) && typeof v.hidden === 'boolean') (out.sections as Record<string, { hidden?: boolean }>)[k] = { hidden: v.hidden };
   return { config: out, warnings };
 }

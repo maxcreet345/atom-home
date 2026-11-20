@@ -3,6 +3,7 @@ import type { Registry } from '../model/registry.ts';
 import type { HouseConfig } from '../model/config.ts';
 import { activeSpecs } from './catalog.ts';
 import { rememberByShape } from '../runtime/remember-modules.ts';
+import { instanceClaims } from '../model/card-catalog.ts';
 import { boilerEbus } from './boiler-ebus.tsx';
 import { cameraGo2rtc } from './camera-go2rtc.tsx';
 import { petFeeder } from './pet-feeder.tsx';
@@ -23,6 +24,9 @@ export function activeModules(registry: Registry, config: HouseConfig): ActiveMo
 export const rememberModules = (): ((registry: Registry, config: HouseConfig) => ActiveModule[]) => rememberByShape(activeModules, list => JSON.stringify(list.map(m => [m.def.id, m.label, m.entities, m.options])));
 /** Entity ids that active modules draw inside their own cards. */
 export function claimedEntities(registry: Registry, config: HouseConfig, modules: ActiveModule[] = activeModules(registry, config)): Set<string> {
-  return new Set(modules.flatMap(m => m.def.claims?.(m.entities) ?? []));
+  const out = new Set(modules.flatMap(m => m.def.claims?.(m.entities) ?? []));
+  // a catalog card that represents an appliance takes its device's entities from the auto-made cards: no second tile beside it
+  if (config.profileInstances) for (const id of instanceClaims(registry, config.profileInstances)) out.add(id);
+  return out;
 }
 export type { ModuleDef, ModuleEntities, ModuleOptions, ModuleSheetProps, TileState, AutoClose } from './types.ts';

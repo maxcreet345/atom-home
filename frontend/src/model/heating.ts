@@ -1,6 +1,7 @@
 import type { Registry, StateRow } from './registry.ts';
 import { unavailable } from './registry.ts';
 import { houseToday } from '../runtime/zone.ts';
+import { readHeatingLayout, type HeatLayout } from './heating-layout.ts';
 /** The house's heating as the owner built it (book/04-automations/HEATING.md, 04.11.2026):
  * the Tuya thermostat in the living room only switches the system and sets the common temperature;
  * five SONOFF heads follow that temperature by the room sensors; the MINI-D relay asks the boiler for heat while any head heats;
@@ -19,6 +20,7 @@ export interface HeatRoom {
    * `lost` — the head is still set to the room's sensor, but that sensor itself does not answer (`sensor.<room>_climate_temperature` /
    * `sensor.<room>_co2_temperature` is unavailable): the head holds the last value it was given, and the card says so instead of «в комнате». */
   sensor: 'room' | 'head' | 'lost';
+  /** the helpers the room's commands go to (null: the card has no such function — no «Вернуть к общей» without a timer); absent: Criuleni's names */ ids?: { timer: string | null; manual: string | null };
 }
 export interface Boiler {
   online: boolean; flame: boolean | null; flow: number | null; flowTarget: number | null; ret: number | null;
@@ -37,7 +39,14 @@ export interface Heating {
   hyst: { down: number; up: number } | null;
   /** the house's security (Alarmo): its «Отпуск» is the whole house's, the heating follows it (automation heating_security) */ security: { id: string; state: string; mode: string | null; vacation: boolean } | null;
   rooms: HeatRoom[]; boiler: Boiler; outdoor: { temp: number | null; state: string | null };
+  /** what this heating has: Criuleni's own reading has everything (also when absent); a catalog card only what was bound (model/heating-layout.ts) */ parts?: { boiler: boolean; scenarios: boolean; mode: boolean };
+  /** where the house-wide commands go; `legacy` = Criuleni's own helper names (heatingActions keeps its exact old calls) */
+  ids?: { mode: string | null; modeAuto: string | null; modeManual: string | null; homeTemp: string | null; system: string | null; legacy: boolean };
 }
+const ALL_PARTS = { boiler: true, scenarios: true, mode: true }, LEGACY_IDS = { mode: 'input_select.heating_mode', modeAuto: 'Авто', modeManual: 'Ручной', homeTemp: 'input_number.heating_home_temp', system: null, legacy: true };
+/** The parts and the command targets of a heating, Criuleni's own when it does not say. */
+export const partsOf = (h: Pick<Heating, 'parts'>) => h.parts ?? ALL_PARTS;
+export const idsOf = (h: Pick<Heating, 'ids'>) => h.ids ?? LEGACY_IDS;
 const SCENARIO: Record<string, Scenario> = { 'Дома': 'home', 'Сон': 'sleep', 'Нет дома': 'away', 'Эко': 'eco', 'Отпуск': 'vacation' };
 const n = (s?: StateRow) => { if (!s || unavailable(s.state)) return null; const v = Number(s.state); return Number.isFinite(v) ? v : null; };
 const ROOM_ORDER = ['living', 'kitchen', 'bedroom', 'kids', 'office'];
@@ -68,7 +77,8 @@ export function boilerName(reg: Registry): string | null {
   const made = [dev.manufacturer, dev.model].filter(x => x && !tech(x) && !/espressif|esphome/i.test(x!)).join(' ').trim();
   return made || null;
 }
-export function readHeating(reg: Registry, now = Date.now()): Heating | null {
+export function readHeating(reg: Registry, now = Date.now(), layout?: HeatLayout): Heating | null {
+  if (layout) return readHeatingLayout(reg, now, layout);
   const S = reg.states, s = (id: string) => S[id], on = (id: string) => S[id]?.state === 'on';
   if (!s('input_select.heating_mode')) return null;
   const trvs = Object.keys(S).filter(id => /^climate\.[a-z0-9_]+_trv$/.test(id)).sort((a, b) => ROOM_ORDER.indexOf(a.slice(8, -4)) - ROOM_ORDER.indexOf(b.slice(8, -4)));
@@ -92,7 +102,7 @@ export function readHeating(reg: Registry, now = Date.now()): Heating | null {
       target: typeof st?.attributes.temperature === 'number' && st.state !== 'off' ? st.attributes.temperature : null,
       action, battery: bat, windows, windowPaused: paused,
       override: until && until > now ? { temp: n(s(`input_number.${key}_heating_override_temp`)) ?? 0, until } : null,
-      manual: n(s(`input_number.${key}_heating_manual_temp`)), desired: s(`sensor.${key}_heating_desired`)?.state ?? null, sensor: (x => x && !unavailable(x.state) && x.state !== 'remote_temperature' ? 'head' : (rs => rs && unavailable(rs.state) ? 'lost' : 'room')(roomSensor(S, key)))(s(`select.${key}_trv_temperature_sensor_select`)) };
+      manual: n(s(`input_number.${key}_heating_manual_temp`)), desired: s(`sensor.${key}_heating_desired`)?.state ?? null, ids: { timer: `timer.${key}_heating_override`, manual: `input_number.${key}_heating_manual_temp` }, sensor: (x => x && !unavailable(x.state) && x.state !== 'remote_temperature' ? 'head' : (rs => rs && unavailable(rs.state) ? 'lost' : 'room')(roomSensor(S, key)))(s(`select.${key}_trv_temperature_sensor_select`)) };
   });
   // the heads are fed the room's sensor minus «вверх» (heating_external_temp), so what they report is that much lower than the room
   const shift = n(s('input_number.heating_hyst_up')) ?? 0; for (const r of rooms) if (r.current !== null && r.sensor !== 'head') r.current = Math.round((r.current + shift) * 10) / 10;
@@ -119,6 +129,7 @@ export function readHeating(reg: Registry, now = Date.now()): Heating | null {
     boiler: { online: busOn && B('flow_temp') !== null, flame: !busOn ? null : flame === 'on' ? true : flame === 'off' ? false : null, flow: B2('flow_temp'), flowTarget: B2('flow_temp_target'), ret: B2('return_temp'),
       dhw: B2('dhw_temp'), dhwTarget: (x => x === null || x <= 0 ? null : x)(B2('dhw_temp_target')) /* the bus says 0 when the boiler has no target for hot water: not a target */, name: boilerName(reg), pressure, pressureLow: pressure !== null && (pLow ?? pressure < 1), pressureHigh: pressure !== null && (pHigh ?? pressure > 2.5), relay: relay === 'on' ? true : relay === 'off' ? false : null, state: s('sensor.kitchen_boiler_state_code')?.state ?? null },
     outdoor: { temp: weather && typeof S[weather].attributes.temperature === 'number' ? S[weather].attributes.temperature as number : null, state: weather ? S[weather].state : null },
+    parts: ALL_PARTS, ids: LEGACY_IDS,
   };
 }
 export const heatingRooms = (h: Heating) => h.rooms.filter(r => r.action === 'heating').length;
@@ -128,7 +139,7 @@ export function heatTone(h: Heating): HeatTone { if (!h.systemKnown) return 'war
 /** What is not answering, most important first: the thermostat, a room's head, the boiler's bus, the boiler's relay. The tile says it and is never calm with it. */
 export type HeatTrouble = { kind: 'thermostat' } | { kind: 'room'; room: HeatRoom } | { kind: 'boiler' } | { kind: 'relay' };
 export function heatTrouble(h: Heating): HeatTrouble[] {
-  return [...(h.thermostatOnline ? [] : [{ kind: 'thermostat' } as const]), ...h.rooms.filter(r => r.action === 'offline').map(room => ({ kind: 'room', room } as const)), ...(h.boiler.online ? [] : [{ kind: 'boiler' } as const]), ...(h.boiler.relay === null ? [{ kind: 'relay' } as const] : [])];
+  return [...(h.thermostatOnline ? [] : [{ kind: 'thermostat' } as const]), ...h.rooms.filter(r => r.action === 'offline').map(room => ({ kind: 'room', room } as const)), ...(!partsOf(h).boiler || h.boiler.online ? [] : [{ kind: 'boiler' } as const]), ...(partsOf(h).boiler && h.boiler.relay === null ? [{ kind: 'relay' } as const] : [])];
 }
 /** The room the panel opens at when the tile is tapped with a problem: a lost head, then a paused window, then a head on its own sensor. */
 export const problemRoom = (h: Heating): HeatRoom | null => h.system ? h.rooms.find(r => r.action === 'offline') ?? h.rooms.find(r => r.action === 'window') ?? h.rooms.find(r => r.windows.some(w => !w.known)) ?? h.rooms.find(r => r.sensor !== 'room') ?? null : null;

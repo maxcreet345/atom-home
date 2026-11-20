@@ -26,7 +26,9 @@ export interface RoomProps { reg: Registry; roomId: string; roomName: string; he
   /** a device the owner switched off in «Настройка» («Показывать»): it has no card here either */ hidden?: (th: Thing) => boolean;
   /** a device drawn by a module (the kettle): the module's sheet key, and how to open it */ sheetOf?: (deviceId: string) => string | undefined; openSheet?: (key: string) => void;
   /** an appliance HA knows only through switches (1.27.0, model/appliance.ts): the device a tap opens — never one of its switches */ applianceOf?: (deviceId: string) => HomeDevice | undefined;
-  /** the device's own card, when one was made for it (kettle, feeder, robot, camera): the room draws exactly that card */ ownCard?: (th: Thing, all: Thing[]) => ComponentChildren | null | false }
+  /** the device's own card, when one was made for it (kettle, feeder, robot, camera): the room draws exactly that card */ ownCard?: (th: Thing, all: Thing[]) => ComponentChildren | null | false;
+  /** cards the installer put in this room from the catalog that no device of the room draws (model/card-catalog.ts) */ extra?: ComponentChildren[];
+  /** «＋ Добавить карточку», for the administrator */ addCard?: ComponentChildren }
 type P = RoomProps;
 
 export const GLYPH: Record<ThingKind, string> = { light: 'light', kettle: 'cup', feeder: 'paw', fountain: 'water', fridge: 'socket', tv: 'media', speaker: 'speaker', player: 'media', vacuum: 'vacuum', washer: 'washer', dryer: 'washer', camera: 'camera', purifier: 'air', humidifier: 'water', vent: 'fan', airfryer: 'pot', boiler: 'flame', valve: 'valve', socket: 'socket', other: 'generic' };
@@ -135,9 +137,10 @@ export function RoomView(p: RoomProps) {
     <div className="rm-b-top"><Hero m={m} p={p} /><Quick m={m} p={p} /></div>
     <Alarms p={p} />
     <div className="rm-b-cols">
-      {tiles.length > 0 && <div className="rm-b-main"><h2 className="rm-h">{rk(p.t, 'devices')}</h2>
-        {own.length > 0 && <div className="ah-grid ah-face rm-own">{own.map(([, card]) => card)}</div>}
-        {plain.length > 0 && <div className="rm-tile-grid">{plain.map(th => <Tile th={th} p={p} />)}</div>}</div>}
+      {(tiles.length > 0 || !!p.extra?.length || !!p.addCard) && <div className="rm-b-main"><h2 className="rm-h">{rk(p.t, 'devices')}</h2>
+        {(own.length > 0 || !!p.extra?.length) && <div className="ah-grid ah-face rm-own">{own.map(([, card]) => card)}{p.extra}</div>}
+        {plain.length > 0 && <div className="rm-tile-grid">{plain.map(th => <Tile th={th} p={p} />)}</div>}
+        {p.addCard && <div className="at-add-card-row">{p.addCard}</div>}</div>}
       {side ? <div className="rm-b-side"><h2 className="rm-h">{m.heat && m.consumers.length ? rk(p.t, 'climateEnergy') : m.heat ? rk(p.t, 'climate') : rk(p.t, 'energy')}</h2>{m.heat && p.heating && <div className="rm-heat"><HeatRoomCard h={p.heating} room={m.heat} host={p.host} t={p.t} lang={p.lang} now={p.now} /></div>}{m.consumers.length > 0 && <LiveLoad title={rk(p.t, 'liveTitle')} rows={m.consumers.map(c => ({ key: c.key, name: c.name, watts: c.power, icon: GLYPH[[...m.things, ...m.air].find(x => x.key === c.key)?.kind ?? 'other'] }))} today={m.consumers.reduce((s, c) => s + (c.today ?? 0), 0)} t={p.t} lang={p.lang} />}</div> : null}
     </div>
   </div>;
