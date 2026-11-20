@@ -77,6 +77,7 @@ import { people } from '../model/people.ts';
 import { instanceViews, INSTANCE_PREFIX, type InstanceView } from '../model/card-catalog.ts';
 import { heatLayoutOf } from '../model/heating-layout.ts';
 import { CardCatalog, AddCardButton, LostNote } from './catalog.tsx';
+import { CameraTile } from './camera-tile.tsx';
 import { LayoutGrid, LayoutProvider, ArrangeButton, useLayout, type LayItem } from './layout-grid.tsx';
 import { SCOPE_HOME, roomScope } from '../model/tile-layout.ts';
 /** The menu (1.27.0, owner 11.11.2026: «в левое меню добавь панель Энергия, Безопасность», «Системы … так и назови: Устройства»):
@@ -678,16 +679,6 @@ function Overview({ home, registry, config, modules, player, tileState, host, ru
   </>;
   return <LayoutGrid scope={SCOPE_HOME} className="hm-home ah-home ah-grid ah-face" items={list} tail={tail}
     fallback={mark => <Cascade className="hm-home ah-home ah-grid ah-face" data-face="home-modular">{list.map(mark)}{tail}</Cascade>} />;
-}
-function CameraTile({ device, player, state, onOpen, t, lang, large }: { device: HomeDevice; player?: JSX.Element | null; state?: TileState | null; onOpen: () => void; t: ReturnType<typeof translator>; lang: 'ru' | 'ro' | 'en'; large?: boolean }) {
-  const pic = typeof device.primary.attributes.entity_picture === 'string' ? device.primary.attributes.entity_picture : null;
-  const closed = state?.closed === true;
-  return <div className={`hm-card hm-camera-tile ah-camera ah-tile ${large ? 'is-large' : ''} ${closed ? 'is-closed' : ''} ${state?.tone ? `is-${state.tone}` : ''}`}>
-    <button type="button" className="at-cams-hit" aria-label={`${t('ui.open')}: ${device.name}`} onClick={onOpen} />
-    <div className="hm-camera-frame">{closed ? <div className="hm-camera-wait"><Icon name="camera" size={32} /><span>{t('module.camera.closed')}</span></div> : player ? player : pic ? <img className="at-camera-img" src={pic} alt="" /> : <div className="hm-camera-wait"><Icon name="camera" size={32} /><span>{stateText(device.primary, t, lang)}</span></div>}{(!player || closed) && <span className="hm-live"><i />{closed ? t('state.off') : device.primary.available ? t('state.idle') : t('state.unavailable')}</span>}
-      {state?.icon && !closed && <span className={`at-cam-badge ${state.tone === 'danger' ? 'is-ring' : ''}`} title={state.line ?? ''}><Icon name={state.icon} size={16} />{state.tone === 'danger' && <span>{state.line}</span>}</span>}
-      <div className="hm-camera-caption"><strong>{device.name}</strong><small>{state?.line ?? modelText(device.model) ?? ''}</small><Icon name="next" size={18} /></div></div>
-  </div>;
 }
 function RoomPage({ home, registry, roomId, runner, toggle, go, t, lang, alarms, heating, vacuum, host, now, modules, player, tileState, vacPics, camViews, commands, appliances, cards }: Common & { /** the catalog's cards (model/card-catalog.ts) */ cards: InstanceView[]; appliances: ReadonlyMap<string, HomeDevice>; commands: import('../runtime/commands.ts').Commands; home: Home; registry: Registry; roomId: string; toggle: (d: HomeDevice) => void; alarms: Alarm[] | null; heating: ReturnType<typeof readHeating>; vacuum: ReturnType<typeof readVacuum>; host: Host; now: number; modules: ActiveModule[]; player: (dev: HomeDevice, mode: 'tile' | 'stage') => JSX.Element | null; tileState: (dev: HomeDevice) => TileState | null; vacPics: { robot: string | null; dock: string | null }; camViews: CamView[] }) {
   // a device a module draws (the kettle, the cat feeder): its room card opens the module's own sheet, wherever else the module shows

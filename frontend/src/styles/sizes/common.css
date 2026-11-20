@@ -1,1 +1,40 @@
-/* card sizes: common (ui/slot-size.ts). Only under .at-slot[data-size]: a card outside an arrangement is untouched. */
+/* Card sizes — the shared rules and the plain tiles (ui/slot-size.ts). Only under .at-slot[data-size]: a card outside an arrangement is untouched.
+ * Every card follows the same ladder (owner 21.11.2026, «как виджеты»):
+ *   s  — one cell: as the card is today when it is a one-cell card;
+ *   w  — across: the glyph and the big reading on the left, the words beside them; no line is cut, a second reading may join;
+ *   t  — tall: the one-cell layout, the reading larger, the words get more lines;
+ *   l  — 2×2: everything larger, more room for the words;
+ *   xl — 3 cells and more: the same, scaled to the card (never a small card lost in a big frame).
+ * Sizes grow with the card (cq units of the slot, a size container), within limits a phone and a television both read. */
+.hm-shell .at-slot{--sz-gap:clamp(6px,4cqmin,16px)}
+
+/* ---- reading tiles (ValueTile: weather, energy, lights, devices, CO₂, leaks, doors and windows) ---- */
+.hm-shell .at-slot:is([data-size="w"]) .ah-value .ah-tile-hit{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);column-gap:clamp(12px,6cqw,28px);row-gap:6px;align-items:center;align-content:center;padding:12px clamp(12px,5cqw,22px)}
+.hm-shell .at-slot:is([data-size="w"]) .ah-value .ah-value-head{grid-column:1;grid-row:1}
+.hm-shell .at-slot:is([data-size="w"]) .ah-value .ah-value-num{grid-column:1;grid-row:2;align-self:start}
+.hm-shell .at-slot:is([data-size="w"]) .ah-value .ah-tile-text{grid-column:2;grid-row:1/3;align-self:center;gap:3px}
+.hm-shell .at-slot:is([data-size="w"]) .ah-value .ah-value-num b{font-size:clamp(1.75rem,40cqh,3.25rem)}
+.hm-shell .at-slot:is([data-size="w"]) .ah-value .ah-value-num.is-text b{font-size:clamp(1.125rem,22cqh,1.75rem)}
+.hm-shell .at-slot:is([data-size="w"]) .ah-value .ah-tile-text strong{font-size:clamp(.9375rem,15cqh,1.125rem)}
+.hm-shell .at-slot:is([data-size="w"]) .ah-value .ah-tile-text small{font-size:clamp(.8125rem,12cqh,.9375rem);-webkit-line-clamp:3}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) .ah-value .ah-tile-hit{padding:clamp(12px,6cqmin,24px);gap:clamp(4px,3cqmin,12px)}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) .ah-value .ah-value-head{width:clamp(28px,14cqmin,48px);height:clamp(28px,14cqmin,48px)}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) .ah-value .ah-value-head svg{width:58%;height:58%}
+.hm-shell .at-slot[data-size="t"] .ah-value .ah-value-num b{font-size:clamp(2rem,30cqw,3.25rem)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .ah-value .ah-value-num b{font-size:clamp(2.5rem,26cqmin,6.5rem)}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) .ah-value .ah-value-num.is-text b{font-size:clamp(1.25rem,13cqmin,2.5rem)}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) .ah-value .ah-value-num i{font-size:clamp(.875rem,6cqmin,1.5rem)}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) .ah-value .ah-tile-text strong{font-size:clamp(.9375rem,7cqmin,1.625rem)}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) .ah-value .ah-tile-text small{font-size:clamp(.8125rem,5cqmin,1.25rem);-webkit-line-clamp:4}
+
+/* ---- device tiles (AccessoryTile: a lamp, a socket, a sensor; the scene button is the same shape) ---- */
+.hm-shell .at-slot[data-size="w"] :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock),.ah-scene) .ah-tile-hit{flex-direction:row;justify-content:flex-start;text-align:left;gap:clamp(12px,5cqw,20px);padding:10px clamp(14px,5cqw,22px)}
+.hm-shell .at-slot[data-size="w"] :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock),.ah-scene) .ah-glyph{width:clamp(44px,46cqh,64px);height:clamp(44px,46cqh,64px)}
+.hm-shell .at-slot[data-size="w"] :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock),.ah-scene) .ah-tile-text{text-align:left}
+.hm-shell .at-slot[data-size="w"] :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock),.ah-scene) .ah-tile-text strong{font-size:clamp(.9375rem,15cqh,1.125rem)}
+.hm-shell .at-slot[data-size="w"] :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock),.ah-scene) .ah-tile-text small{font-size:clamp(.8125rem,12cqh,.9375rem)}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock),.ah-scene) .ah-glyph{width:clamp(44px,28cqmin,104px);height:clamp(44px,28cqmin,104px)}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock),.ah-scene) .ah-glyph svg{width:58%;height:58%}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock),.ah-scene) .ah-tile-hit{gap:clamp(10px,5cqmin,20px)}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock),.ah-scene) .ah-tile-text strong{font-size:clamp(.9375rem,7cqmin,1.625rem);-webkit-line-clamp:3}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock),.ah-scene) .ah-tile-text small{font-size:clamp(.8125rem,5cqmin,1.25rem);white-space:normal}

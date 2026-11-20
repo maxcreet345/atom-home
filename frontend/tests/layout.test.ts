@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { panelLayout, panelScale, panelInput, isTv, WIDTH_STEPS, HEIGHT_STEPS } from '../src/ui/panel-size.ts';
 
 const touch = { noHover: true, noPointer: false }, mouse = { noHover: false, noPointer: false }, remote = { noHover: true, noPointer: true };
-const css = ['apple', 'atom', 'room'].map(n => readFileSync(new URL(`../src/styles/${n}.css`, import.meta.url), 'utf8')).join('\n');
+const css = ['apple', 'atom', 'room', 'sizes', 'sizes/common', 'sizes/climate', 'sizes/media', 'sizes/modules'].map(n => readFileSync(new URL(`../src/styles/${n}.css`, import.meta.url), 'utf8')).join('\n');
 const cls = (w: number, h: number, input = touch) => panelLayout({ width: w, height: h }, input).classes.split(' ');
 
 test('the size classes follow the panel, not the window: an iPad beside the HA sidebar is a 924 px panel', () => {
