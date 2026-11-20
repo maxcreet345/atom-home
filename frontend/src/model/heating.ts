@@ -22,7 +22,7 @@ export interface HeatRoom {
 }
 export interface Boiler {
   online: boolean; flame: boolean | null; flow: number | null; flowTarget: number | null; ret: number | null;
-  dhw: number | null; dhwTarget: number | null; pressure: number | null; relay: boolean | null; state: string | null;
+  dhw: number | null; dhwTarget: number | null; /** the boiler as the house names it in HA, or null (the card then says «Котёл») */ name: string | null; pressure: number | null; relay: boolean | null; state: string | null;
   /** the house's own Threshold helpers (≤ 0,8 / > 2,8 bar with hysteresis), else the manual's norm */ pressureLow: boolean; pressureHigh: boolean;
 }
 export type Scenario = 'home' | 'sleep' | 'away' | 'eco' | 'vacation';
@@ -58,6 +58,16 @@ export const returnDay = (state: string | undefined, today: string): string | nu
 /** The room's own temperature sensor (book HEATING.md: the kitchen, the office and the bedroom have a climate sensor, the kids' room and the living room a CO₂ one). */
 const roomSensor = (S: Registry['states'], key: string): StateRow | undefined => S[`sensor.${key}_climate_temperature`] ?? S[`sensor.${key}_co2_temperature`];
 /** null when the house has no such heating (no «Отопление · Режим» helper or no heads). */
+/** The boiler's name from HA (audit 20.11.2026: the card had «Demir Döküm Nitromix P24» written in the code, on every house): the device the
+ * boiler's readings belong to, as the owner named it there, or its make and model — but not a bus gateway's own name (ESPHome, «esp…»). */
+export function boilerName(reg: Registry): string | null {
+  const ent = reg.entities.find(e => e.entity_id === 'sensor.kitchen_boiler_flow_temp' || e.entity_id === 'sensor.kitchen_boiler_flame'), dev = ent?.device_id ? reg.devices.find(d => d.id === ent.device_id) : undefined;
+  if (!dev) return null; const tech = (x: string | null | undefined) => !!x && /esp|ebus|gateway|шлюз/i.test(x);
+  // «Кухня · Котёл (Demir Döküm Nitromix P24)»: the make and model in brackets is what the card shows; otherwise the name without its room
+  if (dev.name && !tech(dev.name)) { const inner = /\(([^)]+)\)/.exec(dev.name)?.[1]?.trim(); return inner || dev.name.replace(/^[^·]*·\s*/, '').trim() || dev.name; }
+  const made = [dev.manufacturer, dev.model].filter(x => x && !tech(x) && !/espressif|esphome/i.test(x!)).join(' ').trim();
+  return made || null;
+}
 export function readHeating(reg: Registry, now = Date.now()): Heating | null {
   const S = reg.states, s = (id: string) => S[id], on = (id: string) => S[id]?.state === 'on';
   if (!s('input_select.heating_mode')) return null;
@@ -107,7 +117,7 @@ export function readHeating(reg: Registry, now = Date.now()): Heating | null {
     security: (a => a ? { id: 'alarm_control_panel.alarmo', state: a.state, mode: typeof a.attributes.arm_mode === 'string' ? a.attributes.arm_mode : null, vacation: ((Number(a.attributes.supported_features) || 0) & 32) === 32 } : null)(s('alarm_control_panel.alarmo')),
     rooms,
     boiler: { online: busOn && B('flow_temp') !== null, flame: !busOn ? null : flame === 'on' ? true : flame === 'off' ? false : null, flow: B2('flow_temp'), flowTarget: B2('flow_temp_target'), ret: B2('return_temp'),
-      dhw: B2('dhw_temp'), dhwTarget: B2('dhw_temp_target'), pressure, pressureLow: pressure !== null && (pLow ?? pressure < 1), pressureHigh: pressure !== null && (pHigh ?? pressure > 2.5), relay: relay === 'on' ? true : relay === 'off' ? false : null, state: s('sensor.kitchen_boiler_state_code')?.state ?? null },
+      dhw: B2('dhw_temp'), dhwTarget: (x => x === null || x <= 0 ? null : x)(B2('dhw_temp_target')) /* the bus says 0 when the boiler has no target for hot water: not a target */, name: boilerName(reg), pressure, pressureLow: pressure !== null && (pLow ?? pressure < 1), pressureHigh: pressure !== null && (pHigh ?? pressure > 2.5), relay: relay === 'on' ? true : relay === 'off' ? false : null, state: s('sensor.kitchen_boiler_state_code')?.state ?? null },
     outdoor: { temp: weather && typeof S[weather].attributes.temperature === 'number' ? S[weather].attributes.temperature as number : null, state: weather ? S[weather].state : null },
   };
 }

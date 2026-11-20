@@ -121,7 +121,7 @@ export const ru = {
   'module.heat.on': "Вкл",
   'module.heat.byItself': "Сам",
   'module.heat.r.heating': "Греет",
-  'module.heat.r.idle': "Ожидание",
+  'module.heat.r.idle': "Тепло",
   'module.heat.r.off': "Выкл",
   'module.heat.r.window': "Окно · пауза",
   'module.heat.r.windowSoon': "Окно открыто",

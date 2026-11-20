@@ -41,7 +41,7 @@ for (const theme of ['light', 'dark']) for (const [w, h, dev] of SIZES) for (con
   const lay = await layout(panel.page, '.at-heat-panel'), tg = await targets(panel.page, '.at-heat-panel');
   check(`panel layout ${tag}`, lay.length === 0, lay); check(`panel targets ${tag}`, tg.length === 0, tg);
   const txt = await panel.page.evaluate(() => document.querySelector('.at-heat-panel')?.innerText ?? '');
-  check(`panel has 5 rooms and the boiler ${tag}`, (await panel.page.$$('.at-heat-room')).length === 5 && txt.includes('Demir Döküm'));
+  check(`panel has 5 rooms and the boiler ${tag}`, (await panel.page.$$('.at-heat-room')).length === 5 && (await panel.page.$eval('.at-heat-boiler header strong', e => e.textContent.trim()).catch(() => '')) === 'Demir Döküm Nitromix P24'); // the boiler's name comes from its HA device «Кухня · Котёл (Demir Döküm Nitromix P24)», no longer from the code (audit 20.11.2026)
   check(`no raw text ${tag}`, !/module\.heat|undefined|NaN|null/.test(txt));
   check(`no page error panel ${tag}`, panel.errors.length === 0, panel.errors);
   if (theme === 'light' && dev === 'pad-wide') await panel.page.screenshot({ path: `${out}/panel-${scenario}.png` });
@@ -286,7 +286,7 @@ for (const theme of ['light', 'dark']) for (const lang of ['ru', 'ro']) { const 
   const p = await open({ scenario: 'off', hash: '#climate' }); check('round2 l120: heating off — no scenario carries «Сейчас»', await p.page.locator('.at-heat-scen-card.is-now').count() === 0 && !/Сейчас/.test(await p.page.locator('.at-heat-scen').innerText()), await p.page.locator('.at-heat-scen').innerText()); await p.ctx.close();
   const s = await open({ scenario: 'silent', hash: '#climate' }); await setStates(s.page, { 'switch.kitchen_boiler_heat_relay': 'on' });
   const b = await s.page.evaluate(() => ({ chip: document.querySelector('.at-heat-relay')?.textContent ?? '', state: document.querySelector('.at-heat-boiler header small')?.textContent ?? '', fact: document.querySelector('.at-heat-hero-facts li')?.className ?? '' }));
-  check('round2 l120: «Нет связи по eBUS» stands beside «Реле: запрос тепла», the hero\'s fact is a warning', /Нет связи по eBUS/.test(b.state) && b.chip === 'Реле: запрос тепла' && /is-warn/.test(b.fact) && !/is-hot/.test(b.fact), b); await s.ctx.close(); }
+  check('round2 l120: «Нет связи по eBUS» stands beside «Реле: запрос тепла», the hero\'s fact is a warning', /Котёл не на связи/.test(b.state) /* the words of 19.11.2026 */ && b.chip === 'Реле: запрос тепла' && /is-warn/.test(b.fact) && !/is-hot/.test(b.fact), b); await s.ctx.close(); }
 { // l24: the room's sensor is gone while the head is still set to it
   const p = await open({ hash: '#climate' }); const id = await p.page.evaluate(() => { const st = window.atomPreview.host.states(); return ['sensor.kids_co2_temperature', 'sensor.kids_climate_temperature'].find(x => st[x]) ?? null; });
   check('round2 l24: the preview house has the kids\' room sensor', !!id); await setStates(p.page, { [id ?? 'sensor.kids_co2_temperature']: 'unavailable' }); const r = await p.page.locator('.at-heat-room[data-room="kids"]').innerText();

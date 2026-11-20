@@ -958,3 +958,11 @@
   .hm-shell .at-win .hm-switch,.hm-shell .at-clock .hm-switch{position:relative}
   .hm-shell .at-win .hm-switch::before,.hm-shell .at-clock .hm-switch::before{content:'';position:absolute;inset:-7px -2px}
 }
+/* ---- heating and vacuum audits (20.11.2026) ---- */
+.hm-shell .at-heat-chip small,.hm-shell .at-heat-scen-card em,.hm-shell .at-vac-room em{font-size:.75rem}
+.hm-shell .at-vac-go-pct i{font-size:.75rem}
+/* the robot's schedule times: the clock's 24-hour fields, smaller */
+.hm-shell .at-alarm-hm.is-small{padding:2px 8px}
+.hm-shell .at-alarm-hm.is-small select{min-height:44px;font-size:1.0625rem;font-weight:600;letter-spacing:0}
+.hm-shell .at-alarm-hm.is-small b{font-size:1rem}
+.hm-shell .at-alarm-hm select:disabled{opacity:.5;cursor:default}

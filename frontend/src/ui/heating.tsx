@@ -3,7 +3,8 @@ import { ClimateSensorsBlock } from './climate-sensors.tsx';
 import type { ClimateSensors } from '../model/climate-sensors.ts';
 import type { Host } from '../runtime/host.ts';
 import type { Key, T } from '../i18n/index.ts';
-import { errorText, type Lang } from './format.ts';
+import { errorText, unitWord, type Lang } from './format.ts';
+import { houseDate } from '../runtime/zone.ts';
 import { Icon } from './primitives.tsx';
 import { DeviceArt } from './device-art.tsx';
 import { boilerMark, dayOf, heatTone, heatingRooms, houseSet, hystMax, outdoorText, pressureWord, problemRoom, returnDate, roomLocked, scenarioNow, vacationArming, type HeatRoom, type Heating, type HeatTone, type Scenario } from '../model/heating.ts';
@@ -18,7 +19,7 @@ const LOC: Record<Lang, string> = { ru: 'ru-RU', ro: 'ro-RO', en: 'en-GB' };
 /** 20 → «20», 20.5 → «20,5»: the set temperature; the room's reading always has its tenth. */
 const setT = (v: number | null, lang: Lang) => v === null ? '—' : v.toLocaleString(LOC[lang], { maximumFractionDigits: 1 });
 const nowT = (v: number | null, lang: Lang) => v === null ? '—' : v.toLocaleString(LOC[lang], { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-const hhmm = (ms: number) => new Date(ms).toTimeString().slice(0, 5);
+const hhmm = (ms: number) => houseDate(ms).toTimeString().slice(0, 5); // the house's clock, wherever the panel is opened (audit 20.11.2026)
 const left = (ms: number, t: T) => { const m = Math.max(1, Math.round(ms / 60000)), h = Math.floor(m / 60); return h ? tk(t, 'leftHM', { h, m: m % 60 }) : tk(t, 'leftM', { m }); };
 const short = (name: string) => name.length > 9 ? `${name.slice(0, 4)}.` : name;
 /** One command at a time per card: the button that sent it waits, a refusal is said in words. */
@@ -145,9 +146,9 @@ function ModeSwitch({ h, t, onMode, busy, stale, onStale }: { h: Heating; t: T; 
 /** One room on the tile: its radiator lit while it heats, its reading, its name; a window or a lost head says so instead of the reading. */
 function Chip({ r, t, lang, now }: { r: HeatRoom; t: T; lang: Lang; now: number }) {
   const winOpen = r.windows.some(w => w.open);
-  return <li className={`at-heat-chip is-${r.action}`} aria-label={`${r.name}: ${nowT(r.current, lang)}°, ${roomWord(r, t, now)}`}>
+  return <li className={`at-heat-chip is-${r.action}`}><span className="at-vh">{`${r.name}: ${nowT(r.current, lang)}°, ${roomWord(r, t, now)}`}</span>{/* said by every reader: an aria-label on a list item is skipped by some (audit 20.11.2026) */}
     <span className="at-heat-chip-dot" aria-hidden="true">{r.action === 'window' || winOpen ? <Glyph d={WIN} size={13} /> : r.action === 'offline' ? '!' : <Icon name="flame" size={13} />}</span>
-    <b>{r.action === 'offline' ? '—' : <>{nowT(r.current, lang)}<i>°</i></>}</b><small>{short(r.name)}</small>
+    <b aria-hidden="true">{r.action === 'offline' ? '—' : <>{nowT(r.current, lang)}<i>°</i></>}</b><small aria-hidden="true">{short(r.name)}</small>
   </li>;
 }
 /** The house's − / + : the value goes out with the mode and scenario of the tap, and the rooms' own steppers wait while the automation applies it. */
@@ -250,13 +251,13 @@ function BoilerCard({ h, t, lang }: { h: Heating; t: T; lang: Lang }) {
   const state = !b.online ? tk(t, 'b.offline') : b.flame === null ? tk(t, 'b.flameUnknown') : b.flame ? (b.relay === null ? tk(t, 'b.burning') : b.relay ? tk(t, 'b.burningHeat') : tk(t, 'b.burningDhw')) : tk(t, 'b.idle');
   return <section className="at-heat-sec"><div className="hm-section-head"><h2>{tk(t, 'boiler')}</h2></div>
     <article className={`at-heat-boiler ${b.online ? '' : 'is-offline'} ${b.flame ? 'is-burning' : ''}`}>
-      <header><span className="at-heat-boiler-art"><DeviceArt type="boiler" fill /></span><div><strong>Demir Döküm Nitromix P24</strong><small>{state}</small></div>
+      <header><span className="at-heat-boiler-art"><DeviceArt type="boiler" fill /></span><div><strong>{b.name ?? tk(t, 'boiler')}</strong><small>{state}</small></div>
         <span className={`at-heat-relay ${b.relay ? 'is-on' : ''} ${b.relay === null ? 'is-lost' : ''}`}><Icon name={b.relay === null ? 'warning' : 'flame'} size={15} />{b.relay === null ? tk(t, 'b.relayLost') : b.online ? (b.relay ? tk(t, 'b.ask') : tk(t, 'b.noAsk')) : b.relay ? tk(t, 'b.askRelay') : tk(t, 'b.noAskRelay') /* with the bus silent the word is the relay's own, not the boiler's */}</span></header>
       <div className="at-heat-bgrid">
         {cell(tk(t, 'b.flow'), f(b.flow), '°', b.flowTarget !== null ? tk(t, 'b.target', { v: f(b.flowTarget, 0) }) : '')}
         {cell(tk(t, 'b.dhw'), f(b.dhw), '°', b.dhwTarget !== null ? tk(t, 'b.target', { v: f(b.dhwTarget, 0) }) : '')}
         {cell(tk(t, 'b.return'), f(b.ret), '°', b.flow !== null && b.ret !== null ? `Δ ${f(Math.abs(b.flow - b.ret))}°` : '')}
-        {cell(tk(t, 'b.pressure'), f(b.pressure, 2), ' bar', pw === null ? '' : pw === 'low' ? tk(t, 'b.low') : pw === 'high' ? tk(t, 'b.high') : pw === 'norm' ? tk(t, 'b.norm') : tk(t, 'b.normBy'), pw === 'low' || pw === 'high' ? 'is-warn' : '')}
+        {cell(tk(t, 'b.pressure'), f(b.pressure, 2), ` ${unitWord('bar', t)}`, pw === null ? '' : pw === 'low' ? tk(t, 'b.low') : pw === 'high' ? tk(t, 'b.high') : pw === 'norm' ? tk(t, 'b.norm') : tk(t, 'b.normBy'), pw === 'low' || pw === 'high' ? 'is-warn' : '')}
       </div>
       {/* ST-05: with the boiler silent the note says exactly what is known — the relay asks for heat, does not, or does not answer itself;
           the relay is never taken for a burning flame */}

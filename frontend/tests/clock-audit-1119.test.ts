@@ -11,3 +11,13 @@ test('the clock\'s settings are parsed once; a write is seen at once', () => {
   assert.equal(readClockSettings(), first);
   writeClockSettings({ ...first, style: 'digital' }); assert.equal(readClockSettings().style, 'digital');
 });
+
+// ---- heating audit 20.11.2026: the boiler's name comes from HA
+import { boilerName } from '../src/model/heating.ts';
+const regOf = (name: string | null, manufacturer: string | null = null, model: string | null = null) => ({ areas: [], devices: [{ id: 'd', name, manufacturer, model, area_id: null }], entities: [{ entity_id: 'sensor.kitchen_boiler_flow_temp', device_id: 'd', area_id: null, name: null, original_name: null, platform: 'esphome', entity_category: null, disabled_by: null, hidden_by: null }], states: {} }) as never;
+test('the boiler is named as HA names it: the model in brackets, else the name without its room; a bus gateway is no name', () => {
+  assert.equal(boilerName(regOf('Кухня · Котёл (Demir Döküm Nitromix P24)')), 'Demir Döküm Nitromix P24');
+  assert.equal(boilerName(regOf('Кухня · Vaillant ecoTEC')), 'Vaillant ecoTEC');
+  assert.equal(boilerName(regOf('esp-ebus', 'Espressif', 'esp32')), null);
+  assert.equal(boilerName(regOf('esp-ebus', 'Baxi', 'Luna 3')), 'Baxi Luna 3');
+});

@@ -330,15 +330,14 @@ function Toggle({ s, label, hint, act, ui, k }: { s: VacSwitch; label: string; h
     <button type="button" role="switch" aria-checked={!!s.on} aria-label={label} className={`at-vac-switch ${s.on ? 'is-on' : ''}`} aria-busy={ui.pending(k) || undefined} aria-disabled={s.on === null || ui.pending(k) || undefined} onClick={() => { if (s.on !== null) ui.run(k, () => act.sw(s, !s.on)); }}><i /></button></div>;
 }
 /** The browser writes a time field in ITS locale's clock (not the panel's language): a 12-hour one says «10:00 PM» and needs a wider field (1.26.1). */
-const H12 = (() => { try { const hc = new Intl.DateTimeFormat(typeof navigator === 'undefined' ? undefined : navigator.language, { hour: 'numeric' }).resolvedOptions().hourCycle; return hc === 'h11' || hc === 'h12'; } catch { return false; } })();
-function TimeField({ x, label, act, ui, k, disabled, of, lang }: { x: { id: string; v: string }; label: string; act: Act; ui: UI; k: string; disabled?: boolean; of: string; /** the panel's language: the field follows it where the browser allows */ lang: Lang }) {
-  // the browser fires change on every hour or minute part: keep a draft and send once, when the field is left
+function TimeField({ x, label, act, ui, k, disabled, of }: { x: { id: string; v: string }; label: string; act: Act; ui: UI; k: string; disabled?: boolean; of: string; lang: Lang }) {
+  // two 24-hour fields «22 : 00» (audit 20.11.2026: <input type=time> follows the device's language and showed «10:00 PM»); a choice goes at once,
+  // a refusal puts the field back to what the robot has
   const [draft, setDraft] = useState<string | null>(null);
-  useEffect(() => { setDraft(null); sent.current = null; }, [x.v]);
-  // Enter and then leaving the field is one command (`sent`); a refusal puts the field back to what the robot has
-  const sent = useRef<string | null>(null);
-  const send = () => { if (draft && /^\d\d:\d\d$/.test(draft) && draft !== x.v && sent.current !== draft) { sent.current = draft; ui.run(`${k}:${x.id}`, () => act.time(x.id, draft), () => { sent.current = null; setDraft(null); }); } };
-  return <label><small>{label}</small><input type="time" className={H12 ? 'is-12h' : undefined} lang={lang} aria-label={`${of}: ${label}`} value={draft ?? x.v} disabled={disabled} onInput={e => setDraft((e.target as HTMLInputElement).value)} onBlur={send} onKeyDown={e => { if (e.key === 'Enter') send(); }} /></label>;
+  useEffect(() => { setDraft(null); }, [x.v]);
+  const now = draft ?? x.v, hh = now.slice(0, 2), mm = now.slice(3, 5);
+  const pick = (h: string, m: string) => { const v = `${h}:${m}`; if (v === x.v) { setDraft(null); return; } setDraft(v); ui.run(`${k}:${x.id}`, () => act.time(x.id, v), () => setDraft(null)); };
+  return <label className="at-vac-time"><small>{label}</small><span className="at-alarm-hm is-small" role="group" aria-label={`${of}: ${label}`}><select aria-label={`${label}: ${of}`} disabled={disabled} value={hh} onChange={e => pick((e.target as HTMLSelectElement).value, mm)}>{Array.from({ length: 24 }, (_, h) => String(h).padStart(2, '0')).map(h => <option value={h}>{h}</option>)}</select><b aria-hidden="true">:</b><select aria-label={`${label}: ${of} · min`} disabled={disabled} value={mm} onChange={e => pick(hh, (e.target as HTMLSelectElement).value)}>{Array.from({ length: 60 }, (_, m) => String(m).padStart(2, '0')).map(m => <option value={m}>{m}</option>)}</select></span></label>;
 }
 function Times({ from, to, act, ui, k, t, disabled, of, lang }: { lang: Lang; from: { id: string; v: string } | null; to: { id: string; v: string } | null; act: Act; ui: UI; k: string; t: T; disabled?: boolean; of: string }) {
   if (!from || !to) return null;
@@ -388,7 +387,7 @@ export function VacuumSettings({ v, host, t, lang, onBack }: { v: Vacuum; host: 
   const lastMin = v.last.begin && v.last.end && v.last.end > v.last.begin ? (v.last.end - v.last.begin) / 60000 : null;
   const emptyLive = !!v.emptyMode && reachable(v.emptyMode.id), volLive = !!v.volume && reachable(v.volume.id);
   return <div className="at-vac-panel is-settings">
-    <div className="at-vac-set-head"><button type="button" ref={backBtn} className="hm-back" onClick={() => { backFromSettings = true; onBack(); }}><Icon name="back" size={20} />{tk(t, 'title')}</button><h2>{tk(t, 'settings')}</h2><small>{v.name}{v.model ? ` · ${v.model}` : ''}</small></div>
+    <div className="at-vac-set-head"><button type="button" ref={backBtn} className="hm-back" onClick={() => { backFromSettings = true; onBack(); }}><Icon name="back" size={20} />{tk(t, 'title')}</button><h2>{tk(t, 'settings')}</h2><small>{v.model ?? v.name}</small></div>
     <section className="at-vac-sec"><div className="hm-section-head"><h2>{tk(t, 'history')}</h2></div>
       <div className="at-vac-hist">
         <div className="at-vac-stat"><b>{lastMin === null ? '—' : dur(lastMin, t)}</b><small>{tk(t, 'lastDur')}</small></div>
