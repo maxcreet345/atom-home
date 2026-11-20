@@ -1,6 +1,6 @@
 # Конструктор карточек · этап 1 (20.11.2026)
 
-Задание: `book/06-dashboards/platform-2026/PROMPT-CARD-CATALOG.md`. Ветка `card-catalog` от `cce94cb` (1.31.1). Номер версии не менялся, бандл в `custom_components/atom_home/frontend` не пересобран в коммите — это делается при выпуске.
+Задание: `book/06-dashboards/platform-2026/PROMPT-CARD-CATALOG.md`. Ветка `card-catalog` от `cce94cb` (1.31.1). Выпущено как 1.32.0.
 
 ## Что сделано
 
