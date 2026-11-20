@@ -966,3 +966,39 @@
 .hm-shell .at-alarm-hm.is-small select{min-height:44px;font-size:1.0625rem;font-weight:600;letter-spacing:0}
 .hm-shell .at-alarm-hm.is-small b{font-size:1rem}
 .hm-shell .at-alarm-hm select:disabled{opacity:.5;cursor:default}
+/* ---- «Безопасность» in four tabs (owner 20.11.2026) ---- */
+.hm-shell .at-sec-tabs{margin:0 0 14px}
+.hm-shell .at-osec-gsum{display:grid;gap:8px;padding:12px;border-radius:18px;background:var(--ah-group);box-shadow:var(--ah-tile-shadow)}
+.hm-shell .at-osec-gsum .at-osec-group-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0;padding:2px 4px}
+.hm-shell .at-osec-gsum .at-osec-group-h small{font-size:.875rem;font-weight:600;color:var(--ah-muted)}
+.hm-shell .at-osec-gsum.is-bad .at-osec-group-h small{color:#9a5200}
+.hm-shell.ah-shell[data-theme="dark"] .at-osec-gsum.is-bad .at-osec-group-h small{color:#ffc266}
+.hm-shell .at-osec-more{justify-self:start;margin-left:-4px}
+.hm-shell .at-osec[data-tab] .at-osec-list{display:grid;gap:12px}
+/* the tabbed panel: the tabs over the whole width, one tab's content under them (the old two-column «ctl devs / feed devs / set set» is gone) */
+.hm-shell .at-osec[data-tab]{grid-template-columns:minmax(0,1fr);grid-template-rows:none;grid-template-areas:none}
+.hm-shell .at-osec[data-tab]>*{grid-area:auto;grid-column:1/-1}
+.hm-shell.is-wide.pw-980 .at-osec[data-tab="guard"]{grid-template-columns:minmax(340px,460px) minmax(0,1fr)}
+.hm-shell.is-wide.pw-980 .at-osec[data-tab="guard"]>.at-osec-control{grid-column:1}
+.hm-shell.is-wide.pw-980 .at-osec[data-tab="guard"]>:not(.at-sec-tabs):not(.at-osec-control){grid-column:2}
+.hm-shell.is-wide .at-osec[data-tab="sensors"] .at-osec-list{grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr));align-items:start}
+.hm-shell .at-osec-glance{display:grid;gap:1px;border-radius:18px;overflow:hidden;background:var(--ah-line);box-shadow:var(--ah-tile-shadow)}
+.hm-shell .at-osec-glance-row{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:10px;min-height:52px;padding:8px 14px;border:0;background:var(--ah-group);color:var(--ah-ink);font:inherit;text-align:left;cursor:pointer}
+.hm-shell .at-osec-glance-row b{font-weight:600}
+.hm-shell .at-osec-glance-row small{font-size:.875rem;color:var(--ah-muted)}
+.hm-shell .at-osec-glance-row.is-bad small{color:#9a5200;font-weight:600}
+.hm-shell.ah-shell[data-theme="dark"] .at-osec-glance-row.is-bad small{color:#ffc266}
+.hm-shell .at-osec-glance-row svg{color:var(--ah-muted)}
+.hm-shell.is-wide.pw-980 .at-osec[data-tab="guard"]{grid-template-rows:auto auto 1fr;align-items:start}
+.hm-shell.is-wide.pw-980 .at-osec[data-tab="guard"]>.at-osec-control{grid-row:2 / span 2}
+.hm-shell.is-wide.pw-980 .at-osec[data-tab="guard"]>.at-sec-cams{grid-row:2}
+.hm-shell.is-wide.pw-980 .at-osec[data-tab="guard"]>.at-osec-glance{grid-row:3}
+/* a switch that is on is lavender here too («Гости», «Отпуск», the settings), like every «включено» of the panel */
+.hm-shell .is-on .at-sec-sw,.hm-shell .at-sec-sw-btn.is-on .at-sec-sw{background:var(--ah-accent)}
+.hm-shell .at-osec-glance-row{grid-template-columns:minmax(0,1fr) minmax(0,max-content) auto}
+.hm-shell .at-osec-glance-row b{min-width:0;overflow-wrap:anywhere}
+.hm-shell .at-osec-glance-row small{min-width:0;text-align:right}
+/* the tabs are a finger's (and the security QA's) 44 px everywhere */
+.hm-shell .at-sec-tabs button{min-height:44px}
+/* the home tile's «Безопасность» on a narrow phone: two lines at its soft hyphen, never «Безопаснос…» */
+.hm-shell .at-sec-tile-head strong{white-space:normal;overflow:visible;text-overflow:clip;hyphens:manual;line-height:1.15}

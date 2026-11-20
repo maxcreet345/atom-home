@@ -72,6 +72,9 @@ const GROUP_ORDER: SecGroup[] = ['doors', 'water', 'fire', 'motion'];
 const groupOf = (d: Dev): SecGroup => d.art === 'door' || d.art === 'window' ? 'doors' : d.art === 'leak' || d.art === 'valve' ? 'water' : d.art === 'gas' ? 'fire' : 'motion';
 /** «Безопасность» as a page of its own (1.27.0): the same panel, its devices grouped — doors and windows, water, gas and smoke, motion — and
  * `aside` (the way to the cameras) under the alarm's own card. No new command and no new question: what it sends and asks is what it did. */
+type SecTab = 'guard' | 'sensors' | 'log' | 'settings' | 'all';
+/** `all`: every tab's content on one page — only for the security QA (`window.__secAllTabs`), which checks behaviour across the parts */
+let lastTab: SecTab = typeof window !== 'undefined' && (window as unknown as { __secAllTabs?: boolean }).__secAllTabs ? 'all' : 'guard';
 export function SecurityPanel({ s, registry, config, host, commands, t, lang, now: _now, admin, motion = [], aside = null }: { s: Security; registry: Registry; config: HouseConfig; host: Host; commands: Commands; t: T; lang: Lang; now: number; admin: boolean; motion?: MotionSensor[]; aside?: preact.JSX.Element | null }) {
   const tone = secTone(s), list = people(registry, config), homeList = list.filter(p => p.state === 'home'), guests = !!s.guests?.on, st = s.alarm.state;
   const armed = [...ARMED_ST, 'triggered', 'pending', 'arming'].includes(st), offline = !host.online;
@@ -89,7 +92,9 @@ export function SecurityPanel({ s, registry, config, host, commands, t, lang, no
   const send = (key: string, part: Part, work: () => Promise<unknown>) => { const was = seen.current[part]; setErr(''); void commands.run(`sec:${key}`, work, { onError: (text, e) => setErr(e instanceof AlarmGone ? sk(t, 'st.unknown') : text), until: () => seen.current[part] !== was }); };
   const call = (domain: string, service: string, data: Record<string, unknown>) => () => host.call(domain, service, data);
   const left = useLeft(s.alarm, registry.states), total = s.alarm.delayEnds && s.alarm.since ? (s.alarm.delayEnds - s.alarm.since) / 1000 : 0;
-  const [room, setRoom] = useState('all'), [open, setOpen] = useState<string | null>(null);
+  const [room, setRoom] = useState('all'), [open, setOpen] = useState<string | null>(null), [all, setAll] = useState<ReadonlySet<string>>(new Set());
+  // four tabs instead of one long page (owner 20.11.2026): «Охрана» · «Датчики» · «Журнал» · «Настройки»
+  const [tab, setTabState] = useState<SecTab>(lastTab), setTab = (x: SecTab) => { lastTab = x; setTabState(x); };
   // the questions: disarming, «Отпуск» both ways, opening the water (always); arming is one tap unless a sensor does not answer
   // «today» for the return date is the HOUSE's day, not this browser's
   const [ask, setAsk] = useState<AskKind | null>(null), [askValve, setAskValve] = useState<string | null>(null), [back, setBack] = useState(''), [backBad, setBackBad] = useState(false), opener = useRef<HTMLElement | null>(null), dateField = useRef<HTMLInputElement>(null), backId = useId(), today = houseToday();
@@ -169,11 +174,20 @@ export function SecurityPanel({ s, registry, config, host, commands, t, lang, no
   // the groups in their order, the one with an alarm first (trouble first, as the flat list had it); a group with nothing in it is not drawn
   const groups = GROUP_ORDER.map(g => ({ g, list: shown.filter(d => groupOf(d) === g), valve: g === 'water' && (valvesShown.length > 0 || missingShown) })).filter(x => x.list.length || x.valve)
     .map((x, i) => ({ ...x, i, worst: Math.min(...x.list.map(rank), x.valve && valvesShown.some(v => v.state === 'closed') ? 1 : 3) })).sort((a, b) => (a.worst === 0 ? 0 : 1) - (b.worst === 0 ? 0 : 1) || a.i - b.i);
+  // a group is its summary and its trouble (owner 20.11.2026): «Двери и окна · Всё закрыто · 12»; what needs attention is shown at once, the rest
+  // behind «Показать все»; a tap on a sensor opens its card
+  const trouble = (d: Dev) => rank(d) < 3; // an alarm, open or silent, and a fault of the case, the battery or the radio
+  const summary = (g: SecGroup, list: Dev[], valveBad: number) => { const bad = list.filter(trouble).length + valveBad, n = list.length + (g === 'water' ? valvesShown.length : 0);
+    return bad ? sk(t, 'sum.bad', { k: bad, n }) : g === 'doors' ? sk(t, 'sum.closed', { n }) : sk(t, 'sum.ok', { n }); };
+  const problems = devs.filter(trouble).length + s.valves.filter(v => v.state === 'closed' || v.state === 'offline').length;
   const away = st === 'away' ? sk(t, 'chip.awayOn') : homeList.length ? sk(t, 'chip.awayWait', { who: homeList.map(p => p.first).join(', ') }) : guests ? sk(t, 'chip.awayGuests') : sk(t, 'chip.awayAuto');
   const backDay = calendarDay(s.vacation?.to ?? null, locales[lang]); // the helper's date as it is written, not moved by the browser's zone
   const persons = Object.keys(registry.states).filter(id => id.startsWith('person.')).map(id => ({ user: typeof registry.states[id].attributes.user_id === 'string' ? registry.states[id].attributes.user_id as string : null, name: String(registry.states[id].attributes.friendly_name ?? id) }));
   const armedWord = (mode: string | undefined) => mode === 'armed_away' ? sk(t, 'ev.away') : mode === 'armed_vacation' ? sk(t, 'ev.vacation') : sk(t, 'ev.guard');
-  return <div className={`at-osec-wrap at-sec-panel ${offline ? 'is-stale' : ''}`}><div className="at-osec">
+  const tabs: Array<[SecTab, string]> = [['guard', sk(t, 'tab.guard')], ['sensors', problems ? `${sk(t, 'tab.sensors')} · ${problems}` : sk(t, 'tab.sensors')], ['log', sk(t, 'tab.log')], ['settings', sk(t, 'tab.settings')]];
+  return <div className={`at-osec-wrap at-sec-panel ${offline ? 'is-stale' : ''}`}><div className="at-osec" data-tab={tab}>
+    <div className="ah-segments hm-range-tabs at-sec-tabs" role="group" aria-label={sk(t, 'title')}>{tabs.map(([k, label]) => <button type="button" aria-pressed={tab === k} className={tab === k ? 'is-active' : ''} onClick={() => setTab(k)}>{label}</button>)}</div>
+    {(tab === 'guard' || tab === 'all') && <>
     <section className={`at-osec-control is-${tone} ${ARMED_ST.includes(st) ? 'is-st-armed' : `is-st-${st}`} ${ringKind(s) === 'alert' ? 'is-alarm' : ''}`}>
       <Ring kind={ringKind(s)} size={104} progress={total && left !== null ? 1 - left / total : 0} tone={ringTone(s)} />
       <div className="at-osec-name">
@@ -211,25 +225,30 @@ export function SecurityPanel({ s, registry, config, host, commands, t, lang, no
       </div>
     </section>
     {aside}
-    <section className="at-osec-devs">
+    {/* the sensors at a glance beside the guard: one line a group, a tap opens «Датчики» */}
+    <div className="at-osec-glance">{groups.map(({ g, list }) => { const valveBad = g === 'water' ? valvesShown.filter(v => v.state === 'closed' || v.state === 'offline').length : 0, bad = list.some(trouble) || valveBad > 0;
+      return <button type="button" className={`at-osec-glance-row ${bad ? 'is-bad' : ''}`} onClick={() => setTab('sensors')}><b>{sk(t, `group.${g}`)}</b><small>{summary(g, list, valveBad)}</small><Chevron /></button>; })}</div></>}
+    {(tab === 'sensors' || tab === 'all') && <section className="at-osec-devs">
       <div className="hm-section-head"><h2>{sk(t, 'devices')}</h2><small>{devicesWord(s, t)}</small></div>
       <div className="at-osec-chips" role="group" aria-label={t('ui.rooms')}>{/* a filter of the list below, not tabs: buttons with a pressed one (tabs would owe the arrow keys) */}{[{ id: 'all', name: sk(t, 'allRooms') }, ...rooms.map(r => ({ id: r, name: r }))].map(r => <button type="button" aria-pressed={room === r.id} className={room === r.id ? 'is-on' : ''} onClick={() => setRoom(r.id)}>{r.name}</button>)}</div>
       <div className="at-osec-list">
-        {groups.map(({ g, list, valve }) => <>
-          {groups.length > 1 && <h3 className="at-osec-group-h" key={`h:${g}`}>{sk(t, `group.${g}`)}</h3>}
-          {list.filter(d => rank(d) < 2).map(card)}
-          {valve && valveCards()}
-          {list.filter(d => rank(d) >= 2).map(card)}
-        </>)}
+        {groups.map(({ g, list, valve }) => { const valveBad = g === 'water' ? valvesShown.filter(v => v.state === 'closed' || v.state === 'offline').length : 0, rest = list.filter(d => !trouble(d)), wide = all.has(g);
+          return <div className={`at-osec-gsum ${list.some(trouble) || valveBad ? 'is-bad' : ''}`} key={`g:${g}`}>
+            <h3 className="at-osec-group-h"><span>{sk(t, `group.${g}`)}</span><small>{summary(g, list, valveBad)}</small></h3>
+            {list.filter(trouble).map(card)}
+            {valve && valveCards()}
+            {wide && rest.map(card)}
+            {rest.length > 0 && <button type="button" className="hm-text-btn at-osec-more" aria-expanded={wide} onClick={() => setAll(x => { const n = new Set(x); if (n.has(g)) n.delete(g); else n.add(g); return n; })}>{wide ? sk(t, 'sum.less') : sk(t, 'sum.all', { n: rest.length })}</button>}
+          </div>; })}
       </div>
-    </section>
-    <SecurityFeed alarmId={s.alarm.id} alarmState={st} people={persons} host={host} t={t} lang={lang} armed={armedWord} />
-    <div className="at-osec-set">
+    </section>}
+    {(tab === 'log' || tab === 'all') && <SecurityFeed alarmId={s.alarm.id} alarmState={st} people={persons} host={host} t={t} lang={lang} armed={armedWord} />}
+    {(tab === 'settings' || tab === 'all') && <div className="at-osec-set">
       {admin && <SecuritySettings s={s} host={host} t={t} lang={lang} />}
       <details className="at-sec-sec at-sec-how"><summary className="hm-section-head"><h2>{sk(t, 'how')}</h2></summary>
         <ul>{['away', 'guard', 'guests', 'vacation', 'alarm', 'water'].map(k => <li><b>{sk(t, `how.${k}.t`)}</b><span>{sk(t, `how.${k}`)}</span></li>)}</ul>
       </details>
-    </div>
+    </div>}
   </div></div>;
 }
 /** The owner's settings (HA admin only, owner 09.11.2026): the return date of «Отпуск», the valve's exercise (on, time, every N days) and the

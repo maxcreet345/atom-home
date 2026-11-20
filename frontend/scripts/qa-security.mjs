@@ -9,6 +9,9 @@ import { spawn } from 'node:child_process';
 import { readFile, mkdir, rm } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { layout } from './card-checks.mjs';
+/** «Безопасность» is four tabs since 20.11.2026: what a check looks for may be on another tab — open the one that has it (or stay when none does). */
+const reveal = async (page, sel) => { if (!(await page.$('.at-sec-tabs'))) return; for (let i = 0; i < 4; i++) { if (await page.locator(sel).count()) return; await page.locator('.at-sec-tabs button').nth(i).click(); await page.waitForTimeout(200); } };
+
 const SAID = '.hm-announce'; // the shell's urgent live region: where an alarm, a leak, gas and the entry delay are announced (round 2)
 const root = resolve(import.meta.dirname, '..'), out = resolve(root, process.argv[2] ?? 'evidence/security'); await rm(out, { recursive: true, force: true }); await mkdir(out, { recursive: true });
 const axe = await readFile(resolve(root, 'node_modules/axe-core/axe.min.js'), 'utf8'), port = await freePort();
@@ -21,8 +24,8 @@ const DEVICES = [[360, 792, '13R'], [792, 360, '13R-land'], [402, 874, 'phone'],
 const SCEN = ['disarmed', 'away', 'arming', 'armedOpen', 'pending', 'triggered', 'guard', 'guests', 'vacation', 'leak', 'gas', 'tamper', 'silent'];
 // the camera previews ask for frames the preview does not serve: those 404s are the preview's, not the card's
 const noise = t => /Failed to load resource: the server responded with a status of 404/.test(t);
-async function open({ w = 1070, h = 764, theme = 'light', lang = 'ru', scenario = 'disarmed', hash = '#security', tz = 'Europe/Chisinau', init = null, shadow = false } = {}) {
-  const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: w < 1100, timezoneId: tz }), page = await ctx.newPage(), errors = []; if (init) await ctx.addInitScript(init);
+async function open({ w = 1070, h = 764, theme = 'light', lang = 'ru', scenario = 'disarmed', hash = '#security', tz = 'Europe/Chisinau', init = null, shadow = false, tabs = false } = {}) {
+  const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: w < 1100, timezoneId: tz }), page = await ctx.newPage(), errors = []; if (!tabs) await ctx.addInitScript(() => { window.__secAllTabs = true; }); /* the behaviour checks see every tab's part at once; the tabs themselves are checked at the end */ if (init) await ctx.addInitScript(init);
   page.on('pageerror', e => errors.push(e.message)); page.on('console', m => { if (['error', 'warning'].includes(m.type()) && !noise(m.text())) errors.push(m.text()); });
   await page.goto(`${origin}/?card=security&scenario=${scenario}&theme=${theme}&lang=${lang}${shadow ? '&shadow=1' : ''}${hash}`); await page.waitForFunction(() => window.ready);
   await page.waitForSelector(hash === '#home' ? '.at-sec-tile' : '.at-sec-panel'); await page.waitForTimeout(250);
@@ -78,7 +81,7 @@ const tapSends = async (scenario, sel, want, label) => {
 /** a dangerous control: the tap sends nothing and asks; Escape and «no» send nothing and return the focus; «yes» sends exactly `want` */
 const asks = async (scenario, sel, want, label, { text, safe, fill } = {}) => {
   const { page, ctx, errors } = await open({ scenario }); await page.evaluate(() => window.atomPreview.host.setAccept(true));
-  const btn = page.locator(sel).first(); await btn.scrollIntoViewIfNeeded(); await btn.click(); await page.waitForTimeout(250);
+  await reveal(page, sel); const btn = page.locator(sel).first(); await btn.scrollIntoViewIfNeeded(); await btn.click(); await page.waitForTimeout(250);
   check(`${label}: the first tap sends nothing`, (await sent(page)).length === 0, await sent(page));
   check(`${label}: a question is shown`, await page.locator('.at-sec-ask').count() === 1);
   const q = await page.locator('.at-sec-ask').innerText().catch(() => '');
@@ -282,7 +285,7 @@ const vacKey = page => page.locator('.at-osec-group.is-btn').nth(1);
 for (const [theme, lang, st] of [['light', 'ru', 'unavailable'], ['light', 'ru', 'unknown'], ['dark', 'ru', 'unavailable'], ['light', 'en', 'unavailable'], ['dark', 'ro', 'unknown']]) {
   const { page, ctx, errors } = await open({ w: 320, h: 568, theme, lang, scenario: 'disarmed' }), tag = `${st} ${theme} ${lang} 320×568`;
   await page.evaluate(s => { window.atomPreview.host.setAccept(true); window.atomPreview.setStates({ [s[0]]: s[1] }); }, [ALARM, st]); await page.waitForTimeout(250);
-  const vac = vacKey(page); await vac.scrollIntoViewIfNeeded(); const dis = await vac.evaluate(b => b.disabled), box = await vac.boundingBox();
+  await reveal(page, '.at-osec-group.is-btn'); const vac = vacKey(page); await vac.scrollIntoViewIfNeeded(); const dis = await vac.evaluate(b => b.disabled), box = await vac.boundingBox();
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2); await page.waitForTimeout(250); const asked = await page.locator('.at-sec-ask').count();
   await page.locator('.at-osec-group.is-btn').nth(0).click(); await page.waitForTimeout(250); await page.locator('.at-sec-valve-btn').click(); await page.waitForTimeout(300);
   const l = await sent(page), state = await page.locator('.at-osec-control .at-osec-state').innerText();
@@ -332,7 +335,7 @@ for (const [w, h, theme, lang] of [[320, 568, 'light', 'ru'], [568, 320, 'dark',
   const row = await vacKey(page).innerText(), setDate = await page.locator('.at-sec-set input[type=date]').inputValue().catch(() => 'none');
   check('CODEX-011: «no date» is read back as no date — the mode row names no day, the setting\'s field is empty', !/2099|31 декабря|[Дд]о \d/.test(row) && setDate === '', { row, setDate }); check('errors CODEX-011', !errors.length, errors); await ctx.close(); }
 { const { page, ctx, errors } = await open({ scenario: 'disarmed' }); await page.evaluate(d => { window.atomPreview.host.setAccept(true); window.atomPreview.setStates({ 'input_datetime.heating_vacation_return': `${d} 00:00:00` }); }, LATER); await page.waitForTimeout(250);
-  const f = page.locator('.at-sec-set input[type=date]'); await f.scrollIntoViewIfNeeded(); const was = await f.inputValue(); await f.fill(''); await page.keyboard.press('Tab'); await page.waitForTimeout(400); const l = await sent(page);
+  await reveal(page, '.at-sec-set input[type=date]'); const f = page.locator('.at-sec-set input[type=date]'); await f.scrollIntoViewIfNeeded(); const was = await f.inputValue(); await f.fill(''); await page.keyboard.press('Tab'); await page.waitForTimeout(400); const l = await sent(page);
   check('CODEX-011: «Настройка → Дата возвращения» emptied writes the house\'s «no date», not nothing', was === LATER && l.length === 1 && l[0].c === 'input_datetime.set_datetime' && l[0].data?.datetime === '2099-12-31 00:00:00', { was, l }); check('errors CODEX-011 settings', !errors.length, errors); await ctx.close(); }
 // CODEX-002 / CODEX-010: the office («Атом + Окапи») — its own look (rings, two keys), the house's safety rules
 async function openOffice({ w = 1070, h = 764, theme = 'light', lang = 'ru', scenario = 'armed', hash = '#security' } = {}) {
@@ -398,7 +401,7 @@ for (const theme of ['light', 'dark']) for (const [w, h, dev] of [[360, 792, '13
   const sm = await small(page); check(`targets ${tag}`, !sm.length, sm);
   const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth); check(`no sideways scroll ${tag}`, over <= 0, over);
   if (['13R', 'pad', 'mac'].includes(dev)) { const a = await runAxe(page, '.at-sec-panel'); check(`axe ${tag}`, !a.length, a); }
-  if (['13R', 'pad', '13R-land'].includes(dev)) { await page.locator('.at-sec-valve').first().scrollIntoViewIfNeeded(); await page.screenshot({ path: `${out}/two-${dev}-${theme}-${scenario}.png`, fullPage: true }); }
+  if (['13R', 'pad', '13R-land'].includes(dev)) { await reveal(page, '.at-sec-valve'); await page.locator('.at-sec-valve').first().scrollIntoViewIfNeeded(); await page.screenshot({ path: `${out}/two-${dev}-${theme}-${scenario}.png`, fullPage: true }); }
   check(`errors ${tag}`, !errors.length, errors); await ctx.close();
 }
 { const { page, ctx, errors } = await open({ scenario: 'twoValves' }); await page.evaluate(() => window.atomPreview.host.setAccept(true));
@@ -440,4 +443,14 @@ for (const theme of ['light', 'dark']) for (const [w, h, dev] of [[360, 792, '13
   await page.locator('.ah-take.is-alarm button', { hasText: 'Перекрыть воду' }).click(); await page.waitForTimeout(350); l = await sent(page);
   check('…with both open it shuts both', l.length === 3 && l.slice(1).every(x => x.c === 'valve.close_valve') && new Set(l.slice(1).map(x => x.id)).size === 2, l);
   check('errors two leak takeover', !errors.length, errors); await ctx.close(); }
+// «Безопасность» in four tabs (owner 20.11.2026): the guard first, the sensors' groups with their summary and trouble, the log, the settings
+for (const [w, h] of [[1070, 764], [360, 792], [690, 829]]) { const { page, ctx, errors } = await open({ w, h, tabs: true });
+  const t = await page.evaluate(() => ({ tabs: [...document.querySelectorAll('.at-sec-tabs button')].map(b => b.textContent), on: document.querySelector('.at-sec-tabs [aria-pressed="true"]')?.textContent, guard: !!document.querySelector('.at-osec-control'), devs: !!document.querySelector('.at-osec-devs'), glance: document.querySelectorAll('.at-osec-glance-row').length, h: [...document.querySelectorAll('.at-sec-tabs button')].map(b => b.getBoundingClientRect().height) }));
+  check(`tabs ${w}: «Охрана · Датчики · Журнал · Настройки», the guard open first, no sensor list on it, the groups at a glance`, t.tabs[0] === 'Охрана' && /^Датчики/.test(t.tabs[1]) && t.tabs[2] === 'Журнал' && t.tabs[3] === 'Настройки' && t.on === 'Охрана' && t.guard && !t.devs && t.glance > 0 && t.h.every(x => x >= 44), t);
+  await page.locator('.at-osec-glance-row').first().click(); await page.waitForTimeout(250);
+  const g = await page.evaluate(() => ({ on: document.querySelector('.at-sec-tabs [aria-pressed="true"]')?.textContent, groups: [...document.querySelectorAll('.at-osec-gsum')].map(x => ({ head: x.querySelector('.at-osec-group-h small')?.textContent, more: x.querySelector('.at-osec-more')?.textContent ?? null })), guard: !!document.querySelector('.at-osec-control') }));
+  check(`tabs ${w}: a glance row opens «Датчики»: each group a summary, the rest behind «Показать все (N)»`, /^Датчики/.test(g.on) && !g.guard && g.groups.length > 0 && g.groups.every(x => x.head && (x.more === null || /Показать все \(\d+\)/.test(x.more))), g);
+  const more = page.locator('.at-osec-more').first(); if (await more.count()) { const box = page.locator('.at-osec-gsum').filter({ has: more }).first(), before = await box.locator('.at-osec-dev').count(); await more.click(); await page.waitForTimeout(200); const after = await box.locator('.at-osec-dev').count(); check(`tabs ${w}: «Показать все» shows the group's other sensors`, after > before, { before, after }); }
+  await page.locator('.at-sec-tabs button').nth(2).click(); await page.waitForTimeout(250); check(`tabs ${w}: «Журнал» holds the log, not the sensors`, !(await page.$('.at-osec-devs')) && !(await page.$('.at-osec-control')), {});
+  check(`errors tabs ${w}`, !errors.length, errors); await ctx.close(); }
 stop(fails.length ? 1 : 0);
