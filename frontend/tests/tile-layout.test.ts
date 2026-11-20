@@ -61,3 +61,11 @@ test('what the integration answers is read only where it is well formed', () => 
   assert.deepEqual(cleanScopes({ 'room:kukhnia': [['t:kettle', 2, 2]] }), { 'room:kukhnia': [['t:kettle', 2, 2]] });
   assert.deepEqual(normaliseProfiles(null), {});
 });
+
+test('cards away for good never push a screen past what the integration takes', async () => {
+  const { MAX_KEPT } = await import('../src/model/tile-layout.ts');
+  const saved = Array.from({ length: 200 }, (_, i) => [`gone${i}`, 1, 1] as [string, number, number]);
+  const kept = keep([{ key: 'here', w: 1, h: 1 }], saved);
+  assert.equal(kept.length, MAX_KEPT);
+  assert.ok(kept.some(r => r[0] === 'here'));
+});

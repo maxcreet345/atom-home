@@ -567,7 +567,7 @@ def _register_ws(hass: HomeAssistant) -> None:
         if layouts is None:
             connection.send_error(msg["id"], "not_loaded", "Atom Home is not set up")
             return
-        connection.send_result(msg["id"], layouts.summary())
+        connection.send_result(msg["id"], layouts.summary(connection.user.id))
 
     @websocket_api.websocket_command({
         vol.Required("type"): f"{DOMAIN}/layouts/set",
@@ -584,7 +584,7 @@ def _register_ws(hass: HomeAssistant) -> None:
             connection.send_error(msg["id"], "not_loaded", "Atom Home is not set up")
             return
         try:
-            rev = await layouts.write(msg["profile"], msg["name"], msg["scopes"], msg.get("expected_rev"))
+            rev = await layouts.write(msg["profile"], msg["name"], msg["scopes"], msg.get("expected_rev"), connection.user.id, connection.user.is_admin)
         except LayoutError as err:
             connection.send_error(msg["id"], err.code, err.message)
             return

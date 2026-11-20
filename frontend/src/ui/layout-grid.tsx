@@ -18,15 +18,18 @@ const readPointer = () => { try { return localStorage.getItem(POINTER_KEY); } ca
 const writePointer = (id: string | null) => { try { if (id) localStorage.setItem(POINTER_KEY, id); else localStorage.removeItem(POINTER_KEY); } catch { /* private mode: asked again next time */ } };
 const reduced = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-export interface LayItem { key: string; node: ComponentChildren; label?: string; /** the card is drawn in a list of rows without a layout (a room's plain devices): it starts as one cell */ unit?: boolean; min?: Span }
+export interface LayItem { key: string; node: ComponentChildren; label?: string; /** the card is drawn in a list of rows without a layout (a room's plain devices): it starts as one cell */ unit?: boolean; min?: Span; /** the size it takes when it first appears on an arranged screen (a camera, the heating: two by two) */ span?: Span }
 interface Draft { scope: string; list: Placed[] | null; natural: Record<string, Span> }
 interface Ctx {
   available: boolean; t: T; admin: boolean;
   device: { id: string; name: string } | null; profile: LayoutProfile | null; profiles: Record<string, LayoutProfile>;
   draft: Draft | null; setList: (list: Placed[]) => void;
-  begin: (scope: string) => void;
+  begin: (scope: string) => void; say: (text: string) => void;
 }
 const LayoutCtx = createContext<Ctx | null>(null);
+const own = <V,>(o: Record<string, V>, k: string | null | undefined): V | undefined => k && Object.hasOwn(o, k) ? o[k] : undefined;
+/** The panel lives in a shadow root inside Home Assistant (live-main.tsx): every lookup goes through the node's own root, never `document`. */
+export const rootOf = (el: Node | null | undefined): Document | ShadowRoot => (el?.getRootNode() as Document | ShadowRoot | undefined) ?? document;
 export const useLayout = () => useContext(LayoutCtx);
 
 /** A hidden mark before each card (no box, not a grid item): the arrangement starts from the element that follows it — what the screen shows. */
@@ -52,19 +55,23 @@ export function LayoutProvider({ host, t, children }: { host: Host; t: T; childr
   const [note, setNote] = useState<string | null>(null);
   const [asking, setAsking] = useState<null | 'reset'>(null);
   const listRef = useRef<Placed[] | null>(null);
+  const anchor = useRef<HTMLElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [said, setSaid] = useState('');
   const load = useCallback(async () => {
     if (!host.layouts) { setAvailable(false); return null; }
     try { const p = normaliseProfiles(await host.layouts.get()); setProfiles(p); setAvailable(true); return p; } catch { setAvailable(false); return null; }
   }, [host]);
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { if (!note) return; const id = setTimeout(() => setNote(null), 3600); return () => clearTimeout(id); }, [note]);
-  const device = pointer && profiles[pointer] ? { id: pointer, name: profiles[pointer].name } : null;
-  const profile = device ? profiles[device.id] : null;
+  const mine = own(profiles, pointer);
+  const device = pointer && mine ? { id: pointer, name: mine.name } : null;
+  const profile = mine ?? null;
   const start = useCallback((scope: string) => {
     // the size every card has right now, in cells of its own grid: the arrangement starts as the screen is
     const natural: Record<string, Span> = {};
     // an arranged screen starts from its arrangement (no marks there); a screen drawn as before, from what it shows
-    const root = document.querySelector(`[data-lay-scope="${CSS.escape(scope)}"]`);
+    const root = rootOf(anchor.current).querySelector(`[data-lay-scope="${CSS.escape(scope)}"]`);
     for (const [key, el] of root ? marked(root) : []) {
       const parent = el.parentElement; if (!parent || !el.isConnected) continue;
       if (parent.classList.contains('rm-tile-grid')) { natural[key] = { w: 1, h: 1 }; continue; }
@@ -73,52 +80,72 @@ export function LayoutProvider({ host, t, children }: { host: Host; t: T; childr
     listRef.current = null; setDraft({ scope, list: null, natural });
   }, []);
   const begin = useCallback((scope: string) => {
-    void load().then(p => { if (!p) { setNote(lk(t, 'unavailable')); return; } if (pointer && p[pointer]) start(scope); else setNaming({ scope }); });
+    void load().then(p => { if (!p) { setNote(lk(t, 'unavailable')); return; } if (own(p, pointer)) start(scope); else setNaming({ scope }); });
   }, [load, pointer, start, t]);
   const setList = useCallback((list: Placed[]) => { listRef.current = list; setDraft(d => d ? { ...d, list } : d); }, []);
   const saveScopes = async (scopes: LayoutProfile['scopes'], name = device!.name, id = device!.id) => {
-    const old = profiles[id];
+    const old = own(profiles, id);
     try { const { rev } = await host.layouts!.set(id, name, scopes, old ? old.rev : 0); setProfiles(p => ({ ...p, [id]: { name, scopes, rev, updated: Date.now() / 1000 } })); return true; }
-    catch (e) { const code = (e as { code?: string })?.code; setNote(code === 'conflict' ? lk(t, 'conflict', { name }) : lk(t, 'saveFailed')); void load(); return false; }
+    catch (e) { const code = (e as { code?: string })?.code; setNote(code === 'conflict' ? lk(t, 'conflict', { name }) : code === 'not_owner' ? lk(t, 'notOwner', { name }) : lk(t, 'saveFailed')); void load(); return false; }
   };
-  const done = async () => {
+  // one save at a time: a second tap on «Готово» would send the old revision and be told the arrangement «changed elsewhere»
+  const once = async (fn: () => Promise<void>) => { if (busy) return; setBusy(true); try { await fn(); } finally { setBusy(false); } };
+  const done = () => once(async () => {
     if (!draft || !device) { setDraft(null); return; }
     const list = listRef.current; if (!list) { setDraft(null); return; }
     const rows = keep(list, profile?.scopes[draft.scope]);
     if (await saveScopes({ ...(profile?.scopes ?? {}), [draft.scope]: rows })) { setNote(lk(t, 'saved', { name: device.name })); setDraft(null); }
-  };
-  const reset = async () => {
+  });
+  const reset = () => once(async () => {
     setAsking(null); if (!draft || !device) return;
     const scopes = { ...(profile?.scopes ?? {}) }; delete scopes[draft.scope];
     if (await saveScopes(scopes)) setDraft(null);
-  };
+  });
   const named = async (choice: { id: string; name: string; existing: boolean }) => {
-    if (!choice.existing) { const ok = await saveScopes(profiles[choice.id]?.scopes ?? {}, choice.name, choice.id); if (!ok) return; }
+    if (!choice.existing) { const ok = await saveScopes(own(profiles, choice.id)?.scopes ?? {}, choice.name, choice.id); if (!ok) return; }
     writePointer(choice.id); setPointer(choice.id);
     const scope = naming?.scope ?? null; setNaming(null);
     if (scope) start(scope);
   };
   const forget = async (id: string) => { try { await host.layouts!.remove(id); } catch { setNote(lk(t, 'saveFailed')); } if (id === pointer) { writePointer(null); setPointer(null); } await load(); };
-  const ctx: Ctx = { available, t, admin: host.admin, device, profile, profiles, draft, setList, begin };
+  const say = useCallback((text: string) => setSaid(text), []);
+  const ctx: Ctx = { available, t, admin: host.admin, device, profile, profiles, draft, setList, begin, say };
   return <LayoutCtx.Provider value={ctx}>
+    <i hidden ref={anchor} />
     {children}
+    <span className="at-vh" aria-live="polite">{said}</span>
     {draft && device && <div className="at-lay-bar" role="toolbar" aria-label={lk(t, 'bar')}>
       <button type="button" className="at-lay-who" onClick={() => setNaming({ scope: null })} aria-label={`${lk(t, 'bar')}: ${device.name}. ${lk(t, 'deviceRename')}`}><Icon name="grid" size={18} /><span><b>{lk(t, 'bar')}</b><small>{device.name}</small></span></button>
       <span className="at-lay-help">{lk(t, matchMedia?.('(pointer: coarse)').matches ? 'helpTouch' : 'help')}</span>
       <span className="at-lay-tools-host" />
       <span className="at-lay-acts">
-        {profile?.scopes[draft.scope] && <button type="button" className="hm-pill" onClick={() => setAsking('reset')}>{lk(t, 'reset')}</button>}
-        <button type="button" className="hm-pill" onClick={() => setDraft(null)}>{lk(t, 'cancel')}</button>
-        <button type="button" className="hm-pill is-primary at-lay-done" onClick={() => void done()}>{lk(t, 'done')}</button>
+        {profile?.scopes[draft.scope] && <button type="button" className="hm-pill" disabled={busy} onClick={() => setAsking('reset')}>{lk(t, 'reset')}</button>}
+        <button type="button" className="hm-pill" disabled={busy} onClick={() => setDraft(null)}>{lk(t, 'cancel')}</button>
+        <button type="button" className="hm-pill is-primary at-lay-done" disabled={busy} aria-busy={busy || undefined} onClick={() => void done()}>{lk(t, 'done')}</button>
       </span>
     </div>}
-    {asking === 'reset' && device && <div className="hm-scrim at-lay-ask" onClick={e => { if (e.target === e.currentTarget) setAsking(null); }}><section className="hm-sheet is-small" role="alertdialog" aria-modal="true" aria-label={lk(t, 'reset')}>
-      <p>{lk(t, 'resetAsk', { name: device.name })}</p>
-      <div className="at-lay-ask-acts"><button type="button" className="hm-pill" onClick={() => setAsking(null)}>{lk(t, 'cancel')}</button><button type="button" className="hm-pill is-primary" onClick={() => void reset()}>{lk(t, 'resetYes')}</button></div>
-    </section></div>}
+    {asking === 'reset' && device && <Ask t={t} text={lk(t, 'resetAsk', { name: device.name })} yes={lk(t, 'resetYes')} busy={busy} onNo={() => setAsking(null)} onYes={() => void reset()} />}
     {naming && <DeviceName t={t} profiles={profiles} current={device} admin={host.admin} onClose={() => setNaming(null)} onPick={named} onForget={forget} />}
     {note && <div className="at-lay-toast" role="status">{note}</div>}
   </LayoutCtx.Provider>;
+}
+
+/** The question before «Как было»: focus on «Отменить», Tab stays inside, Escape is «Отменить», focus goes back where it was. */
+function Ask({ t, text, yes, busy, onNo, onYes }: { t: T; text: string; yes: string; busy: boolean; onNo: () => void; onYes: () => void }) {
+  const box = useRef<HTMLElement>(null);
+  useEffect(() => { const back = rootOf(box.current).activeElement as HTMLElement | null; box.current?.querySelector<HTMLElement>('button')?.focus(); return () => back?.focus?.(); }, []);
+  return <div className="hm-scrim at-lay-ask" onClick={e => { if (e.target === e.currentTarget) onNo(); }} onKeyDown={e => trap(e, box.current, onNo)}><section ref={box} className="hm-sheet is-small" role="alertdialog" aria-modal="true" aria-describedby="at-lay-ask-tx">
+    <p id="at-lay-ask-tx">{text}</p>
+    <div className="at-lay-ask-acts"><button type="button" className="hm-pill" onClick={onNo}>{lk(t, 'cancel')}</button><button type="button" className="hm-pill is-primary" disabled={busy} onClick={onYes}>{yes}</button></div>
+  </section></div>;
+}
+/** Tab and Shift+Tab go round the dialog's own controls; Escape closes it. */
+function trap(e: KeyboardEvent, box: HTMLElement | null, close: () => void) {
+  if (e.key === 'Escape') { e.stopPropagation(); close(); return; }
+  if (e.key !== 'Tab' || !box) return;
+  const f = [...box.querySelectorAll<HTMLElement>('button:not([disabled]),input,[tabindex="0"]')]; if (!f.length) return;
+  const at = rootOf(box).activeElement, first = f[0], last = f[f.length - 1];
+  if (e.shiftKey && at === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && at === last) { e.preventDefault(); first.focus(); }
 }
 
 /** A first name for this device from what it is: a phone, a tablet, a computer, a television. */
@@ -133,14 +160,14 @@ function DeviceName({ t, profiles, current, admin, onClose, onPick, onForget }: 
   const [name, setName] = useState(current?.name ?? guessName(t));
   const [busy, setBusy] = useState(false);
   const [forgetting, setForgetting] = useState<string | null>(null);
-  const input = useRef<HTMLInputElement>(null);
-  useEffect(() => { input.current?.focus(); input.current?.select(); }, []);
+  const input = useRef<HTMLInputElement>(null), box = useRef<HTMLElement>(null);
+  useEffect(() => { const back = rootOf(input.current).activeElement as HTMLElement | null; input.current?.focus(); input.current?.select(); return () => back?.focus?.(); }, []);
   const clean = name.split(/\s+/).filter(Boolean).join(' ');
   const others = Object.entries(profiles).filter(([id]) => id !== current?.id).sort((a, b) => b[1].updated - a[1].updated);
   const taken = others.find(([, p]) => p.name.toLowerCase() === clean.toLowerCase());
   const submit = async () => { if (!clean || clean.length > 40 || taken || busy) return; setBusy(true); await onPick(current ? { id: current.id, name: clean, existing: false } : { id: profileIdFor(clean, Object.keys(profiles)), name: clean, existing: false }); setBusy(false); };
-  return <div className="hm-scrim" onClick={e => { if (e.target === e.currentTarget) onClose(); }} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); onClose(); } }}>
-    <section className="hm-sheet at-lay-name" role="dialog" aria-modal="true" aria-labelledby="at-lay-name-h">
+  return <div className="hm-scrim" onClick={e => { if (e.target === e.currentTarget) onClose(); }} onKeyDown={e => trap(e, box.current, onClose)}>
+    <section ref={box} className="hm-sheet at-lay-name" role="dialog" aria-modal="true" aria-labelledby="at-lay-name-h">
       <header className="at-lay-name-head"><h2 id="at-lay-name-h">{lk(t, 'deviceTitle')}</h2><button type="button" className="hm-icon-btn at-lay-x" aria-label={lk(t, 'cancel')} onClick={onClose}><Icon name="close" size={20} /></button></header>
       <p className="hm-muted">{lk(t, 'deviceWhy')}</p>
       <form onSubmit={e => { e.preventDefault(); void submit(); }} className="at-lay-name-form">
@@ -187,13 +214,15 @@ function Arranged({ c, scope, items, className, saved, editing, tail }: { c: Ctx
     const measure = () => { const g = gridMetrics(el); setM(o => o && o.cols === g.cols && Math.abs(o.cell - g.cell) < .5 && o.gap === g.gap ? o : g); };
     measure(); const ro = new ResizeObserver(measure); ro.observe(el); return () => ro.disconnect();
   }, []);
-  const cols = m?.cols ?? 4, natural = (key: string): Span => c.draft?.natural[key] ?? (byKey.get(key)?.unit ? { w: 1, h: 1 } : { w: 1, h: 1 });
+  const cols = m?.cols ?? 4, natural = (key: string): Span => c.draft?.natural[key] ?? byKey.get(key)?.span ?? { w: 1, h: 1 };
   const keys = items.map(i => i.key);
-  const shown = arrange(keys, saved, natural, cols);
+  // the widths as saved (up to MAX_SPAN): a phone on its side draws them narrower, never saves them narrower
+  const shown = arrange(keys, saved, natural, MAX_SPAN);
   const draft = editing ? c.draft!.list : null;
   useEffect(() => { if (editing && !draft) c.setList(shown); }, [editing, !!draft]);
   // a card that left the screen while arranging (a sensor went away) leaves the draft too; a new one joins it at its place
-  const list = editing && draft ? arrange(keys, draft.map(x => [x.key, x.w, x.h] as [string, number, number]), natural, cols) : shown;
+  const list = editing && draft ? arrange(keys, draft.map(x => [x.key, x.w, x.h] as [string, number, number]), natural, MAX_SPAN) : shown;
+  const wOf = (p: Placed) => Math.min(p.w, cols);
   useEffect(() => { if (!editing) setPicked(null); }, [editing]);
   // FLIP: the cards that make room glide to their new places instead of jumping (none when the device asks for less motion)
   const before = useRef<Map<string, DOMRect> | null>(null);
@@ -207,7 +236,10 @@ function Arranged({ c, scope, items, className, saved, editing, tail }: { c: Ctx
       s.animate([{ transform: `translate(${dx}px,${dy}px)` }, { transform: 'none' }], { duration: FLIP_MS, easing: 'cubic-bezier(.2,.8,.2,1)' });
     }
   });
-  const update = (next: Placed[]) => { if (next === list) return; snapshot(); c.setList(next); };
+  const update = (next: Placed[], key?: string) => {
+    if (next === list) return; snapshot(); c.setList(next);
+    if (key) { const i = next.findIndex(x => x.key === key), x = next[i]; if (x) c.say(`${labelOf(key, i)}: ${i + 1} / ${next.length}, ${lk(t, 'size', { w: Math.min(x.w, cols), h: x.h })}`); }
+  };
   const minOf = (key: string) => byKey.get(key)?.min ?? { w: 1, h: 1 };
   // ---- drag to move (a mouse at once; a finger after holding still, so the page still scrolls under a passing thumb) ----
   const drag = useRef<{ key: string; id: number; x: number; y: number; ox: number; oy: number; armed: boolean; timer: ReturnType<typeof setTimeout> | null; moved: boolean; last: number; el: HTMLElement } | null>(null);
@@ -216,6 +248,7 @@ function Arranged({ c, scope, items, className, saved, editing, tail }: { c: Ctx
     el.style.transform = `translate(${x - d.ox - r.left}px,${y - d.oy - r.top}px) scale(1.03)`;
   };
   useLayoutEffect(() => { const d = drag.current; if (d?.armed) { const s = grid.current?.querySelector<HTMLElement>(`.at-slot[data-lay="${CSS.escape(d.key)}"]`); if (s) { d.el = s; s.classList.add('is-dragging'); } } });
+  useEffect(() => () => { const d = drag.current; if (d?.timer) clearTimeout(d.timer); drag.current = null; }, []);
   useEffect(() => {
     // while a card is held the page must not scroll under it: a touchmove that is not passive is the one way to say so on a phone
     const stop = (e: TouchEvent) => { if (drag.current?.armed) e.preventDefault(); };
@@ -223,7 +256,7 @@ function Arranged({ c, scope, items, className, saved, editing, tail }: { c: Ctx
   }, []);
   const arm = (d: NonNullable<typeof drag.current>) => { d.armed = true; d.el.classList.add('is-dragging'); setPicked(null); try { navigator.vibrate?.(12); } catch { /* not a phone */ } };
   const down = (key: string) => (e: PointerEvent) => {
-    if (e.button !== 0) return; const el = (e.currentTarget as HTMLElement).closest<HTMLElement>('.at-slot')!; const r = el.getBoundingClientRect();
+    if (e.button !== 0 || drag.current) return; /* a second finger does not take the card from the first */ const el = (e.currentTarget as HTMLElement).closest<HTMLElement>('.at-slot')!; const r = el.getBoundingClientRect();
     const d = { key, id: e.pointerId, x: e.clientX, y: e.clientY, ox: e.clientX - r.left, oy: e.clientY - r.top, armed: false, timer: null as ReturnType<typeof setTimeout> | null, moved: false, last: 0, el };
     drag.current = d; (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     if (e.pointerType !== 'mouse') d.timer = setTimeout(() => { if (drag.current === d && !d.moved) arm(d); }, 260);
@@ -236,7 +269,7 @@ function Arranged({ c, scope, items, className, saved, editing, tail }: { c: Ctx
     // the edge of the screen scrolls the page, so a card can travel past what is visible
     const sc = scroller(grid.current); if (sc) { const b = sc.getBoundingClientRect(); if (e.clientY < b.top + 56) sc.scrollBy(0, -14); else if (e.clientY > b.bottom - 56) sc.scrollBy(0, 14); }
     const now = performance.now(); if (now - d.last < 120) return;
-    d.el.style.pointerEvents = 'none'; const over = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>('.at-slot'); d.el.style.pointerEvents = '';
+    d.el.style.pointerEvents = 'none'; const over = rootOf(grid.current).elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>('.at-slot'); d.el.style.pointerEvents = '';
     const target = over?.dataset.lay; if (target && target !== d.key && grid.current?.contains(over!)) { d.last = now; update(moveTo(list, d.key, target)); }
   };
   const up = (key: string) => (e: PointerEvent) => {
@@ -246,41 +279,40 @@ function Arranged({ c, scope, items, className, saved, editing, tail }: { c: Ctx
   };
   // ---- the corner: pull for the size, in whole cells ----
   const rs = useRef<{ key: string; id: number; x: number; y: number; w: number; h: number } | null>(null);
-  const rsDown = (p: Placed) => (e: PointerEvent) => { e.stopPropagation(); if (e.button !== 0) return; rs.current = { key: p.key, id: e.pointerId, x: e.clientX, y: e.clientY, w: p.w, h: p.h }; (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); };
+  const rsDown = (p: Placed) => (e: PointerEvent) => { e.stopPropagation(); if (e.button !== 0) return; rs.current = { key: p.key, id: e.pointerId, x: e.clientX, y: e.clientY, w: wOf(p), h: p.h }; (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); };
   const rsMove = (e: PointerEvent) => { const r = rs.current; if (!r || r.id !== e.pointerId || !m) return; e.preventDefault(); const step = m.cell + m.gap; update(resize(list, r.key, { w: r.w + (e.clientX - r.x) / step, h: r.h + (e.clientY - r.y) / step }, cols, minOf(r.key))); };
   const rsUp = (e: PointerEvent) => { if (rs.current?.id === e.pointerId) rs.current = null; };
-  useEffect(() => { const s = drag.current; return () => { if (s?.timer) clearTimeout(s.timer); }; }, []);
   // ---- keys: arrows move, Shift + arrows size; Escape lets go of the card ----
   const keyOf = (p: Placed) => (e: KeyboardEvent) => {
     const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -cols, ArrowDown: cols }[e.key];
     if (e.key === 'Escape') { setPicked(null); return; }
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPicked(x => x === p.key ? null : p.key); return; }
     if (step === undefined) return; e.preventDefault();
-    if (e.shiftKey) update(resize(list, p.key, { w: p.w + (e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0), h: p.h + (e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0) }, cols, minOf(p.key)));
-    else update(moveBy(list, p.key, step));
+    if (e.shiftKey) update(resize(list, p.key, { w: wOf(p) + (e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0), h: p.h + (e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0) }, cols, minOf(p.key)), p.key);
+    else update(moveBy(list, p.key, step), p.key);
     requestAnimationFrame(() => grid.current?.querySelector<HTMLElement>(`.at-slot[data-lay="${CSS.escape(p.key)}"] .at-slot-veil`)?.focus());
   };
   const labelOf = (key: string, i: number) => byKey.get(key)?.label || grid.current?.querySelector(`.at-slot[data-lay="${CSS.escape(key)}"] :is(strong,h2,h3)`)?.textContent?.trim() || lk(t, 'card', { n: i + 1 });
   const style = m ? `--lay-cell:${m.cell}px` : undefined;
-  const host = editing ? document.querySelector<HTMLElement>('.at-lay-bar .at-lay-tools-host') : null;
+  const host = editing ? rootOf(grid.current).querySelector<HTMLElement>('.at-lay-bar .at-lay-tools-host') : null;
   return <div ref={grid} className={`ah-cascade ${className} at-lay ${editing ? 'is-arranging' : ''}`} style={style} data-scope={scope}>
     {list.map((p, i) => { const it = byKey.get(p.key)!; const sel = picked === p.key; const min = minOf(p.key);
-      return <div key={p.key} className={`at-slot ${sel ? 'is-picked' : ''}`} data-lay={p.key} data-w={p.w} data-h={p.h} style={`grid-column:span ${p.w};grid-row:span ${p.h};--h:${p.h}`}>
+      return <div key={p.key} className={`at-slot ${sel ? 'is-picked' : ''}`} data-lay={p.key} data-w={wOf(p)} data-h={p.h} style={`grid-column:span ${wOf(p)};grid-row:span ${p.h};--h:${p.h}`}>
         {editing ? <div className="at-slot-body" inert>{it.node}</div> : it.node}
         {editing && <>
-          <div className="at-slot-veil" role="button" tabIndex={0} aria-roledescription={lk(t, 'bar')} aria-pressed={sel} aria-label={lk(t, 'cardLabel', { name: labelOf(p.key, i), w: p.w, h: p.h })}
+          <div className="at-slot-veil" role="button" tabIndex={0} aria-roledescription={lk(t, 'bar')} aria-pressed={sel} aria-label={lk(t, 'cardLabel', { name: labelOf(p.key, i), w: wOf(p), h: p.h })}
             onPointerDown={down(p.key)} onPointerMove={move} onPointerUp={up(p.key)} onPointerCancel={up(p.key)} onKeyDown={keyOf(p)} onContextMenu={e => e.preventDefault()} />
-          <span className="at-slot-size" aria-hidden="true">{lk(t, 'size', { w: p.w, h: p.h })}</span>
+          <span className="at-slot-size" aria-hidden="true">{lk(t, 'size', { w: wOf(p), h: p.h })}</span>
           <button type="button" className="at-slot-grip" aria-label={lk(t, 'grip')} tabIndex={-1} onPointerDown={rsDown(p)} onPointerMove={rsMove} onPointerUp={rsUp} onPointerCancel={rsUp}><i /></button>
           {sel && host && createPortal(<div className="at-slot-tools" role="group" aria-label={labelOf(p.key, i)}>
-            <button type="button" aria-label={lk(t, 'moveBack')} disabled={i === 0} onClick={() => update(moveBy(list, p.key, -1))}><Icon name="back" size={18} /></button>
-            <button type="button" aria-label={lk(t, 'moveFwd')} disabled={i === list.length - 1} onClick={() => update(moveBy(list, p.key, 1))}><Icon name="next" size={18} /></button>
+            <button type="button" aria-label={lk(t, 'moveBack')} disabled={i === 0} onClick={() => update(moveBy(list, p.key, -1), p.key)}><Icon name="back" size={18} /></button>
+            <button type="button" aria-label={lk(t, 'moveFwd')} disabled={i === list.length - 1} onClick={() => update(moveBy(list, p.key, 1), p.key)}><Icon name="next" size={18} /></button>
             <span className="at-slot-tools-sep" />
-            <button type="button" aria-label={lk(t, 'narrower')} disabled={p.w <= min.w} onClick={() => update(resize(list, p.key, { w: p.w - 1, h: p.h }, cols, min))}>↔−</button>
-            <button type="button" aria-label={lk(t, 'wider')} disabled={p.w >= Math.min(cols, MAX_SPAN)} onClick={() => update(resize(list, p.key, { w: p.w + 1, h: p.h }, cols, min))}>↔+</button>
-            <button type="button" aria-label={lk(t, 'lower')} disabled={p.h <= min.h} onClick={() => update(resize(list, p.key, { w: p.w, h: p.h - 1 }, cols, min))}>↕−</button>
-            <button type="button" aria-label={lk(t, 'taller')} disabled={p.h >= MAX_SPAN} onClick={() => update(resize(list, p.key, { w: p.w, h: p.h + 1 }, cols, min))}>↕+</button>
-          <span className="at-slot-tools-name">{labelOf(p.key, i)} · {lk(t, 'size', { w: p.w, h: p.h })}</span></div>, host)}
+            <button type="button" aria-label={lk(t, 'narrower')} disabled={wOf(p) <= min.w} onClick={() => update(resize(list, p.key, { w: wOf(p) - 1, h: p.h }, cols, min), p.key)}>↔−</button>
+            <button type="button" aria-label={lk(t, 'wider')} disabled={wOf(p) >= Math.min(cols, MAX_SPAN)} onClick={() => update(resize(list, p.key, { w: wOf(p) + 1, h: p.h }, cols, min), p.key)}>↔+</button>
+            <button type="button" aria-label={lk(t, 'lower')} disabled={p.h <= min.h} onClick={() => update(resize(list, p.key, { w: wOf(p), h: p.h - 1 }, cols, min), p.key)}>↕−</button>
+            <button type="button" aria-label={lk(t, 'taller')} disabled={p.h >= MAX_SPAN} onClick={() => update(resize(list, p.key, { w: wOf(p), h: p.h + 1 }, cols, min), p.key)}>↕+</button>
+          <span className="at-slot-tools-name">{labelOf(p.key, i)} · {lk(t, 'size', { w: wOf(p), h: p.h })}</span></div>, host)}
         </>}
       </div>; })}
     {tail}

@@ -10,6 +10,8 @@ export interface Placed extends Span { key: string }
 export type Scopes = Record<string, Array<[string, number, number]>>;
 export interface LayoutProfile { name: string; scopes: Scopes; rev: number; updated: number }
 export const MAX_SPAN = 8;
+/** below the integration's 160 cards a screen (layouts.py MAX_ITEMS) */
+export const MAX_KEPT = 150;
 export const SCOPE_HOME = 'home';
 export const roomScope = (roomId: string) => `room:${roomId}`;
 const PROFILE_ID = /^[a-z0-9][a-z0-9_-]{0,39}$/;
@@ -68,6 +70,9 @@ export function keep(shown: Placed[], saved: Array<[string, number, number]> | u
     const at = prev ? rows.findIndex(r => r[0] === prev[0]) + 1 : 0;
     rows.splice(at, 0, [k, w, h]);
   });
+  // cards away for good (a replaced sensor) must not fill the screen's list past what the integration takes: the last absent ones go first
+  const absent = rows.filter(r => !on.has(r[0]));
+  for (let i = absent.length - 1; i >= 0 && rows.length > MAX_KEPT; i--) rows.splice(rows.indexOf(absent[i]), 1);
   return rows;
 }
 

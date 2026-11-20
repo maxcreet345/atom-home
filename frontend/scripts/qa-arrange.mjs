@@ -20,9 +20,11 @@ const check = (n, p, d = {}) => { checks.push({ n, p: !!p, ...d }); console.log(
 let ha = '{"profiles":{}}'; // the integration's store, shared by every device of the house
 async function device(name, size, { touch = false, admin = true } = {}) {
   const ctx = await browser.newContext({ viewport: size, deviceScaleFactor: 2, hasTouch: touch, isMobile: touch });
+  // the panel inside a shadow root, as Home Assistant mounts the real one (live-main.tsx); QA_SHADOW=0 for the plain page
+  await ctx.addInitScript(() => { window.R = () => document.getElementById('root')?.shadowRoot?.querySelector('div') ?? document; });
   const page = await ctx.newPage(); page.on('pageerror', e => errors.push(`${name}: ${e.message}`));
   page.open = async (hash = '#home') => {
-    await page.goto(origin + '/' + hash); await page.waitForFunction(() => window.ready);
+    await page.goto('about:blank'); await page.goto(origin + '/' + (process.env.QA_SHADOW === '0' ? '' : '?shadow=1') + hash); await page.waitForFunction(() => window.ready);
     await page.evaluate(async ({ ha, admin }) => { if (!localStorage.getItem('atom-home:config')) localStorage.setItem('atom-home:config', await (await fetch('/config.json')).text()); localStorage.setItem('atom-home:preview-layouts', ha); const fx = await (await fetch('/fixture.json')).json(); await window.mountPreview(document.getElementById('root'), fx); window.atomPreview.host.setAdmin(admin); window.atomPreview.redraw?.(); }, { ha, admin });
     await page.waitForSelector('.hm-shell'); await page.waitForTimeout(900);
   };
@@ -31,7 +33,7 @@ async function device(name, size, { touch = false, admin = true } = {}) {
   page.log = () => page.evaluate(() => window.atomPreview.host.log.filter(c => c.domain !== 'ws').length);
   return page;
 }
-const homeKeys = page => page.evaluate(() => [...document.querySelectorAll('.ah-home .at-slot')].map(s => `${s.dataset.lay}:${s.dataset.w}x${s.dataset.h}`));
+const homeKeys = page => page.evaluate(() => [...R().querySelectorAll('.ah-home .at-slot')].map(s => `${s.dataset.lay}:${s.dataset.w}x${s.dataset.h}`));
 const slotBox = (page, key) => page.locator(`.at-slot[data-lay="${key}"]`).boundingBox();
 async function dragTo(page, from, to) { const a = await slotBox(page, from), b = await slotBox(page, to); await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2); await page.mouse.down(); await page.mouse.move(a.x + a.width / 2 + 12, a.y + a.height / 2 + 6, { steps: 3 }); await page.mouse.move(b.x + b.width / 3, b.y + b.height / 3, { steps: 14 }); await page.waitForTimeout(250); await page.mouse.move(b.x + b.width / 3 + 2, b.y + b.height / 3 + 2, { steps: 2 }); await page.mouse.up(); await page.waitForTimeout(350); }
 async function pullCorner(page, key, dx, dy) { const g = await page.locator(`.at-slot[data-lay="${key}"] .at-slot-grip`).boundingBox(); await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2); await page.mouse.down(); await page.mouse.move(g.x + g.width / 2 + dx, g.y + g.height / 2 + dy, { steps: 12 }); await page.mouse.up(); await page.waitForTimeout(300); }
@@ -41,13 +43,13 @@ try {
   await phone.open(); await phone.shot('01-home-before');
   check('phone:no-arrangement-draws-as-before', await phone.locator('.at-lay').count() === 0 && await phone.locator('.ah-home[data-face="home-modular"]').count() === 1);
   check('phone:arrange-button', await phone.locator('[data-action="arrange"]').count() === 1);
-  const natural = await phone.evaluate(() => [...document.querySelector('.ah-home').children].filter(c => !c.hidden).slice(0, 6).map(c => Math.round(c.getBoundingClientRect().width)));
+  const natural = await phone.evaluate(() => [...R().querySelector('.ah-home').children].filter(c => !c.hidden).slice(0, 6).map(c => Math.round(c.getBoundingClientRect().width)));
   // ---- 2. «Расставить» asks the device's name first ----
   await phone.locator('[data-action="arrange"]').scrollIntoViewIfNeeded(); await phone.click('[data-action="arrange"]'); await phone.waitForSelector('.at-lay-name'); await phone.waitForTimeout(400); await phone.shot('02-device-name');
   await phone.fill('.at-lay-name input', 'Телефон Арарата'); await phone.click('.at-lay-name button[type="submit"]'); await phone.waitForSelector('.at-lay.is-arranging'); await phone.waitForTimeout(400);
-  const start = await homeKeys(phone); await phone.evaluate(() => document.querySelector('.hm-main, main')?.scrollTo?.(0, 0)); await phone.shot('03-arranging');
+  const start = await homeKeys(phone); await phone.evaluate(() => R().querySelector('.hm-main, main')?.scrollTo?.(0, 0)); await phone.shot('03-arranging');
   check('phone:arranging-starts-as-the-screen-was', start.length >= 6 && start.some(k => /x2$/.test(k)), { start });
-  const widthsNow = await phone.evaluate(() => [...document.querySelectorAll('.ah-home .at-slot')].slice(0, 6).map(c => Math.round(c.getBoundingClientRect().width)));
+  const widthsNow = await phone.evaluate(() => [...R().querySelectorAll('.ah-home .at-slot')].slice(0, 6).map(c => Math.round(c.getBoundingClientRect().width)));
   check('phone:same-widths-when-arranging-begins', widthsNow.every((w, i) => Math.abs(w - natural[i]) <= 2), { natural, widthsNow });
   // drag «Энергия» to the first place, pull the clock's corner one cell wider, tap a card for its buttons
   const keys0 = start.map(k => k.split(':').slice(0, -1).join(':'));
@@ -81,13 +83,13 @@ try {
   // ---- 4. the room: one grid of its cards, arranged on its own ----
   await phone.evaluate(() => { location.hash = '#rooms?room=kukhnia'; }); await phone.waitForTimeout(700); await phone.shot('08-room-before', true);
   await phone.locator('.rm-b-main [data-action="arrange"]').scrollIntoViewIfNeeded(); await phone.click('.rm-b-main [data-action="arrange"]'); await phone.waitForSelector('.rm-b-main .at-lay.is-arranging');
-  const roomStart = await phone.evaluate(() => [...document.querySelectorAll('.rm-b-main .at-slot')].map(s => s.dataset.lay));
+  const roomStart = await phone.evaluate(() => [...R().querySelectorAll('.rm-b-main .at-slot')].map(s => s.dataset.lay));
   check('phone:room-arranging-has-its-cards', roomStart.length >= 2, { roomStart });
   await phone.locator(`.at-slot[data-lay="${roomStart[1]}"]`).scrollIntoViewIfNeeded(); await dragTo(phone, roomStart[1], roomStart[0]);
   await phone.locator('.rm-b-main .at-slot').first().scrollIntoViewIfNeeded(); await phone.shot('09-room-arranging');
   await phone.click('.at-lay-done'); await phone.waitForTimeout(600); await phone.shot('10-room-saved', true);
   await phone.sync();
-  const roomOrder = await phone.evaluate(() => [...document.querySelectorAll('.rm-b-main .at-slot')].map(s => s.dataset.lay));
+  const roomOrder = await phone.evaluate(() => [...R().querySelectorAll('.rm-b-main .at-slot')].map(s => s.dataset.lay));
   check('phone:room-order-saved', roomOrder[0] === roomStart[1] && roomOrder[1] === roomStart[0], { roomOrder, roomStart });
   // ---- 5. the kitchen tablet: its own arrangement, the phone's untouched ----
   const tablet = await device('tablet', { width: 1280, height: 800 }, { touch: true });

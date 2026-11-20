@@ -1046,7 +1046,7 @@
 /* ---- «Расставить» (ui/layout-grid.tsx, owner 20.11.2026): this device's order and size of the cards, in whole cells ---- */
 .hm-shell .at-add-card-row{gap:10px;flex-wrap:wrap}
 .hm-shell .at-arrange{gap:8px;color:var(--ah-accent);background:var(--ah-tile);flex:0 0 auto}
-.hm-shell .ah-grid.at-lay{grid-auto-flow:row dense;grid-auto-rows:auto}
+.hm-shell .ah-grid.at-lay{grid-auto-flow:row;grid-auto-rows:auto} /* no «dense»: the cards stand in the order the arrows, the drag and Tab follow */
 .hm-shell .ah-grid.at-lay>.at-slot{position:relative;aspect-ratio:auto;min-width:0;min-height:0;height:calc(var(--lay-cell,9rem) * var(--h,1) + var(--ah-gap) * (var(--h,1) - 1));display:grid;grid-template:minmax(0,1fr)/minmax(0,1fr);border-radius:var(--ah-radius)}
 .hm-shell .ah-grid.at-lay .at-slot>:not(.at-slot-veil,.at-slot-size,.at-slot-grip,.at-slot-tools),.hm-shell .ah-grid.at-lay .at-slot-body>*{grid-area:1/1;min-width:0;min-height:0;width:100%;height:100%;max-height:100%;aspect-ratio:auto;margin:0;overflow:hidden}
 .hm-shell .ah-grid.at-lay .at-slot-body{display:grid;grid-template:minmax(0,1fr)/minmax(0,1fr);pointer-events:none}

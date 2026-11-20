@@ -20,8 +20,11 @@ class Saved:
         self.calls.append(data)
 
 
+LOOP = asyncio.new_event_loop()  # one loop, as in HA: the store's lock belongs to the loop it first runs on
+
+
 def run(coro):
-    return asyncio.new_event_loop().run_until_complete(coro)
+    return LOOP.run_until_complete(coro)
 
 
 HOME = {"home": [["tile:clock", 2, 1], ["d:light.kitchen", 1, 1]], "room:kukhnia": [["c:kettle", 2, 2]]}
@@ -72,10 +75,55 @@ class Layouts(unittest.TestCase):
     def test_the_number_of_devices_is_capped(self):
         s = lay.LayoutState(None, Saved())
         for i in range(lay.MAX_PROFILES):
-            run(s.write(f"d{i}", f"D{i}", {}, None))
+            run(s.write(f"d{i}", f"D{i}", {}, None, "admin", True))
         with self.assertRaises(lay.LayoutError):
-            run(s.write("one-more", "X", {}, None))
-        run(s.write("d0", "D0 again", {}, None))  # an existing one may still save
+            run(s.write("one-more", "X", {}, None, "admin", True))
+        run(s.write("d0", "D0 again", {}, 1, "admin", True))  # an existing one may still save
+
+    def test_one_resident_cannot_take_every_place(self):
+        s = lay.LayoutState(None, Saved())
+        for i in range(lay.MAX_PER_USER):
+            run(s.write(f"k{i}", f"K{i}", {}, None, "kid"))
+        with self.assertRaises(lay.LayoutError) as e:
+            run(s.write("k-more", "More", {}, None, "kid"))
+        self.assertEqual(e.exception.code, "too_many")
+        run(s.write("tablet", "Планшет кухня", {}, None, "parent"))  # someone else still can
+
+    def test_only_the_owner_or_an_admin_changes_a_device(self):
+        s = lay.LayoutState(None, Saved())
+        run(s.write("tablet", "Планшет кухня", HOME, None, "parent"))
+        with self.assertRaises(lay.LayoutError) as e:
+            run(s.write("tablet", "Планшет кухня", {}, 1, "kid"))
+        self.assertEqual(e.exception.code, "not_owner")
+        self.assertEqual(s.profiles["tablet"]["scopes"], HOME)
+        run(s.write("tablet", "Планшет кухня", {}, 1, "parent"))
+        run(s.write("tablet", "Планшет кухня", HOME, 2, "admin-user", True))
+        self.assertEqual(s.profiles["tablet"]["owner"], "parent")  # an admin's save does not take the device over
+        self.assertTrue(s.summary("parent")["profiles"]["tablet"]["mine"])
+        self.assertFalse(s.summary("kid")["profiles"]["tablet"]["mine"])
+        self.assertNotIn("owner", s.summary("kid")["profiles"]["tablet"])
+
+    def test_an_existing_device_needs_its_revision(self):
+        s = lay.LayoutState(None, Saved())
+        run(s.write("t", "T", HOME, None, "u"))
+        with self.assertRaises(lay.LayoutError) as e:
+            run(s.write("t", "T", {}, None, "u"))  # a blind overwrite
+        self.assertEqual(e.exception.code, "conflict")
+
+    def test_two_saves_at_once_do_not_lose_each_other(self):
+        class Slow(Saved):
+            async def __call__(self, data):
+                await asyncio.sleep(0.01); self.calls.append(data)
+        saved = Slow(); s = lay.LayoutState(None, saved)
+        async def both():
+            return await asyncio.gather(s.write("a", "A", HOME, None, "u1"), s.write("b", "B", HOME, None, "u2"), return_exceptions=True)
+        run(both())
+        self.assertEqual(sorted(s.profiles), ["a", "b"])
+        self.assertEqual(sorted(saved.calls[-1]["profiles"]), ["a", "b"])
+        async def same():
+            return await asyncio.gather(s.write("a", "A", {}, 1, "u1"), s.write("a", "A", {}, 1, "u1"), return_exceptions=True)
+        r = run(same())
+        self.assertEqual(sum(isinstance(x, lay.LayoutError) and x.code == "conflict" for x in r), 1)
 
     def test_a_failed_save_changes_nothing(self):
         async def broken(_data):

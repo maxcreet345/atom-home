@@ -38,6 +38,7 @@ const ru = {
   'lay.deviceForgetAsk': 'Забыть устройство «{name}» и его расстановку?',
   'lay.unavailable': 'Обновите интеграцию Atom Home, чтобы расставлять карточки.',
   'lay.this': 'это устройство',
+  'lay.notOwner': 'Расстановку «{name}» может менять только тот, кто её создал, или администратор.',
 };
 type K = keyof typeof ru;
 const en: Record<K, string> = {
@@ -79,6 +80,7 @@ const en: Record<K, string> = {
   'lay.deviceForgetAsk': 'Forget the device “{name}” and its arrangement?',
   'lay.unavailable': 'Update the Atom Home integration to arrange the cards.',
   'lay.this': 'this device',
+  'lay.notOwner': 'Only whoever created “{name}” or an administrator can change its arrangement.',
 };
 const ro: Record<K, string> = {
   'lay.arrange': 'Aranjează',
@@ -119,5 +121,6 @@ const ro: Record<K, string> = {
   'lay.deviceForgetAsk': 'Uitați dispozitivul „{name}” și aranjarea lui?',
   'lay.unavailable': 'Actualizați integrarea Atom Home pentru a aranja cardurile.',
   'lay.this': 'acest dispozitiv',
+  'lay.notOwner': 'Aranjarea „{name}” o poate schimba doar cine a creat-o sau un administrator.',
 };
 export const wordsLayout = { ru, en, ro };
