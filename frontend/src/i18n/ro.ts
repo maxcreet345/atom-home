@@ -2,6 +2,7 @@ import { wordsCameras } from './words-cameras.ts';
 import { wordsClimate } from './words-climate.ts';
 import { wordsSetup } from './words-setup.ts';
 import { wordsCatalog } from './words-catalog.ts';
+import { wordsLayout } from './words-layout.ts';
 import { wordsStatus } from './words-status.ts';
 import type { Dictionary } from './ru.ts';
 export const ro: Dictionary = {
@@ -1063,4 +1064,5 @@ export const ro: Dictionary = {
   ...wordsClimate.ro,
   ...wordsSetup.ro,
   ...wordsCatalog.ro,
+  ...wordsLayout.ro,
 };

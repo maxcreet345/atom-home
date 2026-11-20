@@ -302,7 +302,7 @@ class Lifecycle(Surface):
         async def go():
             await self.house()
             guarded = sorted(name for name, func in ha_stub.COMMANDS.items() if getattr(func, "admin_only", False))
-            self.assertEqual(guarded, ["atom_home/config/set", "atom_home/photo/delete", "atom_home/photo/set"], "everything that writes the house configuration or files")
+            self.assertEqual(guarded, ["atom_home/config/set", "atom_home/layouts/delete", "atom_home/photo/delete", "atom_home/photo/set"], "everything that writes the house configuration or files, and forgetting a named device")
             user = Connection()
             with self.assertRaises(ha_stub.Unauthorized):
                 await send(user, type="atom_home/config/set", config=STORED, expected_revision=57)

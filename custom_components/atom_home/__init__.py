@@ -29,6 +29,7 @@ from .light_sleep import MINUTES as SLEEP_MINUTES, LightSleep
 from .automations import automation_rows
 from .feeder import feeder_log
 from .air_tasks import AirTasks
+from .layouts import STORAGE_KEY as LAYOUTS_KEY, STORAGE_VERSION as LAYOUTS_VERSION, LayoutError, LayoutState
 from .alarms import AlarmScheduler, normalise_alarms, switched_off
 from .bundle import GzipCache, accepts_gzip, etag_matches, etag_of
 from .config_state import ConfigState, ConfigWriteError
@@ -236,6 +237,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await sleep.async_load()
     air_tasks = AirTasks(hass)
     await air_tasks.async_load()
+    layouts_store: Store[dict] = Store(hass, LAYOUTS_VERSION, LAYOUTS_KEY)
+    layouts = LayoutState(await layouts_store.async_load(), layouts_store.async_save)
 
     @callback
     def check_helpers(_hass: HomeAssistant | None = None) -> None:
@@ -246,7 +249,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             else:
                 ir.async_delete_issue(hass, DOMAIN, issue)
 
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"air_tasks": air_tasks, "store": store, "state": state, "alarms": scheduler, "light_sleep": sleep, "helpers_unsub": async_at_started(hass, check_helpers)}
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"air_tasks": air_tasks, "layouts": layouts, "store": store, "state": state, "alarms": scheduler, "light_sleep": sleep, "helpers_unsub": async_at_started(hass, check_helpers)}
     hass.data[DOMAIN]["_version"] = version
 
     photos_dir = Path(hass.config.path(PHOTOS_DIR))
@@ -331,7 +334,7 @@ def _register_ws(hass: HomeAssistant) -> None:
     @callback
     def ws_capabilities(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
         """What this backend supports; a panel that gets `unknown_command` here is talking to an older integration."""
-        connection.send_result(msg["id"], {"configRevision": 1, "composition": 1, "assist": 0, "alarms": 1, "lightSleep": 1, "automations": 1, "feederLog": 1, "airTasks": 1})
+        connection.send_result(msg["id"], {"configRevision": 1, "composition": 1, "assist": 0, "alarms": 1, "lightSleep": 1, "automations": 1, "feederLog": 1, "airTasks": 1, "layouts": 1})
 
     @websocket_api.websocket_command({
         vol.Required("type"): f"{DOMAIN}/config/set",
@@ -556,6 +559,48 @@ def _register_ws(hass: HomeAssistant) -> None:
         removed = await state.remove_unreferenced(msg["url"], lambda: hass.async_add_executor_job(_remove))
         connection.send_result(msg["id"], {"removed": removed})
 
+    @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/layouts/get"})
+    @callback
+    def ws_layouts_get(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+        """The named devices of the house and the layout of each (any resident: every device arranges its own screens)."""
+        layouts: LayoutState | None = (_entry_data(hass) or {}).get("layouts")
+        if layouts is None:
+            connection.send_error(msg["id"], "not_loaded", "Atom Home is not set up")
+            return
+        connection.send_result(msg["id"], layouts.summary())
+
+    @websocket_api.websocket_command({
+        vol.Required("type"): f"{DOMAIN}/layouts/set",
+        vol.Required("profile"): str,
+        vol.Required("name"): str,
+        vol.Required("scopes"): dict,
+        vol.Optional("expected_rev"): vol.All(int, vol.Range(min=0)),
+    })
+    @websocket_api.async_response
+    async def ws_layouts_set(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+        """One device's layout, whole. Not the house's configuration: no administrator needed, and nothing else is touched."""
+        layouts: LayoutState | None = (_entry_data(hass) or {}).get("layouts")
+        if layouts is None:
+            connection.send_error(msg["id"], "not_loaded", "Atom Home is not set up")
+            return
+        try:
+            rev = await layouts.write(msg["profile"], msg["name"], msg["scopes"], msg.get("expected_rev"))
+        except LayoutError as err:
+            connection.send_error(msg["id"], err.code, err.message)
+            return
+        connection.send_result(msg["id"], {"saved": True, "rev": rev})
+
+    @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/layouts/delete", vol.Required("profile"): str})
+    @websocket_api.require_admin
+    @websocket_api.async_response
+    async def ws_layouts_delete(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+        """Forget a named device (the administrator's: a child must not wipe the kitchen tablet)."""
+        layouts: LayoutState | None = (_entry_data(hass) or {}).get("layouts")
+        if layouts is None:
+            connection.send_error(msg["id"], "not_loaded", "Atom Home is not set up")
+            return
+        connection.send_result(msg["id"], {"removed": await layouts.remove(msg["profile"])})
+
     websocket_api.async_register_command(hass, ws_get)
     websocket_api.async_register_command(hass, ws_capabilities)
     websocket_api.async_register_command(hass, ws_set)
@@ -572,3 +617,6 @@ def _register_ws(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_air_tasks)
     websocket_api.async_register_command(hass, ws_air_start)
     websocket_api.async_register_command(hass, ws_air_stop)
+    websocket_api.async_register_command(hass, ws_layouts_get)
+    websocket_api.async_register_command(hass, ws_layouts_set)
+    websocket_api.async_register_command(hass, ws_layouts_delete)

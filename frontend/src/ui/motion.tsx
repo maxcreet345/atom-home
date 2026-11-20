@@ -9,6 +9,6 @@ export function Tick({ value, className = '' }: { value: string; className?: str
 /** Staggered entry: children get --i for the cascade delay (capped so a long list never waits). */
 export function Cascade({ children, className = '', cap = 12, ...rest }: { children: ComponentChildren; className?: string; cap?: number; [k: string]: unknown }) {
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => { const el = ref.current; if (!el) return; [...el.children].forEach((c, i) => (c as HTMLElement).style.setProperty('--i', String(Math.min(i, cap)))); });
+  useEffect(() => { const el = ref.current; if (!el) return; [...el.children].filter(c => !(c as HTMLElement).hidden).forEach((c, i) => (c as HTMLElement).style.setProperty('--i', String(Math.min(i, cap)))); /* the hidden marks of «Расставить» (ui/layout-grid.tsx) take no turn */ });
   return <div ref={ref} className={`ah-cascade ${className}`} {...rest}>{children}</div>;
 }

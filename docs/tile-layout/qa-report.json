@@ -1,0 +1,267 @@
+{
+ "at": "2026-11-20T15:03:19.589Z",
+ "passed": 30,
+ "total": 30,
+ "checks": [
+  {
+   "n": "phone:no-arrangement-draws-as-before",
+   "p": true
+  },
+  {
+   "n": "phone:arrange-button",
+   "p": true
+  },
+  {
+   "n": "phone:arranging-starts-as-the-screen-was",
+   "p": true,
+   "start": [
+    "tile:clock:1x1",
+    "tile:security:1x1",
+    "tile:heating:3x2",
+    "tile:cameras:3x3",
+    "tile:vacuum:3x2",
+    "m:pet_feeder:1x1",
+    "m:air:3x1",
+    "tile:weather:1x1",
+    "tile:energy:1x1",
+    "g:lights:1x1",
+    "g:systems:1x1"
+   ]
+  },
+  {
+   "n": "phone:same-widths-when-arranging-begins",
+   "p": true,
+   "natural": [
+    123,
+    123,
+    388,
+    388,
+    388,
+    123
+   ],
+   "widthsNow": [
+    123,
+    123,
+    388,
+    388,
+    388,
+    123
+   ]
+  },
+  {
+   "n": "phone:drag-moves-the-card",
+   "p": true,
+   "before": 8,
+   "after": 7
+  },
+  {
+   "n": "phone:corner-resizes-in-cells",
+   "p": true,
+   "clockBefore": "1",
+   "clockW": "1"
+  },
+  {
+   "n": "phone:corner-makes-it-taller",
+   "p": true
+  },
+  {
+   "n": "phone:tap-opens-buttons",
+   "p": true
+  },
+  {
+   "n": "phone:wider-button",
+   "p": true
+  },
+  {
+   "n": "phone:no-commands-while-arranging",
+   "p": true
+  },
+  {
+   "n": "phone:saved-and-left-arranging",
+   "p": true,
+   "edited": [
+    "tile:clock:1x1",
+    "tile:security:1x1",
+    "tile:heating:3x2",
+    "tile:cameras:3x3",
+    "tile:vacuum:3x2",
+    "m:pet_feeder:1x1",
+    "m:air:3x1",
+    "tile:energy:2x2",
+    "tile:weather:1x1",
+    "g:lights:1x1",
+    "g:systems:1x1"
+   ]
+  },
+  {
+   "n": "phone:kept-after-reload",
+   "p": true,
+   "afterReload": [
+    "tile:clock:1x1",
+    "tile:security:1x1",
+    "tile:heating:3x2",
+    "tile:cameras:3x3",
+    "tile:vacuum:3x2",
+    "m:pet_feeder:1x1",
+    "m:air:3x1",
+    "tile:energy:2x2",
+    "tile:weather:1x1",
+    "g:lights:1x1",
+    "g:systems:1x1"
+   ],
+   "edited": [
+    "tile:clock:1x1",
+    "tile:security:1x1",
+    "tile:heating:3x2",
+    "tile:cameras:3x3",
+    "tile:vacuum:3x2",
+    "m:pet_feeder:1x1",
+    "m:air:3x1",
+    "tile:energy:2x2",
+    "tile:weather:1x1",
+    "g:lights:1x1",
+    "g:systems:1x1"
+   ]
+  },
+  {
+   "n": "phone:landscape-all-cards",
+   "p": true
+  },
+  {
+   "n": "phone:room-arranging-has-its-cards",
+   "p": true,
+   "roomStart": [
+    "t:b1b91d29ee2532c934eac804bb2d41f6",
+    "t:b0affd68765f7885f0b8924a8860c235",
+    "t:cd0780d9db6ea9a71df52439fdcd797f",
+    "t:0d3c57d4e5f2c0bed8cda0a6cd91bada",
+    "t:060f044ccd3c174d977bc6cb63fbb4c6",
+    "t:7a741ee1a8bbc267225dd57bb919f6aa",
+    "t:6d2159fd29a58113c023226bce509353",
+    "t:11f62969652e045657eae5c5d15845ec",
+    "t:80733baa5bbef12007d7e4bd9e328a2b",
+    "t:4a998858ce8b47bc5cd9cf84c2f31c45"
+   ]
+  },
+  {
+   "n": "phone:room-order-saved",
+   "p": true,
+   "roomOrder": [
+    "t:b0affd68765f7885f0b8924a8860c235",
+    "t:b1b91d29ee2532c934eac804bb2d41f6",
+    "t:cd0780d9db6ea9a71df52439fdcd797f",
+    "t:0d3c57d4e5f2c0bed8cda0a6cd91bada",
+    "t:060f044ccd3c174d977bc6cb63fbb4c6",
+    "t:7a741ee1a8bbc267225dd57bb919f6aa",
+    "t:6d2159fd29a58113c023226bce509353",
+    "t:11f62969652e045657eae5c5d15845ec",
+    "t:80733baa5bbef12007d7e4bd9e328a2b",
+    "t:4a998858ce8b47bc5cd9cf84c2f31c45"
+   ],
+   "roomStart": [
+    "t:b1b91d29ee2532c934eac804bb2d41f6",
+    "t:b0affd68765f7885f0b8924a8860c235",
+    "t:cd0780d9db6ea9a71df52439fdcd797f",
+    "t:0d3c57d4e5f2c0bed8cda0a6cd91bada",
+    "t:060f044ccd3c174d977bc6cb63fbb4c6",
+    "t:7a741ee1a8bbc267225dd57bb919f6aa",
+    "t:6d2159fd29a58113c023226bce509353",
+    "t:11f62969652e045657eae5c5d15845ec",
+    "t:80733baa5bbef12007d7e4bd9e328a2b",
+    "t:4a998858ce8b47bc5cd9cf84c2f31c45"
+   ]
+  },
+  {
+   "n": "tablet:no-arrangement-yet",
+   "p": true
+  },
+  {
+   "n": "tablet:lists-the-phone",
+   "p": true
+  },
+  {
+   "n": "tablet:a-taken-name-is-refused",
+   "p": true
+  },
+  {
+   "n": "two-devices-two-arrangements",
+   "p": true,
+   "ids": [
+    "telefon-ararata",
+    "planshet-kukhnia"
+   ]
+  },
+  {
+   "n": "phone:untouched-by-the-tablet",
+   "p": true
+  },
+  {
+   "n": "new-phone:resident-sees-arrange",
+   "p": true
+  },
+  {
+   "n": "new-phone:resident-cannot-forget-devices",
+   "p": true
+  },
+  {
+   "n": "new-phone:gets-the-arrangement-back",
+   "p": true,
+   "freshKeys": [
+    "tile:clock:1x1",
+    "tile:security:1x1",
+    "tile:heating:3x2",
+    "tile:cameras:3x3",
+    "tile:vacuum:3x2",
+    "m:pet_feeder:1x1",
+    "m:air:3x1",
+    "tile:energy:2x2",
+    "tile:weather:1x1",
+    "g:lights:1x1",
+    "g:systems:1x1"
+   ],
+   "edited": [
+    "tile:clock:1x1",
+    "tile:security:1x1",
+    "tile:heating:3x2",
+    "tile:cameras:3x3",
+    "tile:vacuum:3x2",
+    "m:pet_feeder:1x1",
+    "m:air:3x1",
+    "tile:energy:2x2",
+    "tile:weather:1x1",
+    "g:lights:1x1",
+    "g:systems:1x1"
+   ]
+  },
+  {
+   "n": "new-phone:reset-draws-as-before",
+   "p": true
+  },
+  {
+   "n": "reset-kept-the-room-and-the-tablet",
+   "p": true
+  },
+  {
+   "n": "old-backend:no-arrange-button",
+   "p": true
+  },
+  {
+   "n": "page:no-commands",
+   "p": true
+  },
+  {
+   "n": "page:no-commands",
+   "p": true
+  },
+  {
+   "n": "page:no-commands",
+   "p": true
+  },
+  {
+   "n": "no-page-errors",
+   "p": true,
+   "errors": []
+  }
+ ],
+ "errors": []
+}
