@@ -21,7 +21,9 @@ const n = (s?: StateRow) => { if (!s || unavailable(s.state)) return null; const
 export function modeWords(options: unknown): { auto: string; manual: string } | null {
   const list = Array.isArray(options) ? options.filter((x): x is string => typeof x === 'string') : [];
   if (list.length < 2) return null;
-  const manual = list.find(o => /ручн|manual|manual/i.test(o)) ?? list[1], auto = list.find(o => o !== manual && /авто|auto/i.test(o)) ?? list.find(o => o !== manual)!;
+  // only a list that says «manual» is a mode list: off / heat / auto must never have «heat» taken for «Ручной»
+  const manual = list.find(o => /ручн|manual|manual/i.test(o)); if (!manual) return null;
+  const auto = list.find(o => o !== manual && /авто|auto/i.test(o)) ?? list.find(o => o !== manual)!;
   return { auto, manual };
 }
 export function readHeatingLayout(reg: Registry, now: number, L: HeatLayout): Heating | null {
@@ -43,7 +45,8 @@ export function readHeatingLayout(reg: Registry, now: number, L: HeatLayout): He
       override: until && until > now ? { temp: n(s(r.overrideTemp)) ?? (typeof st?.attributes.temperature === 'number' ? st.attributes.temperature : 0), until } : null,
       manual: n(s(r.manualTemp)), desired: null, sensor, ids: { timer: r.timer ?? null, manual: r.manualTemp ?? null } };
   });
-  const sys = s(L.system), systemKnown = sys ? ['on', 'off'].includes(sys.state) : !unavailable(th.state), system = sys ? sys.state === 'on' : th.state !== 'off';
+  // a bound on/off that is gone is unknown, never read from the thermostat in its place (the card says what is lost)
+  const sys = s(L.system), systemKnown = L.system ? !!sys && ['on', 'off'].includes(sys.state) : !unavailable(th.state), system = L.system ? sys?.state === 'on' : th.state !== 'off';
   const target = L.target ? n(s(L.target)) : L.homeTemp ? n(s(L.homeTemp)) : typeof th.attributes.temperature === 'number' ? th.attributes.temperature : null;
   const weather = Object.keys(S).find(id => id.startsWith('weather.') && !unavailable(S[id].state));
   const none = { home: target, sleep: null, away: null, eco: null, vacation: null };

@@ -1,0 +1,773 @@
+{
+  "checks": [
+    {
+      "n": "phone:add-button-on-home",
+      "p": true
+    },
+    {
+      "n": "phone:found-lists-purifier-and-both-heating",
+      "p": true,
+      "foundIds": [
+        "xiaomi.purifier4",
+        "heating.single",
+        "heating.rooms"
+      ]
+    },
+    {
+      "n": "phone:search-and-browse-one-profile",
+      "p": true,
+      "bySearch": [
+        "xiaomi.purifier4"
+      ],
+      "byBrowse": [
+        "xiaomi.purifier4"
+      ],
+      "byCode": [
+        "xiaomi.purifier4"
+      ]
+    },
+    {
+      "n": "phone:heating-both-cards",
+      "p": true,
+      "heat": [
+        "heating.single",
+        "heating.rooms"
+      ]
+    },
+    {
+      "n": "phone:two-devices-of-the-model",
+      "p": true
+    },
+    {
+      "n": "phone:fields-only-of-this-card",
+      "p": true,
+      "roles": [
+        [
+          "fan",
+          "fan.living_air_purifier"
+        ],
+        [
+          "pm25",
+          "sensor.living_air_purifier_pm25"
+        ],
+        [
+          "filter",
+          "sensor.living_air_purifier_filter_life"
+        ],
+        [
+          "filterDays",
+          "sensor.living_air_purifier_filter_left_time"
+        ],
+        [
+          "temperature",
+          "sensor.living_air_purifier_temperature"
+        ],
+        [
+          "humidity",
+          "sensor.living_air_purifier_humidity"
+        ],
+        [
+          "ionizer",
+          "switch.living_air_purifier_ionizer"
+        ],
+        [
+          "favoriteLevel",
+          "number.living_air_purifier_favorite_level"
+        ],
+        [
+          "brightness",
+          "select.living_air_purifier_led_brightness"
+        ],
+        [
+          "childLock",
+          "switch.living_air_purifier_child_lock"
+        ],
+        [
+          "buzzer",
+          "switch.living_air_purifier_buzzer"
+        ]
+      ]
+    },
+    {
+      "n": "phone:fields-suggested-from-own-device",
+      "p": true,
+      "roles": [
+        [
+          "fan",
+          "fan.living_air_purifier"
+        ],
+        [
+          "pm25",
+          "sensor.living_air_purifier_pm25"
+        ],
+        [
+          "filter",
+          "sensor.living_air_purifier_filter_life"
+        ],
+        [
+          "filterDays",
+          "sensor.living_air_purifier_filter_left_time"
+        ],
+        [
+          "temperature",
+          "sensor.living_air_purifier_temperature"
+        ],
+        [
+          "humidity",
+          "sensor.living_air_purifier_humidity"
+        ],
+        [
+          "ionizer",
+          "switch.living_air_purifier_ionizer"
+        ],
+        [
+          "favoriteLevel",
+          "number.living_air_purifier_favorite_level"
+        ],
+        [
+          "brightness",
+          "select.living_air_purifier_led_brightness"
+        ],
+        [
+          "childLock",
+          "switch.living_air_purifier_child_lock"
+        ],
+        [
+          "buzzer",
+          "switch.living_air_purifier_buzzer"
+        ]
+      ]
+    },
+    {
+      "n": "phone:preview-inert",
+      "p": true
+    },
+    {
+      "n": "phone:no-command-before-save",
+      "p": true,
+      "log": []
+    },
+    {
+      "n": "phone:saved-one-instance",
+      "p": true,
+      "cards": {
+        "cmwou7h7thg8a": {
+          "profileId": "xiaomi.purifier4",
+          "profileVersion": "1.0.0",
+          "bindings": {
+            "fan": "fan.living_air_purifier",
+            "pm25": "sensor.living_air_purifier_pm25",
+            "filter": "sensor.living_air_purifier_filter_life",
+            "filterDays": "sensor.living_air_purifier_filter_left_time",
+            "temperature": "sensor.living_air_purifier_temperature",
+            "humidity": "sensor.living_air_purifier_humidity",
+            "ionizer": "switch.living_air_purifier_ionizer",
+            "favoriteLevel": "number.living_air_purifier_favorite_level",
+            "brightness": "select.living_air_purifier_led_brightness",
+            "childLock": "switch.living_air_purifier_child_lock",
+            "buzzer": "switch.living_air_purifier_buzzer"
+          },
+          "placement": [
+            "home",
+            "room"
+          ],
+          "deviceId": "80babb9d488a0bbd7d08db9a6ab67aa5",
+          "name": "Очиститель",
+          "roomId": "gostinaia",
+          "legacyKey": "e:fan.living_air_purifier"
+        }
+      }
+    },
+    {
+      "n": "phone:no-command-after-save",
+      "p": true
+    },
+    {
+      "n": "phone:house-settings-kept",
+      "p": true,
+      "cfg": 1081,
+      "before": 1081
+    },
+    {
+      "n": "phone:card-on-home",
+      "p": true
+    },
+    {
+      "n": "phone:card-in-room-once",
+      "p": true,
+      "roomTiles": 1
+    },
+    {
+      "n": "phone:same-device-from-home-and-room",
+      "p": true,
+      "roomSheet": "#rooms?room=gostinaia&device=p%3Acmwou7h7thg8a",
+      "homeSheet": "fan|Очиститель"
+    },
+    {
+      "n": "phone:sheet-has-modes-speed-filter",
+      "p": true
+    },
+    {
+      "n": "phone:add-button-in-room",
+      "p": true
+    },
+    {
+      "n": "phone:room-first",
+      "p": true,
+      "inRoom": "Xiaomi Smart Air Purifier 4\nОчистители воздуха · Xiaomi · zhimi.airp.mb5\nЕсть в этой комнате"
+    },
+    {
+      "n": "phone:room-device-preselected",
+      "p": true
+    },
+    {
+      "n": "phone:external-said",
+      "p": true
+    },
+    {
+      "n": "phone:two-independent-instances",
+      "p": true,
+      "A": {
+        "profileId": "xiaomi.purifier4",
+        "profileVersion": "1.0.0",
+        "bindings": {
+          "fan": "fan.living_air_purifier",
+          "pm25": "sensor.living_air_purifier_pm25",
+          "filter": "sensor.living_air_purifier_filter_life",
+          "filterDays": "sensor.living_air_purifier_filter_left_time",
+          "temperature": "sensor.living_air_purifier_temperature",
+          "humidity": "sensor.living_air_purifier_humidity",
+          "ionizer": "switch.living_air_purifier_ionizer",
+          "favoriteLevel": "number.living_air_purifier_favorite_level",
+          "brightness": "select.living_air_purifier_led_brightness",
+          "childLock": "switch.living_air_purifier_child_lock",
+          "buzzer": "switch.living_air_purifier_buzzer"
+        },
+        "placement": [
+          "home",
+          "room"
+        ],
+        "deviceId": "80babb9d488a0bbd7d08db9a6ab67aa5",
+        "name": "Очиститель",
+        "roomId": "gostinaia",
+        "legacyKey": "e:fan.living_air_purifier"
+      },
+      "B": {
+        "profileId": "xiaomi.purifier4",
+        "profileVersion": "1.0.0",
+        "bindings": {
+          "fan": "fan.bedroom_air_purifier",
+          "pm25": "sensor.living_air_purifier_pm25",
+          "filter": "sensor.bedroom_air_purifier_filter_life",
+          "filterDays": "sensor.bedroom_air_purifier_filter_left_time",
+          "temperature": "sensor.bedroom_air_purifier_temperature",
+          "humidity": "sensor.bedroom_air_purifier_humidity",
+          "ionizer": "switch.bedroom_air_purifier_ionizer",
+          "favoriteLevel": "number.bedroom_air_purifier_favorite_level",
+          "brightness": "select.bedroom_air_purifier_led_brightness",
+          "childLock": "switch.bedroom_air_purifier_child_lock",
+          "buzzer": "switch.bedroom_air_purifier_buzzer"
+        },
+        "placement": [
+          "room"
+        ],
+        "deviceId": "bedroomPurifierDevice",
+        "roomId": "spalnia",
+        "legacyKey": "e:fan.bedroom_air_purifier"
+      }
+    },
+    {
+      "n": "phone:no-command-after-second-save",
+      "p": true
+    },
+    {
+      "n": "phone:bindings-survive-reload",
+      "p": true
+    },
+    {
+      "n": "phone:power-targets-own-fan",
+      "p": true,
+      "sent": [
+        {
+          "domain": "fan",
+          "service": "turn_on",
+          "entity": "fan.bedroom_air_purifier"
+        }
+      ]
+    },
+    {
+      "n": "phone:lost-note",
+      "p": true
+    },
+    {
+      "n": "phone:edit-opens-with-lost-field",
+      "p": true
+    },
+    {
+      "n": "phone:resident-sees-card",
+      "p": true
+    },
+    {
+      "n": "phone:heat-rooms-suggested",
+      "p": true,
+      "roomRows": [
+        [
+          [
+            "trv",
+            "climate.kitchen_trv"
+          ],
+          [
+            "air",
+            "sensor.kitchen_climate_temperature"
+          ],
+          [
+            "timer",
+            "timer.kitchen_heating_override"
+          ],
+          [
+            "overrideTemp",
+            "input_number.kitchen_heating_override_temp"
+          ],
+          [
+            "manualTemp",
+            "input_number.kitchen_heating_manual_temp"
+          ]
+        ],
+        [
+          [
+            "trv",
+            "climate.bedroom_trv"
+          ],
+          [
+            "air",
+            "sensor.bedroom_climate_temperature"
+          ],
+          [
+            "timer",
+            "timer.bedroom_heating_override"
+          ],
+          [
+            "overrideTemp",
+            "input_number.bedroom_heating_override_temp"
+          ],
+          [
+            "manualTemp",
+            "input_number.bedroom_heating_manual_temp"
+          ]
+        ]
+      ]
+    },
+    {
+      "n": "phone:kitchen-air-no-boiler",
+      "p": true
+    },
+    {
+      "n": "phone:no-command-after-heating-save",
+      "p": true,
+      "log": [
+        {
+          "domain": "fan",
+          "service": "turn_on",
+          "entity": "fan.bedroom_air_purifier"
+        }
+      ]
+    },
+    {
+      "n": "phone:heating-screen-installer-rooms",
+      "p": true
+    },
+    {
+      "n": "phone:single-thermostat-tile",
+      "p": true
+    },
+    {
+      "n": "phone:single-no-command",
+      "p": true
+    },
+    {
+      "n": "tablet:add-button-on-home",
+      "p": true
+    },
+    {
+      "n": "tablet:found-lists-purifier-and-both-heating",
+      "p": true,
+      "foundIds": [
+        "xiaomi.purifier4",
+        "heating.single",
+        "heating.rooms"
+      ]
+    },
+    {
+      "n": "tablet:search-and-browse-one-profile",
+      "p": true,
+      "bySearch": [
+        "xiaomi.purifier4"
+      ],
+      "byBrowse": [
+        "xiaomi.purifier4"
+      ],
+      "byCode": [
+        "xiaomi.purifier4"
+      ]
+    },
+    {
+      "n": "tablet:heating-both-cards",
+      "p": true,
+      "heat": [
+        "heating.single",
+        "heating.rooms"
+      ]
+    },
+    {
+      "n": "tablet:two-devices-of-the-model",
+      "p": true
+    },
+    {
+      "n": "tablet:fields-only-of-this-card",
+      "p": true,
+      "roles": [
+        [
+          "fan",
+          "fan.living_air_purifier"
+        ],
+        [
+          "pm25",
+          "sensor.living_air_purifier_pm25"
+        ],
+        [
+          "filter",
+          "sensor.living_air_purifier_filter_life"
+        ],
+        [
+          "filterDays",
+          "sensor.living_air_purifier_filter_left_time"
+        ],
+        [
+          "temperature",
+          "sensor.living_air_purifier_temperature"
+        ],
+        [
+          "humidity",
+          "sensor.living_air_purifier_humidity"
+        ],
+        [
+          "ionizer",
+          "switch.living_air_purifier_ionizer"
+        ],
+        [
+          "favoriteLevel",
+          "number.living_air_purifier_favorite_level"
+        ],
+        [
+          "brightness",
+          "select.living_air_purifier_led_brightness"
+        ],
+        [
+          "childLock",
+          "switch.living_air_purifier_child_lock"
+        ],
+        [
+          "buzzer",
+          "switch.living_air_purifier_buzzer"
+        ]
+      ]
+    },
+    {
+      "n": "tablet:fields-suggested-from-own-device",
+      "p": true,
+      "roles": [
+        [
+          "fan",
+          "fan.living_air_purifier"
+        ],
+        [
+          "pm25",
+          "sensor.living_air_purifier_pm25"
+        ],
+        [
+          "filter",
+          "sensor.living_air_purifier_filter_life"
+        ],
+        [
+          "filterDays",
+          "sensor.living_air_purifier_filter_left_time"
+        ],
+        [
+          "temperature",
+          "sensor.living_air_purifier_temperature"
+        ],
+        [
+          "humidity",
+          "sensor.living_air_purifier_humidity"
+        ],
+        [
+          "ionizer",
+          "switch.living_air_purifier_ionizer"
+        ],
+        [
+          "favoriteLevel",
+          "number.living_air_purifier_favorite_level"
+        ],
+        [
+          "brightness",
+          "select.living_air_purifier_led_brightness"
+        ],
+        [
+          "childLock",
+          "switch.living_air_purifier_child_lock"
+        ],
+        [
+          "buzzer",
+          "switch.living_air_purifier_buzzer"
+        ]
+      ]
+    },
+    {
+      "n": "tablet:preview-inert",
+      "p": true
+    },
+    {
+      "n": "tablet:no-command-before-save",
+      "p": true,
+      "log": []
+    },
+    {
+      "n": "tablet:saved-one-instance",
+      "p": true,
+      "cards": {
+        "cmwou82y2j97r": {
+          "profileId": "xiaomi.purifier4",
+          "profileVersion": "1.0.0",
+          "bindings": {
+            "fan": "fan.living_air_purifier",
+            "pm25": "sensor.living_air_purifier_pm25",
+            "filter": "sensor.living_air_purifier_filter_life",
+            "filterDays": "sensor.living_air_purifier_filter_left_time",
+            "temperature": "sensor.living_air_purifier_temperature",
+            "humidity": "sensor.living_air_purifier_humidity",
+            "ionizer": "switch.living_air_purifier_ionizer",
+            "favoriteLevel": "number.living_air_purifier_favorite_level",
+            "brightness": "select.living_air_purifier_led_brightness",
+            "childLock": "switch.living_air_purifier_child_lock",
+            "buzzer": "switch.living_air_purifier_buzzer"
+          },
+          "placement": [
+            "home",
+            "room"
+          ],
+          "deviceId": "80babb9d488a0bbd7d08db9a6ab67aa5",
+          "name": "Очиститель",
+          "roomId": "gostinaia",
+          "legacyKey": "e:fan.living_air_purifier"
+        }
+      }
+    },
+    {
+      "n": "tablet:no-command-after-save",
+      "p": true
+    },
+    {
+      "n": "tablet:house-settings-kept",
+      "p": true,
+      "cfg": 1081,
+      "before": 1081
+    },
+    {
+      "n": "tablet:card-on-home",
+      "p": true
+    },
+    {
+      "n": "tablet:card-in-room-once",
+      "p": true,
+      "roomTiles": 1
+    },
+    {
+      "n": "tablet:same-device-from-home-and-room",
+      "p": true,
+      "roomSheet": "#rooms?room=gostinaia&device=p%3Acmwou82y2j97r",
+      "homeSheet": "fan|Очиститель"
+    },
+    {
+      "n": "tablet:sheet-has-modes-speed-filter",
+      "p": true
+    },
+    {
+      "n": "tablet:add-button-in-room",
+      "p": true
+    },
+    {
+      "n": "tablet:room-first",
+      "p": true,
+      "inRoom": "Xiaomi Smart Air Purifier 4\nОчистители воздуха · Xiaomi · zhimi.airp.mb5\nЕсть в этой комнате"
+    },
+    {
+      "n": "tablet:room-device-preselected",
+      "p": true
+    },
+    {
+      "n": "tablet:external-said",
+      "p": true
+    },
+    {
+      "n": "tablet:two-independent-instances",
+      "p": true,
+      "A": {
+        "profileId": "xiaomi.purifier4",
+        "profileVersion": "1.0.0",
+        "bindings": {
+          "fan": "fan.living_air_purifier",
+          "pm25": "sensor.living_air_purifier_pm25",
+          "filter": "sensor.living_air_purifier_filter_life",
+          "filterDays": "sensor.living_air_purifier_filter_left_time",
+          "temperature": "sensor.living_air_purifier_temperature",
+          "humidity": "sensor.living_air_purifier_humidity",
+          "ionizer": "switch.living_air_purifier_ionizer",
+          "favoriteLevel": "number.living_air_purifier_favorite_level",
+          "brightness": "select.living_air_purifier_led_brightness",
+          "childLock": "switch.living_air_purifier_child_lock",
+          "buzzer": "switch.living_air_purifier_buzzer"
+        },
+        "placement": [
+          "home",
+          "room"
+        ],
+        "deviceId": "80babb9d488a0bbd7d08db9a6ab67aa5",
+        "name": "Очиститель",
+        "roomId": "gostinaia",
+        "legacyKey": "e:fan.living_air_purifier"
+      },
+      "B": {
+        "profileId": "xiaomi.purifier4",
+        "profileVersion": "1.0.0",
+        "bindings": {
+          "fan": "fan.bedroom_air_purifier",
+          "pm25": "sensor.living_air_purifier_pm25",
+          "filter": "sensor.bedroom_air_purifier_filter_life",
+          "filterDays": "sensor.bedroom_air_purifier_filter_left_time",
+          "temperature": "sensor.bedroom_air_purifier_temperature",
+          "humidity": "sensor.bedroom_air_purifier_humidity",
+          "ionizer": "switch.bedroom_air_purifier_ionizer",
+          "favoriteLevel": "number.bedroom_air_purifier_favorite_level",
+          "brightness": "select.bedroom_air_purifier_led_brightness",
+          "childLock": "switch.bedroom_air_purifier_child_lock",
+          "buzzer": "switch.bedroom_air_purifier_buzzer"
+        },
+        "placement": [
+          "room"
+        ],
+        "deviceId": "bedroomPurifierDevice",
+        "roomId": "spalnia",
+        "legacyKey": "e:fan.bedroom_air_purifier"
+      }
+    },
+    {
+      "n": "tablet:no-command-after-second-save",
+      "p": true
+    },
+    {
+      "n": "tablet:bindings-survive-reload",
+      "p": true
+    },
+    {
+      "n": "tablet:power-targets-own-fan",
+      "p": true,
+      "sent": [
+        {
+          "domain": "fan",
+          "service": "turn_on",
+          "entity": "fan.bedroom_air_purifier"
+        }
+      ]
+    },
+    {
+      "n": "tablet:lost-note",
+      "p": true
+    },
+    {
+      "n": "tablet:edit-opens-with-lost-field",
+      "p": true
+    },
+    {
+      "n": "tablet:resident-sees-card",
+      "p": true
+    },
+    {
+      "n": "tablet:heat-rooms-suggested",
+      "p": true,
+      "roomRows": [
+        [
+          [
+            "trv",
+            "climate.kitchen_trv"
+          ],
+          [
+            "air",
+            "sensor.kitchen_climate_temperature"
+          ],
+          [
+            "timer",
+            "timer.kitchen_heating_override"
+          ],
+          [
+            "overrideTemp",
+            "input_number.kitchen_heating_override_temp"
+          ],
+          [
+            "manualTemp",
+            "input_number.kitchen_heating_manual_temp"
+          ]
+        ],
+        [
+          [
+            "trv",
+            "climate.bedroom_trv"
+          ],
+          [
+            "air",
+            "sensor.bedroom_climate_temperature"
+          ],
+          [
+            "timer",
+            "timer.bedroom_heating_override"
+          ],
+          [
+            "overrideTemp",
+            "input_number.bedroom_heating_override_temp"
+          ],
+          [
+            "manualTemp",
+            "input_number.bedroom_heating_manual_temp"
+          ]
+        ]
+      ]
+    },
+    {
+      "n": "tablet:kitchen-air-no-boiler",
+      "p": true
+    },
+    {
+      "n": "tablet:no-command-after-heating-save",
+      "p": true,
+      "log": [
+        {
+          "domain": "fan",
+          "service": "turn_on",
+          "entity": "fan.bedroom_air_purifier"
+        }
+      ]
+    },
+    {
+      "n": "tablet:heating-screen-installer-rooms",
+      "p": true
+    },
+    {
+      "n": "tablet:single-thermostat-tile",
+      "p": true
+    },
+    {
+      "n": "tablet:single-no-command",
+      "p": true
+    }
+  ],
+  "errors": []
+}

@@ -94,7 +94,7 @@ export interface ProfileInstance {
   /** a scheme's rooms («Центральный термостат и комнаты») */ rooms?: InstanceRoom[];
   /** the auto-made card it replaces (`e:fan.living_air_purifier`): its name, photo and «favourite» were carried over once */ legacyKey?: string;
 }
-const ENTITY = /^[a-z_]+\.[a-z0-9_]+$/, ID = /^[A-Za-z0-9_-]{1,40}$/, ROLE = /^\w{1,32}$/;
+const ENTITY = /^[a-z_]+\.[a-z0-9_]+$/, ID = /^(?!__proto__$|constructor$|prototype$)[A-Za-z0-9_-]{1,40}$/, ROLE = /^\w{1,32}$/;
 const plain = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const binds = (v: unknown) => plain(v) ? Object.fromEntries(Object.entries(v).filter(([k, e]) => ROLE.test(k) && typeof e === 'string' && ENTITY.test(e))) as Record<string, string> : {};
 /** Same rules as the integration's: a malformed instance is dropped, one of a profile this panel does not know yet is KEPT as it is (a newer
@@ -107,7 +107,9 @@ export function normaliseInstances(raw: unknown, warn: (w: string) => void = () 
     const placement = Array.isArray(v.placement) ? [...new Set(v.placement.filter((p): p is Place => p === 'home' || p === 'room'))] : [];
     const rooms = Array.isArray(v.rooms) ? v.rooms.slice(0, 40).filter(plain).filter(r => typeof r.id === 'string' && ID.test(r.id) && typeof r.areaId === 'string' && r.areaId.length <= 128).map(r => ({ id: r.id as string, areaId: r.areaId as string, bindings: binds(r.bindings) })) : undefined;
     const str = (x: unknown, max: number) => typeof x === 'string' && x.trim() ? x.trim().slice(0, max) : undefined;
-    const inst: ProfileInstance = { profileId: v.profileId, profileVersion: typeof v.profileVersion === 'string' && /^\d+\.\d+\.\d+$/.test(v.profileVersion) ? v.profileVersion : '1.0.0', bindings: binds(v.bindings), placement };
+    // fields a newer panel added are carried as they are (spread first); the known ones are checked
+    const extra: Record<string, unknown> = { ...v }; for (const k of ['profileId', 'profileVersion', 'bindings', 'placement', 'deviceId', 'name', 'roomId', 'legacyKey', 'rooms']) delete extra[k];
+    const inst: ProfileInstance = { ...extra, profileId: v.profileId, profileVersion: typeof v.profileVersion === 'string' && /^\d+\.\d+\.\d+$/.test(v.profileVersion) ? v.profileVersion : '1.0.0', bindings: binds(v.bindings), placement };
     const deviceId = str(v.deviceId, 64), name = str(v.name, 80), roomId = str(v.roomId, 128), legacyKey = str(v.legacyKey, 200);
     if (deviceId && /^[\w-]+$/.test(deviceId)) inst.deviceId = deviceId;
     if (name) inst.name = name; if (roomId) inst.roomId = roomId; if (legacyKey) inst.legacyKey = legacyKey; if (rooms) inst.rooms = rooms;

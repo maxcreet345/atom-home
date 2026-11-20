@@ -29,7 +29,7 @@ export interface CatalogProps { registry: Registry; config: HouseConfig; rooms: 
   onClose: () => void; profiles?: Profile[] }
 type Tab = 'found' | 'all';
 /** A host the preview draws on: it reads the house, and refuses every command (the form is never a remote control). */
-const previewHostOf = (host: Host): Host => ({ ...host, call: () => Promise.reject(new Error('preview')), admin: false } as Host);
+const previewHostOf = (host: Host): Host => ({ ...host, call: () => Promise.reject(new Error('preview')), airStart: undefined, airStop: undefined, admin: false } as Host);
 const noRunner: Runner = { run: async () => false, busy: new Set() };
 const ck = (t: T, k: string, p?: Record<string, string | number>) => t(`cat.${k}` as Key, p);
 
@@ -68,7 +68,10 @@ function CatalogList({ registry, rooms, t, roomId, onClose, list, onPick }: Cata
 function CardForm({ registry, config, rooms, t, lang, host, roomId, save, onClose, onBack, profile, instanceId, profiles }: CatalogProps & { profile: Profile; instanceId: string | null; onBack: () => void }) {
   const list = profiles ?? PROFILES, editing = instanceId ? config.profileInstances?.[instanceId] : undefined;
   const devices = useMemo(() => devicesFor(registry, profile), [registry, profile]);
-  const firstDevice = editing?.deviceId ?? (devices.length === 1 ? devices[0].id : devices.find(d => roomId && d.areaId === roomId)?.id);
+  // a device that already has a card is not offered first: one appliance, one card
+  const takenBy = (id: string) => Object.entries(config.profileInstances ?? {}).some(([k, i]) => k !== instanceId && i.deviceId === id);
+  const free = devices.filter(d => !takenBy(d.id));
+  const firstDevice = editing?.deviceId ?? (free.length === 1 && devices.length === 1 ? free[0].id : free.find(d => roomId && d.areaId === roomId)?.id ?? (free.length === 1 ? free[0].id : undefined));
   const [deviceId, setDeviceId] = useState<string | undefined>(firstDevice);
   const [bindings, setBindings] = useState<Record<string, string>>(() => editing ? { ...editing.bindings } : suggestBindings(registry, profile, firstDevice));
   const [roomsDraft, setRooms] = useState<InstanceRoom[]>(() => editing?.rooms ? editing.rooms.map(r => ({ ...r, bindings: { ...r.bindings } })) : []);
@@ -82,7 +85,7 @@ function CardForm({ registry, config, rooms, t, lang, host, roomId, save, onClos
   const draft: ProfileInstance = { profileId: profile.id, profileVersion: profile.version, bindings, placement, ...(deviceId ? { deviceId } : {}), ...(name.trim() ? { name: name.trim() } : {}), ...(room ? { roomId: room } : {}), ...(profile.roomRoles ? { rooms: roomsDraft } : {}) };
   const view = (!needDevice || deviceId) ? instanceView(registry, instanceId ?? 'draft', draft, areaName, list, k => t(k as Key)) : null;
   const missing = view ? view.incomplete : profile.roles.filter(r => r.required).map(r => r.id);
-  const ready = (!needDevice || !!deviceId) && missing.length === 0 && placement.length > 0 && (!profile.roomRoles || roomsDraft.length > 0);
+  const ready = (!needDevice || (!!deviceId && !takenBy(deviceId))) && missing.length === 0 && placement.length > 0 && (!profile.roomRoles || roomsDraft.length > 0);
   const add = async () => {
     if (!ready || busy) return; setBusy(true);
     const id = instanceId ?? newInstanceId(config.profileInstances ?? {});
@@ -91,7 +94,7 @@ function CardForm({ registry, config, rooms, t, lang, host, roomId, save, onClos
       const ok = await save(c => {
         const all = { ...(c.profileInstances ?? {}) };
         // the auto-made card of the same appliance gives its name once (the installer's own name wins), so the house keeps calling it what it did
-        const carried = legacy && !editing ? c.devices[legacy]?.name : undefined;
+        const carried = legacy && !editing ? c.devices[legacy]?.name ?? (deviceId ? c.devices[`d:${deviceId}`]?.name : undefined) : undefined;
         all[id] = { ...draft, ...(legacy ? { legacyKey: legacy } : {}), ...(carried && !draft.name ? { name: carried } : {}) };
         c.profileInstances = all;
       });
@@ -127,7 +130,7 @@ function CardForm({ registry, config, rooms, t, lang, host, roomId, save, onClos
       {profile.renderer !== 'heatingRooms' && <label className="at-field"><span>{ck(t, 'room')}</span><select value={room} onChange={e => setRoom((e.target as HTMLSelectElement).value)}><option value="">{t('room.none')}</option>{roomList.map(r => <option value={r.id}>{r.name}</option>)}</select></label>}
       <div className="hm-chips at-cards-place" role="group" aria-label={ck(t, 'place')}>{profile.places.map(p => <button type="button" role="checkbox" aria-checked={placement.includes(p)} className={placement.includes(p) ? 'is-active' : ''} data-place={p} onClick={() => setPlacement(l => l.includes(p) ? l.filter(x => x !== p) : [...l, p])}>{ck(t, `place.${p}`)}</button>)}</div>
     </section>
-    {!ready && <p className="hm-muted at-cards-need" role="status">{!placement.length ? ck(t, 'needPlace') : needDevice && !deviceId ? ck(t, 'needDevice') : profile.roomRoles && !roomsDraft.length ? ck(t, 'needRoom') : ck(t, 'needFields', { list: missing.map(m => { const [a, b] = m.includes('.') ? m.split('.') : [null, m]; const r = (a ? profile.roomRoles : profile.roles)?.find(x => x.id === b); return r ? t(r.labelKey as Key) : m; }).join(', ') })}</p>}
+    {!ready && <p className="hm-muted at-cards-need" role="status">{deviceId && needDevice && takenBy(deviceId) ? ck(t, 'deviceTaken') : !placement.length ? ck(t, 'needPlace') : needDevice && !deviceId ? ck(t, 'needDevice') : profile.roomRoles && !roomsDraft.length ? ck(t, 'needRoom') : ck(t, 'needFields', { list: missing.map(m => { const [a, b] = m.includes('.') ? m.split('.') : [null, m]; const r = (a ? profile.roomRoles : profile.roles)?.find(x => x.id === b); return r ? t(r.labelKey as Key) : m; }).join(', ') })}</p>}
     <div className="at-cards-actions">{editing && <button type="button" className="hm-pill" data-action="remove-card" onClick={remove}>{ck(t, 'remove')}</button>}<button type="button" className="hm-pill is-primary" data-action="add-card" aria-disabled={!ready || busy || undefined} aria-busy={busy || undefined} onClick={() => void add()}>{editing ? ck(t, 'saveEdit') : ck(t, 'addToScreen')}</button></div>
     {note && <div className="hm-badge tone-calm at-note" role="status">{note}</div>}
     {question && <Ask q={question} t={t} onClose={() => ask(null)} />}

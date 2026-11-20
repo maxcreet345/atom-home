@@ -7,7 +7,7 @@ export function heatingActions(h: Heating, host: { call: Call }) {
   return {
     /** «Авто»: the common temperature — in «Дома» it is the «Дома» temperature, in another scenario a change until the scenario ends (as on the thermostat).
      * «Ручной»: every room gets it at once. */
-    house: (v: number): Promise<unknown> => h.mode === 'manual' ? Promise.all(h.rooms.filter(r => manualOf(r)).map(r => call('input_number', 'set_value', { entity_id: manualOf(r)!, value: v }))) :
+    house: (v: number): Promise<unknown> => h.mode === 'manual' ? (h.rooms.some(r => manualOf(r)) ? Promise.all(h.rooms.filter(r => manualOf(r)).map(r => call('input_number', 'set_value', { entity_id: manualOf(r)!, value: v }))) : Promise.reject(new Error('no manual temperature'))) :
       !ids.legacy ? (ids.homeTemp ? call(ids.homeTemp.split('.')[0], 'set_value', { entity_id: ids.homeTemp, value: v }) : call('climate', 'set_temperature', { entity_id: h.thermostat, temperature: v })) :
       h.scenario === 'home' ? call('input_number', 'set_value', { entity_id: 'input_number.heating_home_temp', value: v }) :
       Promise.all([call('input_number', 'set_value', { entity_id: 'input_number.heating_scenario_override_temp', value: v }), call('input_boolean', 'turn_on', { entity_id: 'input_boolean.heating_scenario_override' })]),

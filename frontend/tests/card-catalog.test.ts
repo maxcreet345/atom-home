@@ -9,7 +9,7 @@ import { PROFILES, profileById, searchProfiles, brandsOf, devicesFor, foundHere,
 import { normaliseConfig, type HouseConfig } from '../src/model/config.ts';
 import { discover } from '../src/model/discover.ts';
 import { readHeating } from '../src/model/heating.ts';
-import { heatLayoutOf } from '../src/model/heating-layout.ts';
+import { heatLayoutOf, modeWords } from '../src/model/heating-layout.ts';
 import { heatingActions } from '../src/model/heating-act.ts';
 import { actionsFor } from '../src/runtime/actions.ts';
 import { translator } from '../src/i18n/index.ts';
@@ -126,7 +126,7 @@ test('«Один центральный термостат»: the thermostat\'s 
   assert.ok(candidates(live, p.roles[0], {}).some(c => c.id === 'climate.living_thermostat'), 'the boiler\'s thermostat («Термостат котла») is offered');
   assert.ok(candidates(live, profileById('heating.rooms')!.roles[0], {}).some(c => c.id === 'climate.living_thermostat'));
 });
-test('«Центральный термостат и комнаты»: the house\'s common target, each room\'s actual temperature, its own target, the temporary change and the way back', () => {
+test('«Центральный термостат и комнаты»: the house\'s common target, each room\'s actual temperature, its own target, the temporary change and the way back', async () => {
   const p = profileById('heating.rooms')!, NOW = Date.now();
   const reg: Registry = structuredClone(live);
   reg.states['timer.kitchen_heating_override'] = { state: 'active', attributes: { finishes_at: new Date(NOW + 2 * 3600e3).toISOString() }, last_changed: '', last_updated: '' };
@@ -157,6 +157,12 @@ test('«Центральный термостат и комнаты»: the house
   // a room without a timer has no temporary change and no «Вернуть к общей»
   const bare = readHeating(reg, NOW, heatLayoutOf({ ...card, rooms: [{ id: 'r9', areaId: 'kukhnia', bindings: { trv: 'climate.kitchen_trv' } }] }))!;
   assert.equal(bare.rooms[0].override, null); assert.equal(bare.rooms[0].sensor, 'head');
+  // a bound on/off that is gone is unknown, not read from the thermostat; manual without any room's manual helper refuses instead of «succeeding»
+  const lostSys = readHeating(reg, NOW, heatLayoutOf({ ...card, bindings: { ...card.bindings, system: 'input_boolean.gone' } }))!;
+  assert.equal(lostSys.systemKnown, false);
+  const noManual = readHeating(reg, NOW, heatLayoutOf({ ...card, rooms: [{ id: 'r9', areaId: 'kukhnia', bindings: { trv: 'climate.kitchen_trv' } }] }))!;
+  await assert.rejects(heatingActions(noManual, { call: async () => undefined }).house(20) as Promise<unknown>);
+  assert.equal(modeWords(['off', 'heat', 'auto']), null, 'a list without «manual» is no mode list');
   // the house without any card reads its heating as before (Criuleni's own helpers)
   const legacy = readHeating(live, NOW)!; assert.equal(legacy.rooms.length, 5); assert.equal(legacy.ids?.legacy, true);
 });
@@ -172,5 +178,7 @@ test('the settings of a house that never used the catalog are kept exactly; norm
   }
   const future = normaliseInstances({ cX: { profileId: 'xiaomi.feeder2', profileVersion: '1.0.0', bindings: { feed: 'button.x_feed' }, placement: ['home'], extra: 1 }, 'bad id!': { profileId: 'x' } });
   assert.deepEqual(Object.keys(future), ['cX'], 'a newer panel\'s card is kept, a malformed one dropped');
+  assert.equal((future.cX as unknown as { extra: number }).extra, 1, 'with the fields this panel does not know');
+  assert.deepEqual(Object.keys(normaliseInstances(JSON.parse('{"__proto__":{"profileId":"x"}}'))), []);
   assert.deepEqual(instanceViews(live, future), [], 'and this panel draws nothing for it');
 });
