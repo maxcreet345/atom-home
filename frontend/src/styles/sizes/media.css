@@ -1,1 +1,114 @@
-/* card sizes: media (ui/slot-size.ts). Only under .at-slot[data-size]: a card outside an arrangement is untouched. */
+/* card sizes: media (ui/slot-size.ts). Only under .at-slot[data-size]: a card outside an arrangement is untouched.
+ * The ladder of common.css, for the vacuum, the cameras card and one camera:
+ *   s  — the robot, what it does, the battery / the main camera's frame, «Камеры» and how many;
+ *   w  — across: the robot, its words, the one main button / the main frame and four small cameras beside it;
+ *   t  — stacked: the robot, its words, the main button / the main frame on top, the small cameras below as a list;
+ *   l  — the card as it is today (2×2 is its natural size);
+ *   xl — the same, larger: the type, the robot and the buttons grow with the card.
+ * No player is ever remounted: a camera that does not fit is hidden by CSS and stays where it is. */
+
+/* ---- the vacuum (VacuumTile) ---- */
+/* the screen-reader word «Батарея» beside the battery: hidden by a clip of its own size, not by a 1px box its text overflows */
+.hm-shell .at-slot[data-size] .at-vac-tile .at-vac-facts .at-vh{width:auto;height:auto;margin:0;overflow:visible;left:0;top:0;pointer-events:none}
+/* the picture of the robot (the owner's photo or the drawn one) takes the room that is left, never more */
+.hm-shell .at-slot[data-size] .at-vac-tile .at-vac-tile-buddy{flex:1 1 0;min-height:0;height:auto}
+.hm-shell .at-slot[data-size] .at-vac-tile .at-vac-tile-buddy .at-vac-pic{height:100%;max-height:100%}
+.hm-shell .at-slot[data-size] .at-vac-tile .at-vac-tile-buddy .at-vac-pic img{max-height:100%}
+.hm-shell .at-slot[data-size] .at-vac-tile .at-vac-tile-buddy svg{min-height:0;max-height:100%}
+/* the small sizes are a grid: the question's anchor (Ask) is out of it */
+.hm-shell .at-slot:is([data-size="s"],[data-size="w"],[data-size="t"]) .at-vac-tile{display:grid;gap:6px;padding:10px 12px}
+.hm-shell .at-slot:is([data-size="s"],[data-size="w"],[data-size="t"]) .at-vac-tile>:not(.at-vac-open,.at-vac-tile-head,.at-vac-tile-buddy,.at-vac-facts,.at-vac-tile-btns){position:absolute}
+.hm-shell .at-slot:is([data-size="s"],[data-size="w"],[data-size="t"]) .at-vac-tile .at-vac-tile-head{grid-area:head}
+.hm-shell .at-slot:is([data-size="s"],[data-size="w"],[data-size="t"]) .at-vac-tile .at-vac-tile-buddy{grid-area:pic;height:100%;width:100%}
+.hm-shell .at-slot:is([data-size="s"],[data-size="w"],[data-size="t"]) .at-vac-tile .at-vac-facts{grid-area:facts}
+.hm-shell .at-slot:is([data-size="s"],[data-size="w"],[data-size="t"]) .at-vac-tile .at-vac-tile-btns{grid-area:btns}
+.hm-shell .at-slot:is([data-size="s"],[data-size="w"],[data-size="t"]) .at-vac-tile .at-vac-home,
+.hm-shell .at-slot:is([data-size="s"],[data-size="w"],[data-size="t"]) .at-vac-tile .at-vac-go-pct{display:none}
+.hm-shell .at-slot:is([data-size="s"],[data-size="w"],[data-size="t"]) .at-vac-tile .at-vac-go.has-pct{padding-left:0}
+/* s: what it does, the robot, the battery; a tap opens the panel */
+.hm-shell .at-slot[data-size="s"] .at-vac-tile{grid-template:"head" auto "pic" minmax(0,1fr) "facts" auto/minmax(0,1fr);padding:10px}
+.hm-shell .at-slot[data-size="s"] .at-vac-tile .at-vac-tile-head :is(strong,em),
+.hm-shell .at-slot[data-size="s"] .at-vac-tile .at-vac-tile-btns,
+.hm-shell .at-slot[data-size="s"] .at-vac-tile .at-vac-facts li:not(:has(.at-vh)){display:none}
+.hm-shell .at-slot[data-size="s"] .at-vac-tile .at-vac-tile-head small{font-size:clamp(.8125rem,10cqmin,.9375rem)}
+.hm-shell .at-slot[data-size="s"] .at-vac-tile .at-vac-facts{font-size:clamp(.8125rem,10cqmin,.9375rem)}
+/* w: the robot, the words, the one main button (icon only where its word does not fit) */
+.hm-shell .at-slot[data-size="w"] .at-vac-tile{grid-template:"pic head btns" auto "pic facts btns" auto/clamp(52px,34cqw,120px) minmax(0,1fr) auto;align-content:center;column-gap:clamp(8px,4cqw,16px);padding:10px clamp(10px,4cqw,16px)}
+.hm-shell .at-slot[data-size="w"] .at-vac-tile .at-vac-tile-buddy{max-height:100cqh}
+.hm-shell .at-slot[data-size="w"] .at-vac-tile .at-vac-facts{justify-content:flex-start}
+.hm-shell .at-slot[data-size="w"] .at-vac-tile .at-vac-tile-head small{font-size:clamp(.8125rem,12cqh,.9375rem)}
+.hm-shell .at-slot[data-size="w"] .at-vac-tile .at-vac-tile-btns{display:block;align-self:stretch;width:clamp(52px,18cqw,64px)}
+.hm-shell .at-slot[data-size="w"] .at-vac-tile .at-vac-go{width:100%;height:100%;min-height:44px}
+.hm-shell .at-slot[data-size="w"] .at-vac-tile .at-vac-go span{display:none}
+@container slot (min-width:300px){
+  .hm-shell .at-slot[data-size="w"] .at-vac-tile .at-vac-tile-btns{width:96px}
+  .hm-shell .at-slot[data-size="w"] .at-vac-tile .at-vac-go span{display:block}
+}
+/* t: stacked, the main button under the robot */
+.hm-shell .at-slot[data-size="t"] .at-vac-tile{grid-template:"head" auto "pic" minmax(0,1fr) "facts" auto "btns" auto/minmax(0,1fr)}
+.hm-shell .at-slot[data-size="t"] .at-vac-tile .at-vac-tile-btns{display:block}
+.hm-shell .at-slot[data-size="t"] .at-vac-tile .at-vac-go{width:100%;min-height:clamp(56px,24cqw,72px)}
+.hm-shell .at-slot[data-size="t"] .at-vac-tile .at-vac-tile-head small{display:block}
+/* l / xl: the card as today, everything larger with the card (2×2 stays as it is) */
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-vac-tile{gap:clamp(8px,2.4cqmin,16px);padding:clamp(13px,3.9cqmin,24px) clamp(14px,4.2cqmin,26px) clamp(12px,3.7cqmin,22px)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-vac-tile .at-vac-tile-head strong{font-size:clamp(.9375rem,4.4cqmin,1.5rem)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-vac-tile .at-vac-tile-head small{font-size:clamp(.8125rem,3.8cqmin,1.25rem)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-vac-tile :is(.at-vac-alert,.at-vac-facts){font-size:clamp(.8125rem,3.6cqmin,1.125rem)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-vac-tile .at-vac-tile-btns{grid-template-columns:minmax(0,1fr) clamp(92px,28cqmin,150px);gap:clamp(8px,2.5cqmin,14px)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-vac-tile :is(.at-vac-go,.at-vac-home){min-height:clamp(84px,24cqmin,128px);border-radius:clamp(20px,6cqmin,28px)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-vac-tile :is(.at-vac-go,.at-vac-home) span{font-size:clamp(.78125rem,3.6cqmin,1.125rem)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-vac-tile .at-vac-go>svg{width:clamp(26px,7.5cqmin,40px);height:clamp(26px,7.5cqmin,40px)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-vac-tile .at-vac-home>svg{width:clamp(24px,7cqmin,38px);height:clamp(24px,7cqmin,38px)}
+
+/* ---- the cameras card (CamerasTile): one keyed cell per camera, moved by CSS only ---- */
+.hm-shell .at-slot[data-size] .at-cams-tile .at-cams-stage{flex:1 1 auto;min-height:0}
+.hm-shell .at-slot[data-size] .at-cams-tile .at-cams-main{flex:1 1 auto;aspect-ratio:auto;min-height:0}
+/* how many cameras, beside «Камеры» on the one-cell card only (drawn always, shown only there: no element comes and goes with the size) */
+.hm-shell .at-cams-count{display:none}
+.hm-shell .at-slot[data-size="s"] .at-cams-tile .at-cams-count{display:inline-grid;place-items:center;min-width:22px;height:22px;margin-left:6px;padding:0 6px;border-radius:999px;background:#ffffff26;font-size:.8125rem;font-weight:700;font-variant-numeric:tabular-nums;vertical-align:1px}
+/* the big frame's own words («Нет связи с камерой») would crowd a small frame: its pill «Нет связи» says it (on the narrow frames the pill alone: it may take two lines) */
+.hm-shell .at-slot[data-size="w"] .at-cams-main .hm-camera-wait>span,.hm-shell .at-slot:is([data-size="s"],[data-size="t"]) .at-cams-main .hm-camera-wait{display:none}
+.hm-shell .at-slot:is([data-size="s"],[data-size="t"]) .at-cams-main .hm-live{max-width:calc(100% - 10px)}
+.hm-shell .at-slot:is([data-size="s"],[data-size="w"],[data-size="t"]) .at-cams-thumb{aspect-ratio:auto;height:100%;min-height:44px;grid-row:auto;grid-column:auto}
+.hm-shell .at-slot:is([data-size="s"],[data-size="w"],[data-size="t"]) .at-cams-thumb small{display:none}
+/* s: the main frame, «Камеры» and how many */
+.hm-shell .at-slot[data-size="s"] .at-cams-tile{gap:4px;padding:5px}
+.hm-shell .at-slot[data-size="s"] .at-cams-stage{grid-template:minmax(0,1fr)/minmax(0,1fr)}
+.hm-shell .at-slot[data-size="s"] .at-cams-tile :is(.at-cams-thumb,.at-cams-name,.at-cams-caption small,.at-cams-caption>svg){display:none}
+.hm-shell .at-slot[data-size="s"] .at-cams-tile .at-cams-main .hm-live{top:5px;left:5px}
+.hm-shell .at-slot[data-size="s"] .at-cams-caption{min-height:44px;padding:0 4px;gap:6px}
+.hm-shell .at-slot[data-size="s"] .at-cams-caption>span{flex-direction:row;align-items:center}
+.hm-shell .at-slot[data-size="s"] .at-cams-caption strong{font-size:clamp(.875rem,11cqmin,1.0625rem)}
+/* w: the main frame and four small cameras beside it; the line under them is the panel's */
+.hm-shell .at-slot[data-size="w"] .at-cams-caption{display:none}
+.hm-shell .at-slot[data-size="w"] .at-cams-stage{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);grid-template-rows:repeat(2,minmax(0,1fr));grid-auto-flow:column}
+.hm-shell .at-slot[data-size="w"] .at-cams-stage>.at-cams-main{grid-column:1;grid-row:1/-1}
+.hm-shell .at-slot[data-size="w"] .at-cams-thumb~.at-cams-thumb~.at-cams-thumb{display:none}
+.hm-shell .at-slot[data-size="w"]:not([data-w="2"]) .at-cams-stage{grid-template-columns:minmax(0,1.6fr) repeat(2,minmax(0,1fr))}
+.hm-shell .at-slot[data-size="w"]:not([data-w="2"]) .at-cams-thumb~.at-cams-thumb~.at-cams-thumb{display:block}
+.hm-shell .at-slot[data-size="w"]:not([data-w="2"]) .at-cams-thumb~.at-cams-thumb~.at-cams-thumb~.at-cams-thumb~.at-cams-thumb{display:none}
+/* t: the main frame on top, the small cameras below two by two, «Камеры» at the foot */
+.hm-shell .at-slot[data-size="t"] .at-cams-stage{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:minmax(0,1fr);grid-auto-rows:clamp(44px,30cqw,64px)}
+.hm-shell .at-slot[data-size="t"] .at-cams-stage>.at-cams-main{grid-column:1/-1;grid-row:1}
+.hm-shell .at-slot[data-size="t"][data-h="2"] .at-cams-thumb~.at-cams-thumb~.at-cams-thumb~.at-cams-thumb~.at-cams-thumb{display:none}
+.hm-shell .at-slot[data-size="t"] .at-cams-tile :is(.at-cams-name,.at-cams-caption>svg){display:none}
+.hm-shell .at-slot[data-size="t"] .at-cams-caption{padding:2px 4px}
+.hm-shell .at-slot[data-size="t"] .at-cams-caption small{font-size:.75rem}
+/* l / xl: as today, the small frames and the words larger */
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-cams-stage{grid-template-rows:minmax(0,1fr) auto}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-cams-caption strong{font-size:clamp(.9375rem,4.4cqmin,1.375rem)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-cams-caption small{font-size:clamp(.8125rem,3.8cqmin,1.125rem)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-cams-name b{font-size:clamp(.8125rem,3.8cqmin,1.125rem)}
+
+/* ---- one camera (CameraTile) ---- */
+.hm-shell .at-slot:is([data-size="s"],[data-size="t"]) .hm-camera-tile .hm-camera-caption{padding:8px 8px 8px;gap:4px}
+.hm-shell .at-slot:is([data-size="s"],[data-size="t"]) .hm-camera-tile .hm-camera-caption :is(small,svg){display:none}
+.hm-shell .at-slot:is([data-size="s"],[data-size="t"]) .hm-camera-tile .hm-camera-caption strong{font-size:clamp(.75rem,9cqmin,.875rem);line-height:1.2;overflow-wrap:anywhere}
+.hm-shell .at-slot:is([data-size="s"],[data-size="t"]) .hm-camera-tile .at-cam-badge.is-ring>span{display:none}
+.hm-shell .at-slot:is([data-size="s"],[data-size="t"]) .hm-camera-tile .hm-camera-wait>span{display:none}
+.hm-shell .at-slot[data-size="w"] .hm-camera-tile .hm-camera-caption{padding-top:12px}
+.hm-shell .at-slot[data-size="w"] .hm-camera-tile .hm-camera-caption small{white-space:normal}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .hm-camera-tile .hm-camera-caption{padding:clamp(24px,7cqmin,40px) clamp(12px,3.6cqmin,20px) clamp(10px,3cqmin,18px)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .hm-camera-tile .hm-camera-caption strong{font-size:clamp(.875rem,4cqmin,1.375rem)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .hm-camera-tile .hm-camera-caption small{font-size:clamp(.75rem,3.4cqmin,1.0625rem)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .hm-camera-tile .hm-live{font-size:clamp(.75rem,3.4cqmin,1rem)}
