@@ -8,8 +8,9 @@ import type { HouseConfig } from '../model/config.ts';
 import { errorText, locales, type Lang } from './format.ts';
 import { calendarDay, countdown, delayClock, questionStands, returnDate, secTone, valveLabel, VACATION_LABEL, type AskKind, type Guarded, type Hazard, type Security, type SecTone, type Valve } from '../model/security.ts';
 import { houseToday } from '../runtime/zone.ts';
-import { announcement, armWarning, devicesWord, failLine, guardedNow, hazardName, hazardWord, sentence, sk, stateWord, tileLabel, tileWord, valveOpenAsk } from '../model/security-words.ts';
+import { announcement, armWarning, devicesWord, failLine, guardedNow, hazardName, hazardWord, sentence, sk, stateWord, tileLabel, tileWord, valveOpenAsk, where } from '../model/security-words.ts';
 import { people } from '../model/people.ts';
+import { useSlotSize } from './slot-size.ts';
 import { NO_RETURN_DAY } from '../model/heating.ts';
 /** The alarm panel went silent while «Отпуск» was on its way (ST-06): the sequence stops, the panel says «Нет связи с охраной». */
 class AlarmGone extends Error { constructor() { super('alarm gone'); this.name = 'AlarmGone'; } }
@@ -41,8 +42,15 @@ function useLeft(alarm: Security['alarm'], states: Registry['states']): number |
   return clock.current(alarm, states);
 }
 /* the question before a dangerous action (`Ask`) is the house's and the office's: it lives in office-security.tsx */
-export function SecurityTile({ s, registry, config, t, lang: _lang, onOpen }: { s: Security; registry: Registry; config: HouseConfig; t: T; lang: Lang; onOpen: () => void }) {
+export function SecurityTile({ s, registry, config, t, lang, onOpen }: { s: Security; registry: Registry; config: HouseConfig; t: T; lang: Lang; onOpen: () => void }) {
   const tone = secTone(s), list = people(registry, config), home = list.filter(p => p.state === 'home').length, guests = !!s.guests?.on, left = useLeft(s.alarm, registry.states);
+  // 2×2 and larger on an arranged screen: the doors, windows, gas and water sensors under the sentence, in the panel's own words — what is open,
+  // in alarm or silent first; the stylesheet shows as many rows as the card has room for
+  const slot = useSlotSize(), listed = !!slot && (slot.size === 'l' || slot.size === 'xl');
+  const rows = !listed ? [] : [
+    ...s.guarded.map(g => ({ id: g.id, name: where(g, t), now: guardedNow(g, t, hm(g.since, lang)), first: g.open !== false })),
+    ...s.hazards.map(h => ({ id: h.id, name: `${hazardName(h, t)}${h.room ? ` · ${h.room}` : ''}`, now: hazardWord(h, t), first: h.alarm === true || h.silent })),
+  ].sort((a, b) => Number(b.first) - Number(a.first));
   return <div className={`ah-tile hm-card at-sec-tile at-osec-tile at-house-tile is-${tone} ${ARMED_ST.includes(s.alarm.state) ? 'is-st-armed' : ''}`}>
     <button type="button" className="ah-tile-hit" aria-label={tileLabel(s, t, home, guests)} onClick={onOpen}>
       {/* the ring and the name, the state big, one sentence: a narrow tile (a 3-column phone) keeps only the ring and the state, so a delay's seconds ride in the word */}
@@ -50,6 +58,7 @@ export function SecurityTile({ s, registry, config, t, lang: _lang, onOpen }: { 
       <span className="at-sec-tile-word">{tileWord(s, t, left)}</span>
       <small className="at-sec-tile-say">{sentence(s, t, home, guests)}</small>
       {(guests || s.vacation?.on) && <span className="at-sec-badges">{guests && <i>{sk(t, 'guests')}</i>}{s.vacation?.on && <i>{sk(t, 'vacation')}</i>}</span>}
+      {rows.length > 0 && <span className="at-sec-tile-list" aria-hidden="true">{rows.map(r => <span key={r.id} className={r.first ? 'is-first' : ''}><span>{r.name}</span><small>{r.now}</small></span>)}</span>}
     </button>
     {/* an alarm, gas, water, the entry delay and a tamper are announced (WCAG 4.1.3); the visible words are not repeated to the eye */}
     <span className="at-vh">{announcement(s, t, home, guests)}</span>

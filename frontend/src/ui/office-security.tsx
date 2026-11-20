@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Host } from '../runtime/host.ts';
 import type { Key, T } from '../i18n/index.ts';
 import { errorText, locales, type Lang } from './format.ts';
+import { useSlotSize } from './slot-size.ts';
 import { allItems, osecArmWarning, osecAskStands, osecDevicesWord, osecDisarmAsks, osecSentence, osecStateWord, osecTone, readOsecEvents, STAFF_LABEL, type LogRow, type OfficeSecurity, type OsecEvent, type OsecItem, type OsecState, type OsecTone } from '../model/office-security.ts';
 /** Security of an office building (Atom + Okapi, owner 09.11.2026, atom-okapi/SECURITY.md), drawn after the Ajax app the building's staff
  * already use (owner: «посмотри как они сделали»): the state ring (open = disarmed, closed = armed, «!» = alarm), the two big buttons «Под охрану»
@@ -68,11 +69,14 @@ export function useBusy(t?: T) {
 }
 export function OfficeSecurityTile({ s, t, onOpen }: { s: OfficeSecurity; t: T; onOpen: () => void }) {
   const tone = osecTone(s), word = smokeNow(s) ? ok(t, 'st.smoke') : ok(t, `tile.${s.alarm.state}`);
+  // 2×2 and larger on an arranged screen: each zone of the building and its state under the sentence (the house's tile lists its sensors the same way)
+  const slot = useSlotSize(), zones = slot && (slot.size === 'l' || slot.size === 'xl') ? s.zones : [];
   return <div className={`ah-tile hm-card at-sec-tile at-osec-tile is-${tone} is-st-${s.alarm.state}`}>
     <button type="button" className="ah-tile-hit" aria-label={`${ok(t, 'title')}: ${stateWord(s, t)}. ${sentence(s, t)}`} onClick={onOpen}>
       <span className="at-sec-tile-head"><Ring kind={ringOf(s)} size={34} progress={.5} tone={ringTone(s)} /><strong>{ok(t, 'title')}</strong></span>
       <span className="at-sec-tile-word">{word}</span>
       <small className="at-sec-tile-say">{sentence(s, t)}</small>
+      {zones.length > 0 && <span className="at-sec-tile-list" aria-hidden="true">{zones.map(z => <span key={z.id} className={z.state === 'disarmed' ? '' : 'is-first'}><span>{z.name}</span><small>{ok(t, `tile.${z.state}`)}</small></span>)}</span>}
     </button>
   </div>;
 }
