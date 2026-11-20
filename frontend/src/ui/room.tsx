@@ -21,6 +21,7 @@ import { vacuumActions, HOLD_MS } from './vacuum.tsx';
 import { LiveLoad } from './live-load.tsx';
 import { LayoutGrid, type LayItem } from './layout-grid.tsx';
 import { roomScope } from '../model/tile-layout.ts';
+import { useSlotSize } from './slot-size.ts';
 
 export interface RoomProps { reg: Registry; roomId: string; roomName: string; heating: Heating | null; vacuum: Vacuum | null; host: Host; t: T; lang: Lang; now: number; alarms: Alarm[] | null;
   deviceOf: (entity: string) => HomeDevice | undefined; toggle: (d: HomeDevice) => void; open: (d: HomeDevice) => void; busy: (d: HomeDevice) => boolean; onHeating: () => void; onAlarms: () => void;
@@ -85,6 +86,9 @@ function Tile({ th, p }: { th: Thing; p: P }) {
   // could not tell why): it is `aria-disabled` — a waiting one ignores the press, an offline one lets the runner say «Нет связи с домом»
   const x = detail(th, p), opens = opensOf(th, p), waits = !!x.action && p.commands.pending(x.action.key), offline = !p.host.online;
   // the appliance's own photo in place of the kind's glyph; a device with no connection (or nothing known) keeps its glyph
+  // on an arranged screen (ui/slot-size.ts) the button carries a power glyph too: a small cell shows it as a round 44 px button when the action is
+  // the plain on/off, and hides any other action (a valve, a pump, a pause), which the card's tap still reaches in its sheet
+  const size = useSlotSize(), power = !!x.action && (x.action.label === rk(p.t, 'd.turnOn') || x.action.label === rk(p.t, 'd.turnOff'));
   const photoOf = useContext(PhotoOf), shot = th.available && x.tone !== 'muted' && thingTakesPhoto(th.kind, th.main) ? photoOf(th.main) ?? th.ids.map(id => photoOf(id)).find(Boolean) ?? null : null;
   // a lamp answers for its bulb (ST-01): a bulb that does not answer is the muted «Нет связи» card, one without data keeps the plain card with «Нет данных»
   const tone = x.link === 'unknown' ? 'ok' : x.tone;
@@ -92,7 +96,7 @@ function Tile({ th, p }: { th: Thing; p: P }) {
     {opens && <button type="button" className="rm-tile-open" aria-label={`${th.name}: ${x.status}. ${rk(p.t, 'more')}`} onClick={opens} />}
     <div className="rm-tile-head"><span className="rm-tile-ic"><ProductPhoto src={shot}><Icon name={GLYPH[th.kind]} size={22} /></ProductPhoto></span><span className="rm-tile-name"><strong>{th.name}</strong><small>{x.status}</small></span></div>
     {x.facts.length > 0 && <ul className="rm-facts">{x.facts.slice(0, 3).map(f => <li className={f.tone === 'warn' ? 'is-warn' : ''}>{f.tone === 'warn' && <Icon name="warning" size={12} />}{f.text}</li>)}</ul>}
-    {x.action && <button type="button" className="rm-tile-act" disabled={!th.available} aria-disabled={waits || offline || undefined} aria-busy={waits || undefined} onClick={() => { if (!waits) x.action!.run(); }}>{x.action.label}</button>}
+    {x.action && <button type="button" className={`rm-tile-act${size && power ? ' is-power' : ''}`} aria-label={size ? `${th.name}: ${x.action.label}` : undefined} disabled={!th.available} aria-disabled={waits || offline || undefined} aria-busy={waits || undefined} onClick={() => { if (!waits) x.action!.run(); }}>{size ? <><Icon name="power" size={22} /><span className="rm-tile-act-tx">{x.action.label}</span></> : x.action.label}</button>}
   </article>;
 }
 

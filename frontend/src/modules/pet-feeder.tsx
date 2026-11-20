@@ -4,6 +4,7 @@ import { petFeederSpec } from './catalog.ts';
 import { Icon } from '../ui/primitives.tsx';
 import { Switch } from '../ui/cards.tsx';
 import { Automations, type SheetAutomation } from '../ui/sheet.tsx';
+import { useSlotSize } from '../ui/slot-size.ts';
 import type { Key } from '../i18n/index.ts';
 import type { Host } from '../runtime/host.ts';
 import type { Registry } from '../model/registry.ts';
@@ -253,11 +254,13 @@ export const petFeeder: ModuleDef = {
   ...petFeederSpec, sheetKey: 'feeder', // no product photo: the owner keeps the drawn cat (11.11.2026), on the tile, in the sheet's head and its hero
   claims: entities => [...Object.entries(entities).filter(([k]) => k !== 'device' && k !== 'rest').map(([, v]) => v), ...(entities.rest ?? '').split(',')].filter((x): x is string => !!x),
   Card(props) {
-    const { t, lang, onOpen, host, entities } = props, { log, answered, fetchedAt } = useLog(host, entities.info), { available, bowl, eaten, planOn, next, faults, warnings, mood, stale, asOfShort } = read(props, log, fetchedAt);
+    const { t, lang, onOpen, host, entities } = props, { log, answered, fetchedAt } = useLog(host, entities.info), { available, bowl, eaten, planOn, plan, meals, next, faults, warnings, mood, stale, asOfShort } = read(props, log, fetchedAt), size = useSlotSize()?.size;
     // the number is what was eaten today; without the journal it is the bowl's weight, and then the line under the name says so
     const value = eaten ?? (answered ? bowl : null), ofBowl = eaten === null && value !== null;
     // (the bowl's weight is read now, from the feeder: it is «в миске», never «данные 09.11» — that is the journal's date, and the journal is not shown)
     const alert = faults[0] ?? warnings[0], line = tileLine(!!alert, ofBowl, stale), sub = line === 'alert' ? alert! : line === 'bowl' ? t('module.feeder.bowl') : line === 'asOf' ? asOfShort : planOn === null ? t('state.unknown') : planOn && next ? tk(t, 'feedAt', { time: next.time }) : planOn ? t('module.feeder.planOn') : t('module.feeder.planOff');
-    return <div className={`ah-tile ah-value hm-card at-fd-tile ${faults.length ? 'is-fault' : warnings.length ? 'is-warning' : ''} ${available ? '' : 'is-off'}`} data-module-card="pet_feeder"><button type="button" className="ah-tile-hit" onClick={onOpen} disabled={!onOpen}><span className="at-fd-tile-cat"><CatArt mood={mood} grams={bowl} /></span><span className="ah-value-num"><b>{value === null ? '—' : num(value, lang, 0)}</b>{value !== null && <i>{tk(t, 'g')}</i>}</span><span className="ah-tile-text"><strong>{t('module.pet_feeder')}</strong><small>{sub}</small></span></button></div>;
+    return <div className={`ah-tile ah-value hm-card at-fd-tile ${faults.length ? 'is-fault' : warnings.length ? 'is-warning' : ''} ${available ? '' : 'is-off'}`} data-module-card="pet_feeder"><button type="button" className="ah-tile-hit" onClick={onOpen} disabled={!onOpen}><span className="at-fd-tile-cat"><CatArt mood={mood} grams={bowl} /></span><span className="ah-value-num"><b>{value === null ? '—' : num(value, lang, 0)}</b>{value !== null && <i>{tk(t, 'g')}</i>}</span><span className="ah-tile-text"><strong>{t('module.pet_feeder')}</strong><small>{sub}</small></span>
+      {/* a big card (2×2 and more, «Расставить») also shows the day's plan: its hours, the next one marked — as the sheet's plan does, only a plan that is on and read */}
+      {(size === 'l' || size === 'xl') && available && planOn === true && plan === 'ok' && meals.length > 0 && <span className="at-fd-tile-plan" aria-hidden="true">{meals.map(m => <i className={next?.time === m.time ? 'is-next' : ''}>{m.time}</i>)}</span>}</button></div>;
   },
 };

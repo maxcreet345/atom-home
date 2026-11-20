@@ -4,6 +4,7 @@ import type { ModuleDef, ModuleEntities, ModuleOptions } from './types.ts';
 import { kettleSpec } from './catalog.ts';
 import { Icon } from '../ui/primitives.tsx';
 import { ProductPhoto, usePhoto } from '../ui/photo.tsx';
+import { useSlotSize } from '../ui/slot-size.ts';
 import type { Host } from '../runtime/host.ts';
 import type { Registry } from '../model/registry.ts';
 import type { Key, T } from '../i18n/index.ts';
@@ -177,12 +178,14 @@ export const kettle: ModuleDef = {
   // the kettle's own entities only: the socket it stands on stays a socket of its own
   claims: entities => [entities.heater, ...(entities.rest ?? '').split(',')].filter((x): x is string => !!x),
   Card(props) {
-    const { t, lang, onOpen } = props, k = read(props), own = usePhoto(props.entities.heater), photo = k.phase === 'off' ? null : own; // the kettle's product photo replaces the drawing, when the house has set one; a kettle with no connection keeps the drawing
+    const { t, lang, onOpen } = props, k = read(props), own = usePhoto(props.entities.heater), photo = k.phase === 'off' ? null : own, size = useSlotSize()?.size; // the kettle's product photo replaces the drawing, when the house has set one; a kettle with no connection keeps the drawing
     const line = k.phase === 'off' ? kk(t, 'tileOff') : k.phase === 'lifted' ? kk(t, 'tileLifted') : k.phase === 'heating' ? kk(t, k.target >= 99 ? 'tileBoil' : 'tileHeat', { t: k.target }) : k.phase === 'keep' ? kk(t, 'tileKeep', { t: k.keepTemp === null ? '—' : k.keepTemp }) : k.phase === 'cooling' ? kk(t, 'tileCool') : kk(t, 'idle');
     // like Mi Home's tile: the kettle's picture, its name, the state with the water's temperature
     const temp = k.temp === null ? '' : ` · ${num(k.temp, lang, 0)}°`;
     return <div className={`ah-tile hm-card at-kt-tile is-${k.phase}`} data-module-card="kettle"><button type="button" className="ah-tile-hit" onClick={onOpen} disabled={!onOpen} aria-label={`${kk(t, 'title')}: ${line}${k.temp === null ? '' : `, ${Math.round(k.temp)}°`}`}>
       <span className="at-kt-tile-art"><ProductPhoto src={photo}><KettleArt phase={k.phase} temp={null} /></ProductPhoto></span>
+      {/* a big card (2×2 and more, «Расставить»): the water's temperature as the card's big number, the words below keep it too */}
+      {(size === 'l' || size === 'xl') && k.phase !== 'off' && k.temp !== null && <span className="ah-value-num at-kt-tile-temp" aria-hidden="true"><b>{num(k.temp, lang, 0)}</b><i>°</i></span>}
       <span className="ah-tile-text"><strong>{kk(t, 'title')}</strong><small>{line}{k.phase === 'off' ? '' : temp}</small></span></button></div>;
   },
 };
