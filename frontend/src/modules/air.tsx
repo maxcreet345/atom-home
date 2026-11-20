@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { ModuleDef } from './types.ts';
+import { useSlotSize } from '../ui/slot-size.ts';
 import { airSpec } from './catalog.ts';
 import { errorText, num } from '../ui/format.ts';
 import type { Key, T } from '../i18n/index.ts';
@@ -72,11 +73,19 @@ function roomHint(room: AirRoom, heard: Metric[], t: T): { text: string; tone: T
 /** The readings that speak on a row: all of them in a counted room. The storeroom stays out of the sentence and the means, and on its row says only what its vent can act on, while it has something to offer or runs (owner's table, docs/AIR.md). */
 const heardOf = (room: AirRoom, actions: AirAction[]): Metric[] => !room.excluded ? ['co2', 'pm25', 'humidity', 'temperature'] : actions.length || room.ventOn ? [...(room.allowed.includes('dehumidify') ? ['humidity' as Metric] : []), ...(room.allowed.includes('purify') ? ['pm25' as Metric] : [])] : [];
 export interface AirProps { registry: Registry; rooms: Rooms; host: Host; t: T; lang: Lang }
+const SEVERITY: Record<Tone, number> = { bad: 0, warn: 1, ok: 2 }, ORDER = ['co2', 'pm25', 'humidity', 'temperature'];
+/** The readings from the most to the least telling: the reading the sentence is about, then the worst tone, then CO₂, PM2.5, humidity, temperature. */
+function rankOf(cells: Array<{ key: string; tone: Tone }>, problem: Metric | null): Map<string, number> {
+  const sorted = [...cells].sort((a, b) => (a.key === problem ? -1 : 0) - (b.key === problem ? -1 : 0) || SEVERITY[a.tone] - SEVERITY[b.tone] || ORDER.indexOf(a.key) - ORDER.indexOf(b.key));
+  return new Map(sorted.map((c, i) => [c.key, i]));
+}
 /** The tile: the sentence and four numbers, tinted by how the air is. */
 function AirTile({ registry, rooms, host, t, lang, onOpen }: AirProps & { onOpen?: () => void }) {
-  const s = airSummary(registry, rooms), cells = metricsOf(s, t, lang), { tasks } = useTasks(host, registry, 30000), stuck = stuckOf(tasks), { main, tail } = stuck ? { main: tk(t, 'stuckVent', { room: s.rooms.find(r => r.id === stuck.roomId)?.name ?? '' }), tail: null } : sentenceParts(s, t, lang, host.online, 'tileGood'), tone: AirTone = stuck ? 'bad' : lookOf(s, host.online);
+  const slot = useSlotSize(), s = airSummary(registry, rooms), cells = metricsOf(s, t, lang), { tasks } = useTasks(host, registry, 30000), stuck = stuckOf(tasks), { main, tail } = stuck ? { main: tk(t, 'stuckVent', { room: s.rooms.find(r => r.id === stuck.roomId)?.name ?? '' }), tail: null } : sentenceParts(s, t, lang, host.online, 'tileGood'), tone: AirTone = stuck ? 'bad' : lookOf(s, host.online);
   useEffect(() => { sweepRefusals(host, rooms, registry); }); // the button can go and come back with the sheet closed, and only the tile sees it
-  return <div className={`ah-tile hm-card at-air-tile is-${tone}`} data-module-card="air"><button type="button" className="ah-tile-hit at-air-hit" onClick={onOpen} disabled={!onOpen}><span className="at-air-tile-cloud"><Cloud tone={tone} /></span><span className="at-air-tile-head"><strong>{tk(t, 'title')}</strong><small>{main}{tail && <>{'\u00a0·'} <span className="at-air-nb">{tail}</span></>}</small></span><span className="at-air-cells">{cells.map(c => <span className={`at-air-cell is-${c.tone}`}><b>{c.value}{c.key !== 'co2' && c.key !== 'pm25' && <Unit unit={c.unit} />}</b><small>{c.short}</small>{(c.note ?? c.place) && <small>{c.note ?? c.place}</small>}{toneWord(c.tone, t)}</span>)}</span></button></div>;
+  // on an arranged screen each reading knows its rank (sizes/climate.css): the worst first, so a small card keeps it and drops the calm ones
+  const rank = slot ? rankOf(cells, s.problem?.metric ?? null) : null;
+  return <div className={`ah-tile hm-card at-air-tile is-${tone}`} data-module-card="air"><button type="button" className="ah-tile-hit at-air-hit" onClick={onOpen} disabled={!onOpen}><span className="at-air-tile-cloud"><Cloud tone={tone} /></span><span className="at-air-tile-head"><strong>{tk(t, 'title')}</strong><small>{main}{tail && <span className="at-air-tile-tail">{'\u00a0·'} <span className="at-air-nb">{tail}</span></span>}</small></span><span className="at-air-cells">{cells.map(c => <span className={`at-air-cell is-${c.tone}`} data-rank={rank?.get(c.key)}><b>{c.value}{c.key !== 'co2' && c.key !== 'pm25' && <Unit unit={c.unit} />}</b><small>{c.short}</small>{(c.note ?? c.place) && <small>{c.note ?? c.place}</small>}{toneWord(c.tone, t)}</span>)}</span></button></div>;
 }
 const ACTION: Record<AirActionKind, string> = { dehumidify: 'act.dehumidify', purify: 'act.purify' };
 const RUNNING: Record<AirActionKind, string> = { dehumidify: 'run.dehumidify', purify: 'run.purify' };
