@@ -1279,7 +1279,7 @@ var e = {
 	"module.heat.on": "Pornit",
 	"module.heat.byItself": "Singur",
 	"module.heat.r.heating": "Încălzește",
-	"module.heat.r.idle": "Așteptare",
+	"module.heat.r.idle": "Cald",
 	"module.heat.r.off": "Oprit",
 	"module.heat.r.window": "Fereastră · pauză",
 	"module.heat.r.windowSoon": "Fereastră deschisă",

@@ -1279,7 +1279,7 @@ var e = {
 	"module.heat.on": "On",
 	"module.heat.byItself": "Auto",
 	"module.heat.r.heating": "Heating",
-	"module.heat.r.idle": "Idle",
+	"module.heat.r.idle": "Warm",
 	"module.heat.r.off": "Off",
 	"module.heat.r.window": "Window · paused",
 	"module.heat.r.windowSoon": "Window open",
