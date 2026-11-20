@@ -21,7 +21,7 @@
   /* the panel's own size (set by the shell from ui/panel-size.ts; the window's size is only the fallback) and what follows from it */
   --hm-height:100dvh;--hm-width:100vw;--ah-vw:calc(var(--hm-width)/100);--ah-vh:calc(var(--hm-height)/100);
   --ah-rail:clamp(88px,5.5rem,132px);
-  --ah-page-max:clamp(1280px,calc(75*var(--ah-vw)),1920px); /* one content column for the header, the tabs and every page */
+  --ah-page-max:clamp(1280px,calc(var(--hm-width) - var(--ah-rail) - 2*var(--ah-pad)),3360px); /* one content column for the header, the tabs and every page: on a wide monitor it takes the whole panel next to the rail (20.11.2026, empty bands at the sides read as broken); beyond 3360 px (a 5K screen) it stays against the rail and the spare room is on the right */
   --ah-tile-min:max(clamp(6rem,min(calc(16*var(--ah-vw)),calc(30*var(--ah-vh))),8.875rem),min(calc(9.375*var(--ah-vw) - 1.25rem),12.875rem)); /* a module is never narrower than this (96…142 px at the usual font size, up to 206 px on big monitors): the grid takes as many columns as fit, fewer when the text is set larger */
   --ah-room-min:max(clamp(9.375rem,calc(19*var(--ah-vw)),12.5rem),min(calc(11.7*var(--ah-vw)),17.75rem));
   --ah-cols:repeat(auto-fill,minmax(var(--ah-tile-min),1fr));
@@ -38,9 +38,7 @@
 .hm-shell.ah-shell.is-wide{grid-template-columns:calc(var(--ah-rail) + var(--ah-safe-l)) minmax(0,1fr);padding-inline:var(--ah-gutter)}
 /* a phone: three modules across until a fourth of 118 px fits (a phone on its side, a split-view window); two when the system font is set large */
 .hm-shell.ah-shell.is-narrow{--ah-tile-min:max(5.7rem,min(7.375rem,calc((100% - 2*var(--ah-gap))/3 - .1px)))}
-/* ultrawide (from 2400 px): the rail and the content column are centred together, nothing is left at the far edges */
-.hm-shell.ah-shell:where(.pw-2400){--ah-gutter:max(0px,calc((var(--hm-width) - var(--ah-rail) - var(--ah-page-max) - 2*var(--ah-pad))/2))}
-.hm-shell.ah-shell:where(.pw-2400) .hm-sidebar{border-left:1px solid var(--ah-line)}
+/* the rail stays at the panel's left edge at every width (20.11.2026: centring it with the column on an ultrawide left it floating mid-screen) */
 .hm-shell *{box-sizing:border-box}
 .hm-shell :is(h1,h2,h3,p,dl,dd,figure){margin:0}
 .hm-shell button{font:inherit;color:inherit;border:0;background:none;padding:0;-webkit-tap-highlight-color:transparent;cursor:pointer}
@@ -416,7 +414,7 @@
 .hm-shell .ah-group-tile .ah-value-num b{font-size:clamp(1.625rem,24cqw,2.5rem)}
 .hm-shell .ah-grid>.ah-rooms-strip{grid-column:1/-1;aspect-ratio:auto;display:grid;gap:10px;margin-top:6px}
 .hm-shell .ah-rooms-strip .hm-room{aspect-ratio:4/3}
-.is-wide .ah-rooms-strip .hm-room-grid{grid-template-columns:repeat(auto-fill,minmax(var(--ah-room-min),1fr))}
+.is-wide .ah-rooms-strip .hm-room-grid{grid-template-columns:repeat(auto-fill,minmax(max(var(--ah-room-min),calc((100% - (var(--n,8) - 1)*var(--ah-gap))/var(--n,8)) - .1px),1fr))} /* every room in one row when they fit, no lone room on a second row */
 .hm-shell .ah-group-tile .ah-value-num.is-text b{font-size:clamp(.875rem,12cqw,1.375rem);white-space:normal;line-height:1.1}
 
 .hm-shell .ah-facts-wrap{display:grid;gap:6px}.hm-shell .ah-facts-caption{font-size:.8125rem;color:var(--ah-muted);padding:0 4px}

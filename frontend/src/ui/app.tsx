@@ -642,7 +642,7 @@ function Overview({ home, registry, config, modules, player, tileState, host, ru
     {favourites.map(x => tile(x, x.kind === 'climate' ? 'climate' : 'home'))}
     {d.length === 0 && rooms.length === 0 && <p className="hm-muted at-empty at-first-run">{t('ui.firstRun')}</p>}
     {rooms.length > 0 && <div className="ah-rooms-strip"><div className="hm-section-head"><h2>{t('section.rooms')}</h2><button type="button" className="hm-text-btn" onClick={() => go({ section: 'rooms' })}>{t('ui.all')}<Icon name="next" size={18} /></button></div>
-      <div className="hm-room-grid">{rooms.slice(0, 8).map(r => { const c = roomClimate(home, registry, r.id); return <RoomTile room={r} temperature={c.temperature} humidity={c.humidity} co2={c.co2} lightsOn={c.lights.filter(l => isOn(l.primary)).length} onClick={() => go({ section: 'rooms', room: r.id })} t={t} lang={lang} label={r.name || t('room.none')} theme={config.home.theme} />; })}</div></div>}
+      <div className="hm-room-grid" style={{ '--n': Math.min(rooms.length, 8) }}>{rooms.slice(0, 8).map(r => { const c = roomClimate(home, registry, r.id); return <RoomTile room={r} temperature={c.temperature} humidity={c.humidity} co2={c.co2} lightsOn={c.lights.filter(l => isOn(l.primary)).length} onClick={() => go({ section: 'rooms', room: r.id })} t={t} lang={lang} label={r.name || t('room.none')} theme={config.home.theme} />; })}</div></div>}
   </Cascade>;
 }
 function CameraTile({ device, player, state, onOpen, t, lang, large }: { device: HomeDevice; player?: JSX.Element | null; state?: TileState | null; onOpen: () => void; t: ReturnType<typeof translator>; lang: 'ru' | 'ro' | 'en'; large?: boolean }) {

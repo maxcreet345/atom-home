@@ -1002,3 +1002,6 @@
 .hm-shell .at-sec-tabs button{min-height:44px}
 /* the home tile's «Безопасность» on a narrow phone: two lines at its soft hyphen, never «Безопаснос…» */
 .hm-shell .at-sec-tile-head strong{white-space:normal;overflow:visible;text-overflow:clip;hyphens:manual;line-height:1.15}
+
+/* 20.11.2026: beyond the widest content column (a 5K screen) the column stays against the rail, the spare room goes to the right */
+.hm-shell.is-wide:where(.pw-2400) .hm-main{padding-right:max(var(--ah-pad),var(--ah-safe-r),calc(100% - var(--ah-page-max) - var(--ah-pad)))}

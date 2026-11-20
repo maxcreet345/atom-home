@@ -99,8 +99,8 @@ const measure = opts => {
   const head = document.querySelector('.hm-head'), page = document.querySelector('.hm-page');
   if (head && page && vis(head) && vis(page) && !sheet && shell.classList.contains('is-wide')) { const a = head.getBoundingClientRect(), b = page.getBoundingClientRect(); if (Math.abs(a.left - b.left) > 1.5 || Math.abs(a.right - b.right) > 1.5) issues.push(`column: the header is at ${Math.round(a.left)}…${Math.round(a.right)}, the page at ${Math.round(b.left)}…${Math.round(b.right)}`);
     const seg = [...document.querySelectorAll('.hm-main > .ah-segments, .hm-main > .hm-range-tabs')].find(vis); if (seg) { const c = seg.getBoundingClientRect(); if (Math.abs(c.left - b.left) > 1.5) issues.push(`column: the tabs start at ${Math.round(c.left)}, the page at ${Math.round(b.left)}`); }
-    if (b.width / k > 1921) issues.push(`column: the page is ${Math.round(b.width / k)} px wide`);
-    const railR = rail?.getBoundingClientRect(); if (railR && b.left - railR.right > 0.2 * W) issues.push(`column: the rail is ${Math.round(b.left - railR.right)} px away from the content`);
+    if (b.width / k > 3361) issues.push(`column: the page is ${Math.round(b.width / k)} px wide`);
+    const railR = rail?.getBoundingClientRect(); if (railR && b.left - railR.right > 40 * k) issues.push(`column: the rail is ${Math.round(b.left - railR.right)} px away from the content`);
     for (const t of tiles) { const r = t.getBoundingClientRect(); if (t.matches('.ah-grid > .ah-tile[class*="kind-"]:not(.ah-thermo), .ah-grid > .ah-value') && getComputedStyle(t).gridColumnEnd === 'auto' && r.width / k > 250) issues.push(`stretched: ${label(t).slice(0, 40)} is ${Math.round(r.width / k)} px wide`); } }
   // 7. touch: the shared controls are at least 44 px where the finger is the pointer (the hit area is probed, so invisible extensions count)
   if (opts.touch) { const hit = (e, x, y) => { const at = document.elementFromPoint(x, y); return !!at && (at === e || e.contains(at)); };
