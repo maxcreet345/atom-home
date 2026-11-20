@@ -10,6 +10,7 @@ import { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, u
 import type { Host } from '../runtime/host.ts';
 import type { Key, T } from '../i18n/index.ts';
 import { Icon } from './primitives.tsx';
+import { SlotSizeCtx, sizeClass } from './slot-size.ts';
 import { arrange, keep, moveBy, moveTo, normaliseProfiles, profileIdFor, resize, spanOf, MAX_SPAN, type LayoutProfile, type Placed, type Span } from '../model/tile-layout.ts';
 
 const lk = (t: T, k: string, p?: Record<string, string | number>) => t(`lay.${k}` as Key, p);
@@ -297,8 +298,8 @@ function Arranged({ c, scope, items, className, saved, editing, tail }: { c: Ctx
   const host = editing ? rootOf(grid.current).querySelector<HTMLElement>('.at-lay-bar .at-lay-tools-host') : null;
   return <div ref={grid} className={`ah-cascade ${className} at-lay ${editing ? 'is-arranging' : ''}`} style={style} data-scope={scope}>
     {list.map((p, i) => { const it = byKey.get(p.key)!; const sel = picked === p.key; const min = minOf(p.key);
-      return <div key={p.key} className={`at-slot ${sel ? 'is-picked' : ''}`} data-lay={p.key} data-w={wOf(p)} data-h={p.h} style={`grid-column:span ${wOf(p)};grid-row:span ${p.h};--h:${p.h}`}>
-        {editing ? <div className="at-slot-body" inert>{it.node}</div> : it.node}
+      return <div key={p.key} className={`at-slot ${sel ? 'is-picked' : ''}`} data-lay={p.key} data-w={wOf(p)} data-h={p.h} data-size={sizeClass(wOf(p), p.h)} style={`grid-column:span ${wOf(p)};grid-row:span ${p.h};--h:${p.h}`}>
+        <SlotSizeCtx.Provider value={{ w: wOf(p), h: p.h, size: sizeClass(wOf(p), p.h) }}>{editing ? <div className="at-slot-body" inert>{it.node}</div> : it.node}</SlotSizeCtx.Provider>
         {editing && <>
           <div className="at-slot-veil" role="button" tabIndex={0} aria-roledescription={lk(t, 'bar')} aria-pressed={sel} aria-label={lk(t, 'cardLabel', { name: labelOf(p.key, i), w: wOf(p), h: p.h })}
             onPointerDown={down(p.key)} onPointerMove={move} onPointerUp={up(p.key)} onPointerCancel={up(p.key)} onKeyDown={keyOf(p)} onContextMenu={e => e.preventDefault()} />

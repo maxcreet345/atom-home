@@ -1,0 +1,6 @@
+/* Cards by size on an arranged screen (ui/slot-size.ts): one file per group of cards. */
+@import './sizes/common.css';
+@import './sizes/climate.css';
+@import './sizes/media.css';
+@import './sizes/modules.css';
+.hm-shell .ah-grid.at-lay>.at-slot{container:slot/size}
