@@ -68,7 +68,7 @@ export function CamerasTile({ views: all, scope, player, host, now, t, lang, onP
         <span className="hm-camera-frame">{closed ? <span className={big ? 'hm-camera-wait' : 'at-cams-none'}><Icon name="camera" size={big ? 28 : 18} />{big && <span>{t('module.camera.closed')}</span>}</span> : player(v.device, 'tile') ?? <Still device={v.device} host={host} />}</span>
         {big ? <span className="at-cams-name"><b>{v.name}</b>{e && <i className={`tone-${TONE[e.kind]}`}><Icon name={ICON[e.kind]} size={14} />{kindText(e.kind, t)}</i>}</span> : <>{e && <i className="at-cams-dot"><Icon name={ICON[e.kind]} size={12} /></i>}<small>{v.name}</small></>}
       </div>; })}</div>
-    <button type="button" className="at-cams-caption" onClick={onPanel}><Icon name="camera" size={18} /><span><strong>{t('cams.title')}</strong><small>{line.text}</small></span><Icon name="next" size={18} /></button>
+    <button type="button" className="at-cams-caption" onClick={onPanel}><Icon name="camera" size={18} /><span><strong>{t('cams.title')}<b className="at-cams-count">{views.length}</b></strong><small>{line.text}</small></span><Icon name="next" size={18} /></button>
   </div>;
 }
 type Filter = CamEventFilter;
