@@ -35,7 +35,7 @@ export function detail(th: Thing, p: DetailInput): Detail {
   const k = (key: string, x?: Record<string, string | number>) => rk(t, `d.${key}`, x), main = th.main ? reg.states[th.main] : undefined, call = (d: string, s: string, e: string) => ({ key: roomKey(e), run: () => { void p.commands.run(roomKey(e), () => p.host.call(d, s, { entity_id: e })); } });
   const guarded = GUARDED.test(th.name);
   const tog = (on: string, off: string) => { const d = th.main && !guarded ? p.deviceOf(th.main) : undefined; return d ? { label: th.on ? off : on, run: () => p.toggle(d), key: d.key } : null; };
-  const pct = (v: number | null) => v === null ? '—' : `${fmt(v, lang)} %`, plugW = th.power !== null && th.power >= 0.5 ? watts(th.power, t, lang) : null;
+  const pct = (v: number | null) => v === null ? '—' : `${fmt(v, lang)}\u00a0%`, plugW = th.power !== null && th.power >= 0.5 ? watts(th.power, t, lang) : null;
   const silent = (why = k('offline')): Detail => ({ status: why, tone: 'muted', active: false, facts: plugW ? [{ text: k('fromPlug', { w: plugW }) }] : [], action: null });
   switch (th.kind) {
     case 'light': { // the bulb's own state (ST-01): `unavailable` takes no command, `unknown` keeps the house's turn_on — neither is «Выключен», neither shows an old brightness
@@ -63,7 +63,7 @@ export function detail(th: Thing, p: DetailInput): Detail {
     case 'purifier': { if (!th.available) return silent(); const pm = n(/_pm25$/), life = n(/filter_life$/), left = n(/filter_left_time$/), mode = main?.attributes.preset_mode as string | undefined, sp = main?.attributes.percentage as number | undefined;
       const facts: Fact[] = [{ text: `PM2.5 ${pm !== null ? fmt(pm, lang) : '—'}` }]; if (life !== null) facts.push({ text: k('filter', { v: pct(life) }) + (left !== null ? k('days', { n: fmt(left, lang) }) : ''), tone: life <= 20 ? 'warn' : undefined });
       const modeWord = mode === 'Auto' ? k('auto') : mode === 'Sleep' ? k('night') : mode ? mode.toLowerCase() : '';
-      return { status: th.on ? k('purifying', { m: [modeWord, sp ? `${sp} %` : ''].filter(Boolean).join(', ') }) : k('off'), tone: th.on ? 'on' : 'ok', active: !!th.on, facts, action: tog(k('turnOn'), k('turnOff')) }; }
+      return { status: th.on ? k('purifying', { m: [modeWord, sp ? `${sp}\u00a0%` : ''].filter(Boolean).join(', ') }) : k('off'), tone: th.on ? 'on' : 'ok', active: !!th.on, facts, action: tog(k('turnOn'), k('turnOff')) }; }
     case 'humidifier': { if (!main || main.state === 'unavailable') { const plug = th.ids.find(i => /^switch\..*plug$/.test(i)); return silent(plug && reg.states[plug]?.state === 'off' ? k('offlinePlugOff') : k('offline')); }
       const hum = main.attributes.current_humidity as number | undefined, target = main.attributes.humidity as number | undefined; const facts: Fact[] = []; if (hum !== undefined) facts.push({ text: k('humNow', { v: fmt(hum, lang) }) }); if (target !== undefined) facts.push({ text: k('humTo', { v: fmt(target, lang) }) });
       return { status: main.state === 'on' ? k('humidifying') : k('off'), tone: main.state === 'on' ? 'on' : 'ok', active: main.state === 'on', facts, action: tog(k('turnOn'), k('turnOff')) }; }

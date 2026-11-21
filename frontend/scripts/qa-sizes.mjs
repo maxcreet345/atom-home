@@ -60,7 +60,7 @@ const audit = `slot => {
       const label = (el.textContent || '').trim().slice(0, 30), cs = getComputedStyle(el);
       if (b.right > r.right + 1 || b.bottom > r.bottom + 1 || b.left < r.left - 1 || b.top < r.top - 1) bad.push(['cut', label]);
       if (parseFloat(cs.fontSize) < 11 && !el.closest('svg')) bad.push(['tiny', label, cs.fontSize]);
-      if ((el.scrollWidth > el.clientWidth + 2 || el.scrollHeight > el.clientHeight + 4) && /hidden|clip/.test(cs.overflow + cs.textOverflow)) bad.push(['clipped', label]);
+      if (!el.closest('svg') && (el.scrollWidth > el.clientWidth + 2 || el.scrollHeight > el.clientHeight + 4) && /hidden|clip/.test(cs.overflow + cs.textOverflow)) bad.push(['clipped', label]); // a dial's numerals are drawing: SVG text has no box of its own to measure
     }
     if (el.matches('button,[role=button],a[href],input,select') && !el.closest('.at-slot-tools') && el.getAttribute('tabindex') !== '-1') {
       const big = el.classList.contains('ah-tile-hit') || (b.width >= r.width - 2 && b.height >= r.height - 2);
