@@ -2,6 +2,7 @@ import type { Host } from '../runtime/host.ts';
 import type { Key, T } from '../i18n/index.ts';
 import type { Lang } from './format.ts';
 import { Icon } from './primitives.tsx';
+import { useSlotSize } from './slot-size.ts';
 import { Err, Glyph, Stepper, useAct, useStepper } from './heating.tsx';
 import type { HeatTone } from '../model/heating.ts';
 import { officeHeating, officeTone, type OfficeClimate, type OfficeMode, type OfficeZone } from '../model/office-climate.ts';
@@ -72,9 +73,19 @@ function Chip({ z, t, lang }: { z: OfficeZone; t: T; lang: Lang }) {
   </li>;
 }
 export function OfficeClimateTile({ c, host, t, lang, onOpen, now }: { c: OfficeClimate; host: Host; t: T; lang: Lang; onOpen: () => void; now: number }) {
-  const tone = officeTone(c), admin = host.admin;
+  const tone = officeTone(c), admin = host.admin, slot = useSlotSize();
+  const open = <button type="button" className="at-heat-open" aria-label={`${tk(t, 'title')}: ${sentence(c, t)}. ${tk(t, 'open')}`} onClick={onOpen} />;
+  // a small card on an arranged screen (ui/slot-size.ts), as the heating card: the glyph, the building's number, the one sentence; the zones when tall
+  const mini = slot && (slot.size === 's' || slot.size === 'w' || slot.size === 't') ? slot.size : null;
+  if (mini) return <div className={`ah-tile hm-card at-heat-tile at-oc-tile at-heat-mini is-${mini} hz-${tone}`} data-mode={c.mode}>
+    {open}
+    <span className="at-heat-mini-flame" aria-hidden="true"><Icon name="flame" size={20} /></span>
+    <div className="at-heat-mini-head"><strong>{tk(t, 'title')}</strong><small>{sentence(c, t)}</small></div>
+    <span className="at-heat-mini-set"><BigTarget c={c} t={t} lang={lang} admin={admin} /></span>
+    {mini === 't' && <ul className="at-heat-mini-rooms">{c.zones.map(z => <li className={`at-heat-mini-room is-${z.action}`}><span aria-hidden="true">{z.name}</span><b aria-hidden="true">{z.action === 'offline' ? '—' : <>{nowT(z.current, lang)}<i>°</i></>}</b><span className="at-vh">{`${z.name}: ${nowT(z.current, lang)}°, ${zoneWord(z, t)}`}</span></li>)}</ul>}
+  </div>;
   return <div className={`ah-tile hm-card at-heat-tile at-oc-tile hz-${tone}`} data-mode={c.mode}>
-    <button type="button" className="at-heat-open" aria-label={`${tk(t, 'title')}: ${sentence(c, t)}. ${tk(t, 'open')}`} onClick={onOpen} />
+    {open}
     <span className="at-heat-tile-buddy"><AcBuddy tone={tone} /></span>
     <div className="at-heat-tile-head"><strong>{tk(t, 'title')}</strong><small>{sentence(c, t)}</small></div>
     <div className="at-heat-tile-mid">

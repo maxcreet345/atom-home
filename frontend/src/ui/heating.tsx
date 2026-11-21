@@ -11,6 +11,7 @@ import { partsOf, boilerMark, dayOf, heatTone, heatingRooms, houseSet, hystMax, 
 import { heatingActions, vacationDisarms } from '../model/heating-act.ts';
 import { stepCore, stepValue, type StepCore } from '../model/heating-step.ts';
 import { CommandError } from '../runtime/commands.ts';
+import { useSlotSize } from './slot-size.ts';
 export { heatingActions };
 /** The Heating card and panel (mock for the owner, 09.11.2026). The look is the Air card's family: a tinted tile with a little character
  * and one sentence, a panel with a wide tinted hero, then the rooms and the boiler. docs/HEATING.md */
@@ -157,11 +158,27 @@ function useHouse(h: Heating, host: Host, t: T, lang: Lang) {
   const st = useStepper(hv.value, v => { markCommon(); return act.house(v); }, e => ui.fail('house', e), () => ui.ok('house'), 8, 24, hv.lo);
   return { act, hv, ui, st, text: st.pending && st.shown !== null ? setT(st.shown, lang) : hv.text };
 }
+/** One room in the short list of a small card (sizes t, and a narrow 2×2): its short name and its reading; a heating room glows, a window or a lost head says so to a reader. */
+function MiniRoom({ r, t, lang, now }: { r: HeatRoom; t: T; lang: Lang; now: number }) {
+  return <li className={`at-heat-mini-room is-${r.action}`}><span aria-hidden="true">{short(r.name)}</span><b aria-hidden="true">{r.action === 'offline' ? '—' : <>{nowT(r.current, lang)}<i>°</i></>}</b><span className="at-vh">{`${r.name}: ${nowT(r.current, lang)}°, ${roomWord(r, t, now)}`}</span></li>;
+}
 export function HeatingTile({ h, host, t, lang, onOpen, now }: { h: Heating; host: Host; t: T; lang: Lang; onOpen: () => void; now: number }) {
-  const tone = heatTone(h), { act, ui, st, text } = useHouse(h, host, t, lang), offline = !host.online;
+  const tone = heatTone(h), { act, ui, st, text } = useHouse(h, host, t, lang), offline = !host.online, slot = useSlotSize();
   // a tile that reports a problem opens the panel at the room with the problem
+  const open = <button type="button" className="at-heat-open" aria-label={`${tk(t, 'title')}: ${sentence(h, t, lang)}. ${tk(t, 'open')}`} onClick={() => { focusRoom = problemRoom(h)?.key ?? null; onOpen(); }} />;
+  // a small card on an arranged screen (ui/slot-size.ts): the flame, the house's number and the one sentence; ± across when they fit at 44 px, the rooms when tall
+  const mini = slot && (slot.size === 's' || slot.size === 'w' || slot.size === 't') ? slot.size : null;
+  if (mini) return <div className={`ah-tile hm-card at-heat-tile at-heat-mini is-${mini} hz-${tone}`} data-mode={h.mode}>
+    {open}
+    <span className="at-heat-mini-flame" aria-hidden="true"><Icon name="flame" size={20} /></span>
+    <div className="at-heat-mini-head"><strong>{tk(t, 'title')}</strong><small>{sentence(h, t, lang)}</small></div>
+    {mini === 'w' && h.system ? <Stepper value={st.shown} text={text} onStep={st.step} t={t} label={tk(t, 'houseTemp')} wait={offline} onWait={() => ui.refuse('house')} atMin={st.atMin} atMax={st.atMax} pending={st.pending} />
+      : <b className={`at-heat-mini-set ${h.system || !h.systemKnown ? '' : 'is-off'} ${text.includes('–') ? 'is-range' : ''}`}>{h.system || !h.systemKnown ? <>{text}<i>°</i></> : tk(t, 'offWord')}</b>}
+    {mini === 'w' && <Err text={ui.err('house')} />}
+    {mini === 't' && <ul className="at-heat-mini-rooms">{h.rooms.map(r => <MiniRoom r={r} t={t} lang={lang} now={now} />)}</ul>}
+  </div>;
   return <div className={`ah-tile hm-card at-heat-tile hz-${tone}`} data-mode={h.mode}>
-    <button type="button" className="at-heat-open" aria-label={`${tk(t, 'title')}: ${sentence(h, t, lang)}. ${tk(t, 'open')}`} onClick={() => { focusRoom = problemRoom(h)?.key ?? null; onOpen(); }} />
+    {open}
     <span className="at-heat-tile-buddy"><Radiator tone={tone} /></span>
     <div className="at-heat-tile-head"><strong>{tk(t, 'title')}</strong><small>{sentence(h, t, lang)}</small><Err text={ui.err('house', 'mode', 'power')} /></div>
     <div className="at-heat-tile-mid">
@@ -171,6 +188,7 @@ export function HeatingTile({ h, host, t, lang, onOpen, now }: { h: Heating; hos
         <><b className="at-heat-offword">{tk(t, 'offWord')}</b>{h.systemKnown && <Power on={false} busy={ui.pending('power')} stale={offline} onStale={() => ui.refuse('power')} offline={!h.thermostatOnline} t={t} onPower={v => ui.run('power', () => act.power(v))} />}</>}
     </div>
     <ul className="at-heat-chips">{h.rooms.map(r => <Chip r={r} t={t} lang={lang} now={now} />)}</ul>
+    {slot && <ul className="at-heat-mini-rooms is-alt">{h.rooms.map(r => <MiniRoom r={r} t={t} lang={lang} now={now} />)}</ul>/* a 2×2 too narrow for five chips shows the rooms as a list instead (sizes/climate.css) */}
   </div>;
 }
 /* ---------- the panel ---------- */
