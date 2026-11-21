@@ -27,8 +27,8 @@ const stationRoles = (): RoleSpec[] => [
   own('equalizer', 'cat.r.spEqualizer', ['select'], /_equalizer$/, { as: 'parameter' }),
   own('alarms', 'cat.r.spAlarms', ['calendar'], /_alarms$/),
   // the socket the station stands on: another device, chosen on purpose (it is no second integration of the station — never `sibling`)
-  { id: 'plug', labelKey: 'cat.r.spPlug', hintKey: 'cat.r.spPlug.hint', required: false, domains: ['switch'], source: 'prefer' },
-  { id: 'power', labelKey: 'cat.r.spPower', required: false, domains: ['sensor'], deviceClass: ['power'], units: ['W'], source: 'prefer', as: 'metric' },
+  { id: 'plug', labelKey: 'cat.r.spPlug', hintKey: 'cat.r.spPlug.hint', required: false, domains: ['switch'], source: 'prefer', plug: true },
+  { id: 'power', labelKey: 'cat.r.spPower', required: false, domains: ['sensor'], deviceClass: ['power'], units: ['W'], source: 'prefer', as: 'metric', plug: true },
 ];
 const station = (id: string, model: string, titleKey: string, terms: string[]): Profile => ({
   id, version: '1.0.0', category: 'speakers', brand: 'Yandex', titleKey, descKey: `${titleKey}.desc`, models: [model],

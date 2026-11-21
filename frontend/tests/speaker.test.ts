@@ -53,9 +53,9 @@ test('this house: each model finds its own devices; two Mini 2 are two devices w
   // the kitchen Mini: the integration disabled all but the player — the card is complete with it alone
   const kitchen = minis.find(d => suggestBindings(live, STATION_MINI2, d.id).equalizer === undefined)!; assert.ok(kitchen, 'one Mini has only its player');
   const v = instanceView(live, 'k', inst(STATION_MINI2.id, kitchen.id, suggestBindings(live, STATION_MINI2, kitchen.id)))!; assert.deepEqual(v.incomplete, []);
-  // the Max: player, equalizer, alarms by their own suffixes; the plug is not guessed (another device, the installer chooses it)
+  // the Max: player, equalizer, alarms by their own suffixes; the plug named after the station is its own (1.36.1; a plug called otherwise is the installer's choice)
   const max = devicesFor(live, STATION_MAX)[0], b = suggestBindings(live, STATION_MAX, max.id);
-  assert.ok(b.player && b.equalizer?.endsWith('_equalizer') && b.alarms?.endsWith('_alarms')); assert.equal(b.plug, undefined); assert.equal(b.power, undefined);
+  assert.ok(b.player && b.equalizer?.endsWith('_equalizer') && b.alarms?.endsWith('_alarms')); assert.equal(b.plug, 'switch.living_yandex_max_plug'); assert.equal(b.power, 'sensor.living_yandex_max_plug_power');
   // …and the plug field offers the socket of its room first
   const plugs = candidates(live, STATION_MAX.roles.find(r => r.id === 'plug')!, { deviceId: max.id, areaId: max.areaId });
   assert.ok(plugs.length > 1); assert.equal(plugs.find(c => c.areaId === max.areaId) !== undefined, true);
@@ -122,7 +122,7 @@ test('«Сказать Алисе»: play_media with command or text, cut to the
 });
 
 test('the station\'s socket is optional: without it nothing about power; with it the reading, and its switch is a command of its own', { skip: !have && 'no house fixture' }, () => {
-  const max = devicesFor(live, STATION_MAX)[0], b = suggestBindings(live, STATION_MAX, max.id);
+  const max = devicesFor(live, STATION_MAX)[0], { plug: _plug, power: _power, ...b } = suggestBindings(live, STATION_MAX, max.id); void _plug; void _power; // the card without its socket
   const bare = readSpeaker(live, inst(STATION_MAX.id, max.id, b)); assert.equal(bare.plug, null); assert.equal(bare.watts, null);
   const plug = candidates(live, STATION_MAX.roles.find(r => r.id === 'plug')!, { deviceId: max.id, areaId: max.areaId }).find(c => c.areaId === max.areaId && /plug/.test(c.id) && !/_(led|auto_)/.test(c.id))!;
   const power = candidates(live, STATION_MAX.roles.find(r => r.id === 'power')!, { deviceId: max.id, areaId: max.areaId }).find(c => deviceOf(live, c.id) === deviceOf(live, plug.id))!;

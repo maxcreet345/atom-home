@@ -38,7 +38,7 @@ test('the washer\'s fields are filled from its own entities by their suffixes', 
   for (const [role, suffix] of Object.entries({ status: '_current_status', endsAt: '_remaining_time', total: '_total_time', remote: '_remote_start', operation: '_operation', error: '_error', notify: '_notification', delayEnd: '_delayed_end', delayEndAt: '_delayed_end', cycles: '_cycles' }))
     assert.ok(b[role]?.endsWith(suffix), `${role}: ${b[role]}`);
   assert.equal(b.delayEnd.split('.')[0], 'number'); assert.equal(b.delayEndAt.split('.')[0], 'sensor');
-  assert.equal(b.plugPower, undefined, 'another device\'s plug is the installer\'s choice');
+  assert.equal(b.plugPower, 'sensor.bath_washer_socket_power', 'the socket named after the washer is its own (1.36.1); any other is the installer\'s choice');
 });
 test('the dryer\'s fields are filled, the diagnostic alarm code included; the template switch and the cloud copy are not taken', () => {
   const b = dryerInst().bindings;

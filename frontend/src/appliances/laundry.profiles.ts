@@ -20,9 +20,9 @@ import { dateFormat, zoneOption } from '../runtime/zone.ts';
 const own = (id: string, labelKey: string, domains: string[], suffix: RegExp, extra: Partial<RoleSpec> = {}): RoleSpec => ({ id, labelKey, domains, suffix, required: false, source: 'own', ...extra });
 /** the plug that feeds the machine: another device, picked by the installer (the room's own plug first) */
 const PLUG: RoleSpec[] = [
-  { id: 'plugPower', labelKey: 'cat.r.lnPlugPower', hintKey: 'cat.r.lnPlug.hint', required: false, domains: ['sensor'], deviceClass: ['power'], units: ['W', 'kW'], suffix: /_power$/, as: 'metric' },
-  { id: 'plugEnergy', labelKey: 'cat.r.lnPlugEnergy', hintKey: 'cat.r.lnPlug.hint', required: false, domains: ['sensor'], deviceClass: ['energy'], units: ['kWh', 'Wh'], suffix: /_energy_total$/ },
-  { id: 'plugToday', labelKey: 'cat.r.lnPlugToday', required: false, domains: ['sensor'], deviceClass: ['energy'], units: ['kWh', 'Wh'], suffix: /_energy_today$/ },
+  { id: 'plugPower', labelKey: 'cat.r.lnPlugPower', hintKey: 'cat.r.lnPlug.hint', required: false, domains: ['sensor'], deviceClass: ['power'], units: ['W', 'kW'], suffix: /_power$/, as: 'metric', plug: true },
+  { id: 'plugEnergy', labelKey: 'cat.r.lnPlugEnergy', hintKey: 'cat.r.lnPlug.hint', required: false, domains: ['sensor'], deviceClass: ['energy'], units: ['kWh', 'Wh'], suffix: /_energy_total$/, plug: true },
+  { id: 'plugToday', labelKey: 'cat.r.lnPlugToday', required: false, domains: ['sensor'], deviceClass: ['energy'], units: ['kWh', 'Wh'], suffix: /_energy_today$/, plug: true },
 ];
 export const LG_WASHER: Profile = {
   id: 'lg.washer_f_r7', version: '1.0.0', category: 'laundry', brand: 'LG', titleKey: 'cat.p.lgWasher', descKey: 'cat.p.lgWasher.desc',

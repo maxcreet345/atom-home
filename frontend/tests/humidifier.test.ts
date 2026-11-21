@@ -39,13 +39,14 @@ test('the catalog: one profile in «Увлажнители», found by the model
   for (const t of [ru, ro, en]) for (const k of [P.titleKey, P.descKey, P.kindKey!, ...P.roles.flatMap(r => [r.labelKey, ...(r.hintKey ? [r.hintKey] : [])])]) assert.notEqual(t(k as never), k, k);
 });
 
-test('the house: the humidifier of the Living room, every own field filled, the plug and the room sensor left to the installer', { skip: !have }, () => {
+test('the house: the humidifier of the Living room, every own field filled, the socket named after it found (1.36.1), the room sensor left to the installer', { skip: !have }, () => {
   const { reg, dev, bindings } = setup();
   assert.equal(devicesFor(reg, P).length, 1); assert.equal(dev.areaId, 'gostinaia');
   assert.deepEqual(bindings, {
     humidifier: 'humidifier.living_humidifier', humidity: 'sensor.living_humidifier_humidity', waterShortage: 'binary_sensor.living_humidifier_water_shortage',
     tankLifted: 'binary_sensor.living_humidifier_tank_installed', fault: 'sensor.living_humidifier_fault', fanLevel: 'select.living_humidifier_fan_level',
     temperature: 'sensor.living_humidifier_temperature', indicator: 'light.living_humidifier_indicator_light', buzzer: 'switch.living_humidifier_buzzer',
+    plugPower: 'sensor.living_humidifier_plug_power', plug: 'switch.living_humidifier_plug',
   });
   // the plug is the house's own socket: it stays its own tile; the humidifier's entities leave the auto-made cards
   const claims = instanceClaims(reg, { a: { profileId: P.id, profileVersion: '1.0.0', deviceId: dev.id, bindings: { ...bindings, plug: 'switch.living_humidifier_plug', plugPower: 'sensor.living_humidifier_plug_power' }, placement: ['room'] } });
@@ -80,7 +81,8 @@ test('«Нет воды» and «Бак снят»: from their sensors or from th
 });
 
 test('off, no connection, the plug off, the house unreachable: nothing «now» from a silent humidifier', { skip: !have }, () => {
-  const { reg, bindings: b } = setup();
+  // first the card without its socket (the form suggests it since 1.36.1; the installer may leave it out)
+  const { reg, bindings: { plug: _plug, plugPower: _plugPower, ...b } } = setup(); void _plug; void _plugPower;
   let h = readHumidifier(alive(reg, b, { state: 'off' }), b);
   assert.equal(h.phase, 'off'); assert.equal(humidifierLine(h, ru, 'ru'), 'Выключен · 52 %');
   // the snapshot as it is: everything unavailable (its plug is off)

@@ -27,8 +27,8 @@ const HUMIDIFIER_2: Profile = {
     { id: 'temperature', labelKey: 'cat.r.temperature', required: false, domains: ['sensor'], deviceClass: ['temperature'], units: ['°C'], suffix: /_temperature$/, source: 'own', as: 'metric' },
     { id: 'indicator', labelKey: 'cat.r.hu.indicator', required: false, domains: ['light', 'switch'], suffix: /_indicator(_light)?$/, source: 'own', as: 'parameter' },
     { id: 'buzzer', labelKey: 'cat.r.buzzer', required: false, domains: ['switch'], suffix: /_(buzzer|alarm)$/, source: 'own', as: 'parameter' },
-    { id: 'plugPower', labelKey: 'cat.r.hu.plugPower', hintKey: 'cat.r.hu.plugPower.hint', required: false, domains: ['sensor'], deviceClass: ['power'], units: ['W'], as: 'metric' },
-    { id: 'plug', labelKey: 'cat.r.hu.plug', hintKey: 'cat.r.hu.plug.hint', required: false, domains: ['switch'], as: 'parameter' },
+    { id: 'plugPower', labelKey: 'cat.r.hu.plugPower', hintKey: 'cat.r.hu.plugPower.hint', required: false, domains: ['sensor'], deviceClass: ['power'], units: ['W'], as: 'metric', plug: true },
+    { id: 'plug', labelKey: 'cat.r.hu.plug', hintKey: 'cat.r.hu.plug.hint', required: false, domains: ['switch'], as: 'parameter', plug: true },
   ],
 };
 

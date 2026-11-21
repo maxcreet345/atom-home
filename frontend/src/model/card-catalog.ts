@@ -39,6 +39,9 @@ export interface RoleSpec {
   sibling?: boolean;
   /** the card takes this field's own tile although it is another device's (a person's weight on the scale's router: health data stays on the card) */
   claim?: boolean;
+  /** the socket the appliance is plugged into, or that socket's meter: another device's, so it is suggested only by its name — the appliance's own
+   * name with `plug` or `socket` after it (`humidifier.living_humidifier` → `switch.living_humidifier_plug`) */
+  plug?: boolean;
 }
 export interface Profile {
   id: string; version: string; category: Category; brand: string | null; titleKey: string; descKey: string;
@@ -284,27 +287,56 @@ export function candidates(reg: Registry, role: RoleSpec, ctx: { deviceId?: stri
   return out.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, 'ru'));
 }
 /** The field's suggestion: only when it is unambiguous — the chosen device's own entity with the model's suffix, or the single candidate of the
- * device. Two equal ones are the installer's choice (the form shows the list with nothing picked). */
+ * device. Two equal ones are the installer's choice (the form shows the list with nothing picked). A field that names its suffix is never
+ * filled with an entity that has not got it (the scale's only sensor is its weight, not its «Импеданс»). */
 export function suggestion(list: Candidate[], role: RoleSpec): string | undefined {
   const own = list.filter(c => c.own);
   const exact = own.filter(c => c.exact);
   if (exact.length === 1) return exact[0].id;
   if (exact.length > 1) return undefined;
-  if (role.source === 'own' && own.length === 1) return own[0].id;
+  if (role.source === 'own' && !role.suffix && own.length === 1) return own[0].id;
   return undefined;
 }
-/** The first bindings of a new card on a chosen device: every unambiguous field; nothing else. */
+const oid = (entityId: string) => entityId.slice(entityId.indexOf('.') + 1);
+/** What the appliance's entities are all called by (`bath_washer` of `sensor.bath_washer_current_status`, `switch.bath_washer_power`…): the longest
+ * beginning they share that ends at a `_`; '' when they share none. */
+export function stemOf(objectIds: string[]): string {
+  if (!objectIds.length) return '';
+  let pre = `${objectIds[0]}_`;
+  for (const x of objectIds) { const y = `${x}_`; let i = 0; while (i < pre.length && i < y.length && pre[i] === y[i]) i++; pre = pre.slice(0, i); }
+  return pre.slice(0, Math.max(0, pre.lastIndexOf('_')));
+}
+/** The first bindings of a new card on a chosen device: every unambiguous field; nothing else. The main field is settled first, then the
+ * required ones, then the rest in their order — and one entity is one field's: what a field took is never suggested for another. */
 export function suggestBindings(reg: Registry, p: Profile, deviceId?: string): Record<string, string> {
-  const dev = deviceId ? reg.devices.find(d => d.id === deviceId) : undefined, out: Record<string, string> = {};
-  for (const r of p.roles) {
-    const list = candidates(reg, r, { deviceId, areaId: dev?.area_id ?? null }), s = suggestion(list, r);
-    // a module of the whole house with no device to choose (the boiler on eBUS): the one entity with the field's own suffix is it
-    const sole = !s && !deviceId && p.renderer === 'module' ? list.filter(c => c.exact) : [];
-    if (s) out[r.id] = s; else if (sole.length === 1) out[r.id] = sole[0].id;
+  const dev = deviceId ? reg.devices.find(d => d.id === deviceId) : undefined, out: Record<string, string> = {}, taken = new Set<string>();
+  const put = (r: RoleSpec, id: string | undefined) => { if (id && !out[r.id] && !taken.has(id)) { out[r.id] = id; taken.add(id); } };
+  const devOf = (id: string) => reg.entities.find(e => e.entity_id === id)?.device_id ?? null;
+  const one = (l: Candidate[]) => l.length === 1 ? l[0].id : undefined;
+  const rank = (r: RoleSpec) => r.id === p.anchor ? 0 : r.required ? 1 : 2;
+  // a card with no device to choose: a module of the whole house (the boiler on eBUS), an appliance with no model (the dashcam, the gas meter)
+  const deviceless = !deviceId && (p.renderer === 'module' || (p.renderer === 'appliance' && !p.models.length));
+  // the same appliance through a second integration: another device of its room with the same make and model (the dryer in SmartThings)
+  const twins = new Set(dev?.area_id && dev.manufacturer && dev.model ? reg.devices.filter(d => d.id !== dev.id && d.area_id === dev.area_id && d.manufacturer === dev.manufacturer && d.model === dev.model).map(d => d.id) : []);
+  const stem = dev ? stemOf(reg.entities.filter(e => e.device_id === dev.id && live(reg, e)).map(e => oid(e.entity_id))) : '';
+  for (const r of p.roles.map((r, i) => ({ r, i })).sort((a, b) => rank(a.r) - rank(b.r) || a.i - b.i).map(x => x.r)) {
+    const list = candidates(reg, r, { deviceId, areaId: dev?.area_id ?? null });
+    let s = suggestion(list, r);
+    const main = out[p.anchor ?? ''], named = (c: Candidate, by: string) => oid(c.id).startsWith(`${by}_`);
+    // the one entity with the field's own suffix is it; two or more are the installer's choice; a field with no suffix is never guessed
+    if (!s && deviceless) s = one(list.filter(c => c.exact));
+    // what is another device's must agree with the field's own suffix, where it has one
+    const others = deviceId ? list.filter(c => !c.own && (!r.suffix || c.exact)) : [];
+    // a second integration's copy: named after the card's main entity (`media_player.kids_tv` → `media_player.kids_tv_airplay`), or the twin device's
+    if (!s && r.sibling) s = one(others.filter(c => (!!main && named(c, oid(main))) || twins.has(devOf(c.id) ?? '')));
+    // the appliance's socket: named after the appliance (`…_washer_socket_power`); a socket called otherwise is the installer's choice.
+    // The socket's own settings (`…_plug_led`, `…_plug_auto_off`) are not the socket
+    if (!s && r.plug) s = one(others.filter(c => /plug|socket/.test(oid(c.id)) && [stem, main ? oid(main) : ''].some(by => !!by && named(c, by)) && !reg.entities.find(e => e.entity_id === c.id)?.entity_category));
+    put(r, s);
   }
   // what the module finds by itself fills the fields still open — only with entities of the chosen appliance (two feeders never mix)
   const m = moduleMatch(reg, p);
-  if (m) for (const r of p.roles) { const e = m.entities[r.id]; if (!out[r.id] && e && reg.states[e] && r.domains.includes(domainOf(e)) && ofDevice(reg, p, e, deviceId)) out[r.id] = e; }
+  if (m) for (const r of p.roles) { const e = m.entities[r.id]; if (e && reg.states[e] && r.domains.includes(domainOf(e)) && ofDevice(reg, p, e, deviceId)) put(r, e); }
   return out;
 }
 /** The room bindings a scheme suggests for one area: the area's own head and its air sensor; the timer and the temperatures by the head's name. */

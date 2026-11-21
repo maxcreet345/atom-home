@@ -52,10 +52,10 @@ test('media: the live host keeps the device registry\'s model_id (the Samsung is
   const r = await host.registry(); assert.equal((r.devices[0] as { model_id?: string | null }).model_id, 'QE50Q60TAUXUA');
 });
 
-test('media: a chosen Hisense gets its own fields filled; the sibling fields are the installer\'s to choose', () => {
+test('media: a chosen Hisense gets its own fields filled; the copy named after the TV is found, any other sibling field is the installer\'s to choose', () => {
   const b = suggestBindings(reg0, HISENSE_65U8, DEV.living);
   assert.deepEqual(b, { tv: 'media_player.living_tv', remote: 'remote.living_tv', app: 'sensor.living_tv_active_app', source: 'sensor.living_tv_active_source', pictureMode: 'select.living_tv_picture_mode', soundMode: 'select.living_tv_sound_mode', backlight: 'number.living_tv_backlight', brightness: 'number.living_tv_brightness', contrast: 'number.living_tv_contrast', audioOnly: 'switch.living_tv_audio_only' });
-  const k = suggestBindings(reg0, HISENSE_55U6, DEV.kids); assert.equal(k.tv, 'media_player.kids_tv'); assert.equal(k.remote, 'remote.kids_tv'); assert.equal(k.airplay, undefined);
+  const k = suggestBindings(reg0, HISENSE_55U6, DEV.kids); assert.equal(k.tv, 'media_player.kids_tv'); assert.equal(k.remote, 'remote.kids_tv'); assert.equal(k.airplay, 'media_player.kids_tv_airplay'); // the copy named after the TV itself (1.36.1)
   const s = suggestBindings(reg0, SAMSUNG_Q60T, DEV.samsung); assert.equal(s.tv, 'media_player.bedroom_tv'); assert.equal(s.remote, 'remote.bedroom_tv');
   for (const [p, d, tv, rm] of [[APPLE_TV_4K3, DEV.appletv, 'media_player.living_appletv', 'remote.living_appletv'], [MI_TV_STICK, DEV.stick, 'media_player.kids_mitv_stick', 'remote.kids_mitv_stick'], [CHROMECAST, DEV.chromecast, 'media_player.bedroom_chromecast', 'remote.bedroom_chromecast']] as const) assert.deepEqual(suggestBindings(reg0, p, d), { tv, remote: rm });
 });
@@ -128,7 +128,8 @@ test('media: the sibling devices\' tiles go into the card — Hisense 55U6 AirPl
   for (const id of ['media_player.bedroom_tv_smartthings', 'sensor.bedroom_tv_channel', 'sensor.bedroom_tv_channel_name', 'select.spalnia_spalnia_televizor_smartthings_samsung_qe50q60t_picture_mode']) assert.ok(claims.has(id), id);
   for (const id of ['media_player.kids_tv', 'remote.kids_tv', 'button.kids_tv_trigger_re_pairing', 'media_player.bedroom_tv', 'remote.bedroom_tv', 'media_player.living_tv']) assert.ok(claims.has(id), id);
   // without the sibling bound, the AirPlay tile stays where it was
-  const bare = instanceClaims(reg0, { a: inst('hisense.55u6', DEV.kids, suggestBindings(reg0, HISENSE_55U6, DEV.kids)) });
+  const { airplay: _airplay, ...noSibling } = suggestBindings(reg0, HISENSE_55U6, DEV.kids); void _airplay; // the form suggests it since 1.36.1; the installer may clear it
+  const bare = instanceClaims(reg0, { a: inst('hisense.55u6', DEV.kids, noSibling) });
   assert.ok(!bare.has('media_player.kids_tv_airplay'));
   // the card's tile is the TV, named and placed by its own device
   const v = instanceView(reg0, 'a', HISENSE_KIDS)!; assert.equal(v.device.kind, 'media'); assert.equal(v.device.primary.id, 'media_player.kids_tv'); assert.equal(v.device.roomId, 'detskaia'); assert.deepEqual(v.incomplete, []);
