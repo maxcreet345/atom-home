@@ -73,7 +73,7 @@ export function SpeakerSheet({ view, registry, host, t, lang, onClose, room, wid
   const photo = usePhoto(r.satellite ? view.instance.bindings.satellite : r.player), kind = artOf(view.profile.id);
   const [ask, setAsk] = useState<null | 'plug' | 'restart'>(null), [screen, setScreen] = useState<'main' | 'settings'>('main');
   const [say, setSay] = useState(''), [note, setNote] = useState(''), [vol, setVol] = useState<number | null>(null);
-  const [, tick] = useState(0);
+  const [, tick] = useState(0), [cover, setCover] = useState<string | null>(null); // a cover that did not load: the station's drawing instead, never a broken picture
   useEffect(() => { ui.seen(); }, [r.phase, r.plug?.on]);
   useEffect(() => { setVol(null); }, [r.volume]);
   useEffect(() => { if (!note) return; const i = setTimeout(() => setNote(''), 3500); return () => clearTimeout(i); }, [note]);
@@ -81,8 +81,10 @@ export function SpeakerSheet({ view, registry, host, t, lang, onClose, room, wid
   useEffect(() => { if (r.phase !== 'playing' || r.duration === null) return; const i = setInterval(() => tick(x => x + 1), 1000); return () => clearInterval(i); }, [r.phase, r.duration]);
   const off = !r.available, busy = ui.busy !== null;
   const send = (key: string, steps: Step[], hold = 0) => { if (steps.length) void ui.run(key, steps, hold); };
-  const name = tidyName(view.device.name);
-  const status = off ? w(t, 'offline') : r.alice === 'listening' || r.alice === 'speaking' || r.alice === 'busy' ? w(t, `alice.${r.alice}`) : r.satellite && r.assist ? w(t, `assist.${r.assist}`) : r.phase === 'playing' ? w(t, 'playing') : r.phase === 'paused' ? w(t, 'paused') : r.phase === 'off' ? w(t, 'off') : w(t, 'silent');
+  // the satellite's main entity is called «… Assist satellite» by ESPHome: its device's name is what the house calls the speaker
+  const devName = (() => { const d = registry.devices.find(x => x.id === view.instance.deviceId) as { name_by_user?: string | null; name?: string | null } | undefined; return d?.name_by_user ?? d?.name ?? null; })();
+  const name = tidyName(view.instance.name ?? (r.satellite && devName ? devName : view.device.name));
+  const status = off ? '' : r.alice === 'listening' || r.alice === 'speaking' || r.alice === 'busy' ? w(t, `alice.${r.alice}`) : r.satellite && r.assist ? w(t, `assist.${r.assist}`) : r.phase === 'playing' ? w(t, 'playing') : r.phase === 'paused' ? w(t, 'paused') : r.phase === 'off' ? w(t, 'off') : '';
   const head = (title: string, back?: () => void) => <div className="hm-sheet-head at-kt-head at-sp-head">
     {back ? <button type="button" className="hm-icon-btn at-kt-back" aria-label={t('ui.back')} onClick={back}><Icon name="back" size={20} /></button> : <span className="at-sp-face" aria-hidden="true"><ProductPhoto src={photo} eager><SpeakerArt kind={kind} /></ProductPhoto></span>}
     <div><small>{back ? name : [room, t(view.profile.kindKey as Key)].filter(Boolean).join(' · ')}</small><h2>{title}</h2>{!host.online && <span className="hm-badge tone-danger at-sheet-offline" style="justify-self:start">{t('ui.offline')}</span>}</div>
@@ -102,11 +104,11 @@ export function SpeakerSheet({ view, registry, host, t, lang, onClose, room, wid
   </div>;
   const plugOff = r.plug?.on === false;
   const hero = <section className={`at-sp-hero is-${r.phase} ${r.satellite ? 'is-voice' : ''} ${r.alice && r.alice !== 'idle' || r.assist && r.assist !== 'idle' ? 'is-alive' : ''}`} data-phase={r.phase}>
-    <span className={`at-sp-cover ${r.cover ? 'has-cover' : ''}`}>{r.cover ? <ProductPhoto src={r.cover} eager><SpeakerArt kind={kind} lit /></ProductPhoto> : <ProductPhoto src={photo} eager><SpeakerArt kind={kind} lit={playing} /></ProductPhoto>}</span>
+    <span className={`at-sp-cover ${r.cover && cover !== r.cover ? 'has-cover' : ''}`}>{r.cover && cover !== r.cover ? <img src={r.cover} alt="" decoding="async" onError={() => setCover(r.cover)} /> : <ProductPhoto src={photo} eager><SpeakerArt kind={kind} lit={playing} /></ProductPhoto>}</span>
     <div className="at-sp-now">
       <small className="at-sp-status" role="status">{status}</small>
       {music && r.title ? <><b className="at-sp-title">{r.title}</b>{r.artist && <span className="at-sp-artist">{r.artist}</span>}</>
-        : off ? <><b className="at-sp-title">{plugOff ? w(t, 'offlinePlug') : name}</b><span className="at-sp-artist">{plugOff ? '' : w(t, 'offlineHint')}</span></>
+        : off ? <><b className="at-sp-title">{plugOff ? w(t, 'offlinePlug') : w(t, 'offline')}</b><span className="at-sp-artist">{plugOff ? '' : w(t, 'offlineHint')}</span></>
         : r.satellite ? <b className="at-sp-title">{r.hwMute === true || r.mics?.on === false ? w(t, 'tile.micsOff') : w(t, 'tile.ready')}</b>
         : <><b className="at-sp-title">{w(t, 'silent')}</b><span className="at-sp-artist">{w(t, 'silentHint')}</span></>}
       {pos !== null && r.duration ? <div className="at-sp-time"><span className="at-sp-bar" role="progressbar" aria-label={r.title ?? status} aria-valuemin={0} aria-valuemax={Math.round(r.duration)} aria-valuenow={Math.round(pos)}><i style={{ width: `${Math.round(100 * pos / r.duration)}%` }} /></span><small><span>{mmss(pos)}</span><span>{mmss(r.duration)}</span></small></div> : null}
@@ -141,7 +143,7 @@ export function SpeakerSheet({ view, registry, host, t, lang, onClose, room, wid
   const sound = r.eq && <div className="at-kt-card"><h3>{w(t, 'sound')}</h3>
     <SelectRow t={t} attr="equalizer" label={w(t, 'equalizer')} hint={r.eq.value === null ? w(t, 'eqHint') : undefined} value={r.eq.value} options={r.eq.options} word={o => optWord(t, 'eq', o)} disabled={off || !r.eq.available || busy} onPick={o => send('eq', cmd.equalizer(o))} /></div>;
   const alarms = r.alarm && <div className="at-kt-card at-sp-alarms"><h3>{w(t, 'alarms')}</h3>
-    <div className="ah-row hm-setting at-kt-row"><span className="ah-row-icon" style="--tile:#7b74d8"><Icon name="bell" size={18} /></span><span className="ah-row-text"><strong>{!r.alarm.available || !host.online ? w(t, 'unknownState') : r.alarm.ringing ? w(t, 'alarmRinging') : r.alarm.next ? w(t, 'alarmNext', { when: whenText(r.alarm.next.start, Date.now(), lang, t, host.timeZone) }) : w(t, 'alarmNone')}</strong>{r.alarm.next?.message && <small>{r.alarm.next.message}</small>}</span></div>
+    <div className="ah-row hm-setting at-kt-row"><span className="ah-row-icon" style={`--tile:${r.alarm.ringing || r.alarm.next ? '#7b74d8' : '#8e8e93'}`}><Icon name="bell" size={18} /></span><span className="ah-row-text"><strong>{!r.alarm.available || !host.online ? w(t, 'unknownState') : r.alarm.ringing ? w(t, 'alarmRinging') : r.alarm.next ? w(t, 'alarmNext', { when: whenText(r.alarm.next.start, Date.now(), lang, t, host.timeZone) }) : w(t, 'alarmNone')}</strong>{r.alarm.next?.message && <small>{r.alarm.next.message}</small>}</span></div>
     <p className="at-kt-note at-sp-pad">{w(t, 'alarmHint')}</p></div>;
   const power = r.plug && <div className="at-kt-card at-sp-power"><h3>{w(t, 'power')}</h3>
     <SwitchRow attr="plug" label={w(t, 'plug')} hint={r.watts !== null ? w(t, 'watts', { w: num(r.watts, lang, r.watts < 10 ? 1 : 0) }) : undefined} on={r.plug.on} busy={ui.busy === 'plug'} disabled={busy || !host.online} onSet={v => { if (v) send('plug', cmd.plug(true), 6000); else setAsk('plug'); }} />

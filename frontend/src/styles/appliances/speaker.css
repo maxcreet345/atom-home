@@ -1,6 +1,7 @@
 /* The speaker family cards (src/appliances/speaker.tsx). The sheet's chrome is the kettle's (at-kt-*); colour only while music plays or Alice
  * is awake ("Тихий дом"): a silent station is a quiet grey card. No @media on size and no viewport units — container queries only. */
-.hm-shell .at-sp-sheet{--sp-accent:#6e56cf;--sp-accent-2:#8b5cf6;--sp-ink:#4c3aa8;container-type:inline-size}
+.hm-shell .at-sp-sheet{--sp-accent:#6e56cf;--sp-accent-2:#8b5cf6;--sp-ink:#4c3aa8;min-width:0}
+.hm-shell .at-sp-sheet .at-kt-card{overflow:hidden;min-width:0}.hm-shell .at-sp-sheet .at-kt-col{min-width:0}
 .hm-shell.ah-shell[data-theme="dark"] .at-sp-sheet{--sp-ink:#c4b5fd}
 .hm-shell .at-sp-face{width:40px;height:40px;flex:none;display:grid;place-items:center}.hm-shell .at-sp-face>.ah-photo{width:100%;height:100%;border-radius:12px}
 .hm-shell .at-sp-head h2{overflow-wrap:anywhere}
@@ -14,14 +15,14 @@
 .hm-shell .at-sp-art-bars rect{fill:#a78bfa}
 .hm-shell.ah-shell[data-theme="dark"] .at-sp-art-body{fill:#636366;stroke:#48484a}.hm-shell.ah-shell[data-theme="dark"] .at-sp-art-top{fill:#7c7c80}
 /* what plays */
-.hm-shell .at-sp-hero{display:grid;justify-items:center;gap:14px;padding:22px 18px 20px;border-radius:26px;background:var(--ah-group);color:var(--ah-ink);text-align:center;min-width:0}
+.hm-shell .at-sp-hero{container-type:inline-size;display:grid;grid-template-columns:minmax(0,1fr);justify-items:center;gap:14px;padding:22px 18px 20px;border-radius:26px;background:var(--ah-group);color:var(--ah-ink);text-align:center;min-width:0}
 .hm-shell .at-sp-hero.is-playing,.hm-shell .at-sp-hero.is-alive{background:linear-gradient(165deg,var(--sp-accent),var(--sp-accent-2));color:#fff}
 .hm-shell .at-sp-hero.is-paused{background:linear-gradient(165deg,#ece9f8,#f6f5fb)}
 .hm-shell.ah-shell[data-theme="dark"] .at-sp-hero.is-paused{background:linear-gradient(165deg,rgba(110,86,207,.28),transparent 80%),var(--ah-group)}
 .hm-shell .at-sp-hero.is-offline .at-sp-cover{opacity:.55;filter:grayscale(1)}
 .hm-shell .at-sp-cover{display:grid;place-items:center;width:min(46%,150px);aspect-ratio:1}
 .hm-shell .at-sp-cover.has-cover{width:min(72%,260px);border-radius:18px;overflow:hidden;box-shadow:0 10px 28px #00000040}
-.hm-shell .at-sp-cover>.ah-photo{width:100%;height:100%;border-radius:inherit}.hm-shell .at-sp-cover.has-cover>.ah-photo img{object-fit:cover;width:100%;height:100%}
+.hm-shell .at-sp-cover>.ah-photo{width:100%;height:100%;border-radius:inherit}.hm-shell .at-sp-cover>img{display:block;width:100%;height:100%;object-fit:cover}
 .hm-shell .at-sp-now{display:grid;gap:4px;justify-items:center;width:100%;min-width:0}
 .hm-shell .at-sp-status{font-size:.8125rem;font-weight:600;letter-spacing:.02em;text-transform:uppercase;opacity:.8}
 .hm-shell .at-sp-title{font-size:1.375rem;font-weight:700;line-height:1.2;max-width:100%;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -55,7 +56,7 @@
 .hm-shell .at-sp-left{margin-left:auto;font-size:.8125rem;color:var(--ah-muted)}
 .hm-shell .at-sp-say .at-kt-note{margin:0;line-height:1.35}
 /* rows */
-.hm-shell .at-sp-select select{flex:none;max-width:52%;min-height:44px;padding:0 10px;border-radius:12px;border:0;background:var(--ah-tile);color:var(--ah-ink);font:inherit;font-weight:600}
+.hm-shell .at-sp-select{flex-wrap:wrap}.hm-shell .at-sp-select .ah-row-text{flex:1 1 180px;min-width:0}.hm-shell .at-sp-select select{flex:0 1 auto;min-width:0;max-width:100%;min-height:44px;padding:0 10px;border-radius:12px;border:0;background:var(--ah-tile);color:var(--ah-ink);font:inherit;font-weight:600}
 .hm-shell .at-sp-select select:disabled{opacity:.5}
 .hm-shell .at-sp-unknown{color:var(--ah-muted)}
 .hm-shell .at-sp-sheet .at-kt-sw.is-on i{background:var(--sp-accent)}
@@ -67,3 +68,4 @@
 .hm-shell .at-sp-sheet.is-wide .at-sp-hero{min-height:100%;align-content:center}
 @container (max-width:360px){.hm-shell .at-sp-skip{width:46px;height:46px}.hm-shell .at-sp-mini{width:40px;height:40px}.hm-shell .at-sp-play{width:60px;height:60px}.hm-shell .at-sp-title{font-size:1.1875rem}}
 @media (prefers-reduced-motion:no-preference){.hm-shell .at-sp-bar i{transition:width 1s linear}}
+.hm-shell .at-sp-status:empty{display:none}
