@@ -1,1 +1,45 @@
-/* The laundry family cards (src/appliances/laundry.tsx). */
+/* The laundry family cards (src/appliances/laundry.tsx): the kettle's sheet chrome (at-kt-*) in the washer's own colour. Colour only while
+ * the machine works; grey when it waits or is off; red on an error; green when the laundry is ready. White on every hero colour is 4.5:1 and more. */
+.hm-shell .at-ln{--ln-run:#1f5aa6;--ln-run-2:#2463b3;--ln-done:#1d6b40;--ln-done-2:#22774a;--ln-err:#b3261e;--ln-err-2:#c0352c;--kt-strong:#1f5aa6}
+.hm-shell .at-ln-hero{background:linear-gradient(180deg,var(--ln-run),var(--ln-run-2));padding-bottom:26px}
+.hm-shell .at-ln-hero:is(.is-idle,.is-off,.is-unavailable,.is-delay){background:linear-gradient(180deg,#5b6770,#6b7780)}
+.hm-shell .at-ln-hero.is-done{background:linear-gradient(180deg,var(--ln-done),var(--ln-done-2))}
+.hm-shell .at-ln-hero.is-error{background:linear-gradient(180deg,var(--ln-err),var(--ln-err-2))}
+.hm-shell .at-ln-hero.is-paused{background:linear-gradient(180deg,#44627f,#4f6e8c)}
+.hm-shell .at-ln-time b{font-size:5rem}
+.hm-shell .at-ln-face{display:block;width:96px;height:96px;margin:4px 0}
+.hm-shell .at-ln-sub{font-size:.875rem;opacity:.95}
+.hm-shell .at-ln-energy{margin-top:8px}
+.hm-shell .at-ln-acts .at-kt-stop{color:var(--ln-run)}.hm-shell .at-ln-hero.is-error .at-ln-acts .at-kt-stop{color:var(--ln-err)}.hm-shell .at-ln-hero:is(.is-idle,.is-off,.is-delay) .at-ln-acts .at-kt-stop{color:#3d4850}
+.hm-shell .at-ln-acts .at-kt-stop.is-quiet{color:#fff}
+.hm-shell .at-ln-acts .at-kt-stop:disabled{opacity:.55}
+/* the stages of the cycle */
+.hm-shell .at-ln-steps{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;list-style:none;margin:8px 0 0;padding:0}
+.hm-shell .at-ln-steps li{display:flex;align-items:center;gap:6px;min-height:30px;padding:0 12px;border-radius:999px;background:#ffffff26;font-size:.84375rem;font-weight:500}
+.hm-shell .at-ln-steps li.is-now{background:#fff;color:var(--ln-run);font-weight:700}
+.hm-shell .at-ln-hero.is-paused .at-ln-steps li.is-now{color:#44627f}
+.hm-shell .at-ln-steps li.is-done::before{content:'✓';font-weight:700}
+/* notes under the hero: remote control off, the error in words */
+.hm-shell .at-ln-note{display:flex;align-items:flex-start;gap:10px;padding:14px 16px;border-radius:20px;background:var(--ah-group);color:var(--ah-ink);font-size:.875rem;line-height:1.4}
+.hm-shell .at-ln-note>svg{flex:none;margin-top:1px;color:var(--ah-muted)}
+.hm-shell .at-ln-note span{display:grid;gap:2px}.hm-shell .at-ln-note b{font-weight:600}
+.hm-shell .at-ln-note.is-alert{background:#fdecea;color:#7f1d17}.hm-shell .at-ln-note.is-alert>svg{color:#b3261e}
+.hm-shell.ah-shell[data-theme="dark"] .at-ln-note.is-alert{background:#3a1715;color:#ffb4ab}.hm-shell.ah-shell[data-theme="dark"] .at-ln-note.is-alert>svg{color:#ff8a80}
+.hm-shell .at-ln-pad{padding:10px 18px 12px;margin:0}
+.hm-shell .at-ln-info small{color:var(--ah-muted);text-align:right}.hm-shell .at-ln-info.is-warn small{color:#b25e00;font-weight:600}
+.hm-shell.ah-shell[data-theme="dark"] .at-ln-info.is-warn small{color:#ffb340}
+.hm-shell .at-ln-card .at-kt-chips button{min-width:0}
+/* the drawing of the machine */
+.hm-shell .at-ln-art{width:100%;height:100%}
+.hm-shell .at-ln-art .at-ln-body{fill:#fff;stroke:#c9ced3;stroke-width:1.6}.hm-shell .at-ln-art .at-ln-line{stroke:#d5d9dd;stroke-width:1.4}
+.hm-shell .at-ln-art .at-ln-panel{fill:#1c1c1e}.hm-shell .at-ln-art .at-ln-knob{fill:#c5cbd1}
+.hm-shell .at-ln-art .at-ln-door{fill:#eef0f2;stroke:#aeb4ba;stroke-width:3}.hm-shell .at-ln-art .at-ln-glass{fill:#cfe0f2}
+.hm-shell .at-ln-art .at-ln-water{fill:none;stroke:#2463b3;stroke-width:3;stroke-linecap:round}
+.hm-shell .at-ln-art.is-running .at-ln-drum{transform-origin:60px 70px;animation:at-ln-spin 2.4s linear infinite}
+@keyframes at-ln-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.hm-shell .at-ln-art.is-running .at-ln-drum{animation:none}}
+.hm-shell.ah-shell[data-theme="dark"] .at-ln-art .at-ln-body{fill:#e5e5ea;stroke:#8e8e93}.hm-shell.ah-shell[data-theme="dark"] .at-ln-art .at-ln-door{fill:#d1d1d6}
+/* two columns on a tablet: a long program name or a stepper never pushes its card past the sheet */
+.hm-shell .at-ln .at-kt-col{grid-template-columns:minmax(0,1fr)}
+.hm-shell .at-ln .at-kt-row:not(.is-col){flex-wrap:wrap}.hm-shell .at-ln .at-kt-row:not(.is-col) .ah-row-text{min-width:min(100%,9rem);flex:1 1 9rem}
+.hm-shell .at-ln .at-kt-chips button{max-width:100%;white-space:normal;text-align:center;line-height:1.2}

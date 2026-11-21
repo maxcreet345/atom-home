@@ -80,7 +80,7 @@ test('the washer\'s tile line in every state', () => {
   assert.equal(at('pause'), 'Пауза · осталось 42 мин');
   assert.equal(at('rinse_hold'), 'Пауза после полоскания');
   assert.equal(at('running', { [b.endsAt]: { state: iso(NOW + 82 * 60_000) } }), 'Стирка · осталось 1 ч 22 мин');
-  assert.equal(at('running', { [b.endsAt]: { state: iso(NOW - 5 * 60_000) } }), 'Стирка · осталось 0 мин', 'never negative');
+  assert.equal(at('running', { [b.endsAt]: { state: iso(NOW - 5 * 60_000) } }), 'Стирка · почти готово', 'never negative: the end passed, it still runs');
   assert.equal(at('end'), 'Готово');
   assert.equal(at('initial'), 'Ожидание');
   assert.equal(at('power_off', { [b.notify]: { state: 'unknown' } }), 'Выключена');
@@ -150,4 +150,10 @@ test('words: every program has a name in three languages; an unknown code is sai
   assert.deepEqual(Object.keys(words_laundry.en).sort(), Object.keys(words_laundry.ru).sort());
   for (const p of family.profiles) for (const k of [p.titleKey, p.descKey, p.kindKey!, ...p.roles.map(r => r.labelKey)]) assert.ok(k in words_laundry.ru, k);
   assert.equal(lineOf(readLaundry(live, washerInst(), tro, NOW)!, tro, 'ro'), 'Spălare · au rămas 47 min');
+});
+test('the card is called by its machine («Сушильная машина»), not by its anchor entity («Сушилка · Работает»); the installer\'s name wins', () => {
+  const room = (a: string) => a === 'vannaia' ? 'Ванная' : null;
+  assert.equal(instanceView(live, 'd', dryerInst(), room)!.device.name, 'Сушильная машина');
+  assert.equal(instanceView(live, 'w', washerInst(), room)!.device.name, 'Стиральная машина');
+  assert.equal(instanceView(live, 'w', { ...washerInst(), name: 'Стиралка' }, room)!.device.name, 'Стиралка');
 });

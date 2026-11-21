@@ -335,7 +335,10 @@ export function instanceView(reg: Registry, id: string, inst: ProfileInstance, r
   const dev = inst.deviceId ? reg.devices.find(d => d.id === inst.deviceId) : (anchorId ? reg.devices.find(d => d.id === reg.entities.find(e => e.entity_id === anchorId)?.device_id) : undefined);
   const anchorEnt = anchorId ? reg.entities.find(e => e.entity_id === anchorId) : undefined;
   const roomId = inst.roomId ?? dev?.area_id ?? areaOf(reg, anchorEnt) ?? NO_ROOM;
-  const name = inst.name ?? (typeof p.attributes.friendly_name === 'string' ? stripRoom(p.attributes.friendly_name, roomName(roomId)) : null) ?? dev?.name ?? id;
+  // an appliance is called by its own HA device («Ванная · Сушильная машина (Samsung DV8400D)» → «Сушильная машина»), never by its anchor entity
+  // («Сушилка · Работает»): the room stands beside it, the model is the sheet's
+  const devName = profile.renderer === 'appliance' && dev ? stripRoom(((dev as { name_by_user?: string | null }).name_by_user ?? dev.name ?? '').replace(/\s*\([^)]*\)/g, '').trim(), roomName(roomId)) || null : null;
+  const name = inst.name ?? devName ?? (typeof p.attributes.friendly_name === 'string' ? stripRoom(p.attributes.friendly_name, roomName(roomId)) : null) ?? dev?.name ?? id;
   const device: HomeDevice = {
     key: instanceKey(id), kind: profile.kind, name, roomId, icon: profile.icon ?? null, photo: null, art: null, favorite: inst.placement.includes('home'), order: 0, enabled: true,
     available: !!primary && primary.available, primary: { ...p, name }, controls: primary ? [{ ...p, name }] : [], metrics: pick('metric'), parameters: pick('parameter'), diagnostics: [],

@@ -5,7 +5,7 @@
  * what to press on the machine, instead of offering buttons that would be refused. */
 import { useEffect, useState } from 'preact/hooks';
 import type { ApplianceSheetProps, ApplianceUi } from './types.ts';
-import { readLaundry, lineOf, actsFor, callFor, minutesText, clockText, stepText, errorWords, cycleName, type Act, type Laundry, type Step } from './laundry.profiles.ts';
+import { readLaundry, lineOf, actsFor, callFor, minutesText, clockText, stepText, cycleName, machineName, type Act, type Laundry, type Step } from './laundry.profiles.ts';
 import { HOLD_MS, onOffOf, useRun } from '../modules/kettle.tsx';
 import { Ask, type Question } from '../ui/setup.tsx';
 import { Icon } from '../ui/primitives.tsx';
@@ -35,7 +35,7 @@ function LaundrySheet({ view, registry, host, t, lang, onClose, room, wide }: Ap
   const [ask, setAsk] = useState<Question | null>(null), [screen, setScreen] = useState<'main' | 'settings'>('main'), [draft, setDraft] = useState<Draft>({});
   useEffect(() => { ui.seen(); }, [l.phase, l.step]); // the machine answered: the button that waited for it is free again
   const st = (role: string) => B[role] ? registry.states[B[role]] : undefined;
-  const remoteOff = l.remote === false, busy = ui.busy !== null, locked = l.phase === 'running' || l.phase === 'paused' || l.phase === 'delay';
+  const remoteOff = l.remote === false, busy = ui.busy !== null, locked = !['idle', 'off', 'done'].includes(l.phase); // the program and its options are set before a cycle, not during one or over an error
   const canWrite = there && !remoteOff && !busy;
   // ---- energy: now, and of this cycle from the plug's meter (HA's statistics), else today's ----
   const watts = there ? numOf(st('plugPower')?.state) : null, today = there ? numOf(st('plugToday')?.state) : null;
@@ -45,7 +45,7 @@ function LaundrySheet({ view, registry, host, t, lang, onClose, room, wide }: Ap
   const set = (role: string, domain: string, service: string, data: Record<string, unknown>, key: keyof Draft, value: string | number) => { const id = B[role]; if (!id) return; setDraft(d => ({ ...d, [key]: value })); void ui.run(role, [[domain, service, { entity_id: id, ...data }]]).then(ok => { if (!ok) setDraft(d => { const x = { ...d }; delete x[key]; return x; }); }); };
   // a value the machine now reports wins over the draft
   useEffect(() => { setDraft({}); }, [st('cycle')?.state, st('dryLevel')?.state, st('dryTime')?.state, st('delay')?.state, st('delayEnd')?.state, st('buzzer')?.state, st('finishSound')?.state]);
-  const kind = w(t, `kind.${l.machine}`), title = view.device.name || kind;
+  const kind = w(t, `kind.${l.machine}`), title = machineName(registry, inst) ?? kind;
   // ---- the hero ----
   const status = !there ? w(t, `offline.${l.machine}`) : lineOf(l, t, lang) ?? '';
   const big = (l.phase === 'running' || l.phase === 'paused') && l.left !== null ? l.left : null;
@@ -53,7 +53,7 @@ function LaundrySheet({ view, registry, host, t, lang, onClose, room, wide }: Ap
   const actLabel = (a: Act) => w(t, `act.${a}.${l.brand}`);
   const hero = <section className={`at-kt-hero at-ln-hero is-${l.phase}`} data-laundry-phase={l.phase}>
     <ProductPhoto src={photo} className="at-kt-hero-pic" eager />
-    <small>{l.program && there ? l.program : kind}</small>
+    {(l.program && there) || big !== null ? <small>{l.program && there ? l.program : w(t, 'leftLabel')}</small> : null}
     {big !== null ? <p className="at-kt-temp at-ln-time" aria-label={w(t, 'left', { m: minutesText(big, t) })}>{big >= 60 ? <><b>{Math.floor(big / 60)}:{String(big % 60).padStart(2, '0')}</b><i>{w(t, 'hUnit')}</i></> : <><b>{big}</b><i>{w(t, 'mUnit')}</i></>}</p>
       : <span className="at-ln-face"><ProductPhoto src={null}><LaundryArt phase={l.phase} dryer={dryer} /></ProductPhoto></span>}
     <p className="at-kt-status" role="status">{status}</p>
@@ -67,7 +67,7 @@ function LaundrySheet({ view, registry, host, t, lang, onClose, room, wide }: Ap
   </section>;
   // ---- remote control, child lock, errors in words ----
   const notices = there && <>
-    {l.phase === 'error' && <p className="at-ln-note is-alert" role="alert"><Icon name="warning" size={18} /><span><b>{errorWords(l, t)}</b>{w(t, `errHint.${l.brand}`)}</span></p>}
+    {l.phase === 'error' && <p className="at-ln-note is-alert" role="alert"><Icon name="warning" size={18} /><span>{w(t, `errHint.${l.brand}`)}</span></p>}
     {remoteOff && <p className="at-ln-note" data-laundry-remote="off"><Icon name="lock" size={18} /><span><b>{w(t, `remoteOff.${l.brand}`)}</b>{w(t, `remoteHow.${l.brand}`)}</span></p>}
   </>;
   // ---- program and options ----
@@ -81,13 +81,13 @@ function LaundrySheet({ view, registry, host, t, lang, onClose, room, wide }: Ap
       <div className="at-kt-stepper" role="group" aria-label={label}><button type="button" className="hm-round" aria-label={`${label}: −${step}`} disabled={off || v! <= min} onClick={() => set(role, 'number', 'set_value', { value: Math.max(min, v! - step) }, key, Math.max(min, v! - step))}>−</button>
         <b>{v === null || !there ? '—' : <>{num(v, lang, 0)}<i>{w(t, 'hUnit')}</i></>}</b>
         <button type="button" className="hm-round" aria-label={`${label}: +${step}`} disabled={off || v! >= max} onClick={() => set(role, 'number', 'set_value', { value: Math.min(max, v! + step) }, key, Math.min(max, v! + step))}>+</button></div></div>; };
-  const program = l.brand === 'samsung' ? B.cycle && <div className="at-kt-card at-ln-card" data-laundry-card="program"><h3>{w(t, 'programs')}</h3>
+  const program = l.brand === 'samsung' ? B.cycle && <div className="at-kt-card at-ln-card" data-laundry-card="program"><h3>{w(t, 'programSetup')}</h3>
     {chips(w(t, 'program'), 'cycle', optionsOf('cycle'), valueOf('cycle', 'cycle'), c => cycleName(c, t) ?? c, 'cycle')}
     {B.dryLevel && chips(w(t, 'dryLevel'), 'dryLevel', optionsOf('dryLevel'), valueOf('dryLevel', 'dryLevel'), o => w(t, `level.${o}`), 'dryLevel')}
     {B.dryTime && chips(w(t, 'dryTime'), 'dryTime', optionsOf('dryTime'), valueOf('dryTime', 'dryTime'), o => { const m = hms(o); return m ? minutesText(m, t) : w(t, 'byLevel'); }, 'dryTime')}
     {B.delay && stepper(w(t, 'delayLabel'), 'delayHint', 'delay', 'delay')}
     {B.finishBy && valid(st('finishBy')?.state) && <div className="ah-row hm-setting at-kt-row"><span className="ah-row-text"><strong>{w(t, 'finishBy')}</strong></span><small>{String(st('finishBy')!.state).slice(0, 5)}</small></div>}
-    {locked && there && <p className="at-kt-note at-ln-pad">{w(t, 'lockedRunning')}</p>}
+    {locked && there && l.phase !== 'error' && <p className="at-kt-note at-ln-pad">{w(t, 'lockedRunning')}</p>}
   </div> : <div className="at-kt-card at-ln-card" data-laundry-card="program"><h3>{w(t, 'programs')}</h3>
     <p className="at-kt-note at-ln-pad">{w(t, 'lgProgram')}</p>
     {B.delayEnd && stepper(w(t, 'delayEnd'), 'delayEndHint', 'delayEnd', 'delayEnd')}

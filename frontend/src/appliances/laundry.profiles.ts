@@ -190,8 +190,17 @@ export function lineOf(l: Laundry, t: T, lang: Lang): string | null {
     case 'error': return `${t('laundry.error')}: ${errorWords(l, t)}`;
     case 'done': return l.wrinkle ? t('laundry.doneWrinkle') : t('laundry.done');
     case 'paused': { const w = l.step === 'rinseHold' ? t('laundry.step.rinseHold') : t('laundry.paused'); return l.left !== null && l.step !== 'rinseHold' ? `${w} · ${t('laundry.left', { m: minutesText(l.left, t) })}` : w; }
-    case 'running': { const w = l.step ? stepText(l.step, l, t) : t(l.machine === 'dryer' ? 'laundry.drying' : 'laundry.washing'); return l.left !== null ? `${w} · ${t('laundry.left', { m: minutesText(l.left, t) })}` : w; }
+    case 'running': { const w = l.step ? stepText(l.step, l, t) : t(l.machine === 'dryer' ? 'laundry.drying' : 'laundry.washing'); return l.left === null ? w : l.left <= 0 ? `${w} · ${t('laundry.almost')}` : `${w} · ${t('laundry.left', { m: minutesText(l.left, t) })}`; }
   }
+}
+
+/** The machine's own name for the sheet's head: the installer's name for the card, else its HA device's without the room and the model
+ * («Ванная · Сушильная машина (Samsung DV8400D)» → «Сушильная машина»); never an entity's («Сушилка · Работает»). */
+export function machineName(reg: Registry, inst: Pick<ProfileInstance, 'name' | 'deviceId'>): string | null {
+  if (inst.name) return inst.name;
+  const d = inst.deviceId ? reg.devices.find(x => x.id === inst.deviceId) as { name?: string | null; name_by_user?: string | null } | undefined : undefined;
+  const raw = (d?.name_by_user ?? d?.name ?? '').replace(/\s*\([^)]*\)/g, '').trim(), parts = raw.split(' · ');
+  return (parts.length > 1 ? parts.slice(1).join(' · ') : raw).trim() || null;
 }
 
 // ---- commands (sent by the card after the person's «да») ----
