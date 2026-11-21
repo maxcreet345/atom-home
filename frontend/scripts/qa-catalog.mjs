@@ -68,6 +68,13 @@ try {
     const roles = await page.$$eval('.at-cards-field', l => l.map(f => [f.dataset.role, f.querySelector('select').value]));
     check(`${vp}:fields-only-of-this-card`, roles.map(r => r[0]).join(',') === 'fan,pm25,filter,filterDays,temperature,humidity,ionizer,favoriteLevel,brightness,childLock,buzzer', { roles });
     check(`${vp}:fields-suggested-from-own-device`, roles.filter(r => r[1]).every(r => r[1].includes('living_air_purifier')) && roles.find(r => r[0] === 'fan')[1] === 'fan.living_air_purifier' && roles.find(r => r[0] === 'pm25')[1] === 'sensor.living_air_purifier_pm25', { roles });
+    // 1.36.1: opened from Home, a card whose device stands in a room goes «В комнате» by default (not «На главной»), in that device's room —
+    // and both follow the device chosen until the installer presses a place or picks a room himself
+    const placeOf = () => page.evaluate(() => ({ area: document.querySelector('[data-part="place"] select')?.value, ...Object.fromEntries([...document.querySelectorAll('[data-place]')].map(b => [b.dataset.place, b.getAttribute('aria-checked')])) }));
+    const place0 = await placeOf();
+    await page.click('.at-cards-device[data-device="bedroomPurifierDevice"]'); await page.waitForTimeout(200); const place1 = await placeOf();
+    await page.click(`.at-cards-device[data-device="${LIVING}"]`); await page.waitForTimeout(250); const place2 = await placeOf();
+    check(`${vp}:place-default-is-the-devices-room`, JSON.stringify(place0) === '{"area":"gostinaia","home":"false","room":"true"}' && JSON.stringify(place1) === '{"area":"spalnia","home":"false","room":"true"}' && JSON.stringify(place2) === JSON.stringify(place0), { place0, place1, place2 });
     await sheetShot('06-form-device-fields');
     await scrollSheet('[data-part="preview"]'); await shot('07-form-preview');
     check(`${vp}:preview-inert`, await page.evaluate(() => { const p = document.querySelector('.at-cards-preview'); return !!p && p.inert === true && !!p.querySelector('.ah-tile') && !!p.querySelector('.ah-sheet[data-kind="fan"]'); }));
@@ -131,6 +138,9 @@ try {
     check(`${vp}:lost-note`, await page.evaluate(() => { const n = document.querySelector('.hm-sheet .at-cards-lostnote'); return !!n && /Ресурс фильтра/.test(n.innerText) && !!n.querySelector('[data-action="fix-card"]'); }));
     await page.click('[data-action="fix-card"]'); await page.waitForSelector('.at-cards[data-step="form"]'); await page.waitForTimeout(300);
     check(`${vp}:edit-opens-with-lost-field`, await page.evaluate(() => document.querySelector('.at-cards-field[data-role="filter"]')?.classList.contains('is-lost') && !!document.querySelector('[data-action="remove-card"]')));
+    // an edit starts from the place that was saved (here both), never from the default of a new card
+    { const saved = (await stored(page)).profileInstances[idA].placement, shown = await page.$$eval('[data-place]', l => l.filter(b => b.getAttribute('aria-checked') === 'true').map(b => b.dataset.place));
+      check(`${vp}:edit-keeps-saved-place`, saved.length === 2 && [...saved].sort().join() === [...shown].sort().join(), { saved, shown }); }
     await page.evaluate(() => document.querySelector('.at-cards-field[data-role="filter"]')?.scrollIntoView({ block: 'center' })); await shot('15-edit-lost-field');
     // 9. a resident sees the published cards, and no «＋»
     await page.evaluate(() => { window.atomPreview.host.setAdmin(false); }); await go(page, '#home'); await page.evaluate(() => window.atomPreview.redraw()); await page.waitForTimeout(400);

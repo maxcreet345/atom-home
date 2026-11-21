@@ -24,7 +24,7 @@ import { CameraTile } from './camera-tile.tsx';
 import { familyOf } from '../appliances/profiles.ts';
 import { applianceUi } from '../appliances/index.ts';
 import {
-  CATEGORIES, PROFILES, tellModule, untellModule, type ModuleUndo, brandsOf, candidates, candidateValue, devicesFor, foundHere, instanceView, moduleDevice, moduleMatch, newInstanceId, ofDevice, profileById, searchProfiles, selfDrawn, suggestBindings, suggestRoom,
+  CATEGORIES, PROFILES, tellModule, untellModule, type ModuleUndo, brandsOf, candidates, candidateValue, cardRoom, defaultPlacement, devicesFor, foundHere, instanceView, moduleDevice, moduleMatch, newInstanceId, ofDevice, profileById, searchProfiles, selfDrawn, suggestBindings, suggestRoom,
   type Category, type Place, type Profile, type ProfileInstance, type RoleSpec, type InstanceRoom,
 } from '../model/card-catalog.ts';
 
@@ -86,9 +86,12 @@ function CardForm({ registry, config, rooms, t, lang, host, roomId, save, onClos
   const [roomsDraft, setRooms] = useState<InstanceRoom[]>(() => editing?.rooms ? editing.rooms.map(r => ({ ...r, bindings: { ...r.bindings } })) : []);
   const dev = deviceId ? registry.devices.find(d => d.id === deviceId) : undefined;
   const [name, setName] = useState(editing?.name ?? ''), [room, setRoom] = useState<string>(editing?.roomId ?? roomId ?? dev?.area_id ?? '');
-  const [placement, setPlacement] = useState<Place[]>(editing?.placement ?? (roomId ? profile.places.filter(p => p === 'room') : profile.places.slice(0, 1)));
+  // where it goes follows the card's room — the chosen device's, the room page it was opened from — until the installer presses a place himself;
+  // the room follows the chosen device until he picks one himself. An edit starts from what was saved
+  const [placed, setPlaced] = useState<Place[] | null>(editing ? editing.placement : null), [roomTouched, setRoomTouched] = useState(false);
+  const placement = placed ?? defaultPlacement(profile, cardRoom(registry, { roomId: room || undefined, deviceId, bindings }, profile));
   const [busy, setBusy] = useState(false), [question, ask] = useState<Question | null>(null), [note, setNote] = useState('');
-  const chooseDevice = (id: string) => { setDeviceId(id); setBindings({ ...suggestBindings(registry, profile, id), ...told(id) }); const d = registry.devices.find(x => x.id === id); if (!editing && !roomId) setRoom(d?.area_id ?? ''); };
+  const chooseDevice = (id: string) => { setDeviceId(id); setBindings({ ...suggestBindings(registry, profile, id), ...told(id) }); const d = registry.devices.find(x => x.id === id); if (!editing && !roomId && !roomTouched) setRoom(d?.area_id ?? ''); };
   const needDevice = profile.models.length > 0;
   const self = selfDrawn(profile);
   // a module draws one card per house: a second card of the same module would take the first one's place, so it is refused in words
@@ -153,8 +156,8 @@ function CardForm({ registry, config, rooms, t, lang, host, roomId, save, onClos
     <section className="at-cards-sec" data-part="place"><h3>{ck(t, 'step.place')}</h3>
       {self && <p className="hm-muted at-cards-self">{ck(t, 'selfPlaced')}</p>}
       {!self && <label className="at-field"><span>{ck(t, 'name')}</span><input type="text" maxLength={80} autocomplete="off" value={name} placeholder={view?.device.name ?? ''} onInput={e => setName((e.target as HTMLInputElement).value)} /></label>}
-      {profile.renderer !== 'heatingRooms' && !self && <label className="at-field"><span>{ck(t, 'room')}</span><select value={room} onChange={e => setRoom((e.target as HTMLSelectElement).value)}><option value="">{t('room.none')}</option>{roomList.map(r => <option value={r.id}>{r.name}</option>)}</select></label>}
-      {profile.places.length > 0 && <div className="hm-chips at-cards-place" role="group" aria-label={ck(t, 'place')}>{profile.places.map(p => <button type="button" role="checkbox" aria-checked={placement.includes(p)} className={placement.includes(p) ? 'is-active' : ''} data-place={p} onClick={() => setPlacement(l => l.includes(p) ? l.filter(x => x !== p) : [...l, p])}>{ck(t, `place.${p}`)}</button>)}</div>}
+      {profile.renderer !== 'heatingRooms' && !self && <label className="at-field"><span>{ck(t, 'room')}</span><select value={room} onChange={e => { setRoomTouched(true); setRoom((e.target as HTMLSelectElement).value); }}><option value="">{t('room.none')}</option>{roomList.map(r => <option value={r.id}>{r.name}</option>)}</select></label>}
+      {profile.places.length > 0 && <div className="hm-chips at-cards-place" role="group" aria-label={ck(t, 'place')}>{profile.places.map(p => <button type="button" role="checkbox" aria-checked={placement.includes(p)} className={placement.includes(p) ? 'is-active' : ''} data-place={p} onClick={() => setPlaced(placement.includes(p) ? placement.filter(x => x !== p) : [...placement, p])}>{ck(t, `place.${p}`)}</button>)}</div>}
     </section>
     {!ready && <p className="hm-muted at-cards-need" role="status">{sameModule ? ck(t, 'moduleTaken') : otherDevice ? ck(t, 'moduleOtherDevice') : optsBad.length ? ck(t, 'optBad', { list: optsBad.map(f => t(f.labelKey as Key)).join(', ') }) : deviceId && needDevice && takenBy(deviceId) ? ck(t, 'deviceTaken') : !self && !placement.length ? ck(t, 'needPlace') : needDevice && !deviceId ? ck(t, 'needDevice') : optsMissing.length ? ck(t, 'needFields', { list: optsMissing.map(f => t(f.labelKey as Key)).join(', ') }) : profile.roomRoles && !roomsDraft.length ? ck(t, 'needRoom') : ck(t, 'needFields', { list: missing.map(m => { const [a, b] = m.includes('.') ? m.split('.') : [null, m]; const r = (a ? profile.roomRoles : profile.roles)?.find(x => x.id === b); return r ? t(r.labelKey as Key) : m; }).join(', ') })}</p>}
     <div className="at-cards-actions">{editing && <button type="button" className="hm-pill" data-action="remove-card" onClick={remove}>{ck(t, 'remove')}</button>}<button type="button" className="hm-pill is-primary" data-action="add-card" aria-disabled={!ready || busy || undefined} aria-busy={busy || undefined} onClick={() => void add()}>{editing ? ck(t, 'saveEdit') : ck(t, 'addToScreen')}</button></div>
