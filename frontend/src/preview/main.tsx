@@ -9,9 +9,10 @@ import home from '../styles/apple.css?inline';
 import atom from '../styles/atom.css?inline';
 import room from '../styles/room.css?inline';
 import sizes from '../styles/sizes.css?inline';
+import appliances from '../styles/appliances.css?inline';
 /** Isolated preview: a frozen registry + states snapshot, commands rejected and recorded. Used by QA and screenshots. */
 export async function mountPreview(root: HTMLElement, snapshot: Registry, config: unknown, viewport?: { width: number; height: number }) {
-  const style = document.createElement('style'); style.textContent = base + home + atom + room + sizes;
+  const style = document.createElement('style'); style.textContent = base + home + atom + room + sizes + appliances;
   // «?shadow=1»: the panel is mounted inside a shadow root, as Home Assistant mounts the real one (live-main.tsx) — there `document.activeElement`
   // is the host element, never a control of the panel, so every focus rule can be checked the way it runs in the house (audit 2026-11-09, round 2)
   if (new URLSearchParams(location.search).get('shadow') === '1') { const outer = root, sr = outer.attachShadow({ mode: 'open' }); root = document.createElement('div'); root.style.height = '100%'; root.style.position = 'relative'; sr.append(style, root); }

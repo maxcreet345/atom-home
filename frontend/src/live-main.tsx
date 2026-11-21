@@ -15,6 +15,7 @@ import home from './styles/apple.css?inline';
 import atom from './styles/atom.css?inline';
 import room from './styles/room.css?inline';
 import sizes from './styles/sizes.css?inline';
+import appliances from './styles/appliances.css?inline';
 import { SKELETON_CSS, SKELETON_TEXT, skeletonHtml, readSkeletonTheme, rememberSkeletonTheme, readSkeletonLang, rememberSkeletonLang } from './ui/skeleton.js';
 
 /** The registry comes again when Home Assistant says it changed; this is only the safety net (it was the whole registry every 5 minutes). */
@@ -96,7 +97,7 @@ export class AtomHomePanel extends HTMLElement {
     const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
     root.replaceChildren();
     const style = document.createElement('style');
-    style.textContent = base + home + atom + room + sizes + ':host{display:block;position:relative;width:100%;height:100vh;height:calc(100dvh - env(safe-area-inset-top,0px));min-height:0;overflow:hidden}';
+    style.textContent = base + home + atom + room + sizes + appliances + ':host{display:block;position:relative;width:100%;height:100vh;height:calc(100dvh - env(safe-area-inset-top,0px));min-height:0;overflow:hidden}';
     this.mount = document.createElement('div'); this.mount.style.height = '100%';
     root.append(style, this.mount);
     this.observer = new ResizeObserver(() => this.measure()); this.observer.observe(this);

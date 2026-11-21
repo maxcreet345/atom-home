@@ -1,0 +1,9 @@
+/* Every appliance family's own styles: one file each (src/appliances/). */
+@import "./appliances/media.css";
+@import "./appliances/speaker.css";
+@import "./appliances/laundry.css";
+@import "./appliances/humidifier.css";
+@import "./appliances/scale.css";
+@import "./appliances/dashcam.css";
+@import "./appliances/nas.css";
+@import "./appliances/gasmeter.css";
