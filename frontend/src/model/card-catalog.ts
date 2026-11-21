@@ -46,6 +46,7 @@ export interface Profile {
   renderer: Renderer; kind: Kind;
   /** the device module that draws it (`renderer: 'module'`), one per house */ module?: string;
   /** the appliance family that draws it (`renderer: 'appliance'`): src/appliances/<card>.tsx */ card?: string;
+  /** its HA sub-devices are parts of it (`via_device_id`, at any depth: a NAS's pools, drives and volumes): the card shows them, so their auto-made tiles go */ parts?: boolean;
   /** the glyph of its tile and the word above its sheet's name («Очиститель воздуха», not the HA domain's «Вентилятор») */ icon?: string; kindKey?: string;
   /** the entity a device is found by (the purifier's `fan`); its role id */ anchor?: string;
   roles: RoleSpec[];
@@ -357,6 +358,7 @@ export function instanceClaims(reg: Registry, all: Record<string, ProfileInstanc
     const profile = profileById(inst.profileId, list); if (!profile) continue;
     if (selfDrawn(profile)) continue; // it draws itself: the module claims its own entities
     if (inst.deviceId) for (const e of reg.entities) if (e.device_id === inst.deviceId) out.add(e.entity_id);
+    if (inst.deviceId && profile.parts) { const under = new Set([inst.deviceId]); for (let grew = true; grew;) { grew = false; for (const d of reg.devices) if (d.via_device_id && under.has(d.via_device_id) && !under.has(d.id)) { under.add(d.id); grew = true; } } for (const e of reg.entities) if (e.device_id && under.has(e.device_id)) out.add(e.entity_id); }
     if (profile.renderer === 'appliance') {
       // every field it draws, and every entity of the same appliance seen through a second integration
       for (const r of profile.roles) { const b = inst.bindings[r.id]; if (!b) continue; out.add(b); const dev = r.sibling ? reg.entities.find(e => e.entity_id === b)?.device_id : null; if (dev) for (const e of reg.entities) if (e.device_id === dev) out.add(e.entity_id); }
