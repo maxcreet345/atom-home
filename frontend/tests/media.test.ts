@@ -132,6 +132,8 @@ test('media: the sibling devices\' tiles go into the card — Hisense 55U6 AirPl
   assert.ok(!bare.has('media_player.kids_tv_airplay'));
   // the card's tile is the TV, named and placed by its own device
   const v = instanceView(reg0, 'a', HISENSE_KIDS)!; assert.equal(v.device.kind, 'media'); assert.equal(v.device.primary.id, 'media_player.kids_tv'); assert.equal(v.device.roomId, 'detskaia'); assert.deepEqual(v.incomplete, []);
+  assert.equal(v.device.name, 'Детская · Телевизор (Hisense 55U6)'.replace(/^.* · /, ''), 'called by its device, not «<device> Телевизор»');
+  assert.equal(instanceView(reg0, 'c', HISENSE_LIVING, () => 'Гостиная')!.device.name, 'Телевизор (Hisense 65U8KQ)');
 });
 
 test('media: the tile line — off, on, on with an input, playing «App · title», paused, unavailable', () => {
@@ -151,6 +153,9 @@ test('media: the tile line — off, on, on with an input, playing «App · title
   set(reg, 'media_player.living_appletv', 'unknown'); assert.equal(mediaTileLine(reg, apple, t), 'Нет связи');
   assert.equal(mediaTileLine(reg0, inst('google.chromecast', DEV.chromecast, { tv: 'media_player.bedroom_chromecast' }), t), 'Нет связи', 'the Chromecast is unavailable in the snapshot');
   set(reg, 'media_player.kids_mitv_stick', 'on', { app_name: 'Kinopub' }); assert.equal(mediaTileLine(reg, inst('xiaomi.mitv_stick', DEV.stick, { tv: 'media_player.kids_mitv_stick' }), t), 'Включён · Kinopub');
+  // Apple's «TV» app is not the aerial
+  set(reg, 'media_player.living_appletv', 'on', { app_name: 'TV', source: 'TV' }); assert.equal(mediaTileLine(reg, apple, t), 'Включён · TV');
+  const samsung = clone(); set(samsung, 'media_player.bedroom_tv', 'on', { source: 'TV' }); assert.equal(mediaTileLine(samsung, SAMSUNG, t), 'Включён · Телевидение');
   // ro and en say the same
   assert.equal(mediaTileLine(reg0, HISENSE_LIVING, translator('ro')), 'Oprit'); assert.equal(mediaTileLine(reg0, HISENSE_LIVING, translator('en')), 'Off');
   // the family's hook is the same function

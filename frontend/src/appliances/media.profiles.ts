@@ -146,8 +146,12 @@ export function mediaCommands(reg: Registry, profile: Profile, inst: Pick<Profil
 // ---- the tile's second line ----
 const mw = (t: T, k: string, p?: Record<string, string | number>) => t(`media.${k}` as Key, p);
 /** «Выключен» · «Включён · Apple TV» · «YouTube · Lo-fi beats» · «Пауза · YouTube» · «Нет связи» */
-export function mediaTileLine(reg: Registry, inst: Pick<ProfileInstance, 'bindings'>, t: T): string {
-  const m = readMedia(reg, inst);
+/** «TV» / «digital_tv» → «Телевидение», «hdmi1» → «HDMI 1»; anything else as the TV names it */
+export const sourceLabel = (t: T, s: string) => /^(tv|digital_tv|dtv|live ?tv)$/i.test(s) ? mw(t, 'src.tv') : /^hdmi\s?(\d)$/i.test(s) ? `HDMI ${s.replace(/\D/g, '')}` : s;
+/** a box whose «sources» are its apps (Apple TV): «TV» there is Apple's TV app, not the aerial */
+export const sourcesAreApps = (profileId: string | undefined) => MEDIA_PROFILES.find(p => p.id === profileId)?.integration?.platform === 'apple_tv';
+export function mediaTileLine(reg: Registry, inst: Pick<ProfileInstance, 'bindings'> & { profileId?: string }, t: T): string {
+  const r = readMedia(reg, inst), m = { ...r, app: r.app && !sourcesAreApps(inst.profileId) ? sourceLabel(t, r.app) : r.app };
   if (m.phase === 'unavailable') return t('state.unavailable');
   if (m.phase === 'off') return mw(t, 'off');
   const what = [m.app, m.title].filter(Boolean).join(' · ');

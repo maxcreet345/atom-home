@@ -5,7 +5,7 @@
  * the TV's service buttons (re-pairing, reconnect, clock sync) are not on the card at all. */
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { ApplianceUi, ApplianceSheetProps } from './types.ts';
-import { readMedia, mediaCommands, padKeysOf, type MediaAction, type PadKey } from './media.profiles.ts';
+import { readMedia, mediaCommands, padKeysOf, sourceLabel, sourcesAreApps, type MediaAction, type PadKey } from './media.profiles.ts';
 import { useRun } from '../modules/kettle.tsx';
 import { Icon } from '../ui/primitives.tsx';
 import { ProductPhoto, usePhoto } from '../ui/photo.tsx';
@@ -16,8 +16,6 @@ const mw = (t: T, k: string, p?: Record<string, string | number>) => t(`media.${
 const has = (t: T, k: string) => t(k as Key) !== k;
 /** «Cinema Night» → «Кино (ночь)»; a mode the panel has no word for (Samsung's own Russian names) stays as the TV says it */
 export const modeLabel = (t: T, o: string) => { const k = `media.mode.${o.toLowerCase().replace(/[\s-]+/g, '_')}`; return has(t, k) ? t(k as Key) : o; };
-/** «TV» / «digital_tv» → «Телевидение», «hdmi1» → «HDMI 1»; anything else as the TV names it */
-export const sourceLabel = (t: T, s: string) => /^(tv|digital_tv|dtv|live ?tv)$/i.test(s) ? mw(t, 'src.tv') : /^hdmi\s?(\d)$/i.test(s) ? `HDMI ${s.replace(/\D/g, '')}` : s;
 const PAD_ORDER: PadKey[] = ['back', 'home', 'menu'];
 const MAX_QUEUE = 6;
 
@@ -58,7 +56,7 @@ function MediaSheet({ view, registry, host, t, lang, onClose, room, wide }: Appl
 
   // what the hero says
   const stateWord = !online ? t('ui.offline') : m.phase === 'unavailable' ? mw(t, 'offline') : m.phase === 'off' ? mw(t, 'off') : m.phase === 'playing' ? mw(t, 'playing') : m.phase === 'paused' ? mw(t, 'paused') : mw(t, 'on');
-  const big = !online || m.phase === 'unavailable' || m.phase === 'off' ? null : m.app ? sourceLabel(t, m.app) : mw(t, 'nothing');
+  const big = !online || m.phase === 'unavailable' || m.phase === 'off' ? null : m.app ? (sourcesAreApps(profile.id) ? m.app : sourceLabel(t, m.app)) : mw(t, 'nothing');
   const offHint = online && m.phase === 'off' && !m.can.on ? mw(t, 'noPowerOn') : online && m.phase === 'unavailable' ? mw(t, 'offlineHint') : null;
   const hero = <section className={`at-md-hero is-${online ? m.phase : 'unavailable'} ${m.artwork && live ? 'has-art' : ''}`} aria-label={stateWord}>
     {m.artwork && live && <span className="at-md-art-bg" aria-hidden="true" style={{ backgroundImage: `url("${m.artwork.replace(/["\\]/g, '')}")` }} />}
@@ -103,10 +101,10 @@ function MediaSheet({ view, registry, host, t, lang, onClose, room, wide }: Appl
     {padErr && <p className="at-md-err" role="alert">{mw(t, 'fail')}: {padErr}</p>}
   </section> : null;
 
-  const apps = profile.integration?.platform === 'apple_tv';
+  const apps = sourcesAreApps(profile.id), label = (x: string) => apps ? x : sourceLabel(t, x);
   const sources = live && m.can.source ? <section className="at-md-card" aria-label={mw(t, apps ? 'apps' : 'inputs')}>
     <h3>{mw(t, apps ? 'apps' : 'inputs')}</h3>
-    <div className="at-md-chips" role="radiogroup" aria-label={mw(t, apps ? 'apps' : 'inputs')}>{m.sources.map(s => { const on = s.id === m.source; return <button type="button" role="radio" aria-checked={on} className={on ? 'is-on' : ''} disabled={busy} onClick={() => { if (!on) void send('source', { k: 'source', id: s.id }); }}>{sourceLabel(t, s.label)}{s.sub && <small>{sourceLabel(t, s.sub)}</small>}</button>; })}</div>
+    <div className="at-md-chips" role="radiogroup" aria-label={mw(t, apps ? 'apps' : 'inputs')}>{m.sources.map(s => { const on = s.id === m.source; return <button type="button" role="radio" aria-checked={on} className={on ? 'is-on' : ''} disabled={busy} onClick={() => { if (!on) void send('source', { k: 'source', id: s.id }); }}>{label(s.label)}{s.sub && <small>{label(s.sub)}</small>}</button>; })}</div>
   </section> : null;
 
   // picture and sound (behind the gear): the TV's own selects and numbers, or SmartThings' for the Samsung
