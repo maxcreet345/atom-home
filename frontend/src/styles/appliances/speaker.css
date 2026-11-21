@@ -1,1 +1,71 @@
-/* The speaker family cards (src/appliances/speaker.tsx). */
+/* The speaker family cards (src/appliances/speaker.tsx). The sheet's chrome is the kettle's (at-kt-*); colour only while music plays or Alice
+ * is awake ("Тихий дом"): a silent station is a quiet grey card. No @media on size and no viewport units — container queries only. */
+.hm-shell .at-sp-sheet{--sp-accent:#6e56cf;--sp-accent-2:#8b5cf6;--sp-ink:#4c3aa8;min-width:0}
+.hm-shell .at-sp-sheet .at-kt-card{overflow:hidden;min-width:0}.hm-shell .at-sp-sheet .at-kt-col{min-width:0}
+.hm-shell.ah-shell[data-theme="dark"] .at-sp-sheet{--sp-ink:#c4b5fd}
+.hm-shell .at-sp-face{width:40px;height:40px;flex:none;display:grid;place-items:center}.hm-shell .at-sp-face>.ah-photo{width:100%;height:100%;border-radius:12px}
+.hm-shell .at-sp-head h2{overflow-wrap:anywhere}
+/* the drawing of the station */
+.hm-shell .at-sp-art{width:100%;height:100%}
+.hm-shell .at-sp-art-shadow{fill:#0000001a}
+.hm-shell .at-sp-art-body{fill:#3a3a3c;stroke:#2c2c2e;stroke-width:1.2}.hm-shell .at-sp-art-top{fill:#48484a}
+.hm-shell .at-sp-art-screen{fill:#1c1c1e}.hm-shell .at-sp-art-grille{stroke:#5a5a5e;stroke-width:1.4;fill:none}
+.hm-shell .at-sp-art-ring{fill:none;stroke:#636366;stroke-width:2.4}.hm-shell .at-sp-art-dot{fill:#8e8e93}
+.hm-shell .at-sp-art.is-lit .at-sp-art-ring{stroke:var(--sp-accent-2,#8b5cf6)}.hm-shell .at-sp-art.is-lit .at-sp-art-dot{fill:#c4b5fd}
+.hm-shell .at-sp-art-bars rect{fill:#a78bfa}
+.hm-shell.ah-shell[data-theme="dark"] .at-sp-art-body{fill:#636366;stroke:#48484a}.hm-shell.ah-shell[data-theme="dark"] .at-sp-art-top{fill:#7c7c80}
+/* what plays */
+.hm-shell .at-sp-hero{container-type:inline-size;display:grid;grid-template-columns:minmax(0,1fr);justify-items:center;gap:14px;padding:22px 18px 20px;border-radius:26px;background:var(--ah-group);color:var(--ah-ink);text-align:center;min-width:0}
+.hm-shell .at-sp-hero.is-playing,.hm-shell .at-sp-hero.is-alive{background:linear-gradient(165deg,var(--sp-accent),var(--sp-accent-2));color:#fff}
+.hm-shell .at-sp-hero.is-paused{background:linear-gradient(165deg,#ece9f8,#f6f5fb)}
+.hm-shell.ah-shell[data-theme="dark"] .at-sp-hero.is-paused{background:linear-gradient(165deg,rgba(110,86,207,.28),transparent 80%),var(--ah-group)}
+.hm-shell .at-sp-hero.is-offline .at-sp-cover{opacity:.55;filter:grayscale(1)}
+.hm-shell .at-sp-cover{display:grid;place-items:center;width:min(46%,150px);aspect-ratio:1}
+.hm-shell .at-sp-cover.has-cover{width:min(72%,260px);border-radius:18px;overflow:hidden;box-shadow:0 10px 28px #00000040}
+.hm-shell .at-sp-cover>.ah-photo{width:100%;height:100%;border-radius:inherit}.hm-shell .at-sp-cover>img{display:block;width:100%;height:100%;object-fit:cover}
+.hm-shell .at-sp-now{display:grid;gap:4px;justify-items:center;width:100%;min-width:0}
+.hm-shell .at-sp-status{font-size:.8125rem;font-weight:600;letter-spacing:.02em;text-transform:uppercase;opacity:.8}
+.hm-shell .at-sp-title{font-size:1.375rem;font-weight:700;line-height:1.2;max-width:100%;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.hm-shell .at-sp-artist{font-size:1rem;opacity:.85;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-shell .at-sp-hero:not(.is-playing):not(.is-alive) .at-sp-artist{color:var(--ah-muted);opacity:1;white-space:normal}
+.hm-shell .at-sp-time{display:grid;gap:4px;width:min(100%,320px);margin-top:6px}
+.hm-shell .at-sp-bar{display:block;height:4px;border-radius:2px;background:#ffffff4d;overflow:hidden}.hm-shell .at-sp-bar i{display:block;height:100%;background:#fff;border-radius:2px}
+.hm-shell .at-sp-hero:not(.is-playing) .at-sp-bar{background:#0000001a}.hm-shell .at-sp-hero:not(.is-playing) .at-sp-bar i{background:var(--sp-accent)}
+.hm-shell .at-sp-time small{display:flex;justify-content:space-between;font-size:.75rem;font-variant-numeric:tabular-nums;opacity:.8}
+.hm-shell .at-sp-transport{display:flex;align-items:center;justify-content:center;gap:clamp(6px,3cqw,18px);flex-wrap:nowrap}
+.hm-shell .at-sp-transport button{display:grid;place-items:center;border:0;cursor:pointer;color:inherit;background:none;padding:0}
+.hm-shell .at-sp-skip{width:52px;height:52px;border-radius:50%}.hm-shell .at-sp-mini{width:44px;height:44px;border-radius:50%;opacity:.7}.hm-shell .at-sp-mini.is-on{opacity:1;background:#ffffff33}
+.hm-shell .at-sp-play{width:68px;height:68px;border-radius:50%;background:var(--sp-accent)!important;color:#fff!important;box-shadow:0 6px 16px #6e56cf55}
+.hm-shell .at-sp-hero.is-playing .at-sp-play,.hm-shell .at-sp-hero.is-alive .at-sp-play{background:#fff!important;color:var(--sp-accent)!important;box-shadow:0 6px 16px #00000033}
+.hm-shell .at-sp-transport button:disabled{opacity:.35;cursor:default;box-shadow:none}
+.hm-shell .at-sp-wake{min-height:44px;padding:0 22px}
+/* the volume */
+.hm-shell .at-sp-vol{grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;padding:10px 16px}
+.hm-shell .at-sp-mute{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;border:0;background:var(--ah-tile);color:var(--ah-ink);cursor:pointer}.hm-shell .at-sp-mute.is-on{background:var(--sp-accent);color:#fff}.hm-shell .at-sp-mute:disabled{opacity:.45;cursor:default}
+.hm-shell .at-sp-vol input[type=range]{width:100%;min-width:0;height:44px;margin:0;accent-color:var(--sp-accent);background:none}
+.hm-shell .at-sp-vol input[type=range]:disabled{opacity:.45}
+.hm-shell .at-sp-volnum{min-width:52px;text-align:right;font-size:1.25rem;font-weight:600;font-variant-numeric:tabular-nums}.hm-shell .at-sp-volnum i{font-style:normal;font-size:.8125rem;color:var(--ah-muted);margin-left:2px}.hm-shell .at-sp-volnum small{font-size:.8125rem;font-weight:600;color:var(--ah-muted)}
+/* «Сказать Алисе» */
+.hm-shell .at-sp-say-body{display:grid;gap:10px;padding:12px 16px 14px;min-width:0}
+.hm-shell .at-sp-quick{display:flex;flex-wrap:wrap;gap:6px}.hm-shell .at-sp-quick .hm-pill{min-height:40px;padding:0 14px;font-size:.875rem}
+.hm-shell .at-sp-field input{width:100%;box-sizing:border-box;min-height:48px;padding:0 14px;border-radius:14px;border:1px solid var(--ah-line,#0000001f);background:var(--ah-tile);color:var(--ah-ink);font:inherit;font-size:1rem}
+.hm-shell .at-sp-field input:focus-visible{outline:2px solid var(--sp-accent);outline-offset:1px}
+.hm-shell .at-sp-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.hm-shell .at-sp-say-acts{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.hm-shell .at-sp-say-acts .hm-pill{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px}
+.hm-shell .at-sp-say-acts .hm-pill.is-primary{background:var(--sp-accent);color:#fff}
+.hm-shell .at-sp-left{margin-left:auto;font-size:.8125rem;color:var(--ah-muted)}
+.hm-shell .at-sp-say .at-kt-note{margin:0;line-height:1.35}
+/* rows */
+.hm-shell .at-sp-select{flex-wrap:wrap}.hm-shell .at-sp-select .ah-row-text{flex:1 1 180px;min-width:0}.hm-shell .at-sp-select select{flex:0 1 auto;min-width:0;max-width:100%;min-height:44px;padding:0 10px;border-radius:12px;border:0;background:var(--ah-tile);color:var(--ah-ink);font:inherit;font-weight:600}
+.hm-shell .at-sp-select select:disabled{opacity:.5}
+.hm-shell .at-sp-unknown{color:var(--ah-muted)}
+.hm-shell .at-sp-sheet .at-kt-sw.is-on i{background:var(--sp-accent)}
+.hm-shell .at-sp-pad{padding:0 18px 12px;margin:0;line-height:1.35}
+.hm-shell .at-sp-alarms .ah-row-text strong{white-space:normal}
+.hm-shell .at-sp-restart{width:100%;border:0;background:none;color:var(--ah-ink);text-align:left;cursor:pointer}
+.hm-shell .at-sp-ask{display:grid;gap:10px;margin:4px 12px 10px;padding:14px;border-radius:16px;background:var(--ah-tile)}.hm-shell .at-sp-ask p{margin:0;font-size:.9375rem;line-height:1.35}
+.hm-shell .at-sp-ask>div{display:flex;justify-content:flex-end;gap:8px}.hm-shell .at-sp-ask .hm-pill{min-height:44px;padding:0 18px}.hm-shell .at-sp-yes{background:#d70015;color:#fff}
+.hm-shell .at-sp-sheet.is-wide .at-sp-hero{min-height:100%;align-content:center}
+@container (max-width:360px){.hm-shell .at-sp-skip{width:46px;height:46px}.hm-shell .at-sp-mini{width:40px;height:40px}.hm-shell .at-sp-play{width:60px;height:60px}.hm-shell .at-sp-title{font-size:1.1875rem}}
+@media (prefers-reduced-motion:no-preference){.hm-shell .at-sp-bar i{transition:width 1s linear}}
+.hm-shell .at-sp-status:empty{display:none}
