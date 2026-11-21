@@ -97,6 +97,7 @@ export interface Laundry {
   progress: number | null; /** the delayed start / end moment */ delayAt: number | null;
   /** remote control allowed on the machine: true / false / not known */ remote: boolean | null;
   error: { code: string | null; key: Key | null } | null; doneAt: number | null;
+  /** the machine's notices that are not errors (LocalThings: «FilterAlarm»…) */ alerts: string[];
   childLock: boolean | null; wrinkle: boolean; drumClean: number | null; cycles: number | null;
   /** the cycle began (ms), for the plug's energy of the cycle */ startAt: number | null;
 }
@@ -116,7 +117,7 @@ function readLg(reg: Registry, b: Record<string, string>, now: number): Laundry 
   const st = (r: string) => b[r] ? reg.states[b[r]] : undefined;
   const status = st('status'), s = String(status?.state ?? '').toLowerCase();
   const total = n(st('total')?.state), remote = onOff(st('remote')), cycles = n(st('cycles')?.state);
-  const base: Laundry = { machine: 'washer', brand: 'lg', phase: 'idle', step: null, steps: ['wash', 'rinse', 'spin'], program: null, programCode: null, endAt: null, left: null, total, progress: null, delayAt: null, remote, error: null, doneAt: null, childLock: null, wrinkle: false, drumClean: null, cycles, startAt: null };
+  const base: Laundry = { machine: 'washer', brand: 'lg', phase: 'idle', step: null, steps: ['wash', 'rinse', 'spin'], program: null, programCode: null, endAt: null, left: null, total, progress: null, delayAt: null, remote, error: null, alerts: [], doneAt: null, childLock: null, wrinkle: false, drumClean: null, cycles, startAt: null };
   if (dead(status) || s === 'unknown' || !s) return { ...base, phase: 'unavailable' };
   const STEP: Record<string, Step> = { detecting: 'sense', running: 'wash', steam_softening: 'steam', refreshing: 'refresh', rinsing: 'rinse', rinse_hold: 'rinseHold', spinning: 'spin', drying: 'dry', cool_down: 'cool' };
   let phase: Phase = s === 'power_off' || s === 'sleep' ? 'off' : s === 'initial' ? 'idle' : s === 'reserved' ? 'delay' : s === 'pause' || s === 'rinse_hold' ? 'paused' : s === 'end' ? 'done' : s === 'error' ? 'error' : STEP[s] ? 'running' : 'idle';
@@ -143,11 +144,15 @@ function readSamsung(reg: Registry, b: Record<string, string>, now: number): Lau
   const code = st('cycle')?.state ?? null, alarm = String(st('alarm')?.state ?? '').trim();
   const lock = onOff(st('childLock')), wrinkle = st('wrinkleActive')?.state === 'on';
   const base: Laundry = { machine: isDryer ? 'dryer' : 'washer', brand: 'samsung', phase: 'idle', step: null, steps: isDryer ? ['dry', 'cool'] : ['wash', 'rinse', 'spin'], program: null, programCode: code && !['unknown', 'unavailable'].includes(code) ? code : null, endAt: null, left: null, total: null, progress: null, delayAt: null,
-    remote: onOff(st('remote')), error: null, doneAt: null, childLock: lock === null ? null : !lock /* HA's lock class: on = unlocked */, wrinkle, drumClean: n(st('drumClean')?.state), cycles: null, startAt: null };
+    remote: onOff(st('remote')), error: null, alerts: [], doneAt: null, childLock: lock === null ? null : !lock /* HA's lock class: on = unlocked */, wrinkle, drumClean: n(st('drumClean')?.state), cycles: null, startAt: null };
   if (dead(running) || (b.machine && dead(st('machine')))) return { ...base, phase: 'unavailable' };
   const STEP: Record<string, Step> = { weightsensing: 'sense', laundrysensing: 'sense', drying: 'dry', aidrying: 'dry', dryingwithdooropen: 'dry', cooling: 'cool', airwashing: 'refresh', steaming: 'steam', sanitizing: 'steam', prewash: 'wash', wash: 'wash', predrain: 'wash', rinse: 'rinse', spin: 'spin' };
   const active = machine ? machine === 'active' || machine === 'run' : running?.state === 'on';
-  const hasAlarm = !!alarm && !['none', 'unknown', 'unavailable', 'null', '0', ''].includes(alarm.toLowerCase());
+  // LocalThings joins the board's active alarm codes with «, » («FilterAlarm», «DoorA_Opened»…) and says «none» when there is none: only a code
+  // that names an error makes the machine's state an error; the others are notices beside its state
+  const codes = ['none', 'unknown', 'unavailable', ''].includes(alarm.toLowerCase()) ? [] : alarm.split(/,\s*/).map(c => c.trim()).filter(Boolean);
+  const errors = codes.filter(c => /error/i.test(c)), hasAlarm = errors.length > 0;
+  base.alerts = codes.filter(c => !/error/i.test(c));
   let phase: Phase = hasAlarm ? 'error' : stage === 'delaywash' ? 'delay' : machine === 'pause' ? 'paused' : active ? 'running' : stage === 'finish' || wrinkle ? 'done' : st('power')?.state === 'off' ? 'off' : 'idle';
   const step: Step | null = phase === 'running' || phase === 'paused' ? (STEP[stage] ?? null) : phase === 'done' && wrinkle ? 'wrinkle' : null;
   const steps: Step[] = [...base.steps, ...(isDryer && st('wrinkle')?.state === 'on' ? ['wrinkle' as Step] : [])];
@@ -160,11 +165,9 @@ function readSamsung(reg: Registry, b: Record<string, string>, now: number): Lau
   } else if (phase === 'delay') delayAt = finish;
   else if (phase !== 'error') total = minutes; // idle: what the chosen program takes
   const doneAt = phase === 'done' ? ms(running?.last_changed) : null;
-  if (phase === 'error') { const words = SAMSUNG_ALARMS[alarm.toLowerCase()]; base.error = { code: alarm, key: words ? `laundry.err.ss.${words}` as Key : null }; }
+  if (phase === 'error') base.error = { code: errors.map(c => c.replace(/^error_?code_?/i, '')).join(', '), key: null };
   return { ...base, phase, step, steps, program: null, endAt, left, progress, total, startAt, delayAt, doneAt };
 }
-/** Samsung's own service codes, only the ones its manuals name the same way on every dryer; any other code is said as it is */
-const SAMSUNG_ALARMS: Record<string, string> = { de: 'door', dc: 'door', 'de1': 'door', 'de2': 'door', ts: 'sensor', to: 'sensor', hs: 'sensor', he: 'heater', hc: 'heater', ae: 'comm', '9c1': 'power', '9e1': 'power', fe: 'power' };
 /** One machine of an instance, as the card and the tile say it. `now`: the clock, for what is left (tests pin it). */
 export function readLaundry(reg: Registry, inst: Pick<ProfileInstance, 'profileId' | 'bindings'>, t: T | null, now = Date.now()): Laundry | null {
   const fam = familyKind(inst.profileId); if (!fam) return null;
@@ -179,6 +182,8 @@ export function minutesText(min: number, t: T): string { const m = Math.max(0, M
 /** «14:32» in the house's clock */
 export const clockText = (at: number, lang: Lang) => dateFormat(locales[lang], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', ...zoneOption() }).format(at);
 export const stepText = (s: Step, l: Pick<Laundry, 'machine'>, t: T) => t(`laundry.step.${s}` as Key);
+/** a notice in words: the lint filter, the door; any other as the machine names it */
+export const alertText = (code: string, t: T) => /filter/i.test(code) ? t('laundry.alert.filter') : /door.*open/i.test(code) ? t('laundry.alert.door') : t('laundry.alert.code', { code });
 export function errorWords(l: Laundry, t: T): string { const e = l.error; if (!e) return ''; if (e.key) return t(e.key); return e.code && l.brand === 'samsung' ? t('laundry.err.code', { code: e.code }) : t('laundry.err.unknown'); }
 /** What the machine is doing, in a few words: the tile's line and the sheet's status. */
 export function lineOf(l: Laundry, t: T, lang: Lang): string | null {

@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import type { Registry, StateRow } from '../src/model/registry.ts';
 import { devicesFor, suggestBindings, candidates, instanceClaims, instanceView, foundHere, type ProfileInstance } from '../src/model/card-catalog.ts';
-import { family, LG_WASHER, SAMSUNG_DRYER, readLaundry, lineOf, callFor, actsFor, minutesText, cycleName, DRYER_CYCLES, DONE_KEEP_MS } from '../src/appliances/laundry.profiles.ts';
+import { family, LG_WASHER, SAMSUNG_DRYER, readLaundry, lineOf, alertText, callFor, actsFor, minutesText, cycleName, DRYER_CYCLES, DONE_KEEP_MS } from '../src/appliances/laundry.profiles.ts';
 import { translator } from '../src/i18n/index.ts';
 import { words_laundry } from '../src/i18n/words-laundry.ts';
 
@@ -114,8 +114,11 @@ test('the dryer\'s tile line in every state', () => {
   assert.equal(at('idle', 'idle', { [b.wrinkleActive]: { state: 'on' } }), 'Готово · защита от сминания');
   assert.equal(at('idle', 'idle'), 'Ожидание');
   assert.equal(at('idle', 'idle', { [b.power]: { state: 'off' } }), 'Выключена');
-  assert.equal(at('idle', 'idle', { [b.alarm]: { state: 'dE' } }), 'Ошибка: дверца не закрыта');
-  assert.equal(at('idle', 'idle', { [b.alarm]: { state: 'XY7' } }), 'Ошибка: код XY7');
+  // LocalThings: the board's active codes joined with «, », «none» when clear; only an error code makes the state an error
+  assert.equal(at('idle', 'idle', { [b.alarm]: { state: 'ErrorCode_dE' } }), 'Ошибка: код dE');
+  assert.equal(at('active', 'drying', { [b.alarm]: { state: 'FilterAlarm' } }), 'Сушка · осталось 42 мин', 'a notice is not an error');
+  assert.deepEqual(readLaundry(withStates({ [b.alarm]: { state: 'FilterAlarm, DoorA_Opened' } }), d, t, NOW)!.alerts, ['FilterAlarm', 'DoorA_Opened']);
+  assert.equal(alertText('FilterAlarm', t), 'Почистите фильтр ворса');
   assert.equal(at('active', 'delaywash', { [b.running]: { state: 'off' } }).startsWith('Отложено · закончит в'), true);
   assert.equal(line(withStates({ [b.running]: { state: 'unavailable' } }), d), null);
 });

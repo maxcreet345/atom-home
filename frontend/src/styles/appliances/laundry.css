@@ -43,3 +43,4 @@
 .hm-shell .at-ln .at-kt-col{grid-template-columns:minmax(0,1fr)}
 .hm-shell .at-ln .at-kt-row:not(.is-col){flex-wrap:wrap}.hm-shell .at-ln .at-kt-row:not(.is-col) .ah-row-text{min-width:min(100%,9rem);flex:1 1 9rem}
 .hm-shell .at-ln .at-kt-chips button{max-width:100%;white-space:normal;text-align:center;line-height:1.2}
+.hm-shell .at-ln-note.is-warn>svg{color:#b25e00}.hm-shell.ah-shell[data-theme="dark"] .at-ln-note.is-warn>svg{color:#ffb340}

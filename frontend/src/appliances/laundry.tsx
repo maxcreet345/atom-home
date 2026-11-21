@@ -5,7 +5,7 @@
  * what to press on the machine, instead of offering buttons that would be refused. */
 import { useEffect, useState } from 'preact/hooks';
 import type { ApplianceSheetProps, ApplianceUi } from './types.ts';
-import { readLaundry, lineOf, actsFor, callFor, minutesText, clockText, stepText, cycleName, machineName, type Act, type Laundry, type Step } from './laundry.profiles.ts';
+import { readLaundry, lineOf, actsFor, callFor, minutesText, clockText, stepText, cycleName, alertText, machineName, type Act, type Laundry, type Step } from './laundry.profiles.ts';
 import { HOLD_MS, onOffOf, useRun } from '../modules/kettle.tsx';
 import { Ask, type Question } from '../ui/setup.tsx';
 import { Icon } from '../ui/primitives.tsx';
@@ -68,6 +68,7 @@ function LaundrySheet({ view, registry, host, t, lang, onClose, room, wide }: Ap
   // ---- remote control, child lock, errors in words ----
   const notices = there && <>
     {l.phase === 'error' && <p className="at-ln-note is-alert" role="alert"><Icon name="warning" size={18} /><span>{w(t, `errHint.${l.brand}`)}</span></p>}
+    {l.alerts.map(a => <p className="at-ln-note is-warn" data-laundry-alert={a}><Icon name="warning" size={18} /><span><b>{alertText(a, t)}</b></span></p>)}
     {remoteOff && <p className="at-ln-note" data-laundry-remote="off"><Icon name="lock" size={18} /><span><b>{w(t, `remoteOff.${l.brand}`)}</b>{w(t, `remoteHow.${l.brand}`)}</span></p>}
   </>;
   // ---- program and options ----
