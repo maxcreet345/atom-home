@@ -141,6 +141,10 @@ test('media: the tile line — off, on, on with an input, playing «App · title
   assert.equal(mediaTileLine(reg, HISENSE_LIVING, t), 'Выключен');
   set(reg, 'media_player.living_tv', 'on', { source: 'HDMI3', media_title: 'Apple TV', volume_level: 0.11 });
   assert.equal(mediaTileLine(reg, HISENSE_LIVING, t), 'Включён · Apple TV', 'the input by what is plugged in; its title is the same words and is not said twice');
+  // VIDAA's «CEC names» option puts the device in the source itself: the same words, the chip still the chosen one
+  set(reg, 'media_player.living_tv', 'on', { source: 'HDMI3 (Apple TV)', source_list: ['AV', 'HDMI1', 'HDMI3 (Apple TV)', 'TV'], custom_labels: {} });
+  assert.equal(mediaTileLine(reg, HISENSE_LIVING, t), 'Включён · Apple TV');
+  assert.deepEqual(readMedia(reg, HISENSE_LIVING).sources.find(x => x.id === readMedia(reg, HISENSE_LIVING).source), { id: 'HDMI3 (Apple TV)', label: 'Apple TV', sub: 'HDMI3' });
   set(reg, 'media_player.living_tv', 'on', { source: undefined, media_title: undefined, app_name: undefined }); set(reg, 'sensor.living_tv_active_app', 'Standby');
   assert.equal(mediaTileLine(reg, HISENSE_LIVING, t), 'Включён', 'VIDAA\'s «Standby» is not an app');
   set(reg, 'sensor.living_tv_active_app', 'YouTube'); assert.equal(mediaTileLine(reg, HISENSE_LIVING, t), 'Включён · YouTube');

@@ -44,11 +44,12 @@ const SCEN = {
     'media_player.kids_tv': ['playing', { volume_level: 0.24, is_volume_muted: true, source: 'HDMI1', media_title: 'Mi TV Stick' }], 'remote.kids_tv': ['on'],
     'media_player.bedroom_tv': ['playing', { volume_level: 0.09, is_volume_muted: false, source: 'TV' }], 'remote.bedroom_tv': ['on'], 'media_player.bedroom_tv_smartthings': ['on', { sound_mode: 'Усиление' }], 'select.spalnia_spalnia_televizor_smartthings_samsung_qe50q60t_picture_mode': ['Кино'], 'sensor.bedroom_tv_channel_name': ['Moldova 1'],
     'media_player.living_appletv': ['playing', { app_name: 'Infuse', source: 'Infuse', media_title: 'The Long Way Home', media_artist: 'S1 · E3', entity_picture: ART, volume_level: 0.4 }], 'remote.living_appletv': ['on'],
-    'media_player.kids_mitv_stick': ['playing', { app_name: 'YouTube Kids', media_title: 'Маша и Медведь', volume_level: 0.3, is_volume_muted: false }], 'remote.kids_mitv_stick': ['on'],
-    'media_player.bedroom_chromecast': ['playing', { app_name: 'Netflix', media_title: 'Stranger Things', restored: undefined }], 'remote.bedroom_chromecast': ['on'] },
+    // Android TV Remote does not report playback (HA docs): «on» with the open app is all it ever says
+    'media_player.kids_mitv_stick': ['on', { app_name: 'YouTube Kids', is_volume_muted: false }], 'remote.kids_mitv_stick': ['on'],
+    'media_player.bedroom_chromecast': ['on', { app_name: 'Netflix', restored: undefined }], 'remote.bedroom_chromecast': ['on'] },
   unavailable: Object.fromEntries(Object.values(CARDS).flatMap(c => Object.values(c.bindings)).map(id => [id, ['unavailable']])),
 };
-const WANT = { off: id => id === 'cCast' ? 'unavailable' : 'off', on: () => 'on', playing: id => id === 'cSamsung' && false ? 'on' : 'playing', unavailable: () => 'unavailable' };
+const WANT = { off: id => id === 'cCast' ? 'unavailable' : 'off', on: () => 'on', playing: id => id === 'cStick' || id === 'cCast' ? 'on' : 'playing', unavailable: () => 'unavailable' };
 
 const browser = await chromium.launch(); const checks = []; const errors = [];
 const check = (n, p, d = {}) => { checks.push({ n, p: !!p, ...d }); if (!p) console.log('FAIL', n, JSON.stringify(d)); };
@@ -86,7 +87,7 @@ try {
     // 2. the Home tiles and the twins
     await open('#home', 'playing'); await page.waitForTimeout(300);
     const tiles = await page.evaluate(ids => { const sh = document.getElementById('root').shadowRoot; return { lines: Object.fromEntries(ids.map(id => [id, sh.querySelector(`[data-device-key="p:${id}"] .ah-tile-text small`)?.textContent ?? null])), twins: [...sh.querySelectorAll('[data-device-key]')].map(e => e.dataset.deviceKey).filter(k => /airplay|smartthings/.test(k)) }; }, Object.keys(CARDS));
-    check(`${tag}: home tiles say their line`, tiles.lines.cLiving?.startsWith('YouTube · Карпаты') && tiles.lines.cApple?.startsWith('Infuse · The Long Way Home') && /^Mi TV Stick( · |$)/.test(tiles.lines.cKids ?? '') && tiles.lines.cSamsung?.startsWith('Телевидение · Moldova 1'), tiles.lines);
+    check(`${tag}: home tiles say their line`, tiles.lines.cLiving?.startsWith('YouTube · Карпаты') && tiles.lines.cApple?.startsWith('Infuse · The Long Way Home') && /^Mi TV Stick( · |$)/.test(tiles.lines.cKids ?? '') && tiles.lines.cSamsung?.startsWith('Телевидение · Moldova 1') && tiles.lines.cCast?.startsWith('Включён · Netflix'), tiles.lines);
     check(`${tag}: no AirPlay / SmartThings twin tile`, tiles.twins.length === 0, tiles);
     await page.evaluate(() => document.getElementById('root').shadowRoot.querySelector('[data-device-key="p:cLiving"]')?.scrollIntoView({ block: 'center' })); await page.waitForTimeout(300);
     await page.screenshot({ path: resolve(out, `${vp}-${theme}-home-tiles.png`), fullPage: false });
@@ -101,6 +102,8 @@ try {
       const form = await page.evaluate(() => { const r = document.getElementById('root').shadowRoot, b = r.querySelector('[data-action="add-card"]'); return { ready: !!b && b.getAttribute('aria-disabled') !== 'true', preview: r.querySelectorAll('.at-cards-preview-tile > *').length, sheet: !!r.querySelector('.at-md-sheet') }; });
       check(`${tag}: Hisense form filled and previewed`, form.ready && form.preview > 0 && form.sheet, form);
       await page.screenshot({ path: resolve(out, `${vp}-${theme}-catalog-form-hisense.png`) });
+      // the preview is inert and drawn on a host that refuses: even a scripted press sends nothing
+      await page.evaluate(() => { const r = document.getElementById('root').shadowRoot; for (const b of r.querySelectorAll('.at-cards-preview .at-md-sheet button')) b.click(); }); await page.waitForTimeout(300);
     }
     check(`${tag}: catalog sent nothing`, (await log()).length === 0);
     // 4. one OK pressed on purpose on the Living room TV: to its own remote only, as VIDAA's KEY_OK
@@ -108,6 +111,14 @@ try {
       await open('#home?device=p:cLiving', 'on'); await page.click('.at-md-ok'); await page.waitForTimeout(400);
       const sent = await log(); check(`${tag}: OK → remote.living_tv KEY_OK only`, sent.length === 1 && sent[0].domain === 'remote' && sent[0].service === 'send_command' && sent[0].data.entity_id === 'remote.living_tv' && sent[0].data.command === 'KEY_OK', { sent });
       await page.screenshot({ path: resolve(out, `${vp}-${theme}-pressed-ok-refused-by-preview.png`) });
+      // the Home tile: what a tap does (the panel's generic media tile — a power toggle on the card's OWN media_player, the sheet opens by «…» / long press)
+      await open('#home', 'on'); await page.evaluate(() => document.getElementById('root').shadowRoot.querySelector('[data-device-key="p:cLiving"]')?.scrollIntoView({ block: 'center' }));
+      await page.click('[data-device-key="p:cLiving"] .ah-tile-hit'); await page.waitForTimeout(400);
+      const tap = await log(), opened = await page.evaluate(() => !!document.getElementById('root').shadowRoot.querySelector('.at-md-sheet'));
+      check(`${tag}: tile tap touches only its own TV`, tap.every(c => c.data?.entity_id === 'media_player.living_tv'), { tap, opened });
+      console.log('tile tap:', JSON.stringify(tap), 'sheet opened:', opened);
+      await page.click('[data-device-key="p:cLiving"] .ah-tile-more'); await page.waitForTimeout(400);
+      check(`${tag}: «…» opens the TV sheet`, await page.evaluate(() => document.getElementById('root').shadowRoot.querySelector('.at-md-sheet')?.dataset.media === 'hisense.65u8kq'));
       // the house offline: everything quiet, nothing sent
       await open('#home?device=p:cLiving', 'on'); await page.evaluate(() => window.atomPreview.setOnline(false)); await page.waitForTimeout(300);
       const off = await page.evaluate(() => { const s = document.getElementById('root').shadowRoot.querySelector('.at-md-sheet'); return { phase: s?.dataset.phase, enabled: [...(s?.querySelectorAll('.at-md-ring button, .at-md-acts button') ?? [])].filter(b => !b.disabled).length }; });

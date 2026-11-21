@@ -97,7 +97,7 @@ function MediaSheet({ view, registry, host, t, lang, onClose, room, wide }: Appl
       {keys.ok && <button type="button" className="at-md-ok" aria-label={mw(t, 'key.ok')} disabled={!m.can.pad || !online} onClick={() => press('ok')}>OK</button>}
     </div>
     <div className="at-md-keys">{PAD_ORDER.filter(k => keys[k]).map(k => <button type="button" disabled={!m.can.pad || !online} onClick={() => press(k)}><KeyGlyph k={k} /><span>{padKeyLabel(k)}</span></button>)}</div>
-    {!(m.can.pad && online) && <p className="at-md-note">{mw(t, 'padOff')}</p>}
+    {online && !m.can.pad && <p className="at-md-note">{mw(t, 'padOff')}</p>}
     {padErr && <p className="at-md-err" role="alert">{mw(t, 'fail')}: {padErr}</p>}
   </section> : null;
 

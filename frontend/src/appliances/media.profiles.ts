@@ -80,7 +80,9 @@ export function readMedia(reg: Registry, inst: Pick<ProfileInstance, 'bindings'>
   const live = phase !== 'off' && phase !== 'unavailable';
   // VIDAA names an HDMI input by what is plugged in (custom_labels: HDMI3 → «Apple TV»)
   const labels = (a.custom_labels && typeof a.custom_labels === 'object' ? a.custom_labels : {}) as Record<string, unknown>;
-  const label = (id: string) => str(labels[id]) ?? id;
+  // …or, with its «CEC names» option, in the source itself: «HDMI3 (Apple TV)» (tv/media.py build_media_player_current_source)
+  const cec = (id: string) => /^(.+?) \((.+)\)$/.exec(id);
+  const label = (id: string) => str(labels[id]) ?? cec(id)?.[2] ?? id, port = (id: string) => cec(id)?.[1] ?? id;
   const source = live ? str(a.source) : null;
   const sensorApp = live ? str(st(reg, b, 'app')?.state) : null;
   const app = live ? str(a.app_name) ?? (source ? label(source) : null) ?? (sensorApp && !NOTHING.test(sensorApp) ? sensorApp : null) : null;
@@ -91,7 +93,7 @@ export function readMedia(reg: Registry, inst: Pick<ProfileInstance, 'bindings'>
   const pad = padKeys(b, reg);
   const sibOn = !!sib && !DEAD.has(sib.state) && has(sib, F.turnOn);
   const vol = typeof a.volume_level === 'number' && Number.isFinite(a.volume_level) ? Math.round(Math.max(0, Math.min(1, a.volume_level)) * 100) : null;
-  const sources = has(tv, F.source) ? list(a.source_list).map(id => ({ id, label: label(id), sub: label(id) !== id ? id : null })) : [];
+  const sources = has(tv, F.source) ? list(a.source_list).map(id => ({ id, label: label(id), sub: label(id) !== id ? port(id) : null })) : [];
   // the sound modes: the TV's own media_player, or SmartThings' for the Samsung (its sound_mode_list)
   const modeHost = has(tv, F.soundMode) && list(a.sound_mode_list).length ? tv : sib && !DEAD.has(sib.state) && has(sib, F.soundMode) ? sib : undefined;
   return {
