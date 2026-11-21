@@ -10,17 +10,23 @@ import { num, type Lang } from './format.ts';
  *  class `gas` that only grows — in Criuleni the kitchen meter read by a camera every 5 minutes). Cubic metres stay apart from the kWh and lei
  *  above: the electricity report never adds them. Today and this month come from HA's statistics, the same numbers HA's Energy dashboard shows.
  *  Read-only. */
-const unitWord = (u: string, t: T) => /^m³|m3$/i.test(u) ? t('gas.m3') : u;
+export const unitWord = (u: string, t: T) => /^m³|m3$/i.test(u) ? t('gas.m3') : u;
 
-function GasOne({ m, host, t, lang, now }: { m: GasMeter; host: Host; t: T; lang: Lang; now: number }) {
+/** Today's and this month's use of one gas meter from HA's statistics (also the gas meter's own card, src/appliances/gasmeter.tsx): null while
+ *  asked; a figure HA cannot give is null. Asked again when the reading moves and every 5 minutes (the camera reads the meter that often). */
+export function useGasUse(host: Host, id: string, value: number | null, now: number): { day: number | null; month: number | null } | null {
   const [use, setUse] = useState<{ day: number | null; month: number | null } | null>(null);
-  // asked again when the reading moves and every 5 minutes (the camera reads the meter that often)
   const slot = Math.floor(now / 300000);
   useEffect(() => { let alive = true; if (!host.statistic) { setUse({ day: null, month: null }); return; }
     const at = Date.now(), d = houseDate(at), dayStart = houseAt(d.getFullYear(), d.getMonth(), d.getDate()), monthStart = houseMonthStart(at);
-    const read = (from: number) => host.statistic!(m.id, from, at, ['change']).then(r => typeof r.change === 'number' ? Math.max(0, r.change) : null, () => null);
+    const read = (from: number) => host.statistic!(id, from, at, ['change']).then(r => typeof r.change === 'number' ? Math.max(0, r.change) : null, () => null);
     Promise.all([read(dayStart), read(monthStart)]).then(([day, month]) => { if (alive) setUse({ day, month }); });
-    return () => { alive = false; }; }, [host, m.id, m.value, slot]);
+    return () => { alive = false; }; }, [host, id, value, slot]);
+  return use;
+}
+
+function GasOne({ m, host, t, lang, now }: { m: GasMeter; host: Host; t: T; lang: Lang; now: number }) {
+  const use = useGasUse(host, m.id, m.value, now);
   const u = unitWord(m.unit, t);
   const amount = (v: number | null | undefined) => use === null ? '…' : v === null || v === undefined ? '—' : num(v, lang, 2);
   return <section className={`at-ep-card at-gas ${m.online ? '' : 'is-off'}`} aria-label={t('gas.title')}>

@@ -1,1 +1,31 @@
-/* The scale family cards (src/appliances/scale.tsx). */
+/* The scale family cards (src/appliances/scale.tsx). The sheet's chrome is the kettle's (at-kt-sheet/-head/-cols/-card); colour only on the
+   BMI marker's band and nowhere else («Тихий дом»). */
+.hm-shell .at-sc-glyph{width:100%;height:100%}.hm-shell .at-sc-glyph rect{fill:var(--ah-group);stroke:var(--ah-glyph);stroke-width:1.6}.hm-shell .at-sc-glyph .is-screen{fill:var(--ah-glyph);stroke:none;opacity:.7}
+.hm-shell .at-sc-hero{display:grid;gap:6px;justify-items:start;padding:18px;border-radius:24px;background:var(--ah-group);color:var(--ah-ink);min-width:0}
+.hm-shell .at-sc-hero>small{font-size:.90625rem;font-weight:500;color:var(--ah-muted)}
+.hm-shell .at-sc-who{display:grid;gap:2px;min-width:0}.hm-shell .at-sc-who b{font-size:1.5rem;font-weight:600;overflow-wrap:anywhere}.hm-shell .at-sc-who span{font-size:.9375rem;color:var(--ah-muted)}
+.hm-shell .at-sc-big{display:flex;align-items:baseline;gap:6px;line-height:1}.hm-shell .at-sc-big b{font-size:3.5rem;font-weight:300;letter-spacing:-1.5px;font-variant-numeric:tabular-nums}.hm-shell .at-sc-big i{font-style:normal;font-size:1.125rem;color:var(--ah-muted)}
+.hm-shell .at-sc-reveal{min-height:44px;padding:0 20px;margin-top:4px;background:var(--ah-tile);color:var(--ah-ink);font-weight:600;border:0}
+.hm-shell .at-sc-empty{font-size:1rem;line-height:1.4;color:var(--ah-ink)}
+.hm-shell .at-sc-note{font-size:.84375rem;line-height:1.4;color:var(--ah-muted)}.hm-shell .at-sc-pad{padding:10px 18px 8px}
+.hm-shell .at-sc-person+.at-sc-person{border-top:1px solid var(--ah-line,#0000000f)}
+.hm-shell .at-sc-person-hit{display:grid;grid-template-columns:44px minmax(0,1fr) 16px;align-items:center;gap:14px;width:100%;min-height:64px;padding:10px 16px;background:none;border:0;color:var(--ah-ink);text-align:left;cursor:pointer}
+.hm-shell .at-sc-avatar{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--ah-tile);color:var(--ah-ink);font-weight:600;font-size:1.125rem}
+.hm-shell .at-sc-person-text{display:grid;gap:2px;min-width:0}.hm-shell .at-sc-person-text b{font-size:1.0625rem;font-weight:600;overflow-wrap:anywhere}.hm-shell .at-sc-person-text small{font-size:.84375rem;color:var(--ah-muted)}
+.hm-shell .at-sc-chev{font-size:1.5rem;color:var(--ah-muted);transition:transform .2s ease}.hm-shell .at-sc-person.is-open .at-sc-chev{transform:rotate(90deg)}
+.hm-shell .at-sc-person-body{display:grid;gap:12px;padding:0 16px 16px 74px;min-width:0}
+.hm-shell .at-sc-weight{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;line-height:1.1}.hm-shell .at-sc-weight b{font-size:2.25rem;font-weight:400;font-variant-numeric:tabular-nums}.hm-shell .at-sc-weight i{font-style:normal;color:var(--ah-muted)}.hm-shell .at-sc-weight small{flex-basis:100%;font-size:.84375rem;color:var(--ah-muted)}
+.hm-shell .at-sc-when{font-size:.84375rem;color:var(--ah-muted);margin-top:-8px}
+.hm-shell .at-sc-trend{display:grid;gap:4px;margin:0}.hm-shell .at-sc-trend svg{width:100%;height:52px;overflow:visible}.hm-shell .at-sc-trend polyline{fill:none;stroke:var(--ah-ink);stroke-width:2;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.hm-shell .at-sc-trend figcaption{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:.8125rem;color:var(--ah-muted)}
+.hm-shell .at-sc-fact-row{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.hm-shell .at-sc-fact-row small{font-size:.875rem;color:var(--ah-muted);margin-right:auto}.hm-shell .at-sc-fact-row b{font-size:1.0625rem;font-weight:600;font-variant-numeric:tabular-nums}
+.hm-shell .at-sc-band{font-size:.8125rem;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--ah-tile);color:var(--ah-ink)}
+.hm-shell .at-sc-band.is-over{background:#ffcc0033;color:#7a5a00}.hm-shell .at-sc-band.is-obese,.hm-shell .at-sc-band.is-under{background:#ff3b301f;color:#b3261e}
+.hm-shell.ah-shell[data-theme="dark"] .at-sc-band.is-over{color:#ffd60a}.hm-shell.ah-shell[data-theme="dark"] :is(.at-sc-band.is-obese,.at-sc-band.is-under){color:#ff8a80}
+.hm-shell .at-sc-bmi{display:grid;gap:6px}
+.hm-shell .at-sc-bmi-bar{position:relative;display:grid;grid-template-columns:17.5fr 32.5fr 25fr 25fr;gap:2px;height:6px;margin-top:4px}.hm-shell .at-sc-bmi-bar i{display:block;border-radius:3px;background:var(--ah-tile)}
+.hm-shell .at-sc-bmi-bar b{position:absolute;top:-4px;width:4px;height:14px;margin-left:-2px;border-radius:2px;background:var(--ah-ink);box-shadow:0 0 0 2px var(--ah-group)}
+.hm-shell .at-sc-bmi-marks{display:grid;grid-template-columns:17.5fr 32.5fr 25fr 25fr;font-size:.6875rem;color:var(--ah-muted)}.hm-shell .at-sc-bmi-marks span{grid-row:1;text-align:right;transform:translateX(50%)}.hm-shell .at-sc-bmi-marks span:nth-child(1){grid-column:1}.hm-shell .at-sc-bmi-marks span:nth-child(2){grid-column:2}.hm-shell .at-sc-bmi-marks span:nth-child(3){grid-column:3}
+.hm-shell .at-sc-facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.hm-shell .at-sc-fact{display:grid;gap:2px;padding:10px 12px;border-radius:14px;background:var(--ah-tile);min-width:0}.hm-shell .at-sc-fact small{font-size:.78125rem;color:var(--ah-muted);line-height:1.25}.hm-shell .at-sc-fact b{font-size:1.0625rem;font-weight:600;font-variant-numeric:tabular-nums}.hm-shell .at-sc-fact b i{font-style:normal;font-size:.8125rem;font-weight:500;color:var(--ah-muted);margin-left:3px}
+@container (max-width:360px){.hm-shell .at-sc-person-body{padding-left:16px}}

@@ -1,1 +1,18 @@
-/* The dashcam family cards (src/appliances/dashcam.tsx). */
+/* The dashcam family cards (src/appliances/dashcam.tsx). Chrome from the kettle's sheet; colour only on a low battery and a fresh alarm. */
+.hm-shell .at-dc-face{display:grid;place-items:center;border-radius:12px;background:var(--ah-tile);color:var(--ah-glyph)}
+.hm-shell .at-dc-hero{display:grid;gap:6px;justify-items:start;padding:18px;border-radius:24px;background:var(--ah-group);color:var(--ah-ink);min-width:0}
+.hm-shell .at-dc-hero>small{font-size:.90625rem;font-weight:500;color:var(--ah-muted)}
+.hm-shell .at-dc-place{display:flex;align-items:center;gap:8px;min-width:0}.hm-shell .at-dc-place b{font-size:1.625rem;font-weight:600;line-height:1.2;overflow-wrap:anywhere}.hm-shell .at-dc-place svg{flex:none;color:var(--ah-glyph)}
+.hm-shell .at-dc-coords{font-size:.9375rem;font-variant-numeric:tabular-nums;color:var(--ah-ink)}
+.hm-shell .at-dc-sub{font-size:.875rem;color:var(--ah-muted);line-height:1.35}
+.hm-shell .at-dc-map{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;margin-top:4px;background:var(--ah-tile);color:var(--ah-ink);font-weight:600;text-decoration:none}
+.hm-shell .at-dc-pad{display:grid;gap:4px;padding:12px 18px 12px;min-width:0}
+.hm-shell .at-dc-big{display:flex;align-items:baseline;gap:4px;line-height:1}.hm-shell .at-dc-big b{font-size:2.75rem;font-weight:300;font-variant-numeric:tabular-nums}.hm-shell .at-dc-big i{font-style:normal;font-size:1rem;color:var(--ah-muted)}
+.hm-shell .at-dc-battery.is-warn .at-dc-sub{color:#b3261e;font-weight:600}.hm-shell.ah-shell[data-theme="dark"] .at-dc-battery.is-warn .at-dc-sub{color:#ff8a80}
+.hm-shell .at-dc-ev{display:flex;align-items:center;gap:8px}.hm-shell .at-dc-ev b{font-size:1.25rem;font-weight:600}.hm-shell .at-dc-ev svg{flex:none;color:var(--ah-glyph)}
+.hm-shell .at-dc-alarm.is-alert{box-shadow:inset 0 0 0 2px #ff3b3066}.hm-shell .at-dc-alarm.is-alert .at-dc-ev svg{color:#d70015}.hm-shell.ah-shell[data-theme="dark"] .at-dc-alarm.is-alert .at-dc-ev svg{color:#ff6961}
+.hm-shell .at-dc-pic{display:block;width:100%;max-height:220px;object-fit:cover;border-radius:14px;margin-top:6px;background:var(--ah-tile)}
+.hm-shell .at-dc-row{align-items:center}.hm-shell .at-dc-row .ah-row-text{min-width:0}.hm-shell .at-dc-row .ah-row-text strong{white-space:normal}.hm-shell .at-dc-row .ah-row-text small{white-space:normal}
+.hm-shell .at-dc-val{flex:none;max-width:45%;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.hm-shell .at-dc-note{font-size:.8125rem;line-height:1.4;color:var(--ah-muted);padding:10px 18px 8px;border-top:1px solid var(--ah-line,#0000000f)}
+.hm-shell .at-dc-warn{margin:0 16px;padding:10px 14px;border-radius:14px;background:var(--ah-tile);color:var(--ah-ink);font-size:.875rem}
