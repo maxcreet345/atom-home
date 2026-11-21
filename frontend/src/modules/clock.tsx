@@ -14,6 +14,7 @@ import type { Host } from '../runtime/host.ts';
 import type { T, Key } from '../i18n/index.ts';
 import { houseDate, zoneOption } from '../runtime/zone.ts';
 import { errorText, num, type Lang } from '../ui/format.ts';
+import { useSlotSize } from '../ui/slot-size.ts';
 
 const locale = (lang: Lang) => lang === 'ru' ? 'ru-RU' : lang === 'ro' ? 'ro-RO' : 'en-GB';
 const pt = (angle: number, r: number) => [50 + r * Math.sin(angle * Math.PI / 180), 50 - r * Math.cos(angle * Math.PI / 180)] as const;
@@ -61,14 +62,14 @@ export function ClockFace({ now, sun, settings, timer }: { now: Date; sun?: Stat
 
 /** Home-face tile: analog or digital clock, date, timer countdown; a tap opens the «Time» sheet. */
 export function ClockTile({ lang, t, registry, entities, onOpen }: { /** the shell's clock: it only makes the tile redraw, the time shown is read at the moment of drawing */ now: Date; lang: Lang; t: T; registry: Registry; entities: ModuleEntities; onOpen: () => void }) {
-  const settings = readClockSettings();
+  const settings = readClockSettings(), slot = useSlotSize(), big = !!slot && slot.size !== 's'; // on an arranged screen bigger than one cell: the date in full words and the time in digits beside the face
   const timerIds = [entities.timer1, entities.timer2, entities.timer3].filter((x): x is string => !!x);
   const near = nearestTimer(registry.states, timerIds, Date.now());
   useTick(!!near || settings.style === 'digital'); useMinute();
   const live = new Date(), now = live;
   const labels = parseLabels(registry.states[entities.labels ?? '']?.state);
   const timer = near ? { remainingMs: near.timer.state === 'active' && near.timer.finishesAt ? Math.max(0, near.timer.finishesAt - live.getTime()) : near.timer.remainingMs, durationMs: near.timer.durationMs, label: labelText(labels[near.timer.id]), more: near.running - 1, paused: near.timer.state === 'paused' } : null;
-  const date = dtf(lang, { weekday: 'short', day: 'numeric', month: 'long' }).format(now);
+  const date = dtf(lang, { weekday: big ? 'long' : 'short', day: 'numeric', month: 'long' }).format(now);
   const time = clockTime(now.getTime(), lang);
   // the name comes from the content (Lighthouse: an aria-label must contain the visible text, and the numerals of the face are visible); the time is read but not drawn twice
   return <button type="button" className={`ah-tile ah-clock hm-card ${timer ? 'is-timer' : ''} is-${settings.style}`} onClick={onOpen}>
@@ -76,6 +77,7 @@ export function ClockTile({ lang, t, registry, entities, onOpen }: { /** the she
     {settings.style === 'digital' && !timer
       ? <div className="ah-clock-digital"><b>{clockTime(live.getTime(), lang)}</b><span>{String(live.getSeconds()).padStart(2, '0')}</span></div>
       : <ClockFace now={now} sun={entities.sun ? registry.states[entities.sun] : undefined} settings={settings} timer={timer} />}
+    {big && !timer && settings.style !== 'digital' && <b className="ah-clock-time" aria-hidden="true">{time}</b>}
     {timer && <div className="ah-clock-big"><b>{fmtRemaining(timer.remainingMs)}</b><small>{timer.label || t('clock.timer')}{timer.paused ? ` · ${t('clock.paused')}` : ''}{timer.more > 0 ? ` · +${timer.more}` : ''}</small></div>}
     <span className="ah-clock-date">{timer && timer.more > 0 ? t('clock.more', { n: timer.more }) : date}</span>
   </button>;

@@ -28,13 +28,141 @@
 .hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) .ah-value .ah-tile-text small{font-size:clamp(.8125rem,5cqmin,1.25rem);-webkit-line-clamp:4}
 
 /* ---- device tiles (AccessoryTile: a lamp, a socket, a sensor; the scene button is the same shape) ---- */
-.hm-shell .at-slot[data-size="w"] :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock),.ah-scene) .ah-tile-hit{flex-direction:row;justify-content:flex-start;text-align:left;gap:clamp(12px,5cqw,20px);padding:10px clamp(14px,5cqw,22px)}
-.hm-shell .at-slot[data-size="w"] :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock),.ah-scene) .ah-glyph{width:clamp(44px,46cqh,64px);height:clamp(44px,46cqh,64px)}
-.hm-shell .at-slot[data-size="w"] :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock),.ah-scene) .ah-tile-text{text-align:left}
-.hm-shell .at-slot[data-size="w"] :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock),.ah-scene) .ah-tile-text strong{font-size:clamp(.9375rem,15cqh,1.125rem)}
-.hm-shell .at-slot[data-size="w"] :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock),.ah-scene) .ah-tile-text small{font-size:clamp(.8125rem,12cqh,.9375rem)}
-.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock),.ah-scene) .ah-glyph{width:clamp(44px,28cqmin,104px);height:clamp(44px,28cqmin,104px)}
-.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock),.ah-scene) .ah-glyph svg{width:58%;height:58%}
-.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock),.ah-scene) .ah-tile-hit{gap:clamp(10px,5cqmin,20px)}
-.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock),.ah-scene) .ah-tile-text strong{font-size:clamp(.9375rem,7cqmin,1.625rem);-webkit-line-clamp:3}
-.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock),.ah-scene) .ah-tile-text small{font-size:clamp(.8125rem,5cqmin,1.25rem);white-space:normal}
+.hm-shell .at-slot[data-size="w"] :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock,.at-sec-tile),.ah-scene) .ah-tile-hit{flex-direction:row;justify-content:flex-start;text-align:left;gap:clamp(12px,5cqw,20px);padding:10px clamp(14px,5cqw,22px)}
+.hm-shell .at-slot[data-size="w"] :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock,.at-sec-tile),.ah-scene) .ah-glyph{width:clamp(44px,46cqh,64px);height:clamp(44px,46cqh,64px)}
+.hm-shell .at-slot[data-size="w"] :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock,.at-sec-tile),.ah-scene) .ah-tile-text{text-align:left}
+.hm-shell .at-slot[data-size="w"] :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock,.at-sec-tile),.ah-scene) .ah-tile-text strong{font-size:clamp(.9375rem,15cqh,1.125rem)}
+.hm-shell .at-slot[data-size="w"] :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock,.at-sec-tile),.ah-scene) .ah-tile-text small{font-size:clamp(.8125rem,12cqh,.9375rem)}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock,.at-sec-tile),.ah-scene) .ah-glyph{width:clamp(44px,28cqmin,104px);height:clamp(44px,28cqmin,104px)}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock,.at-sec-tile),.ah-scene) .ah-glyph svg{width:58%;height:58%}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock,.at-sec-tile),.ah-scene) .ah-tile-hit{gap:clamp(10px,5cqmin,20px)}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock,.at-sec-tile),.ah-scene) .ah-tile-text strong{font-size:clamp(.9375rem,7cqmin,1.625rem);-webkit-line-clamp:3}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) :is(.ah-tile.hm-card:not(.ah-value,.ah-thermo,.ah-clock,.at-sec-tile),.ah-scene) .ah-tile-text small{font-size:clamp(.8125rem,5cqmin,1.25rem);white-space:normal}
+
+/* ---- big readings: a numeral 80 px high is taller than its 1.0 line; the box gets the glyph's height back, nothing moves ---- */
+.hm-shell .at-slot:not([data-size="s"]) .ah-value .ah-value-num b,.hm-shell .at-slot .ah-thermo-value b{line-height:1.14;margin-block:-.07em}
+
+/* ---- energy (ui/energy-tile.tsx): the glyph with its dots, then the rolling figure; 2×2 and up: «сейчас» large, today and the month listed ---- */
+.hm-shell .at-slot[data-size="w"] .at-energy-tile .ah-tile-hit{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:clamp(12px,5cqw,22px);padding:12px clamp(12px,5cqw,22px)}
+.hm-shell .at-slot[data-size="w"] .at-energy-head{flex-direction:column;justify-content:center;width:auto;gap:8px;flex:none}
+.hm-shell .at-slot[data-size="w"] .at-energy-roll{flex-direction:row;align-items:center;gap:clamp(12px,5cqw,24px);min-width:0;flex:1}
+.hm-shell .at-slot[data-size="w"] .at-energy-roll .ah-tile-text{width:auto;flex:0 1 auto;min-width:min-content}
+.hm-shell .at-slot[data-size="w"] .at-energy-tile .ah-value-num b{font-size:clamp(1.5rem,min(40cqh,15cqw),3.25rem)}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) .at-energy-dots i{width:clamp(5px,2cqmin,8px);height:clamp(5px,2cqmin,8px)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-energy-roll{gap:clamp(4px,2cqmin,10px)}
+.hm-shell .at-energy-list{display:flex;flex-direction:column;width:100%}
+.hm-shell .at-energy-list>span{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:clamp(6px,2.5cqmin,12px) 0 0;margin-top:clamp(6px,2.5cqmin,12px);border-top:1px solid var(--ah-line)}
+.hm-shell .at-energy-list b{font-size:clamp(1.125rem,8cqmin,2.25rem);font-weight:600;letter-spacing:-.5px;line-height:1.14;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hm-shell .at-energy-list i{font-style:normal;font-size:.6em;font-weight:600;color:var(--ah-muted)}
+.hm-shell .at-energy-list small{font-size:clamp(.8125rem,5cqmin,1.25rem);color:var(--ah-muted);text-align:right}
+
+/* ---- the clock (modules/clock.tsx): one cell as today; across: the face filling the height, the time and the whole date beside it;
+ *      tall: the face, the time and the date under it; 2×2: the face and the whole date; 3×2 and wider: as across ---- */
+.hm-shell .at-slot .ah-clock>.at-vh{width:auto;height:auto;margin:0;overflow:visible;clip:auto;clip-path:inset(50%);top:0;left:0} /* still unseen and read: a box as big as its words, not a 1 px window they overflow */
+.hm-shell .at-slot .ah-clock-nums text{line-height:1}
+.hm-shell .at-slot:not([data-size="s"]) .ah-clock .ah-clock-date{position:static;white-space:normal;overflow:visible;text-overflow:clip;padding:0;line-height:1.25}
+.hm-shell .at-slot .ah-clock-time{display:none;font-weight:600;letter-spacing:-.5px;line-height:1.14;font-variant-numeric:tabular-nums}
+.hm-shell .at-slot[data-size="w"] .ah-clock{grid-template-columns:auto minmax(0,1fr);grid-template-rows:1fr auto auto 1fr;place-items:center start;column-gap:clamp(12px,5cqw,28px);row-gap:2px;padding:8px clamp(12px,5cqw,24px);text-align:left}
+.hm-shell .at-slot[data-size="w"] .ah-clock>:is(svg,.ah-clock-digital){grid-column:1;grid-row:1/5;height:calc(100cqh - 16px);width:auto;aspect-ratio:1}
+.hm-shell .at-slot[data-size="w"] .ah-clock>.ah-clock-digital{aspect-ratio:auto;align-items:center}
+.hm-shell .at-slot[data-size="w"] .ah-clock-digital b{font-size:clamp(2rem,40cqh,4rem)}
+.hm-shell .at-slot[data-size="w"] .ah-clock-time{display:block;grid-column:2;grid-row:2;font-size:clamp(1.5rem,32cqh,3.25rem)}
+.hm-shell .at-slot[data-size="w"] .ah-clock>.ah-clock-big{position:static;grid-column:2;grid-row:2;place-content:start;text-align:left}
+.hm-shell .at-slot[data-size="w"] .ah-clock .ah-clock-date{grid-column:2;grid-row:3;text-align:left;font-size:clamp(.8125rem,12cqh,1.125rem)}
+.hm-shell .at-slot[data-size="t"] .ah-clock{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto;align-content:center;row-gap:clamp(4px,3cqw,10px);padding:12px 10px}
+.hm-shell .at-slot[data-size="t"] .ah-clock>svg{width:100%;height:auto;aspect-ratio:1}
+.hm-shell .at-slot[data-size="t"] .ah-clock-time{display:block;font-size:clamp(1.5rem,22cqw,2.75rem);text-align:center}
+.hm-shell .at-slot[data-size="t"] .ah-clock>.ah-clock-big{position:static;place-content:center}
+.hm-shell .at-slot[data-size="t"] .ah-clock .ah-clock-date{text-align:center;font-size:clamp(.8125rem,10cqw,1.125rem)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .ah-clock{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;row-gap:clamp(4px,2cqmin,12px);padding:clamp(10px,4cqmin,22px)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .ah-clock>:is(svg,.ah-clock-digital){width:100%;height:100%;min-height:0}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .ah-clock-digital b{font-size:clamp(2.5rem,24cqmin,7rem)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .ah-clock-digital span{font-size:clamp(.875rem,7cqmin,2rem)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .ah-clock>.ah-clock-big{inset:0 0 clamp(28px,12cqmin,64px)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .ah-clock-big b{font-size:clamp(1.625rem,12cqmin,3.5rem)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .ah-clock .ah-clock-date{text-align:center;font-size:clamp(.875rem,5.5cqmin,1.5rem)}
+@container slot (min-aspect-ratio:4/3){
+  .hm-shell .at-slot[data-size="xl"] .ah-clock{grid-template-columns:auto minmax(0,1fr);grid-template-rows:1fr auto auto 1fr;place-items:center start;column-gap:clamp(16px,5cqw,40px);row-gap:4px;text-align:left}
+  .hm-shell .at-slot[data-size="xl"] .ah-clock>:is(svg,.ah-clock-digital){grid-column:1;grid-row:1/5;height:min(calc(100cqh - 2 * clamp(10px,4cqmin,22px)),50cqw);width:auto;aspect-ratio:1}
+  .hm-shell .at-slot[data-size="xl"] .ah-clock>.ah-clock-digital{aspect-ratio:auto;align-items:center}
+  .hm-shell .at-slot[data-size="xl"] .ah-clock-time{display:block;grid-column:2;grid-row:2;font-size:clamp(1.75rem,min(16cqmin,9cqw),5.5rem)}
+  .hm-shell .at-slot[data-size="xl"] .ah-clock>.ah-clock-big{position:static;grid-column:2;grid-row:2;place-content:start;text-align:left}
+  .hm-shell .at-slot[data-size="xl"] .ah-clock .ah-clock-date{grid-column:2;grid-row:3;text-align:left;font-size:clamp(.9375rem,7cqmin,1.75rem)}
+}
+
+/* ---- the thermostat (ThermostatTile; its own size is 2×2, «l» as today): − and + are 44 px wherever they are shown;
+ *      one cell: the temperature, the mode and the room, no − / +; across: the temperature left, the name and the mode beside it, − / + stacked
+ *      at the right (a 2×1 tile, under 380 px, has no room for them: a tap opens the panel); tall: everything stacked, − / + under it ---- */
+.hm-shell .at-slot .ah-thermo .ah-chev{width:44px;height:44px;bottom:8px}
+.hm-shell .at-slot .ah-thermo .ah-chev.is-down{left:8px}.hm-shell .at-slot .ah-thermo .ah-chev.is-up{right:8px}
+.hm-shell .at-slot[data-size="s"] .ah-thermo .ah-chev{display:none}
+.hm-shell .at-slot[data-size="s"] .ah-thermo .ah-tile-hit{justify-content:center;gap:4px;padding:10px 8px}
+.hm-shell .at-slot[data-size="s"] .ah-thermo-value{flex:none}
+.hm-shell .at-slot[data-size="s"] .ah-thermo-value b{font-size:clamp(1.5rem,26cqw,2.25rem);letter-spacing:-1px}
+.hm-shell .at-slot[data-size="s"] .ah-thermo-value b.is-text{font-size:clamp(1rem,15cqw,1.375rem)}
+.hm-shell .at-slot[data-size="s"] .ah-thermo-value small{font-size:.75rem;line-height:1.2}
+.hm-shell .at-slot:is([data-size="s"],[data-size="t"]) .ah-thermo .ah-tile-text{padding:0}
+.hm-shell .at-slot:is([data-size="s"],[data-size="t"],[data-size="w"]) .ah-thermo .ah-tile-text :is(strong,small){white-space:normal;overflow:visible;text-overflow:clip;-webkit-line-clamp:none}
+.hm-shell .at-slot[data-size="s"] .ah-thermo .ah-tile-text:has(small:not(:empty)) strong{display:none} /* five radiators are told apart by their rooms */
+.hm-shell .at-slot[data-size="s"] .ah-thermo .ah-tile-text small{font-size:.8125rem;font-weight:600;color:inherit}
+.hm-shell .at-slot[data-size="t"] .ah-thermo .ah-tile-hit{justify-content:center;gap:clamp(6px,4cqw,12px);padding:14px 10px 60px}
+.hm-shell .at-slot[data-size="t"] .ah-thermo-value{flex:none}
+.hm-shell .at-slot[data-size="t"] .ah-thermo-value b{font-size:clamp(1.75rem,30cqw,3.25rem);letter-spacing:-1px}
+.hm-shell .at-slot[data-size="t"] .ah-thermo .ah-tile-text strong{font-size:clamp(.875rem,11cqw,1.125rem)}
+.hm-shell .at-slot[data-size="w"] .ah-thermo .ah-tile-hit{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:1fr auto auto 1fr;column-gap:clamp(12px,5cqw,24px);row-gap:3px;align-items:center;justify-items:start;text-align:left;padding:10px 64px 10px clamp(12px,5cqw,22px)}
+.hm-shell .at-slot[data-size="w"] .ah-thermo-value{display:contents}
+.hm-shell .at-slot[data-size="w"] .ah-thermo-value b{grid-column:1;grid-row:1/5;font-size:clamp(1.75rem,min(44cqh,17cqw),4rem);letter-spacing:-1px}
+.hm-shell .at-slot[data-size="w"] .ah-thermo .ah-tile-text{grid-column:2;grid-row:2;padding:0;text-align:left;align-items:flex-start}
+.hm-shell .at-slot[data-size="w"] .ah-thermo .ah-tile-text strong{font-size:clamp(.875rem,13cqh,1.125rem)}
+.hm-shell .at-slot[data-size="w"] .ah-thermo-value small{grid-column:2;grid-row:3;text-align:left;font-size:clamp(.75rem,11cqh,.9375rem);white-space:normal}
+.hm-shell .at-slot[data-size="w"] .ah-thermo .ah-chev{left:auto;right:8px;bottom:auto}
+.hm-shell .at-slot[data-size="w"] .ah-thermo .ah-chev.is-up{top:calc(50% - 48px)}.hm-shell .at-slot[data-size="w"] .ah-thermo .ah-chev.is-down{top:calc(50% + 4px)}
+@container slot (max-width:380px){
+  .hm-shell .at-slot[data-size="w"] .ah-thermo .ah-chev{display:none}
+  .hm-shell .at-slot[data-size="w"] .ah-thermo .ah-tile-hit{padding-right:12px}
+  .hm-shell .at-slot[data-size="w"] .ah-thermo .ah-tile-text small{display:none} /* the room goes first: the name and the mode stay */
+}
+.hm-shell .at-slot[data-size="xl"] .ah-thermo .ah-chev{width:52px;height:52px;bottom:12px}
+.hm-shell .at-slot[data-size="xl"] .ah-thermo .ah-chev.is-down{left:12px}.hm-shell .at-slot[data-size="xl"] .ah-thermo .ah-chev.is-up{right:12px}
+.hm-shell .at-slot[data-size="xl"] .ah-thermo .ah-tile-hit{padding:clamp(14px,5cqmin,28px) clamp(12px,4cqmin,24px)}
+.hm-shell .at-slot[data-size="xl"] .ah-thermo-value b{font-size:clamp(3rem,34cqmin,9rem)}
+.hm-shell .at-slot[data-size="xl"] .ah-thermo-value small{font-size:clamp(.875rem,5cqmin,1.375rem)}
+.hm-shell .at-slot[data-size="xl"] .ah-thermo .ah-tile-text{padding:0 72px}
+.hm-shell .at-slot[data-size="xl"] .ah-thermo .ah-tile-text strong{font-size:clamp(1rem,6cqmin,1.75rem)}
+.hm-shell .at-slot[data-size="xl"] .ah-thermo .ah-tile-text small{font-size:clamp(.8125rem,4.5cqmin,1.25rem)}
+
+/* ---- security (SecurityTile, OfficeSecurityTile): the ring and the title, the state big, the sentence; across: the sentence beside the state;
+ *      tall: the sentence comes back; 2×2 and up: the sensors (the office: its zones) listed under it, as many as the card holds ---- */
+.hm-shell .at-slot[data-size="w"] .at-sec-tile .ah-tile-hit{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto 1fr;column-gap:clamp(12px,5cqw,24px);row-gap:6px;align-items:center;padding:12px clamp(12px,5cqw,20px)}
+.hm-shell .at-slot[data-size="w"] .at-sec-tile-head{grid-column:1;grid-row:1;flex-direction:row;align-items:center;width:auto}
+.hm-shell .at-slot[data-size="w"] .at-sec-tile-word{grid-column:1;grid-row:2;align-self:end;margin:0;font-size:clamp(1.25rem,26cqh,2rem)}
+.hm-shell .at-slot[data-size="w"] .at-sec-tile-say{display:block;grid-column:2;grid-row:1/3;align-self:center;overflow-wrap:normal;hyphens:manual;font-size:clamp(.8125rem,12cqh,1rem)}
+.hm-shell .at-slot[data-size="w"] .at-sec-badges{grid-column:2}
+.hm-shell .at-slot[data-size="t"] .at-sec-tile-say{display:block;overflow-wrap:normal}
+.hm-shell .at-slot[data-size="t"] .at-sec-tile-word{font-size:clamp(1.125rem,18cqw,1.75rem)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-sec-tile .ah-tile-hit{padding:clamp(14px,5cqmin,26px);gap:clamp(6px,2.5cqmin,12px)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-sec-tile-head svg{width:clamp(34px,13cqmin,56px);height:clamp(34px,13cqmin,56px)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-sec-tile-head strong{font-size:clamp(.9375rem,6cqmin,1.5rem)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-sec-tile-word{font-size:clamp(1.75rem,13cqmin,3.5rem)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-sec-tile-say{font-size:clamp(.8125rem,5cqmin,1.25rem);overflow-wrap:normal}
+.hm-shell .at-sec-tile-list{display:flex;flex-direction:column;width:100%}
+.hm-shell .at-sec-tile-list>span{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:clamp(4px,1.6cqmin,8px) 0;border-top:1px solid var(--ah-line);font-size:clamp(.8125rem,4cqmin,1.0625rem);line-height:1.25}
+.hm-shell .at-sec-tile-list>span>span{min-width:0}.hm-shell .at-sec-tile-list>span>span::first-letter{text-transform:uppercase}
+.hm-shell .at-sec-tile-list small{flex:none;max-width:55%;text-align:right;font-size:inherit;color:var(--ah-muted)}
+.hm-shell .at-sec-tile-list .is-first small{color:var(--ah-ink);font-weight:600}
+.hm-shell .at-sec-tile-list>span:nth-child(n+4){display:none}
+@container slot (min-height:22rem){.hm-shell .at-sec-tile-list>span:nth-child(-n+4){display:flex}}
+@container slot (min-height:28rem){.hm-shell .at-sec-tile-list>span:nth-child(-n+6){display:flex}}
+
+/* ---- a reading tile three cells wide and two high (wider than tall): laid out as across, the reading as large as the height allows ---- */
+@container slot (min-aspect-ratio:4/3){
+  .hm-shell .at-slot[data-size="xl"] .ah-value:not(.at-energy-tile) .ah-tile-hit{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);column-gap:clamp(16px,6cqw,40px);row-gap:clamp(6px,3cqh,16px);align-items:center;align-content:center;padding:clamp(14px,6cqh,28px) clamp(16px,6cqw,32px)}
+  .hm-shell .at-slot[data-size="xl"] .ah-value:not(.at-energy-tile) .ah-value-head{grid-column:1;grid-row:1}
+  .hm-shell .at-slot[data-size="xl"] .ah-value:not(.at-energy-tile) .ah-value-num{grid-column:1;grid-row:2;align-self:center}
+  .hm-shell .at-slot[data-size="xl"] .ah-value:not(.at-energy-tile) .ah-tile-text{grid-column:2;grid-row:2;align-self:center;gap:4px}
+  .hm-shell .at-slot[data-size="xl"] .ah-value:not(.at-energy-tile) .ah-value-num b{font-size:clamp(3rem,40cqh,8rem)}
+  .hm-shell .at-slot[data-size="xl"] .ah-value:not(.at-energy-tile) .ah-value-num.is-text b{font-size:clamp(1.5rem,16cqh,3rem)}
+  .hm-shell .at-slot[data-size="xl"] .ah-value:not(.at-energy-tile) .ah-tile-text strong{font-size:clamp(1.125rem,10cqh,2rem)}
+  .hm-shell .at-slot[data-size="xl"] .ah-value:not(.at-energy-tile) .ah-tile-text small{font-size:clamp(.875rem,7cqh,1.375rem)}
+}
+.hm-shell .at-slot:not([data-size="s"]) .ah-clock-digital{flex-wrap:wrap;align-content:center} /* the digits in the middle of the room they get, not at its top */
