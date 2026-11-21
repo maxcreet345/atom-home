@@ -54,7 +54,7 @@ function HumidifierSheet({ view, registry, host, t, lang, onClose, room, wide }:
   const status = statusText(h, t, lang), on = h.phase === 'on', idle = h.phase !== 'on' && h.phase !== 'off';
   const hero = <section className={`at-kt-hero at-hu-hero is-${on ? 'on' : h.phase === 'off' ? 'idle' : 'off'}`}>
     <small>{hk(t, 'inRoom')}</small>
-    <p className="at-kt-temp at-hu-num"><b>{pct(h.current)}</b>{h.current !== null && <i>%</i>}</p>
+    <p className={`at-kt-temp at-hu-num ${h.current === null ? 'is-none' : ''}`}><b>{pct(h.current)}</b>{h.current !== null && <i>%</i>}</p>
     <p className="at-kt-status" role="status">{status}</p>
     {(h.phase === 'on' || h.phase === 'off') && B.humidifier && <button type="button" className="hm-pill at-kt-stop at-hu-power" data-action="power" aria-busy={ui.busy === 'power'} disabled={!host.online || ui.busy !== null} onClick={power}><Icon name="power" size={18} />{on ? hk(t, 'turnOff') : hk(t, 'turnOn')}</button>}
     {h.phase === 'plugOff' && B.plug && !ask && <button type="button" className="hm-pill at-kt-stop at-hu-power" data-action="plug-on" disabled={!host.online || ui.busy !== null} onClick={() => setAsk(true)}><Icon name="socket" size={18} />{hk(t, 'plugOn')}</button>}
@@ -76,13 +76,13 @@ function HumidifierSheet({ view, registry, host, t, lang, onClose, room, wide }:
     </div></div>;
   const modeCard = B.fanLevel && h.levels.length > 0 && <div className="at-kt-card at-hu-card" data-part="mode"><h3>{hk(t, 'mode')}</h3>
     <div className="at-hu-modes" role="group" aria-label={hk(t, 'mode')}>{h.levels.map(l => { const active = h.level === l.level; return <button type="button" className={`at-hu-mode ${active ? 'is-on' : ''}`} data-level={String(l.level)} aria-pressed={live ? active : undefined} disabled={!live || ui.busy !== null} onClick={() => { if (!active) run('mode', [['select', 'select_option', { entity_id: B.fanLevel, option: l.option }]]); }}><span className="at-hu-mode-glyph" aria-hidden="true">{l.level === 'auto' ? <Icon name="water" size={20} /> : <Bars n={l.level} />}</span><span>{levelWord(t, l.level)}</span></button>; })}</div>
-    <small className="at-kt-note at-hu-pad">{hk(t, 'modeAuto')}</small></div>;
+    {live && <small className="at-kt-note at-hu-pad">{hk(t, 'modeAuto')}</small>}</div>;
   const sw = (role: 'indicator' | 'buzzer', value: boolean | null, label: string, hint: string) => { const id = B[role]; if (!id) return null; const domain = id.split('.')[0];
     return <div className="ah-row hm-setting at-kt-row" data-hu-switch={role}><span className="ah-row-text"><strong>{label}</strong><small>{hint}</small></span>{value === null ? <small>{t(live ? 'state.unknown' : 'state.unavailable')}</small> : <button type="button" role="switch" className={`at-kt-sw ${value ? 'is-on' : ''}`} aria-checked={value} aria-label={label} aria-busy={ui.busy === role} disabled={!live || ui.busy !== null} onClick={() => run(role, [[domain, value ? 'turn_off' : 'turn_on', { entity_id: id }]])}><i /></button>}</div>; };
   const settings = (B.indicator || B.buzzer) && <div className="at-kt-card at-kt-set at-hu-card" data-part="settings"><h3>{hk(t, 'settings')}</h3>{sw('indicator', h.light, hk(t, 'light'), hk(t, 'lightHint'))}{sw('buzzer', h.buzzer, hk(t, 'sound'), hk(t, 'soundHint'))}</div>;
   const facts = [h.temperature !== null ? [hk(t, 'temperature'), `${num(h.temperature, lang, 1)} °C`] : null, h.watts !== null ? [hk(t, 'power'), hk(t, 'watts', { w: num(h.watts, lang, 0) })] : null].filter((x): x is string[] => !!x);
   const readings = facts.length > 0 && <div className="at-kt-card at-hu-card" data-part="readings"><h3>{hk(t, 'readings')}</h3>{facts.map(([k, v]) => <div className="ah-row hm-setting at-kt-row"><span className="ah-row-text"><strong>{k}</strong></span><small className="at-hu-val">{v}</small></div>)}</div>;
-  return <div className={`at-kt-sheet at-hu-sheet ${wide ? 'is-wide' : ''} ${idle ? 'is-idle' : ''}`} data-phase={h.phase}>
+  return <div className={`at-kt-sheet at-hu-sheet ${idle ? 'is-idle' : ''}`} data-wide={wide || undefined} data-phase={h.phase}>
     <div className="hm-sheet-head at-kt-head"><span className="at-kt-face" aria-hidden="true"><ProductPhoto src={photo} eager><HumidifierArt on={on} /></ProductPhoto></span><div><small>{[t('cat.kind.humidifier' as Key), room].filter(Boolean).join(' · ')}</small><h2>{view.device.name || hk(t, 'title')}</h2></div>
       <button type="button" className="hm-icon-btn at-hu-close" aria-label={t('ui.closeSheet')} onClick={onClose}>×</button></div>
     {ui.err && <p className="at-kt-err" role="alert">{hk(t, 'fail')}: {ui.err}</p>}

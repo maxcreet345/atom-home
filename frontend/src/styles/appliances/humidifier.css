@@ -5,7 +5,7 @@
 .hm-shell .at-hu-close{margin-left:auto}
 .hm-shell .at-hu-hero.is-idle,.hm-shell .at-hu-hero.is-off{background:linear-gradient(180deg,#5b6770,#6b7780)}
 .hm-shell .at-hu-hero .at-kt-temp i{margin-top:14px}
-.hm-shell .at-hu-power{display:inline-flex;align-items:center;gap:8px;color:var(--kt-ink)}
+.hm-shell .at-hu-power{display:inline-flex;align-items:center;gap:8px;color:var(--kt-teal)}
 .hm-shell .at-hu-hero.is-idle .at-hu-power,.hm-shell .at-hu-hero.is-off .at-hu-power{color:#3d4850}
 .hm-shell .at-hu-ask{display:grid;gap:10px;justify-items:center;max-width:340px;margin-top:8px}
 .hm-shell .at-hu-ask p{font-size:.9375rem;line-height:1.4}
@@ -29,10 +29,14 @@
 .hm-shell .at-hu-mode:focus-visible{outline:3px solid var(--kt-ink);outline-offset:2px}
 .hm-shell .at-hu-pad{display:block;padding:6px 16px 12px}
 .hm-shell .at-hu-val{font-variant-numeric:tabular-nums;font-weight:600;color:var(--ah-ink)}
-.hm-shell .at-hu-sheet.is-wide .at-hu-hero{min-height:0}
+/* two columns only when the sheet itself is wide enough (the app's `wide` is about the screen; an appliance's sheet may still be 560 px) */
+.hm-shell .at-hu-sheet{container-type:inline-size}
+@container (min-width:760px){.hm-shell .at-hu-sheet .at-kt-cols{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);align-items:start}}
 /* the drawing: a white column, its water in blue, mist while it works */
 .hm-shell .at-hu-art{width:100%;height:100%}.hm-shell .at-hu-art .at-hu-body{fill:#fff;stroke:#c9ced3;stroke-width:1.4}.hm-shell .at-hu-art .at-hu-top{fill:#eef0f2;stroke:#c9ced3;stroke-width:1.2}
 .hm-shell .at-hu-art .at-hu-water{fill:#9fd0f5}.hm-shell .at-hu-art .at-hu-dot{fill:#8e8e93}.hm-shell .at-hu-art.is-on .at-hu-dot{fill:#0b5fa5}.hm-shell .at-hu-art .at-hu-shadow{fill:#0000001a}
 .hm-shell .at-hu-art .at-hu-mist path{fill:none;stroke:#64b5f6;stroke-width:2.6;stroke-linecap:round;opacity:.75;animation:at-kt-steam 2.4s ease-in-out infinite}.hm-shell .at-hu-art .at-hu-mist path:nth-child(2){animation-delay:.4s}.hm-shell .at-hu-art .at-hu-mist path:nth-child(3){animation-delay:.8s}
 @media (prefers-reduced-motion:reduce){.hm-shell .at-hu-art .at-hu-mist path{animation:none}}
 .hm-shell.ah-shell[data-theme="dark"] .at-hu-art .at-hu-body{fill:#e5e5ea;stroke:#8e8e93}.hm-shell.ah-shell[data-theme="dark"] .at-hu-art .at-hu-top{fill:#d1d1d6;stroke:#8e8e93}
+.hm-shell .at-hu-num.is-none b{font-size:3.5rem;line-height:1.7;opacity:.8}
+.hm-shell .at-hu-target .at-kt-stepper b{line-height:1}
