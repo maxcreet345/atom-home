@@ -64,13 +64,13 @@ function Disks({ r, t, lang }: { r: NasRead; t: T; lang: Lang }) {
   </section>;
 }
 function Load({ r, t, lang }: { r: NasRead; t: T; lang: Lang }) {
-  const pct = (v: number | null) => v === null ? '—' : `${num(v, lang, 0)} %`;
+  const pct = (v: number | null) => v === null ? '—' : `${num(v, lang, 0)}\u00a0%`;
   const rows: Array<[string, string, string?]> = [];
   if (r.cpu !== null) rows.push([w(t, 'cpu'), pct(r.cpu), 'cpu']);
   if (r.ram !== null) rows.push([w(t, 'ram'), r.ramTotal ? `${pct(r.ram)} · ${sizeText(r.ramTotal, t, lang)}` : pct(r.ram), 'ram']);
   if (r.up !== null || r.down !== null) rows.push([w(t, 'net'), w(t, 'netV', { down: rateText(r.down, t, lang), up: rateText(r.up, t, lang) }), 'net']);
   if (r.cpuTemp !== null) rows.push([w(t, 'cpuTemp'), `${num(r.cpuTemp, lang, 0)}°`, 'cpuTemp']);
-  r.fans.forEach((f, i) => rows.push([r.fans.length > 1 ? `${w(t, 'fanRow')} ${i + 1}` : w(t, 'fanRow'), [f.rpm === null ? '—' : w(t, 'rpm', { n: num(f.rpm, lang, 0) }), r.fanOk === null ? '' : r.fanOk ? w(t, 'normal') : w(t, 'attention')].filter(Boolean).join(' · '), 'fan']));
+  r.fans.forEach((f, i) => rows.push([r.fans.length > 1 ? `${w(t, 'fanRow')} ${i + 1}` : w(t, 'fanRow'), [f.rpm === null ? '—' : w(t, 'rpm', { n: num(f.rpm, lang, 0) }), r.fanOk === false ? w(t, 'attention') : ''].filter(Boolean).join(' · '), 'fan']));
   if (r.ups !== null) rows.push([w(t, 'ups'), w(t, 'upsV', { p: num(r.ups, lang, 0) }), 'ups']);
   if (!rows.length) return null;
   return <section className="at-nas-card" aria-label={w(t, 'load')}><h3>{w(t, 'load')}</h3><div className="hm-facts at-nas-facts">{rows.map(([k, v, id]) => <div className="hm-fact" data-nas-load={id}><small>{k}</small><strong>{v}</strong></div>)}</div></section>;
@@ -88,7 +88,7 @@ function Pools({ r, t, lang }: { r: NasRead; t: T; lang: Lang }) {
   </Fold>;
 }
 function About({ r, t, model }: { r: NasRead; t: T; model: string | null }) {
-  const rows = [[w(t, 'model'), model], [w(t, 'os'), r.version ? `UGOS ${r.version}` : null], r.version ? [w(t, 'update', { v: '' }).replace(/\s+$/, ''), r.update ? r.update : w(t, 'upToDate')] : null].filter((x): x is [string, string | null] => !!x && !!x[1]);
+  const rows = [[w(t, 'model'), model], [w(t, 'os'), r.version ? `UGOS ${r.version}` : null], r.version ? [w(t, 'updateRow'), r.update ? r.update : w(t, 'upToDate')] : null].filter((x): x is [string, string | null] => !!x && !!x[1]);
   if (!rows.length) return null;
   return <Fold title={w(t, 'about')}>{rows.map(([k, v]) => <div className="ah-row hm-setting at-nas-row"><span className="ah-row-text"><strong>{k}</strong></span><small>{v}</small></div>)}</Fold>;
 }
@@ -109,7 +109,7 @@ export function NasSheet({ view, registry, host, t, lang, onClose, room, wide }:
   const heading = view.instance.name ?? (deviceName(registry, r.deviceId) ? withoutRoom(deviceName(registry, r.deviceId)!, room) : null) ?? t('cat.kind.nas' as Key);
   const roomShown = roomBeside(heading, room), model = dev?.model ? (dev.manufacturer && !dev.model.toLowerCase().startsWith(dev.manufacturer.toLowerCase()) ? `${dev.manufacturer} ${dev.model}` : dev.model) : null;
   const left = <><Hero r={r} t={t} />{r.available && <><Space r={r} t={t} lang={lang} /><Disks r={r} t={t} lang={lang} /></>}</>;
-  const right = <>{r.available && <Load r={r} t={t} lang={lang} />}{r.available && <Pools r={r} t={t} lang={lang} />}<About r={r} t={t} model={model} />{host.admin && <Manage r={r} t={t} ui={ui} ask={setQuestion} />}</>;
+  const right = <>{r.available && <Load r={r} t={t} lang={lang} />}{r.available && <Pools r={r} t={t} lang={lang} />}<About r={r} t={t} model={model} />{host.admin && r.available && <Manage r={r} t={t} ui={ui} ask={setQuestion} />}</>;
   return <div className={`at-nas-sheet ${wide ? 'is-wide' : ''}`} data-nas-sheet={tone} aria-label={sentence(r, t)}>
     <div className="hm-sheet-head at-nas-head"><span className="at-nas-face" aria-hidden="true"><ProductPhoto src={photo} eager><NasArt tone={tone} /></ProductPhoto></span>
       <div><small>{t('cat.kind.nas' as Key)}{roomShown ? ` · ${roomShown}` : ''}</small><h2>{heading}</h2>{!host.online && <span className="hm-badge tone-danger at-sheet-offline" style="justify-self:start">{t('ui.offline')}</span>}</div>

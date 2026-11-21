@@ -45,7 +45,7 @@ const DXP2800: Profile = {
   id: 'ugreen.dxp2800', version: '1.0.0', category: 'network', brand: 'UGREEN', titleKey: 'cat.p.nasDxp2800', descKey: 'cat.p.nasDxp2800.desc',
   models: ['UGREEN DXP2800'], integration: { platform: 'ugreen', name: 'UGreen NAS' },
   terms: ['nas', 'nasync', 'dxp2800', 'ugos', 'хранилище', 'сетевое хранилище', 'диски', 'stocare', 'storage', 'raid'],
-  renderer: 'appliance', card: 'nas', kind: 'environment', icon: 'service', kindKey: 'cat.kind.nas', anchor: 'status', places: ['home', 'room'], parts: true, roles: ROLES,
+  renderer: 'appliance', card: 'nas', kind: 'environment', icon: 'service', kindKey: 'cat.kind.nas', anchor: 'status', places: ['home', 'room'], roles: ROLES,
 };
 
 // ---------------------------------------------------------------- reading
