@@ -110,6 +110,26 @@ try {
       // «Сказать Алисе»: one play_media to this station
       await page.locator('.at-sp-field input').scrollIntoViewIfNeeded(); await page.fill('.at-sp-field input', 'включи джаз'); await page.evaluate(`${R}.querySelector('.at-sp-say-acts .hm-pill.is-primary').click()`); await page.waitForTimeout(300);
       const said = await log(); check(`${tag()}:say-alice`, said.length === 1 && said[0].service === 'play_media' && said[0].data.media_content_type === 'command' && said[0].data.entity_id === CARDS.spmax.bindings.player, { said });
+      // 7. the house offline: said as the house's, not as a station without power; nothing is sent
+      await open('#home?device=p:spmax', 'playing'); await page.evaluate(() => window.atomPreview.setOnline(false)); await page.waitForTimeout(300);
+      const offTxt = await page.evaluate(`${R}.querySelector('[data-speaker]')?.textContent ?? ''`);
+      check(`${tag()}:house-offline-words`, /Нет связи с домом/.test(offTxt) && !/включена в розетку/.test(offTxt) && !/Группа крови/.test(offTxt), { offTxt: offTxt.slice(0, 200) }); await page.screenshot({ path: resolve(out, `${tag('spmax-house-offline')}.png`) });
+      // 8. a volume moved while «play» still waits for the station: it is not lost, the last value goes out after it
+      await open('#home?device=p:spmax', 'idle'); await page.evaluate(() => { window.atomPreview.setAccept(true); window.atomPreview.host.setDelay(600); });
+      await page.evaluate(`${R}.querySelector('.at-sp-play').click()`); await page.waitForTimeout(100);
+      await page.evaluate(`(() => { const i = ${R}.querySelector('.at-sp-vol input'); for (const v of [40, 52]) { i.value = String(v); i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); } })()`);
+      await page.waitForTimeout(6500); const vl = (await log()).filter(c => c.service === 'volume_set');
+      check(`${tag()}:volume-waits-not-lost`, vl.length === 1 && vl[0].data.volume_level === 0.52 && vl[0].data.entity_id === CARDS.spmax.bindings.player, { vl });
+      // 9. the rooms (the «Кто тянет сейчас» list may name the station by its socket — that is no card): one card per station (no auto-made speaker beside it), its line, the room's alarms row still there
+      for (const [id, dev] of [['spmax', maxD], ['spkitchen', kitchenD]]) {
+        await open(`#rooms?room=${dev.area_id}`, 'playing'); await page.waitForTimeout(300);
+        const room = await page.evaluate(`(() => { const r = ${R}; const names = [...r.querySelectorAll('.ah-tile-text strong, .rm-row-tx strong')].map(x => x.textContent.trim()).filter(x => /Станци/i.test(x)); return { names, alarms: !!r.querySelector('.rm-alarms'), text: r.textContent }; })()`);
+        const want = id === 'spmax' ? /Станция Макс/ : /Станция Мини 2(?! Assist)/;
+        check(`${tag('room', id)}:one-card`, room.names.filter(n => want.test(n) && !/Assist|сател/i.test(n)).length === 1, { names: room.names });
+        check(`${tag('room', id)}:line`, /Кино — Группа крови/.test(room.text));
+        check(`${tag('room', id)}:alarms-row-kept`, room.alarms);
+        await page.screenshot({ path: resolve(out, `${tag('room', id)}.png`) });
+      }
       // 6. the satellite's settings: an administrator's only
       await open('#home?device=p:spsat', 'idle', false); check(`${tag()}:sat-no-gear-for-resident`, !(await page.evaluate(`!!${R}.querySelector('[data-speaker] .at-kt-gear')`)));
       await open('#home?device=p:spsat', 'idle', true); await page.click('[data-speaker] .at-kt-gear'); await page.waitForTimeout(200); await page.screenshot({ path: resolve(out, `${tag('spsat-settings')}.png`) });

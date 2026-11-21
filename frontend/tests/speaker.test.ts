@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import type { Registry } from '../src/model/registry.ts';
 import { PROFILES, devicesFor, suggestBindings, instanceView, instanceClaims, candidates, searchProfiles, type ProfileInstance } from '../src/model/card-catalog.ts';
-import { STATION_MAX, STATION_LITE, STATION_MINI2, PULSAR_MINI2, SPEAKER_PROFILES, readSpeaker, speakerCommands, speakerLine, family, F, SAY_MAX, tidyName, whenText, type Step } from '../src/appliances/speaker.profiles.ts';
+import { STATION_MAX, STATION_LITE, STATION_MINI2, PULSAR_MINI2, SPEAKER_PROFILES, readSpeaker, speakerCommands, speakerLine, family, F, SAY_MAX, tidyName, whenText, calendarTime, type Step } from '../src/appliances/speaker.profiles.ts';
 
 import { words_speaker } from '../src/i18n/words-speaker.ts';
 import { translator } from '../src/i18n/index.ts';
@@ -146,6 +146,12 @@ test('the satellite: what Assist does in words, microphones off said first, a ha
   reg.states[i.bindings.satellite] = { ...reg.states[i.bindings.satellite], state: 'unavailable' }; assert.equal(line(reg), 'Нет связи');
   // its commands: its own switch, light and button
   const c = speakerCommands(i); assert.deepEqual(c.mics(false), [['switch', 'turn_off', { entity_id: i.bindings.mics }]]); assert.deepEqual(c.ring(true), [['light', 'turn_on', { entity_id: i.bindings.ring }]]); assert.deepEqual(c.restart(), [['button', 'press', { entity_id: i.bindings.restart }]]);
+});
+
+test('a calendar\'s zone-less time is the house\'s wall time', () => {
+  assert.equal(calendarTime('2026-11-22 07:00:00', 'Europe/Chisinau'), Date.parse('2026-11-22T07:00:00+02:00'));
+  assert.equal(calendarTime('2026-11-22T07:00:00+00:00', 'Europe/Chisinau'), Date.parse('2026-11-22T07:00:00Z'));
+  assert.ok(Number.isNaN(calendarTime(undefined)));
 });
 
 test('names: the installer\'s doubled name is said once', () => {

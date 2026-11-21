@@ -12,6 +12,7 @@ import type { Profile, ProfileInstance, RoleSpec } from '../model/card-catalog.t
 import type { Registry, StateRow } from '../model/registry.ts';
 import type { Key, T } from '../i18n/index.ts';
 import type { Lang } from '../ui/format.ts';
+import { houseAt } from '../runtime/zone.ts';
 
 export type Step = [domain: string, service: string, data: Record<string, unknown>];
 /** HA's MediaPlayerEntityFeature bits the card reads */
@@ -83,7 +84,13 @@ export interface SpeakerRead {
   admin: { wakeWord: { id: string; value: string | null; options: string[] } | null; wakeSound: { id: string; on: boolean | null } | null; voiceLight: { id: string; on: boolean | null } | null; visual: { id: string; value: string | null; options: string[] } | null; nearest: { id: string; on: boolean | null } | null; restart: string | null };
 }
 const opts = (s: StateRow | undefined) => Array.isArray(s?.attributes.options) ? (s!.attributes.options as unknown[]).map(String) : [];
-export function readSpeaker(reg: Registry, inst: Pick<ProfileInstance, 'profileId' | 'bindings'>, online = true): SpeakerRead {
+/** A calendar's «2026-11-22 07:00:00» is the house's wall time (HA writes it without a zone): read in the house's zone, not the browser's. */
+export function calendarTime(v: unknown, tz?: string): number {
+  if (typeof v !== 'string') return NaN;
+  const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/.exec(v.trim());
+  return m ? houseAt(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] ?? 0), tz) : Date.parse(v);
+}
+export function readSpeaker(reg: Registry, inst: Pick<ProfileInstance, 'profileId' | 'bindings'>, online = true, tz?: string): SpeakerRead {
   const B = inst.bindings, S = reg.states, st = (role: string) => B[role] ? S[B[role]] : undefined;
   const satellite = isSatellite(inst.profileId);
   const main = satellite ? st('satellite') : st('player'), p = st('player'), a = p?.attributes ?? {};
@@ -99,7 +106,7 @@ export function readSpeaker(reg: Registry, inst: Pick<ProfileInstance, 'profileI
   const assist: Assist = as === 'listening' || as === 'processing' || as === 'responding' || as === 'idle' ? as : null;
   const rep = str(a.repeat);
   const eqS = st('equalizer'), alS = st('alarms'), plugS = st('plug'), powS = st('power'), ringS = st('ring');
-  const start = alS && typeof alS.attributes.start_time === 'string' ? Date.parse(alS.attributes.start_time) : NaN;
+  const start = alS ? calendarTime(alS.attributes.start_time, tz) : NaN;
   const sw = (role: string) => B[role] && st(role) ? { id: B[role], on: online ? onOff(st(role)) : null } : null;
   const sel = (role: string) => B[role] && st(role) ? { id: B[role], value: DEAD.has(st(role)!.state) ? null : st(role)!.state, options: opts(st(role)) } : null;
   const rgb = Array.isArray(ringS?.attributes.rgb_color) && (ringS!.attributes.rgb_color as unknown[]).length === 3 ? (ringS!.attributes.rgb_color as number[]).map(Number) as [number, number, number] : null;

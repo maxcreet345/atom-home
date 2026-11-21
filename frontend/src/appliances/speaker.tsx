@@ -69,10 +69,12 @@ function Ask({ text, yes, t, onYes, onNo }: { text: string; yes: string; t: T; o
 }
 
 export function SpeakerSheet({ view, registry, host, t, lang, onClose, room, wide }: ApplianceSheetProps) {
-  const r: SpeakerRead = readSpeaker(registry, view.instance, host.online), cmd = speakerCommands(view.instance), ui = useRun(host, t);
+  const r: SpeakerRead = readSpeaker(registry, view.instance, host.online, host.timeZone), cmd = speakerCommands(view.instance), ui = useRun(host, t);
   const photo = usePhoto(r.satellite ? view.instance.bindings.satellite : r.player), kind = artOf(view.profile.id);
   const [ask, setAsk] = useState<null | 'plug' | 'restart'>(null), [screen, setScreen] = useState<'main' | 'settings'>('main');
   const [say, setSay] = useState(''), [note, setNote] = useState(''), [vol, setVol] = useState<number | null>(null);
+  const wantVol = useRef<number | null>(null), volTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (volTimer.current) clearTimeout(volTimer.current); }, []);
   const [, tick] = useState(0), [cover, setCover] = useState<string | null>(null); // a cover that did not load: the station's drawing instead, never a broken picture
   useEffect(() => { ui.seen(); }, [r.phase, r.plug?.on]);
   useEffect(() => { setVol(null); }, [r.volume]);
@@ -95,7 +97,7 @@ export function SpeakerSheet({ view, registry, host, t, lang, onClose, room, wid
   // ---- what plays ----
   const pos = r.position !== null && r.duration ? Math.min(r.duration, r.position + (r.phase === 'playing' && r.positionAt ? (Date.now() - r.positionAt) / 1000 : 0)) : null;
   const playing = r.phase === 'playing', music = playing || r.phase === 'paused';
-  const transport = r.player && !off && (r.can.playPause || r.can.next || r.can.prev) && <div className="at-sp-transport">
+  const transport = r.player && !off && (!r.satellite || music) && (r.can.playPause || r.can.next || r.can.prev) && <div className="at-sp-transport">
     {r.can.shuffle && <button type="button" className={`at-sp-mini ${r.shuffle ? 'is-on' : ''}`} aria-pressed={r.shuffle === true} aria-label={w(t, 'shuffle')} disabled={busy} onClick={() => send('shuffle', cmd.shuffle(!r.shuffle))}><G n="shuffle" size={20} /></button>}
     <button type="button" className="at-sp-skip" aria-label={w(t, 'prev')} disabled={!r.can.prev || busy} onClick={() => send('prev', cmd.prev())}><G n="prev" size={26} /></button>
     <button type="button" className="at-sp-play" aria-label={playing ? w(t, 'pause') : w(t, 'play')} aria-busy={ui.busy === 'play'} disabled={!r.can.playPause || busy} onClick={() => send('play', cmd.playPause(), 4000)}><G n={playing ? 'pause' : 'play'} size={30} /></button>
@@ -108,6 +110,7 @@ export function SpeakerSheet({ view, registry, host, t, lang, onClose, room, wid
     <div className="at-sp-now">
       <small className="at-sp-status" role="status">{status}</small>
       {music && r.title ? <><b className="at-sp-title">{r.title}</b>{r.artist && <span className="at-sp-artist">{r.artist}</span>}</>
+        : !host.online ? <><b className="at-sp-title">{t('ui.offline')}</b><span className="at-sp-artist">{w(t, 'houseOffHint')}</span></>
         : off ? <><b className="at-sp-title">{plugOff ? w(t, 'offlinePlug') : w(t, 'offline')}</b><span className="at-sp-artist">{plugOff ? '' : w(t, 'offlineHint')}</span></>
         : r.satellite ? <b className="at-sp-title">{r.hwMute === true || r.mics?.on === false ? w(t, 'tile.micsOff') : w(t, 'tile.ready')}</b>
         : <><b className="at-sp-title">{w(t, 'silent')}</b><span className="at-sp-artist">{w(t, 'silentHint')}</span></>}
@@ -116,11 +119,13 @@ export function SpeakerSheet({ view, registry, host, t, lang, onClose, room, wid
     {transport}
     {off && plugOff && r.plug && <button type="button" className="hm-pill is-primary at-sp-wake" disabled={busy || !host.online} aria-busy={ui.busy === 'plug'} onClick={() => send('plug', cmd.plug(true), 6000)}>{t('ui.turnOn')}</button>}
   </section>;
+  // a volume chosen while another command of this card is on its way (play waits for the station's answer) waits for it, then the LAST value goes out
+  const sendVol = async () => { if (volTimer.current) { clearTimeout(volTimer.current); volTimer.current = null; } if (ui.running()) { volTimer.current = setTimeout(() => void sendVol(), 300); return; } const v = wantVol.current; wantVol.current = null; if (v === null) return; if (!await ui.run('volume', cmd.volume(v))) setVol(null); };
   const volPct = vol ?? (r.volume === null ? null : Math.round(r.volume * 100));
   const volume = r.player && (r.can.volume || r.can.mute) && <div className="at-kt-card at-sp-vol" role="group" aria-label={w(t, 'volume')}>
     <button type="button" className={`at-sp-mute ${r.muted ? 'is-on' : ''}`} aria-pressed={r.muted === true} aria-label={r.muted ? w(t, 'unmute') : w(t, 'mute')} disabled={off || !r.can.mute || busy} onClick={() => send('mute', cmd.mute(!r.muted))}><G n={r.muted ? 'mute' : 'vol'} /></button>
     <input type="range" min={0} max={100} step={1} value={volPct ?? 0} disabled={off || !r.can.volume || volPct === null} aria-label={w(t, 'volume')} aria-valuetext={volPct === null ? w(t, 'unknownState') : `${volPct} %`} style={{ '--sp-fill': `${volPct ?? 0}%` }}
-      onInput={e => setVol(Number((e.target as HTMLInputElement).value))} onChange={e => { const v = Number((e.target as HTMLInputElement).value); setVol(v); void ui.run('volume', cmd.volume(v)).then(ok => { if (!ok) setVol(null); }); }} />
+      onInput={e => setVol(Number((e.target as HTMLInputElement).value))} onChange={e => { const v = Number((e.target as HTMLInputElement).value); setVol(v); wantVol.current = v; void sendVol(); }} />
     <b className="at-sp-volnum">{r.muted ? <small>{w(t, 'muted')}</small> : volPct === null ? '—' : <>{num(volPct, lang, 0)}<i>%</i></>}</b>
   </div>;
 
