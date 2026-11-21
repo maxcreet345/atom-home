@@ -74,7 +74,7 @@ import { shellAlarm, announcement, sk } from '../model/security-words.ts';
 import { houseStatus, type HouseStatus } from '../model/house-status.ts';
 import { HouseStatusStrip } from './house-status.tsx';
 import { people } from '../model/people.ts';
-import { instanceViews, INSTANCE_PREFIX, type InstanceView } from '../model/card-catalog.ts';
+import { instanceViews, selfDrawn, INSTANCE_PREFIX, type InstanceView } from '../model/card-catalog.ts';
 import { heatLayoutOf } from '../model/heating-layout.ts';
 import { CardCatalog, AddCardButton, LostNote } from './catalog.tsx';
 import { CameraTile } from './camera-tile.tsx';
@@ -158,7 +158,7 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
   const found = useMemo(() => discoverHome(registry, config, claimed), [registry, config, claimed]);
   // the cards the installer added from the catalog (model/card-catalog.ts): each its own device of the house, drawn by the panel's own tile and
   // sheet; a card whose required fields are not bound is not drawn for the residents. The heating scheme is drawn by the heating screen.
-  const cardViews = useMemo<InstanceView[]>(() => config.profileInstances ? instanceViews(registry, config.profileInstances, a => found.rooms.find(r => r.id === a)?.name ?? null, undefined, k => t(k as Key)) : [], [registry, config.profileInstances, found.rooms, t]);
+  const cardViews = useMemo<InstanceView[]>(() => config.profileInstances ? instanceViews(registry, config.profileInstances, a => found.rooms.find(r => r.id === a)?.name ?? null, undefined, k => t(k as Key)).filter(v => !selfDrawn(v.profile) /* a module or the panel's own card draws itself */) : [], [registry, config.profileInstances, found.rooms, t]);
   const home = useMemo(() => { const own = cardViews.filter(v => !v.incomplete.length && v.profile.renderer !== 'heatingRooms').map(v => ({ ...v.device, photo: config.devices[`d:${v.device.haDeviceId}`]?.photo ?? (v.instance.legacyKey ? config.devices[v.instance.legacyKey]?.photo : null) ?? null }));
     return own.length ? { ...found, devices: [...found.devices, ...own] } : found; }, [found, cardViews, config.devices]);
   const [view, setView] = useState<View>(() => decode(navigationWindow.location.hash));

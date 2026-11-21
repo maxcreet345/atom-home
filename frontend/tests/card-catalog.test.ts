@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import type { Registry } from '../src/model/registry.ts';
-import { PROFILES, profileById, searchProfiles, brandsOf, devicesFor, foundHere, candidates, suggestBindings, suggestRoom, instanceView, instanceViews, instanceClaims, normaliseInstances, type Profile, type ProfileInstance } from '../src/model/card-catalog.ts';
+import { PROFILES, tellModule, untellModule, moduleMatch, profileById, searchProfiles, brandsOf, devicesFor, foundHere, candidates, suggestBindings, suggestRoom, instanceView, instanceViews, instanceClaims, normaliseInstances, type Profile, type ProfileInstance } from '../src/model/card-catalog.ts';
 import { normaliseConfig, type HouseConfig } from '../src/model/config.ts';
 import { discover } from '../src/model/discover.ts';
 import { readHeating } from '../src/model/heating.ts';
@@ -38,7 +38,8 @@ const claimedEntities = (reg: Registry, c: HouseConfig) => instanceClaims(reg, c
 const config = (cards: Record<string, ProfileInstance>): HouseConfig => normaliseConfig({ schemaVersion: 1, home: { name: 'Criuleni' }, profileInstances: cards }).config;
 
 test('«Purifier 4», «Xiaomi», the model code and «Очистители воздуха → Xiaomi» lead to the same profile', () => {
-  for (const q of ['Purifier 4', 'purifier 4', 'Xiaomi', 'zhimi.airp.mb5', 'mb5', 'очиститель']) assert.deepEqual(searchProfiles(q, title).map(p => p.id), ['xiaomi.purifier4'], q);
+  assert.ok(searchProfiles('Xiaomi', title).map(p => p.id).includes('xiaomi.purifier4'), 'the make lists the purifier among its cards');
+  for (const q of ['Purifier 4', 'purifier 4', 'zhimi.airp.mb5', 'mb5', 'очиститель']) assert.deepEqual(searchProfiles(q, title).map(p => p.id), ['xiaomi.purifier4'], q);
   assert.deepEqual(searchProfiles('', title, { category: 'air_purifier', brand: 'Xiaomi' }).map(p => p.id), ['xiaomi.purifier4']);
   assert.deepEqual(brandsOf('air_purifier'), ['Xiaomi']);
   // both heating cards stand side by side in «Отопление», neither is a question of the first run
@@ -176,9 +177,58 @@ test('the settings of a house that never used the catalog are kept exactly; norm
     const withNothing = discover(live, normaliseConfig({ ...raw, profileInstances: {} }).config, claimedEntities(live, normaliseConfig({ ...raw, profileInstances: {} }).config)).devices.filter(d => d.enabled).map(d => [d.key, d.name, d.roomId, d.favorite, d.order]);
     assert.deepEqual(withNothing, cards, `${file}: the visible cards, their names, rooms and order are the same`);
   }
-  const future = normaliseInstances({ cX: { profileId: 'xiaomi.feeder2', profileVersion: '1.0.0', bindings: { feed: 'button.x_feed' }, placement: ['home'], extra: 1 }, 'bad id!': { profileId: 'x' } });
+  const future = normaliseInstances({ cX: { profileId: 'acme.future9', profileVersion: '1.0.0', bindings: { feed: 'button.x_feed' }, placement: ['home'], extra: 1 }, 'bad id!': { profileId: 'x' } });
   assert.deepEqual(Object.keys(future), ['cX'], 'a newer panel\'s card is kept, a malformed one dropped');
   assert.equal((future.cX as unknown as { extra: number }).extra, 1, 'with the fields this panel does not know');
   assert.deepEqual(Object.keys(normaliseInstances(JSON.parse('{"__proto__":{"profileId":"x"}}'))), []);
   assert.deepEqual(instanceViews(live, future), [], 'and this panel draws nothing for it');
+});
+
+// ---- the panel's own cards in the catalog (owner 21.11.2026: «добавь все готовые карточки») ----
+test('every ready card is in the catalog with words in ru, ro and en, and each of Criuleni’s is «found in this house»', () => {
+  const ro = translator('ro'), en = translator('en');
+  for (const p of PROFILES) for (const tr of [t, ro, en]) { assert.notEqual(tr(p.titleKey as never), p.titleKey, `${p.id} title`); assert.notEqual(tr(p.descKey as never), p.descKey, `${p.id} desc`); for (const r of p.roles) assert.notEqual(tr(r.labelKey as never), r.labelKey, `${p.id}.${r.id}`); }
+  const here = PROFILES.filter(p => foundHere(live, p)).map(p => p.id).sort();
+  for (const id of ['xiaomi.feeder2', 'xiaomi.fountain2', 'xiaomi.kettle2pro', 'xiaomi.airfryer55', 'roborock.saros_z70', 'aqara.g4', 'demirdokum.nitromix_p24', 'house.air', 'house.clock']) assert.ok(here.includes(id), `${id} found on Criuleni (${here.join(', ')})`);
+});
+test('a model card is found only where that model is: another kettle does not make «Kettle 2 Pro» found', () => {
+  const reg: Registry = structuredClone(live), k = reg.devices.find(d => /^xiaomi\.kettle\./.test(d.model ?? ''));
+  if (!k) return; k.model = 'xiaomi.kettle.v99';
+  assert.equal(foundHere(reg, profileById('xiaomi.kettle2pro')!), false);
+});
+test('a module card takes the module’s own finding for its fields; the boiler is found by its fields where the module alone misses it', () => {
+  const feeder = profileById('xiaomi.feeder2')!, dev = devicesFor(live, feeder)[0];
+  assert.ok(dev, 'the feeder is a device of this house');
+  assert.match(suggestBindings(live, feeder, dev.id).feed ?? '', /^button\..+_(dispense|pet_food_out)$/);
+  const kp = profileById('xiaomi.kettle2pro')!; assert.ok(suggestBindings(live, kp, devicesFor(live, kp)[0]?.id).heater, 'the kettle’s heater');
+  const boiler = suggestBindings(live, profileById('demirdokum.nitromix_p24')!);
+  assert.match(boiler.flow ?? '', /_flow_temp$/); assert.match(boiler.pressure ?? '', /_pressure$/);
+  // the ONVIF camera keeps the module's HD lens: the card does not pick the light ONVIF profile itself
+  const c44 = profileById('sonoff.cam_c44he')!, cam = suggestBindings(live, c44, devicesFor(live, c44)[0]?.id).camera;
+  if (cam) assert.equal(cam, moduleMatch(live, c44)?.entities.camera);
+});
+test('a card that draws itself is never a second tile and takes nothing from the auto-made cards', () => {
+  const feeder = profileById('xiaomi.feeder2')!, dev = devicesFor(live, feeder)[0];
+  const all = normaliseInstances({ c1: { profileId: feeder.id, profileVersion: '1.0.0', deviceId: dev.id, bindings: suggestBindings(live, feeder, dev.id), placement: [] } });
+  assert.equal(instanceClaims(live, all).size, 0);
+  assert.ok(instanceViews(live, all)[0]?.incomplete.length === 0, 'the feeder card is complete');
+});
+test('the module settings: a card writes only what it changes, removing puts back exactly that, a hand-set entity and a later change stay', () => {
+  const found = { entities: { feed: 'button.a_dispense', stock: 'sensor.a_food_level' }, options: { portionGrams: '10' } };
+  // the house set «plan» by hand before the card; the card keeps the module's own feed, changes stock, sets grams
+  const c = { modules: { pet_feeder: { entities: { plan: 'switch.hand_set' } } } } as unknown as HouseConfig;
+  const binds = { feed: 'button.a_dispense', stock: 'sensor.b_level', plan: 'switch.hand_set' };
+  const undo = tellModule(c, 'pet_feeder', ['feed', 'stock', 'plan'], binds, ['portionGrams'], { portionGrams: '12' }, found);
+  assert.deepEqual(c.modules.pet_feeder.entities, { plan: 'switch.hand_set', stock: 'sensor.b_level' }, 'the module’s own finding is not pinned');
+  assert.deepEqual(undo.entities, { stock: null });
+  // later the house changes stock itself; removing the card leaves that, and the hand-set plan
+  c.modules.pet_feeder.entities!.stock = 'sensor.c_newer';
+  untellModule(c, 'pet_feeder', { bindings: binds, moduleUndo: undo });
+  assert.deepEqual(c.modules.pet_feeder.entities, { plan: 'switch.hand_set', stock: 'sensor.c_newer' });
+  assert.equal((c.modules.pet_feeder.options ?? {}).portionGrams, undefined, 'its grams go back');
+  // a module the house had switched off is switched off again
+  const d = { modules: { kettle: { enabled: false } } } as unknown as HouseConfig;
+  const u2 = tellModule(d, 'kettle', ['heater'], { heater: 'water_heater.k' }, [], {}, null);
+  assert.equal(d.modules.kettle.enabled, true); untellModule(d, 'kettle', { bindings: { heater: 'water_heater.k' }, moduleUndo: u2 });
+  assert.equal(d.modules.kettle.enabled, false); assert.equal(d.modules.kettle.entities, undefined);
 });

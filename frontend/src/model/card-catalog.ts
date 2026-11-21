@@ -10,10 +10,17 @@ import { domainOf, unavailable } from './registry.ts';
 import { entityKind } from './kinds.ts';
 import type { Kind } from './kinds.ts';
 import { entityRefOf, NO_ROOM, type EntityRef, type HomeDevice } from './discover.ts';
+import { MODULE_SPECS } from '../modules/catalog.ts';
+import type { HouseConfig } from './config.ts';
 
-export type Category = 'air_purifier' | 'heating';
-export const CATEGORIES: readonly Category[] = ['air_purifier', 'heating'];
-export type Renderer = 'device' | 'thermostat' | 'heatingRooms';
+export type Category = 'air_purifier' | 'heating' | 'boiler' | 'pets' | 'kitchen' | 'cleaning' | 'cameras' | 'house';
+export const CATEGORIES: readonly Category[] = ['air_purifier', 'heating', 'boiler', 'pets', 'kitchen', 'cleaning', 'cameras', 'house'];
+/** `module`: the card is one of the panel's device modules (modules/catalog.ts: the feeder, the kettle, a camera…) — it draws itself where its
+ * module puts it, and the instance tells it which entities are its own (`config.modules[id].entities`, over what the module found by itself).
+ * `native`: the panel draws this appliance with its own card already (the robot, the fountain's room card); the instance records it. */
+export type Renderer = 'device' | 'thermostat' | 'heatingRooms' | 'module' | 'native';
+/** The card draws itself (a module, the panel's own card): no tile is made from the instance, nothing is taken from the auto-made cards. */
+export const selfDrawn = (p: Pick<Profile, 'renderer'>) => p.renderer === 'module' || p.renderer === 'native';
 export type Place = 'home' | 'room';
 /** One field of a card: what it is for, whether the card needs it, and what may fill it. */
 export interface RoleSpec {
@@ -31,6 +38,7 @@ export interface Profile {
   /** the HA integration it is known through, said when the device is not found */ integration?: { platform: string; name: string };
   /** words the search finds it by, besides its title, brand and model codes */ terms: string[];
   renderer: Renderer; kind: Kind;
+  /** the device module that draws it (`renderer: 'module'`), one per house */ module?: string;
   /** the glyph of its tile and the word above its sheet's name («Очиститель воздуха», not the HA domain's «Вентилятор») */ icon?: string; kindKey?: string;
   /** the entity a device is found by (the purifier's `fan`); its role id */ anchor?: string;
   roles: RoleSpec[];
@@ -83,7 +91,79 @@ const HEAT_ROOMS: Profile = {
     { id: 'manualTemp', labelKey: 'cat.r.manualTemp', hintKey: 'cat.r.manualTemp.hint', required: false, domains: ['input_number'], suffix: /_heating_manual_temp$/ },
   ],
 };
-export const PROFILES: Profile[] = [PURIFIER_4, HEAT_SINGLE, HEAT_ROOMS];
+// ---- the panel's own cards, by model (owner 21.11.2026: «добавь все готовые карточки»). Key fields only: the module finds the rest of the
+// device's entities itself; a field the installer changes wins over what the module found (modules/catalog.ts activeSpecs). ----
+const own = (id: string, labelKey: string, domains: string[], suffix: RegExp | undefined, required = false, extra: Partial<RoleSpec> = {}): RoleSpec => ({ id, labelKey, domains, suffix, required, source: 'own', ...extra });
+const FEEDER_2: Profile = {
+  id: 'xiaomi.feeder2', version: '1.0.0', category: 'pets', brand: 'Xiaomi', titleKey: 'cat.p.feeder2', descKey: 'cat.p.feeder2.desc', models: ['xiaomi.feeder.iv2001'],
+  integration: { platform: 'xiaomi_miot', name: 'Xiaomi Miot' }, terms: ['feeder', 'pet food feeder 2', 'кормушка', 'hrănitor', 'iv2001'], renderer: 'module', module: 'pet_feeder', kind: 'switch', icon: 'paw', anchor: 'feed', places: [],
+  roles: [own('feed', 'module.feeder.role.feed', ['button'], /_(dispense|pet_food_out)$/, true), own('stock', 'module.feeder.role.stock', ['sensor'], /_(food_level|pet_food_left_level)$/), own('plan', 'module.feeder.role.plan', ['switch'], /_schedule(_state)?$/), own('outStatus', 'module.feeder.role.outStatus', ['sensor'], /_(dispense_status|food_out_status)$/), own('desiccant', 'module.feeder.role.desiccant', ['sensor'], /_desiccant_(level|left_level)$/)],
+};
+const FOUNTAIN_2: Profile = {
+  id: 'xiaomi.fountain2', version: '1.0.0', category: 'pets', brand: 'Xiaomi', titleKey: 'cat.p.fountain2', descKey: 'cat.p.fountain2.desc', models: ['xiaomi.pet_waterer.iv02'],
+  integration: { platform: 'xiaomi_miot', name: 'Xiaomi Miot' }, terms: ['fountain', 'pet fountain 2', 'поилка', 'adăpătoare', 'iv02'], renderer: 'native', kind: 'switch', icon: 'water', anchor: 'pump', places: [],
+  roles: [own('pump', 'cat.r.pump', ['switch'], /_pump$/, true), own('waterLow', 'cat.r.waterLow', ['binary_sensor'], /_water_low$/), own('filter', 'cat.r.filter', ['sensor'], /_filter_level$/), own('mode', 'cat.r.mode2', ['select'], /_mode$/)],
+};
+const KETTLE_2PRO: Profile = {
+  id: 'xiaomi.kettle2pro', version: '1.0.0', category: 'kitchen', brand: 'Xiaomi', titleKey: 'cat.p.kettle2pro', descKey: 'cat.p.kettle2pro.desc', models: ['xiaomi.kettle.v20'],
+  integration: { platform: 'xiaomi_miot', name: 'Xiaomi Miot' }, terms: ['kettle', 'smart kettle 2 pro', 'чайник', 'fierbător', 'v20'], renderer: 'module', module: 'kettle', kind: 'switch', icon: 'cup', anchor: 'heater', places: [],
+  roles: [own('heater', 'module.kettle.role.heater', ['water_heater', 'switch'], /(^water_heater\..+|_power)$/, true), own('temp', 'module.kettle.role.temp', ['sensor'], /_temperature$/), own('power', 'module.kettle.role.power', ['switch'], /_power$/)],
+};
+const AIRFRYER_55: Profile = {
+  id: 'xiaomi.airfryer55', version: '1.0.0', category: 'kitchen', brand: 'Xiaomi', titleKey: 'cat.p.airfryer55', descKey: 'cat.p.airfryer55.desc', models: ['xiaomi.fryer.maf07d'],
+  integration: { platform: 'xiaomi_miot', name: 'Xiaomi Miot' }, terms: ['air fryer', 'airfryer', 'аэрогриль', 'friteuză', 'maf07d'], renderer: 'module', module: 'airfryer', kind: 'switch', icon: 'oven', anchor: 'status', places: [],
+  roles: [own('status', 'module.airfryer.role.status', ['sensor'], /_status$/, true), own('temp', 'module.airfryer.role.temp', ['number'], /_target_temperature$/), own('time', 'module.airfryer.role.time', ['number'], /_target_time$/)],
+};
+const SAROS_Z70: Profile = {
+  id: 'roborock.saros_z70', version: '1.0.0', category: 'cleaning', brand: 'Roborock', titleKey: 'cat.p.sarosZ70', descKey: 'cat.p.sarosZ70.desc', models: ['roborock.vacuum.a179'],
+  integration: { platform: 'roborock', name: 'Roborock' }, terms: ['vacuum', 'saros', 'z70', 'робот', 'пылесос', 'aspirator', 'a179'], renderer: 'native', kind: 'vacuum', icon: 'vacuum', anchor: 'vacuum', places: [],
+  roles: [own('vacuum', 'cat.r.vacuum', ['vacuum'], undefined, true), own('battery', 'cat.r.battery', ['sensor'], /_battery$/), own('map', 'cat.r.map', ['image'], /_map$/)],
+};
+const AQARA_G4: Profile = {
+  id: 'aqara.g4', version: '1.0.0', category: 'cameras', brand: 'Aqara', titleKey: 'cat.p.aqaraG4', descKey: 'cat.p.aqaraG4.desc', models: ['SVD-C02'],
+  integration: { platform: 'homekit_controller', name: 'HomeKit Device' }, terms: ['doorbell', 'g4', 'звонок', 'sonerie', 'svd-c02'], renderer: 'module', module: 'doorbell', kind: 'camera', icon: 'bell', anchor: 'camera', places: [],
+  roles: [own('camera', 'module.camera.entity', ['camera'], undefined, true, { source: 'prefer' }), own('ring', 'module.doorbell.role.ring', ['event'], /_ring$/), own('motion', 'module.doorbell.role.motion', ['binary_sensor'], /_motion$/), own('battery', 'module.doorbell.role.battery', ['sensor'], /_battery$/)],
+};
+const IMOU_RANGER: Profile = {
+  id: 'imou.ranger2c', version: '1.0.0', category: 'cameras', brand: 'Imou', titleKey: 'cat.p.imouRanger', descKey: 'cat.p.imouRanger.desc', models: ['IPC-K2EC-R1W'],
+  integration: { platform: 'imou', name: 'Imou Life' }, terms: ['imou', 'ranger 2c', 'камера', 'cameră', 'k2ec', 'ipc-k2ec-3r1w'], renderer: 'module', module: 'camera_imou', kind: 'camera', icon: 'camera', anchor: 'camera', places: [],
+  roles: [own('camera', 'module.imou.role.camera', ['camera'], /_sd$/, true, { source: 'prefer' }), own('privacy', 'module.imou.role.privacy', ['switch'], /_privacy$/)],
+};
+// the module plays the HD lens (`…_ptz_hd`) and keeps the ONVIF profile as its light stream: the card leaves the stream to the module
+const SONOFF_C44: Profile = {
+  id: 'sonoff.cam_c44he', version: '1.0.0', category: 'cameras', brand: 'SONOFF', titleKey: 'cat.p.camC44', descKey: 'cat.p.camC44.desc', models: ['CAM-C44HE'],
+  integration: { platform: 'onvif', name: 'ONVIF' }, terms: ['onvif', 'cam-c44he', 'c44', 'камера', 'cameră'], renderer: 'module', module: 'camera_onvif', kind: 'camera', icon: 'camera', anchor: 'camera', places: [],
+  roles: [own('camera', 'module.onvif.role.camera', ['camera'], undefined, true, { source: 'prefer' }), own('person', 'module.onvif.role.person', ['binary_sensor'], /_person_detection$/), own('motion', 'module.onvif.role.motion', ['binary_sensor'], /_motion_alarm$/)],
+};
+const XIAOMI_C700: Profile = {
+  id: 'xiaomi.c700', version: '1.0.0', category: 'cameras', brand: 'Xiaomi', titleKey: 'cat.p.c700', descKey: 'cat.p.c700.desc', models: ['chuangmi.camera.081ae2'],
+  integration: { platform: 'xiaomi_miot', name: 'Xiaomi Miot + go2rtc' }, terms: ['c700', 'xiaomi camera', 'go2rtc', 'камера', 'cameră'], renderer: 'module', module: 'camera_go2rtc', kind: 'camera', icon: 'camera', anchor: 'camera', places: [],
+  roles: [own('camera', 'module.camera.entity', ['camera'], undefined, true, { source: 'prefer' }), own('power', 'module.camera.role.power', ['switch'], /_power$/), own('motion', 'module.camera.role.motion', ['switch'], /_motion_detection$/)],
+};
+const NITROMIX_P24: Profile = {
+  id: 'demirdokum.nitromix_p24', version: '1.0.0', category: 'boiler', brand: 'Demir Döküm', titleKey: 'cat.p.nitromix', descKey: 'cat.p.nitromix.desc', models: [],
+  integration: { platform: 'mqtt', name: 'eBUSd (MQTT)' }, terms: ['boiler', 'nitromix', 'p24', 'ebus', 'котёл', 'котел', 'centrală', 'demir'], renderer: 'module', module: 'boiler_ebus', kind: 'climate', icon: 'flame', anchor: 'flow', places: [],
+  roles: [{ id: 'flow', labelKey: 'module.boiler.flow', required: true, domains: ['sensor'], units: ['°C'], suffix: /_flow_temp$/ }, { id: 'pressure', labelKey: 'module.boiler.pressure', required: true, domains: ['sensor'], units: ['bar'], suffix: /_pressure$/ },
+    { id: 'return', labelKey: 'module.boiler.return', required: false, domains: ['sensor'], units: ['°C'], suffix: /_return_temp$/ }, { id: 'flame', labelKey: 'module.boiler.flame', required: false, domains: ['sensor', 'binary_sensor'], suffix: /_flame$/ },
+    { id: 'hwc', labelKey: 'module.boiler.hwc', required: false, domains: ['sensor'], units: ['°C'], suffix: /_dhw_temp$/ }],
+};
+const HOUSE_AIR: Profile = {
+  id: 'house.air', version: '1.0.0', category: 'house', brand: null, titleKey: 'cat.p.air', descKey: 'cat.p.air.desc', models: [], terms: ['air', 'воздух', 'aer', 'co2', 'pm2.5'], renderer: 'module', module: 'air', kind: 'environment', icon: 'air', anchor: 'sensor', places: [],
+  roles: [{ id: 'sensor', labelKey: 'module.air.role.sensor', required: true, domains: ['sensor'], deviceClass: ['carbon_dioxide', 'pm25'] }],
+};
+const HOUSE_CLOCK: Profile = {
+  id: 'house.clock', version: '1.0.0', category: 'house', brand: null, titleKey: 'cat.p.clock', descKey: 'cat.p.clock.desc', models: [], terms: ['clock', 'часы', 'ceas', 'таймер', 'будильник', 'timer'], renderer: 'module', module: 'clock', kind: 'environment', icon: 'clock', anchor: 'sun', places: [],
+  roles: [{ id: 'sun', labelKey: 'module.clock.role.sun', required: true, domains: ['sun'] }, { id: 'weather', labelKey: 'module.clock.role.weather', required: false, domains: ['weather'] }, { id: 'timer1', labelKey: 'module.clock.role.timer1', required: false, domains: ['timer'] }],
+};
+export const PROFILES: Profile[] = [PURIFIER_4, HEAT_SINGLE, HEAT_ROOMS, NITROMIX_P24, FEEDER_2, FOUNTAIN_2, KETTLE_2PRO, AIRFRYER_55, SAROS_Z70, AQARA_G4, IMOU_RANGER, SONOFF_C44, XIAOMI_C700, HOUSE_AIR, HOUSE_CLOCK];
+/** What the profile's module finds by itself in this house (its own `detect`): the catalog and the panel never disagree on «found». */
+export function moduleMatch(reg: Registry, p: Profile) { const spec = p.module ? MODULE_SPECS.find(m => m.id === p.module) : undefined; try { return spec?.detect(reg) ?? null; } catch { return null; } }
+/** Is this entity part of the chosen appliance (its own HA device), or may it be (one appliance of this model in the house: a camera's stream on its sibling device)? */
+export function ofDevice(reg: Registry, p: Profile, entityId: string, deviceId: string | undefined): boolean {
+  if (!p.models.length || !deviceId) return true;
+  if (reg.entities.find(e => e.entity_id === entityId)?.device_id === deviceId) return true;
+  return devicesFor(reg, p).length <= 1;
+}
 export const profileById = (id: string, list: Profile[] = PROFILES) => list.find(p => p.id === id) ?? null;
 
 // ---- the instance a house keeps ----
@@ -136,11 +216,21 @@ const areaOf = (reg: Registry, e: EntityRow | undefined) => e ? e.area_id ?? reg
 export function devicesFor(reg: Registry, p: Profile): Array<{ id: string; name: string; areaId: string | null; model: string | null }> {
   if (!p.models.length) return [];
   const anchor = p.roles.find(r => r.id === p.anchor);
-  return reg.devices.filter(d => !d.disabled_by && d.model && p.models.includes(d.model) && reg.entities.some(e => e.device_id === d.id && live(reg, e) && (!anchor || anchor.domains.includes(domainOf(e.entity_id)))))
+  const anyEntity = selfDrawn(p); // a camera's stream may live on its sibling device (ONVIF, generic): the model is enough
+  const hasAnchor = (d: { id: string }) => !anchor || reg.entities.some(e => e.device_id === d.id && live(reg, e) && anchor.domains.includes(domainOf(e.entity_id)));
+  let list = reg.devices.filter(d => !d.disabled_by && d.model && p.models.includes(d.model) && reg.entities.some(e => e.device_id === d.id && live(reg, e)) && (anyEntity || hasAnchor(d)));
+  // one camera seen through two integrations (Sonoff's own and ONVIF) is one appliance: the device that carries the card's main entity, when one does
+  if (anyEntity && list.length > 1 && list.some(hasAnchor)) list = list.filter(hasAnchor);
+  return list
     .map(d => ({ id: d.id, name: (d as { name_by_user?: string | null }).name_by_user ?? d.name ?? d.model ?? d.id, areaId: d.area_id, model: d.model ?? null }));
 }
 /** Is the profile «found in this house»: an appliance whose model is here, a scheme whose main field has something to bind. */
-export const foundHere = (reg: Registry, p: Profile): boolean => p.models.length ? devicesFor(reg, p).length > 0 : candidates(reg, p.roles.find(r => r.id === p.anchor)!, {}).length > 0;
+export const foundHere = (reg: Registry, p: Profile): boolean => {
+  // a model's card is found only where that model is: another kettle or another ONVIF camera does not make this one «found»
+  if (p.models.length) return devicesFor(reg, p).length > 0;
+  if (p.module) { if (moduleMatch(reg, p)) return true; const b = suggestBindings(reg, p); return p.roles.filter(r => r.required).every(r => b[r.id]); }
+  return candidates(reg, p.roles.find(r => r.id === p.anchor)!, {}).length > 0;
+};
 export interface Candidate { id: string; name: string; areaId: string | null; value: string; unit: string | null; own: boolean; exact: boolean; score: number }
 const friendly = (reg: Registry, e: EntityRow) => { const n = reg.states[e.entity_id]?.attributes.friendly_name; return typeof n === 'string' && n.trim() ? n.trim() : e.name ?? e.original_name ?? e.entity_id; };
 const dcOf = (e: EntityRow, s: StateRow | undefined) => e.device_class ?? (s?.attributes.device_class as string | undefined) ?? null;
@@ -182,7 +272,15 @@ export function suggestion(list: Candidate[], role: RoleSpec): string | undefine
 /** The first bindings of a new card on a chosen device: every unambiguous field; nothing else. */
 export function suggestBindings(reg: Registry, p: Profile, deviceId?: string): Record<string, string> {
   const dev = deviceId ? reg.devices.find(d => d.id === deviceId) : undefined, out: Record<string, string> = {};
-  for (const r of p.roles) { const s = suggestion(candidates(reg, r, { deviceId, areaId: dev?.area_id ?? null }), r); if (s) out[r.id] = s; }
+  for (const r of p.roles) {
+    const list = candidates(reg, r, { deviceId, areaId: dev?.area_id ?? null }), s = suggestion(list, r);
+    // a module of the whole house with no device to choose (the boiler on eBUS): the one entity with the field's own suffix is it
+    const sole = !s && !deviceId && p.renderer === 'module' ? list.filter(c => c.exact) : [];
+    if (s) out[r.id] = s; else if (sole.length === 1) out[r.id] = sole[0].id;
+  }
+  // what the module finds by itself fills the fields still open — only with entities of the chosen appliance (two feeders never mix)
+  const m = moduleMatch(reg, p);
+  if (m) for (const r of p.roles) { const e = m.entities[r.id]; if (!out[r.id] && e && reg.states[e] && r.domains.includes(domainOf(e)) && ofDevice(reg, p, e, deviceId)) out[r.id] = e; }
   return out;
 }
 /** The room bindings a scheme suggests for one area: the area's own head and its air sensor; the timer and the temperatures by the head's name. */
@@ -241,6 +339,7 @@ export function instanceClaims(reg: Registry, all: Record<string, ProfileInstanc
   const out = new Set<string>();
   for (const inst of Object.values(all)) {
     const profile = profileById(inst.profileId, list); if (!profile) continue;
+    if (selfDrawn(profile)) continue; // it draws itself: the module claims its own entities
     if (inst.deviceId) for (const e of reg.entities) if (e.device_id === inst.deviceId) out.add(e.entity_id);
     if (profile.renderer !== 'device') { const a = inst.bindings[profile.anchor ?? '']; if (a) out.add(a); for (const r of inst.rooms ?? []) if (r.bindings.trv) out.add(r.bindings.trv); }
   }
@@ -248,3 +347,31 @@ export function instanceClaims(reg: Registry, all: Record<string, ProfileInstanc
 }
 /** The value a candidate shows in the form: its state with its unit, words for on/off. */
 export const candidateValue = (c: Pick<Candidate, 'value' | 'unit'>) => unavailable(c.value) ? '' : `${c.value}${c.unit ? ` ${c.unit}` : ''}`;
+
+// ---- a module card in the module's settings: what it changed, and putting exactly that back ----
+/** What a module card changed in its module's settings, to put back on removal: the value each key had before (null: none) and whether it was switched off. */
+export interface ModuleUndo { entities: Record<string, string | null>; options: Record<string, string | null>; /** the settings as the card left them */ set?: Record<string, string>; enabled?: false; /** the module had no settings at all before the card */ fresh?: true }
+type Found = { entities: Record<string, string | undefined>; options?: Record<string, string | undefined> } | null;
+/** Tell the module the card's entities and settings: only what differs from what the module uses now (its settings over its own finding),
+ * remembering the value each key had before — kept from the first save of the card, so a later edit never forgets what the house had. */
+export function tellModule(c: HouseConfig, moduleId: string, roles: string[], bindings: Record<string, string>, optionKeys: string[], opts: Record<string, string>, found: Found, prev?: ModuleUndo): ModuleUndo {
+  const was = c.modules[moduleId] ?? {}, undo: ModuleUndo = { entities: { ...(prev?.entities ?? {}) }, options: { ...(prev?.options ?? {}) }, set: { ...(prev?.set ?? {}) }, ...(prev?.enabled === false ? { enabled: false as const } : {}), ...(prev ? (prev.fresh ? { fresh: true as const } : {}) : !c.modules[moduleId] ? { fresh: true as const } : {}) };
+  const ents: Record<string, string> = { ...(was.entities ?? {}) }, o: Record<string, string> = { ...((was.options ?? {}) as Record<string, string>) };
+  for (const k of roles) { const v = bindings[k], now = ents[k] ?? found?.entities[k]; if (v && v !== now) { if (!(k in undo.entities)) undo.entities[k] = ents[k] ?? null; ents[k] = v; } }
+  for (const k of optionKeys) { const v = opts[k]?.trim(), now = o[k] ?? found?.options?.[k]; if (v && v !== now) { if (!(k in undo.options)) undo.options[k] = o[k] ?? null; o[k] = v; undo.set![k] = v; } }
+  if (was.enabled === false && !prev) undo.enabled = false;
+  const next = { ...was, ...(was.enabled === false ? { enabled: true } : {}), ...(Object.keys(ents).length ? { entities: ents } : {}), ...(Object.keys(o).length ? { options: o } : {}) };
+  if (c.modules[moduleId] || Object.keys(next).length) c.modules[moduleId] = next; // nothing to tell: no empty settings are made
+  return undo;
+}
+/** Put back what the card changed — only where the setting still holds the card's value (a change the house made since stays). */
+export function untellModule(c: HouseConfig, moduleId: string, inst: { bindings: Record<string, string>; moduleUndo?: ModuleUndo }) {
+  const u = inst.moduleUndo, was = c.modules[moduleId]; if (!u || !was) return;
+  const ents: Record<string, string> = { ...(was.entities ?? {}) }, o: Record<string, string> = { ...((was.options ?? {}) as Record<string, string>) };
+  for (const [k, before] of Object.entries(u.entities)) if (ents[k] === inst.bindings[k]) { if (before === null) delete ents[k]; else ents[k] = before; }
+  for (const [k, before] of Object.entries(u.options)) if (o[k] === u.set?.[k]) { if (before === null) delete o[k]; else o[k] = before; }
+  const next: Record<string, unknown> = { ...was, entities: ents, options: o }; if (u.enabled === false) next.enabled = false;
+  if (!Object.keys(ents).length) delete next.entities; if (!Object.keys(o).length) delete next.options;
+  if (u.fresh && !Object.keys(next).length) { delete c.modules[moduleId]; return; } // the module had no settings before the card: none again
+  c.modules[moduleId] = next as typeof was;
+}
