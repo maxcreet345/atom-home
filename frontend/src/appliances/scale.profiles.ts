@@ -14,7 +14,7 @@ import { dateFormat, houseDay, zoneOption } from '../runtime/zone.ts';
 const own = (id: string, labelKey: string, domains: string[], suffix: RegExp, extra: Partial<RoleSpec> = {}): RoleSpec => ({ id, labelKey, domains, suffix, required: false, source: 'own', ...extra });
 /** a person's weight from the router: any weight sensor of the house, the installer picks whose (they are not the scale's own device). No
  * suffix: the scale's own `…_weight` would be «the» suggestion for every person; the card finds the people by itself when these stay empty. */
-const person = (n: number): RoleSpec => ({ id: `person${n}`, labelKey: `cat.r.scalePerson${n}`, hintKey: 'cat.r.scalePerson.hint', required: false, domains: ['sensor'], deviceClass: ['weight'], units: ['kg'], exclude: /_raw$|нестабил|unstab/i, as: 'metric' });
+const person = (n: number): RoleSpec => ({ id: `person${n}`, labelKey: `cat.r.scalePerson${n}`, hintKey: 'cat.r.scalePerson.hint', required: false, domains: ['sensor'], deviceClass: ['weight'], units: ['kg'], exclude: /_raw$|нестабил|unstab/i }); // no `as`: a person's weight is never one of the card's shown readings
 const MI_SCALE_2: Profile = {
   id: 'xiaomi.scale2', version: '1.0.0', category: 'health', brand: 'Xiaomi', titleKey: 'cat.p.scale2', descKey: 'cat.p.scale2.desc',
   models: ['XMTZC02HM/XMTZC05HM/NUN4049CN'], integration: { platform: 'xiaomi_ble', name: 'Xiaomi BLE' },
@@ -98,6 +98,8 @@ export function whenText(at: number, t: T, lang: Lang, now = Date.now()): string
   if (d === yesterday) return t('scale.when.yesterday' as Key, { time });
   return t('scale.when.date' as Key, { date: dateFormat(locales[lang], { day: 'numeric', month: 'short', ...zoneOption() }).format(at), time });
 }
+/** a tile's short time: «21:41» today, «вчера», else «1 нояб.» (a tile's second line is one short line) */
+export const shortWhen = (at: number, t: T, lang: Lang, now = Date.now()) => houseDay(at) === houseDay(now) ? dateFormat(locales[lang], { hour: '2-digit', minute: '2-digit', ...zoneOption() }).format(at) : dayText(at, t, lang, now);
 /** «1 нояб.» — a short date only */
 export const dayText = (at: number, t: T, lang: Lang, now = Date.now()) => houseDay(at) === houseDay(now) ? t('scale.when.todayShort' as Key) : houseDay(at) === houseDay(now - 86_400_000) ? t('scale.when.yesterdayShort' as Key) : dateFormat(locales[lang], { day: 'numeric', month: 'short', ...zoneOption() }).format(at);
 export const kgText = (v: number | null, lang: Lang, t: T) => v === null ? '—' : `${num(v, lang, 1)} ${t('ep.unit.kg' as Key)}`;
@@ -108,6 +110,6 @@ export const family: ApplianceFamily = {
   tileLine(reg: Registry, inst: ProfileInstance, t: T, lang: Lang) {
     const s = readScale(reg, inst.bindings);
     if (!s.available && !s.last) return t('state.unavailable');
-    return s.last ? sk(t, 'tileLast', { when: whenText(s.last.at!, t, lang) }) : sk(t, 'tileNone');
+    return s.last ? sk(t, 'tileLast', { when: shortWhen(s.last.at!, t, lang) }) : sk(t, 'tileNone');
   },
 };

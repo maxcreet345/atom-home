@@ -10,7 +10,7 @@ import { num, type Lang } from './format.ts';
  *  class `gas` that only grows — in Criuleni the kitchen meter read by a camera every 5 minutes). Cubic metres stay apart from the kWh and lei
  *  above: the electricity report never adds them. Today and this month come from HA's statistics, the same numbers HA's Energy dashboard shows.
  *  Read-only. */
-export const unitWord = (u: string, t: T) => /^m³|m3$/i.test(u) ? t('gas.m3') : u;
+const unitWord = (u: string, t: T) => /^m³|m3$/i.test(u) ? t('gas.m3') : u;
 
 /** Today's and this month's use of one gas meter from HA's statistics (also the gas meter's own card, src/appliances/gasmeter.tsx): null while
  *  asked; a figure HA cannot give is null. Asked again when the reading moves and every 5 minutes (the camera reads the meter that often). */

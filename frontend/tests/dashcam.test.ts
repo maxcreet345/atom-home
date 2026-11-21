@@ -26,7 +26,7 @@ test('the dashcam is in the catalog under «Автомобиль»; every field 
 test('where the car is, its battery and the last alarm at the camera’s own time', () => {
   const b = pick(live), now = Date.parse('2026-11-21T12:30:00Z'), d = readDashcam(live, b, now);
   assert.equal(d.available, true);
-  assert.equal(d.place?.kind, 'zone'); assert.equal(d.place?.zone, 'Esperanza Sanitas'); assert.ok(d.place?.lat && d.place?.lon);
+  assert.equal(d.place?.kind, 'zone'); assert.equal(d.place?.zone, live.states[b.tracker].state, 'the zone HA names'); assert.ok(d.place?.lat && d.place?.lon);
   assert.equal(d.volts, 12.102); assert.equal(d.battery, 'mid');
   assert.equal(d.alarm?.kind, 'suspicious_person'); assert.equal(d.alarm?.at, 1795242519000, 'happen_time, not when HA heard of it'); assert.equal(d.alarm?.fresh, true);
   assert.equal(d.upload, true); assert.equal(d.simPower, false); assert.equal(d.firmware, '1.9.118ww');
@@ -37,7 +37,7 @@ test('the tile line: a fresh alarm first, else the place and the volts; home / a
   ev.happen_time = Date.now() - 3600_000; ev.event_type = 'collision';
   assert.match(family.tileLine!(reg, inst(b), t, 'ru')!, /^Удар по машине · /);
   ev.happen_time = Date.now() - 3 * 86_400_000;
-  assert.equal(family.tileLine!(reg, inst(b), t, 'ru'), 'Esperanza Sanitas · 12,1 В');
+  assert.equal(family.tileLine!(reg, inst(b), t, 'ru'), `${live.states[b.tracker].state} · 12,1 В`);
   reg.states[b.tracker].state = 'home'; assert.equal(family.tileLine!(reg, inst(b), t, 'ru'), 'Дома · 12,1 В');
   reg.states[b.tracker].state = 'not_home'; assert.equal(family.tileLine!(reg, inst(b), translator('ro'), 'ro'), 'Nu e acasă · 12,1 V');
   reg.states[b.tracker].state = 'unavailable';
@@ -47,5 +47,5 @@ test('the tile line: a fresh alarm first, else the place and the volts; home / a
 test('only the required field bound: no battery, no alarm, no link rows — and nothing breaks', () => {
   const b = { tracker: pick(live).tracker }, d = readDashcam(live, b);
   assert.equal(d.volts, null); assert.equal(d.alarm, null); assert.equal(d.network, null); assert.equal(d.firmware, null);
-  assert.equal(family.tileLine!(live, inst(b), t, 'ru'), 'Esperanza Sanitas');
+  assert.equal(family.tileLine!(live, inst(b), t, 'ru'), live.states[b.tracker].state);
 });

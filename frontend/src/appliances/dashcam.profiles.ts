@@ -9,7 +9,7 @@ import type { Profile, ProfileInstance, RoleSpec } from '../model/card-catalog.t
 import { unavailable, type Registry } from '../model/registry.ts';
 import type { Key, T } from '../i18n/index.ts';
 import { num, type Lang } from '../ui/format.ts';
-import { whenText } from './scale.profiles.ts';
+import { shortWhen } from './scale.profiles.ts';
 
 const field = (id: string, domains: string[], suffix: RegExp, extra: Partial<RoleSpec> = {}): RoleSpec => ({ id, labelKey: `cat.r.dc.${id}`, domains, suffix, required: false, ...extra });
 const A810: Profile = {
@@ -75,7 +75,7 @@ export const family: ApplianceFamily = {
   tileLine(reg: Registry, inst: ProfileInstance, t: T, lang: Lang) {
     const d = readDashcam(reg, inst.bindings);
     if (!d.available) return t('state.unavailable');
-    if (d.alarm?.fresh) return `${alarmText(d.alarm.kind, t)} · ${whenText(d.alarm.at, t, lang)}`;
+    if (d.alarm?.fresh) return `${alarmText(d.alarm.kind, t)} · ${shortWhen(d.alarm.at, t, lang)}`;
     return [d.place ? placeText(d.place, t) : null, d.volts !== null ? voltsText(d.volts, lang, t) : null].filter(Boolean).join(' · ') || t('state.unknown');
   },
 };

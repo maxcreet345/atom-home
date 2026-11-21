@@ -5,7 +5,6 @@
 .hm-shell .at-dc-place{display:flex;align-items:center;gap:8px;min-width:0}.hm-shell .at-dc-place b{font-size:1.625rem;font-weight:600;line-height:1.2;overflow-wrap:anywhere}.hm-shell .at-dc-place svg{flex:none;color:var(--ah-glyph)}
 .hm-shell .at-dc-coords{font-size:.9375rem;font-variant-numeric:tabular-nums;color:var(--ah-ink)}
 .hm-shell .at-dc-sub{font-size:.875rem;color:var(--ah-muted);line-height:1.35}
-.hm-shell .at-dc-map{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;margin-top:4px;background:var(--ah-tile);color:var(--ah-ink);font-weight:600;text-decoration:none}
 .hm-shell .at-dc-pad{display:grid;gap:4px;padding:12px 18px 12px;min-width:0}
 .hm-shell .at-dc-big{display:flex;align-items:baseline;gap:4px;line-height:1}.hm-shell .at-dc-big b{font-size:2.75rem;font-weight:300;font-variant-numeric:tabular-nums}.hm-shell .at-dc-big i{font-style:normal;font-size:1rem;color:var(--ah-muted)}
 .hm-shell .at-dc-battery.is-warn .at-dc-sub{color:#b3261e;font-weight:600}.hm-shell.ah-shell[data-theme="dark"] .at-dc-battery.is-warn .at-dc-sub{color:#ff8a80}

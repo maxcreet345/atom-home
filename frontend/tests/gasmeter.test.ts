@@ -34,9 +34,9 @@ test('the reading is the gas model’s; the snapshot is stale and unread, a heal
 });
 test('the tile line: reading and time; «не читается» when stale; unavailable', () => {
   const b = pick(live);
-  assert.equal(family.tileLine!(live, inst(b), t, 'ru'), '970,684 м³ · не читается');
-  assert.match(family.tileLine!(healthy(structuredClone(live), b), inst(b), t, 'ru')!, /^970,684 м³ · сегодня, \d\d:\d\d$/);
-  assert.match(family.tileLine!(healthy(structuredClone(live), b), inst(b), translator('en'), 'en')!, /^970\.684 m³ · today, /);
+  assert.equal(family.tileLine!(live, inst(b), t, 'ru'), 'Не читается · 970,684 м³');
+  assert.match(family.tileLine!(healthy(structuredClone(live), b), inst(b), t, 'ru')!, /^970,684 м³ · \d\d:\d\d$/);
+  assert.match(family.tileLine!(healthy(structuredClone(live), b), inst(b), translator('en'), 'en')!, /^970\.684 m³ · \d\d:\d\d$/);
   const off: Registry = structuredClone(live); off.states[b.meter].state = 'unavailable';
   assert.equal(family.tileLine!(off, inst(b), t, 'ru'), t('state.unavailable'));
   assert.equal(instanceView(off, 'c1', inst(b))!.device.available, false);

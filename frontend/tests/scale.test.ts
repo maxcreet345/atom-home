@@ -14,7 +14,8 @@ const P = profileById('xiaomi.scale2')!;
 const t = translator('ru');
 const dev = () => devicesFor(live, P)[0];
 const inst = (reg: Registry, extra: Record<string, string> = {}): ProfileInstance => ({ profileId: P.id, profileVersion: P.version, deviceId: dev().id, bindings: { ...suggestBindings(reg, P, dev().id), ...extra }, placement: ['home'] });
-const KG = /\d+[,.]\d\s*(кг|kg)|103/;
+/** any weight said in words: a figure with its unit */
+const KG = /\d[\d\s,.]*\s*(кг|kg)(?![a-zа-я])/i;
 
 test('the scale is found by its model code; its own weight and «stabilised» are suggested, the raw weight never', () => {
   assert.ok(P && P.renderer === 'appliance' && P.card === 'scale' && P.category === 'health');
@@ -31,10 +32,11 @@ test('the people are the router’s sensors routed from this scale; Bodymiscale 
   const s = readScale(live, b);
   assert.equal(s.persons.length, 3);
   assert.ok(s.last, 'the last weighing is known');
-  assert.equal(s.last!.weight, 103.7); assert.equal(s.last!.bmi, 34.6); assert.equal(s.last!.ideal, 65.1);
+  // the figures are the integrations' own (read from the snapshot, never written into the code: health data stays in the private fixture)
+  assert.equal(s.last!.weight, Number(live.states[s.last!.id].state)); assert.ok(typeof s.last!.bmi === 'number' && typeof s.last!.ideal === 'number');
   assert.ok(Math.abs(s.last!.at! - Date.parse('2026-11-01T19:41:00+00:00')) < 1000, 'the integration’s time, not HA’s restart');
   assert.deepEqual(s.last!.facts.map(f => f.key).sort(), ['basal', 'visceral']);
-  assert.equal(bmiBand(34.6), 'obese');
+  assert.deepEqual([17, 22, 27, 34].map(bmiBand), ['under', 'normal', 'over', 'obese']);
   const empty = s.persons.filter(p => p !== s.last);
   assert.ok(empty.every(p => p.weight === null && p.at === null && p.facts.length === 0), 'a person who never weighed has no figures');
 });
@@ -45,8 +47,8 @@ test('bound people win over the ones found; an unknown person sensor is skipped,
 });
 test('the tile line: «Последнее взвешивание · <когда>» with no weight in ru, ro and en; none yet; unavailable', () => {
   const i = inst(live);
-  for (const lang of ['ru', 'ro', 'en'] as const) { const line = family.tileLine!(live, i, translator(lang), lang)!; assert.ok(line && !KG.test(line), `${lang}: ${line}`); assert.match(line, /1 |нояб|nov|Nov/i, line); }
-  assert.match(family.tileLine!(live, i, t, 'ru')!, /^Последнее взвешивание · /);
+  for (const lang of ['ru', 'ro', 'en'] as const) { const line = family.tileLine!(live, i, translator(lang), lang)!; const w = String(live.states[readScale(live, i.bindings).last!.id].state).replace('.', '[,.]'); assert.ok(line && !KG.test(line) && !new RegExp(w).test(line), `${lang}: ${line}`); assert.match(line, /1 |нояб|nov|Nov/i, line); }
+  assert.match(family.tileLine!(live, i, t, 'ru')!, /^Взвешивание · /);
   // nobody weighed yet
   const none: Registry = structuredClone(live); for (const id of personIds(none, i.bindings)) { none.states[id].state = 'unknown'; none.states[id].attributes.weight_history = []; }
   for (const e of none.entities.filter(x => x.platform === 'bodymiscale')) if (none.states[e.entity_id]) { none.states[e.entity_id].state = 'unknown'; delete none.states[e.entity_id].attributes.last_measurement_time; }

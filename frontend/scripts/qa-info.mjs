@@ -22,12 +22,20 @@ const browser = await chromium.launch(); const checks = []; const errors = [];
 const check = (n, p, d = {}) => { checks.push({ n, p: !!p, ...d }); if (!p) console.log('FAIL', n, JSON.stringify(d)); };
 
 // ---- the cards as an installer would add them (bindings of this house; ids are the fixture's, the code never knows them) ----
-const SCALE = { weight: 'sensor.home_scale_weight', stable: 'binary_sensor.home_scale_stabilized', person1: 'sensor.scale_ararat_weight', person2: 'sensor.scale_gaiane_weight', person3: 'sensor.scale_daniela_weight' };
+// the scale's people are found the way the card finds them (the router's weight sensors), so no person's name or figure is written here
+const fx0 = JSON.parse(live), scaleDev = fx0.devices.find(d => d.model === 'XMTZC02HM/XMTZC05HM/NUN4049CN');
+const scaleWeight = fx0.entities.find(e => e.device_id === scaleDev.id && /_weight$/.test(e.entity_id)).entity_id;
+const routerDev = fx0.entities.find(e => fx0.states[e.entity_id]?.attributes.source_entity_id === scaleWeight).device_id;
+const PEOPLE = fx0.entities.filter(e => e.device_id === routerDev && e.entity_category !== 'diagnostic' && fx0.states[e.entity_id]?.attributes.device_class === 'weight').map(e => e.entity_id);
+const WEIGHED = PEOPLE.find(id => fx0.states[id].attributes.source_entity_id === scaleWeight), WEIGHT = new RegExp(fx0.states[WEIGHED].state.replace('.', '[,.]'));
+const BODY = fx0.entities.filter(e => e.platform === 'bodymiscale' && e.entity_id.startsWith('sensor.')).map(e => e.entity_id);
+const SCALE = { weight: scaleWeight, stable: fx0.entities.find(e => e.device_id === scaleDev.id && /_stabilized$/.test(e.entity_id)).entity_id, ...Object.fromEntries(PEOPLE.map((id, i) => [`person${i + 1}`, id])) };
+const KG = /\d[\d\s,.]*\s*кг(?![а-я])/;
 const CAR = { tracker: 'device_tracker.car_dashcam', voltage: 'sensor.car_dashcam_battery_voltage', alarm: 'event.car_dashcam_alarm', network: 'sensor.car_dashcam_network_level', upload: 'binary_sensor.car_dashcam_monitor_upload', simPower: 'binary_sensor.car_dashcam_sim_out_power', firmware: 'sensor.car_dashcam_firmware' };
 const GAS = { meter: 'sensor.kitchen_gas_meter', camera: 'camera.kitchen_gas_meter', lastRead: 'input_datetime.kitchen_gas_meter_last_read', answer: 'input_text.kitchen_gas_meter_raw' };
 const card = (profileId, bindings, deviceId, name) => ({ profileId, profileVersion: '1.0.0', bindings, placement: ['home', 'room'], ...(deviceId ? { deviceId } : {}), ...(name ? { name } : {}) });
 const FAMILIES = {
-  scale: { id: 'cScale', profile: 'xiaomi.scale2', bindings: SCALE, deviceId: '8880c8a1d015a81f369fef443ccd8731', name: 'Весы', required: { weight: SCALE.weight } },
+  scale: { id: 'cScale', profile: 'xiaomi.scale2', bindings: SCALE, deviceId: scaleDev.id, name: 'Весы', required: { weight: SCALE.weight } },
   dashcam: { id: 'cCar', profile: '70mai.a810_up04', bindings: CAR, name: 'Машина', required: { tracker: CAR.tracker } },
   gasmeter: { id: 'cGas', profile: 'meter.gas_camera', bindings: GAS, name: 'Счётчик газа', required: { meter: GAS.meter } },
 };
@@ -37,8 +45,8 @@ const STATES = {
   scale: {
     live: 'fx => {}',
     revealed: 'fx => {}',
-    history: `fx => { const now = Date.now(), a = fx.states['sensor.scale_ararat_weight'].attributes; a.weight_history = [106.2, 105.6, 105.1, 104.8, 104.3, 103.7].map((w, i) => ({ measurement_id: 'm' + i, timestamp: new Date(now - (5 - i) * 6 * 86400000 - 2 * ${H}).toISOString(), weight: w, weight_unit: 'kg' })); fx.states['sensor.ararat_last_measurement'].state = a.weight_history.at(-1).timestamp; const b = fx.states['bodymiscale.ararat'].attributes; b.last_measurement_time = a.weight_history.at(-1).timestamp; }`,
-    nobody: `fx => { for (const id of ['sensor.scale_ararat_weight']) { fx.states[id].state = 'unknown'; fx.states[id].attributes.weight_history = []; delete fx.states[id].attributes.source_entity_id; } for (const k of Object.keys(fx.states)) if (/^sensor\\.(ararat|gaiane|daniela)_/.test(k)) fx.states[k].state = 'unknown'; delete fx.states['bodymiscale.ararat'].attributes.last_measurement_time; }`,
+    history: `fx => { const now = Date.now(), s = fx.states[${JSON.stringify(WEIGHED)}], w = Number(s.state), a = s.attributes; a.weight_history = [2.5, 1.9, 1.4, 1.1, 0.6, 0].map((d, i) => ({ measurement_id: 'm' + i, timestamp: new Date(now - (5 - i) * 6 * 86400000 - 2 * ${H}).toISOString(), weight: Math.round((w + d) * 10) / 10, weight_unit: 'kg' })); const at = a.weight_history.at(-1).timestamp; for (const k of ${JSON.stringify(BODY)}) if (/_last_measurement$/.test(k) && fx.states[k].state !== 'unknown') fx.states[k].state = at; for (const k of Object.keys(fx.states)) if (k.startsWith('bodymiscale.') && fx.states[k].attributes.last_measurement_time) fx.states[k].attributes.last_measurement_time = at; }`,
+    nobody: `fx => { for (const id of ${JSON.stringify(PEOPLE)}) { fx.states[id].state = 'unknown'; fx.states[id].attributes.weight_history = []; } for (const k of ${JSON.stringify(BODY)}) fx.states[k].state = 'unknown'; for (const k of Object.keys(fx.states)) if (k.startsWith('bodymiscale.')) delete fx.states[k].attributes.last_measurement_time; }`,
     unavailable: `fx => { for (const k of ['sensor.home_scale_weight', 'binary_sensor.home_scale_stabilized']) fx.states[k].state = 'unavailable'; }`,
     offline: 'fx => {}',
     required: 'fx => {}',
@@ -62,9 +70,9 @@ const STATES = {
 };
 // the tile's expected second line per state (the generic tile: «Недоступно» when the card's main field is gone)
 const TILE = {
-  scale: { live: /^Последнее взвешивание · 1 нояб/, nobody: /^Взвешиваний ещё не было/, unavailable: /^Нет связи/ },
-  dashcam: { live: /^Кто-то у машины · сегодня, \d\d:\d\d/, home: /^Дома · 12,6 В/, collision: /^Удар по машине · /, unavailable: /^Нет связи/ },
-  gasmeter: { live: /^970,684 м³ · не читается/, healthy: /^970,684 м³ · сегодня, \d\d:\d\d/, unavailable: /^Нет связи/ },
+  scale: { live: /^Взвешивание · 1 нояб/, nobody: /^Взвешиваний ещё не было/, unavailable: /^Нет связи/ },
+  dashcam: { live: /^Кто-то у машины · (\d\d:\d\d|вчера)/, home: /^Дома · 12,6 В/, collision: /^Удар по машине · /, unavailable: /^Нет связи/ },
+  gasmeter: { live: /^Не читается · 970,684 м³/, healthy: /^970,684 м³ · \d\d:\d\d/, unavailable: /^Нет связи/ },
 };
 // a meter as the kitchen camera sees it, for the preview's frame
 const FRAME = 'data:image/svg+xml;base64,' + Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="#2b2f33"/><rect x="70" y="110" width="500" height="140" rx="14" fill="#d9d4c7"/><rect x="100" y="140" width="440" height="80" fill="#111"/>${'00970684'.split('').map((d, i) => `<rect x="${108 + i * 54}" y="148" width="46" height="64" fill="${i >= 5 ? '#b3261e' : '#1d1d1d'}" stroke="#444"/><text x="${131 + i * 54}" y="196" font-family="monospace" font-size="44" fill="#f4f4f4" text-anchor="middle">${d}</text>`).join('')}<text x="320" y="290" font-family="sans-serif" font-size="18" fill="#bbb" text-anchor="middle">BK-G4CT · m³</text></svg>`).toString('base64');
@@ -95,9 +103,9 @@ try {
       check(`${tag(fam, state)}:no-word-keys`, !/\b(scale|dashcam|gasmeter|cat\.[a-z]|ui|state)\.[a-zA-Z]/.test(sheet.text), { text: sheet.text.slice(0, 200) });
       check(`${tag(fam, state)}:no-sideways-overflow`, !sheet.over.length && sheet.scroll <= 1, sheet);
       if (fam === 'scale') {
-        if (state !== 'revealed') check(`${tag(fam, state)}:weight-folded`, !/103[,.]7/.test(sheet.text), {});
+        if (state !== 'revealed') check(`${tag(fam, state)}:weight-folded`, !WEIGHT.test(sheet.text) && !KG.test(sheet.text), {});
         if (state === 'revealed' || state === 'history') { await page.click('[data-action="reveal"]').catch(() => undefined); await page.click('.at-sc-person-hit').catch(() => undefined); await page.waitForTimeout(250);
-          const txt = await page.evaluate(R2 => eval(R2).querySelector('[data-appliance="scale"]').innerText, R); check(`${tag(fam, state)}:revealed-shows-figures`, /103[,.]7/.test(txt) && /ИМТ/.test(txt), {}); }
+          const txt = await page.evaluate(R2 => eval(R2).querySelector('[data-appliance="scale"]').innerText, R); check(`${tag(fam, state)}:revealed-shows-figures`, WEIGHT.test(txt) && /ИМТ/.test(txt), {}); }
       }
       if (fam === 'gasmeter') {
         const g = await page.evaluate(R2 => { const r = eval(R2); return { problem: r.querySelector('[data-problem]')?.dataset.problem ?? null, img: !!r.querySelector('.at-gm-still img'), use: [...r.querySelectorAll('.at-gm-fig b')].map(b => b.textContent) }; }, R);
@@ -114,7 +122,8 @@ try {
         await open('#home', { fam, state, stats: fam === 'gasmeter' });
         const tile = await page.evaluate(([id, R2]) => { const r = eval(R2), el = r.querySelector(`[data-device-key="p:${id}"]`); return el ? { line: el.querySelector('.ah-tile-text small')?.textContent ?? '', name: el.querySelector('.ah-tile-text strong')?.textContent ?? '' } : null; }, [f.id, R]);
         check(`${tag(fam, state)}:tile`, tile && (!TILE[fam][state] || TILE[fam][state].test(tile.line)), tile ?? {});
-        if (fam === 'scale') { const home = await page.evaluate(R2 => eval(R2).querySelector('.hm-shell').innerText, R); check(`${tag(fam, state)}:no-weight-on-home`, !/103[,.]7|кг\b/.test(home), {}); }
+        if (fam === 'scale') for (const page2 of ['#home', '#systems', '#rooms?room=none']) { if (page2 !== '#home') await open(page2, { fam, state }); const txt = await page.evaluate(R2 => eval(R2).querySelector('.hm-shell').innerText, R); check(`${tag(fam, state)}:no-weight-on-${page2}`, !WEIGHT.test(txt) && !KG.test(txt), { at: (txt.match(KG) ?? [])[0] }); }
+        if (fam === 'scale') await open('#home', { fam, state });
         const loc = page.locator(`[data-device-key="p:${f.id}"]`); if (await loc.count()) { await loc.scrollIntoViewIfNeeded(); await page.waitForTimeout(150); await loc.screenshot({ path: resolve(out, `${vp}-${theme}-${state}-tile.png`) }); }
         check(`${tag(fam, state)}:tile-no-commands`, await cmds() === 0);
       }

@@ -9,7 +9,7 @@ import { unavailable, type Registry } from '../model/registry.ts';
 import { gasMeters } from '../model/gas.ts';
 import type { Key, T } from '../i18n/index.ts';
 import { num, type Lang } from '../ui/format.ts';
-import { whenText } from './scale.profiles.ts';
+import { shortWhen } from './scale.profiles.ts';
 
 const field = (id: string, domains: string[], extra: Partial<RoleSpec> = {}): RoleSpec => ({ id, labelKey: `cat.r.gm.${id}`, domains, required: false, ...extra });
 const CAMERA_METER: Profile = {
@@ -17,7 +17,7 @@ const CAMERA_METER: Profile = {
   terms: ['gas', 'gas meter', 'газ', 'счётчик', 'счетчик', 'gaz', 'contor', 'camera', 'камера', 'ocr', 'llm vision'],
   renderer: 'appliance', card: 'gasmeter', kind: 'measurement', icon: 'flame', kindKey: 'cat.kind.gasmeter', anchor: 'meter', places: ['home', 'room'],
   roles: [
-    field('meter', ['sensor'], { required: true, hintKey: 'cat.r.gm.meter.hint', deviceClass: ['gas'], units: ['m³', 'm3', 'ft³', 'CCF'], as: 'primary' }),
+    field('meter', ['sensor'], { required: true, hintKey: 'cat.r.gm.meter.hint', deviceClass: ['gas'], units: ['m³', 'm3'], as: 'primary' }),
     field('camera', ['camera'], { hintKey: 'cat.r.gm.camera.hint', suffix: /gas|meter|счетчик|contor/, as: 'metric' }),
     field('lastRead', ['input_datetime', 'sensor'], { suffix: /_last_read$/, as: 'metric' }),
     field('answer', ['input_text', 'sensor'], { hintKey: 'cat.r.gm.answer.hint', suffix: /_raw$/, as: 'metric' }),
@@ -58,11 +58,11 @@ export const m3 = (v: number | null, lang: Lang, t: T, digits = 3) => v === null
 
 export const family: ApplianceFamily = {
   id: 'gasmeter', profiles: GASMETER_PROFILES,
-  // «970,684 м³ · сегодня, 12:20»; a meter the camera no longer reads says so («970,684 м³ · не читается»)
+  // «970,684 м³ · сегодня, 12:20»; a meter the camera no longer reads says so («Не читается · 970,684 м³»)
   tileLine(reg: Registry, inst: ProfileInstance, t: T, lang: Lang) {
     const g = readGasMeter(reg, inst.bindings);
     if (!g.available) return t('state.unavailable');
     const v = m3(g.value, lang, t);
-    return g.problem === 'stale' ? gk(t, 'tileStale', { v }) : g.lastRead !== null ? `${v} · ${whenText(g.lastRead, t, lang)}` : v;
+    return g.problem === 'stale' ? gk(t, 'tileStale', { v }) : g.lastRead !== null ? `${v} · ${shortWhen(g.lastRead, t, lang)}` : v;
   },
 };
