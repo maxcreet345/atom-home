@@ -22,7 +22,7 @@ import { readVacuum } from '../model/vacuum.ts';
 import { VacuumTile } from './vacuum.tsx';
 import { CameraTile } from './camera-tile.tsx';
 import {
-  CATEGORIES, PROFILES, tellModule, untellModule, type ModuleUndo, brandsOf, candidates, candidateValue, devicesFor, foundHere, instanceView, moduleMatch, newInstanceId, ofDevice, profileById, searchProfiles, selfDrawn, suggestBindings, suggestRoom,
+  CATEGORIES, PROFILES, tellModule, untellModule, type ModuleUndo, brandsOf, candidates, candidateValue, devicesFor, foundHere, instanceView, moduleDevice, moduleMatch, newInstanceId, ofDevice, profileById, searchProfiles, selfDrawn, suggestBindings, suggestRoom,
   type Category, type Place, type Profile, type ProfileInstance, type RoleSpec, type InstanceRoom,
 } from '../model/card-catalog.ts';
 
@@ -75,7 +75,8 @@ function CardForm({ registry, config, rooms, t, lang, host, roomId, save, onClos
   // a device that already has a card is not offered first: one appliance, one card
   const takenBy = (id: string) => Object.entries(config.profileInstances ?? {}).some(([k, i]) => k !== instanceId && i.deviceId === id);
   const free = devices.filter(d => !takenBy(d.id));
-  const firstDevice = editing?.deviceId ?? (free.length === 1 && devices.length === 1 ? free[0].id : free.find(d => roomId && d.areaId === roomId)?.id ?? (free.length === 1 ? free[0].id : undefined));
+  const modDev = useMemo(() => moduleDevice(registry, profile), [registry, profile]);
+  const firstDevice = editing?.deviceId ?? (modDev && !takenBy(modDev) ? modDev : undefined) ?? (free.length === 1 && devices.length === 1 ? free[0].id : free.find(d => roomId && d.areaId === roomId)?.id ?? (free.length === 1 ? free[0].id : undefined));
   const [deviceId, setDeviceId] = useState<string | undefined>(firstDevice);
   // what the house already told the module (its settings): the card starts from it, and an edit sees a change made there since (never undoes it)
   const told = (dev?: string): Record<string, string> => { const ents = profile.module ? config.modules[profile.module]?.entities ?? {} : {}; return Object.fromEntries(profile.roles.map(r => [r.id, ents[r.id]]).filter((x): x is [string, string] => !!x[1] && !!registry.states[x[1]] && ofDevice(registry, profile, x[1], dev))); };
@@ -95,11 +96,15 @@ function CardForm({ registry, config, rooms, t, lang, host, roomId, save, onClos
   const found = useMemo(() => moduleMatch(registry, profile), [registry, profile]);
   const [opts, setOpts] = useState<Record<string, string>>(() => { const o: Record<string, unknown> = { ...(found?.options ?? {}), ...(profile.module ? config.modules[profile.module]?.options ?? {} : {}) }; return Object.fromEntries(Object.entries(o).filter((x): x is [string, string] => typeof x[1] === 'string' && !!x[1])); });
   const optsMissing = optionFields.filter(f => f.required && !opts[f.key]?.trim());
+  // what the house's settings can keep (letters, digits, _ . -): anything else would vanish on saving
+  const optOk = (v: string | undefined) => !v?.trim() || /^[\w.\-]{1,64}$/.test(v.trim()), optsBad = optionFields.filter(f => !optOk(opts[f.key]));
+  // the module drives the appliance it found: a card for another one of the same model is refused in words
+  const otherDevice = !!(modDev && deviceId && deviceId !== modDev);
   const areaName = (a: string) => rooms.find(r => r.id === a)?.name ?? null;
   const draft: ProfileInstance = { profileId: profile.id, profileVersion: profile.version, bindings, placement, ...(deviceId ? { deviceId } : {}), ...(name.trim() ? { name: name.trim() } : {}), ...(room ? { roomId: room } : {}), ...(profile.roomRoles ? { rooms: roomsDraft } : {}) };
   const view = (!needDevice || deviceId) ? instanceView(registry, instanceId ?? 'draft', draft, areaName, list, k => t(k as Key)) : null;
   const missing = view ? view.incomplete : profile.roles.filter(r => r.required).map(r => r.id);
-  const ready = !sameModule && optsMissing.length === 0 && (!needDevice || (!!deviceId && !takenBy(deviceId))) && missing.length === 0 && (self || placement.length > 0) && (!profile.roomRoles || roomsDraft.length > 0);
+  const ready = !sameModule && !otherDevice && optsMissing.length === 0 && optsBad.length === 0 && (!needDevice || (!!deviceId && !takenBy(deviceId))) && missing.length === 0 && (self || placement.length > 0) && (!profile.roomRoles || roomsDraft.length > 0);
   const add = async () => {
     if (!ready || busy) return; setBusy(true);
     const id = instanceId ?? newInstanceId(config.profileInstances ?? {});
@@ -131,7 +136,7 @@ function CardForm({ registry, config, rooms, t, lang, host, roomId, save, onClos
       {profile.roles.map(r => <Field role={r} value={bindings[r.id] ?? ''} registry={registry} deviceId={deviceId} areaId={room || dev?.area_id || null} areaName={areaName} t={t} lost={view?.lost.includes(r.id) ?? false} onChange={v => setRole(r.id, v)} />)}
     </section>}
     {(!needDevice || deviceId) && optionFields.length > 0 && <section className="at-cards-sec" data-part="options"><h3>{ck(t, 'step.options')}</h3>
-      {optionFields.map(f => <label className="at-field" data-option={f.key}><span>{t(f.labelKey as Key)}{f.required ? '' : ` · ${ck(t, 'optional')}`}</span><input type="text" autocomplete="off" spellcheck={false} required={f.required} aria-required={f.required || undefined} value={opts[f.key] ?? ''} placeholder={f.placeholder ?? ''} onInput={e => { const v = (e.target as HTMLInputElement).value; setOpts(o => ({ ...o, [f.key]: v })); }} /></label>)}
+      {optionFields.map(f => <label className="at-field" data-option={f.key}><span>{t(f.labelKey as Key)}{f.required ? '' : ` · ${ck(t, 'optional')}`}</span><input type="text" autocomplete="off" spellcheck={false} required={f.required} aria-required={f.required || undefined} aria-invalid={!optOk(opts[f.key]) || undefined} value={opts[f.key] ?? ''} placeholder={f.placeholder ?? ''} onInput={e => { const v = (e.target as HTMLInputElement).value; setOpts(o => ({ ...o, [f.key]: v })); }} /></label>)}
     </section>}
     {profile.roomRoles && <section className="at-cards-sec" data-part="rooms"><h3>{ck(t, 'step.rooms')}</h3>
       {roomsDraft.map((rm, i) => <div className="hm-card at-cards-room" data-room-row={rm.id}>
@@ -149,7 +154,7 @@ function CardForm({ registry, config, rooms, t, lang, host, roomId, save, onClos
       {profile.renderer !== 'heatingRooms' && !self && <label className="at-field"><span>{ck(t, 'room')}</span><select value={room} onChange={e => setRoom((e.target as HTMLSelectElement).value)}><option value="">{t('room.none')}</option>{roomList.map(r => <option value={r.id}>{r.name}</option>)}</select></label>}
       {profile.places.length > 0 && <div className="hm-chips at-cards-place" role="group" aria-label={ck(t, 'place')}>{profile.places.map(p => <button type="button" role="checkbox" aria-checked={placement.includes(p)} className={placement.includes(p) ? 'is-active' : ''} data-place={p} onClick={() => setPlacement(l => l.includes(p) ? l.filter(x => x !== p) : [...l, p])}>{ck(t, `place.${p}`)}</button>)}</div>}
     </section>
-    {!ready && <p className="hm-muted at-cards-need" role="status">{sameModule ? ck(t, 'moduleTaken') : deviceId && needDevice && takenBy(deviceId) ? ck(t, 'deviceTaken') : !self && !placement.length ? ck(t, 'needPlace') : needDevice && !deviceId ? ck(t, 'needDevice') : optsMissing.length ? ck(t, 'needFields', { list: optsMissing.map(f => t(f.labelKey as Key)).join(', ') }) : profile.roomRoles && !roomsDraft.length ? ck(t, 'needRoom') : ck(t, 'needFields', { list: missing.map(m => { const [a, b] = m.includes('.') ? m.split('.') : [null, m]; const r = (a ? profile.roomRoles : profile.roles)?.find(x => x.id === b); return r ? t(r.labelKey as Key) : m; }).join(', ') })}</p>}
+    {!ready && <p className="hm-muted at-cards-need" role="status">{sameModule ? ck(t, 'moduleTaken') : otherDevice ? ck(t, 'moduleOtherDevice') : optsBad.length ? ck(t, 'optBad', { list: optsBad.map(f => t(f.labelKey as Key)).join(', ') }) : deviceId && needDevice && takenBy(deviceId) ? ck(t, 'deviceTaken') : !self && !placement.length ? ck(t, 'needPlace') : needDevice && !deviceId ? ck(t, 'needDevice') : optsMissing.length ? ck(t, 'needFields', { list: optsMissing.map(f => t(f.labelKey as Key)).join(', ') }) : profile.roomRoles && !roomsDraft.length ? ck(t, 'needRoom') : ck(t, 'needFields', { list: missing.map(m => { const [a, b] = m.includes('.') ? m.split('.') : [null, m]; const r = (a ? profile.roomRoles : profile.roles)?.find(x => x.id === b); return r ? t(r.labelKey as Key) : m; }).join(', ') })}</p>}
     <div className="at-cards-actions">{editing && <button type="button" className="hm-pill" data-action="remove-card" onClick={remove}>{ck(t, 'remove')}</button>}<button type="button" className="hm-pill is-primary" data-action="add-card" aria-disabled={!ready || busy || undefined} aria-busy={busy || undefined} onClick={() => void add()}>{editing ? ck(t, 'saveEdit') : ck(t, 'addToScreen')}</button></div>
     {note && <div className="hm-badge tone-calm at-note" role="status">{note}</div>}
     {question && <Ask q={question} t={t} onClose={() => ask(null)} />}

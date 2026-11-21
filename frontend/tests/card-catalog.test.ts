@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import type { Registry } from '../src/model/registry.ts';
-import { PROFILES, tellModule, untellModule, moduleMatch, profileById, searchProfiles, brandsOf, devicesFor, foundHere, candidates, suggestBindings, suggestRoom, instanceView, instanceViews, instanceClaims, normaliseInstances, type Profile, type ProfileInstance } from '../src/model/card-catalog.ts';
+import { PROFILES, tellModule, untellModule, moduleMatch, moduleDevice, profileById, searchProfiles, brandsOf, devicesFor, foundHere, candidates, suggestBindings, suggestRoom, instanceView, instanceViews, instanceClaims, normaliseInstances, type Profile, type ProfileInstance } from '../src/model/card-catalog.ts';
 import { normaliseConfig, type HouseConfig } from '../src/model/config.ts';
 import { discover } from '../src/model/discover.ts';
 import { readHeating } from '../src/model/heating.ts';
@@ -231,4 +231,42 @@ test('the module settings: a card writes only what it changes, removing puts bac
   const u2 = tellModule(d, 'kettle', ['heater'], { heater: 'water_heater.k' }, [], {}, null);
   assert.equal(d.modules.kettle.enabled, true); untellModule(d, 'kettle', { bindings: { heater: 'water_heater.k' }, moduleUndo: u2 });
   assert.equal(d.modules.kettle.enabled, false); assert.equal(d.modules.kettle.entities, undefined);
+});
+
+test('an edit of a module card: a value the house set by hand stays the house’s, a cleared field goes back, a switch-off since is undone on removal, a broken record never fails', () => {
+  // the card set heater; the house then set it by hand; the card is opened and saved unchanged; removal keeps the hand-set heater
+  const c = { modules: { kettle: { entities: { heater: 'water_heater.orig' } } } } as unknown as HouseConfig;
+  const u1 = tellModule(c, 'kettle', ['heater'], { heater: 'water_heater.card' }, [], {}, null);
+  c.modules.kettle.entities!.heater = 'water_heater.hand';
+  const u2 = tellModule(c, 'kettle', ['heater'], { heater: 'water_heater.hand' }, [], {}, null, u1);
+  untellModule(c, 'kettle', { bindings: { heater: 'water_heater.hand' }, moduleUndo: u2 });
+  assert.equal(c.modules.kettle.entities!.heater, 'water_heater.hand');
+  // an optional field set and then cleared in an edit: the module stops using it, and a module the card made is gone after removal
+  const d = { modules: {} } as unknown as HouseConfig;
+  const v1 = tellModule(d, 'kettle', ['heater', 'temp'], { heater: 'water_heater.k', temp: 'sensor.card_t' }, [], {}, { entities: { heater: 'water_heater.k' } });
+  const v2 = tellModule(d, 'kettle', ['heater', 'temp'], { heater: 'water_heater.k' }, [], {}, { entities: { heater: 'water_heater.k' } }, v1);
+  assert.equal(d.modules.kettle?.entities?.temp, undefined);
+  untellModule(d, 'kettle', { bindings: { heater: 'water_heater.k' }, moduleUndo: v2 });
+  assert.equal(d.modules.kettle, undefined);
+  // switched off by the house after the card: an edit turns it on, the removal off again
+  const e = { modules: {} } as unknown as HouseConfig;
+  const w1 = tellModule(e, 'kettle', ['heater'], { heater: 'water_heater.x' }, [], {}, null);
+  e.modules.kettle.enabled = false;
+  const w2 = tellModule(e, 'kettle', ['heater'], { heater: 'water_heater.x' }, [], {}, null, w1);
+  assert.equal(e.modules.kettle.enabled, true);
+  untellModule(e, 'kettle', { bindings: { heater: 'water_heater.x' }, moduleUndo: w2 });
+  assert.equal(e.modules.kettle.enabled, false);
+  // a hand-edited record
+  const f = { modules: { kettle: { entities: { heater: 'water_heater.y' } } } } as unknown as HouseConfig;
+  assert.doesNotThrow(() => untellModule(f, 'kettle', { bindings: {}, moduleUndo: { entities: null, options: 7 } as never }));
+});
+
+test('a module drives the appliance it found: with two of the same model the card is only for that one', () => {
+  const kettle = profileById('xiaomi.kettle2pro')!;
+  const one = moduleDevice(live, kettle); assert.ok(one, 'Criuleni’s kettle is the module’s');
+  const reg: Registry = structuredClone(live), copy = 'kettle-copy-device';
+  const base = reg.devices.find(d => d.id === one)!; reg.devices.push({ ...base, id: copy });
+  for (const e of live.entities.filter(x => x.device_id === one)) { const id = e.entity_id.replace(/^(\w+)\./, '$1.zz_copy_'); reg.entities.push({ ...e, entity_id: id, device_id: copy }); reg.states[id] = structuredClone(live.states[e.entity_id]); }
+  assert.equal(devicesFor(reg, kettle).length, 2);
+  assert.equal(moduleDevice(reg, kettle), one);
 });

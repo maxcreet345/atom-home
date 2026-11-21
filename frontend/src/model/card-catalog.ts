@@ -159,6 +159,14 @@ export const PROFILES: Profile[] = [PURIFIER_4, HEAT_SINGLE, HEAT_ROOMS, NITROMI
 /** What the profile's module finds by itself in this house (its own `detect`): the catalog and the panel never disagree on «found». */
 export function moduleMatch(reg: Registry, p: Profile) { const spec = p.module ? MODULE_SPECS.find(m => m.id === p.module) : undefined; try { return spec?.detect(reg) ?? null; } catch { return null; } }
 /** Is this entity part of the chosen appliance (its own HA device), or may it be (one appliance of this model in the house: a camera's stream on its sibling device)? */
+/** The device a module found and works with: a module drives one appliance of its kind (the first it finds), so its card may only be
+ * for that one — a card for a second kettle of the same model would bind a few fields to it while stop, temperature and the rest stay on the first. */
+export function moduleDevice(reg: Registry, p: Profile): string | null {
+  if (!p.module || !p.models.length) return null; const m = moduleMatch(reg, p); if (!m) return null;
+  const ids = new Set(devicesFor(reg, p).map(d => d.id));
+  for (const e of Object.values(m.entities)) { const d = e ? reg.entities.find(x => x.entity_id === e)?.device_id : undefined; if (d && ids.has(d)) return d; }
+  return null;
+}
 export function ofDevice(reg: Registry, p: Profile, entityId: string, deviceId: string | undefined): boolean {
   if (!p.models.length || !deviceId) return true;
   if (reg.entities.find(e => e.entity_id === entityId)?.device_id === deviceId) return true;
@@ -350,25 +358,40 @@ export const candidateValue = (c: Pick<Candidate, 'value' | 'unit'>) => unavaila
 
 // ---- a module card in the module's settings: what it changed, and putting exactly that back ----
 /** What a module card changed in its module's settings, to put back on removal: the value each key had before (null: none) and whether it was switched off. */
-export interface ModuleUndo { entities: Record<string, string | null>; options: Record<string, string | null>; /** the settings as the card left them */ set?: Record<string, string>; enabled?: false; /** the module had no settings at all before the card */ fresh?: true }
+export interface ModuleUndo { entities: Record<string, string | null>; options: Record<string, string | null>; /** the entities the card itself wrote (an edit that keeps a value the house set by hand does not make it the card's) */ wrote?: Record<string, string>; /** the settings as the card left them */ set?: Record<string, string>; enabled?: false; /** the module had no settings at all before the card */ fresh?: true }
+const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+const strMap = <T,>(v: unknown, ok: (x: unknown) => x is T): Record<string, T> => isObj(v) ? Object.fromEntries(Object.entries(v).filter((x): x is [string, T] => ok(x[1]))) : {};
+const isStr = (x: unknown): x is string => typeof x === 'string', isStrOrNull = (x: unknown): x is string | null => x === null || typeof x === 'string';
+/** A stored record read back as it should be: a hand-edited or broken one never makes a removal fail. */
+function sane(u: unknown): ModuleUndo | undefined {
+  if (!isObj(u)) return undefined;
+  return { entities: strMap(u.entities, isStrOrNull), options: strMap(u.options, isStrOrNull), ...(u.wrote !== undefined ? { wrote: strMap(u.wrote, isStr) } : {}), set: strMap(u.set, isStr), ...(u.enabled === false ? { enabled: false as const } : {}), ...(u.fresh === true ? { fresh: true as const } : {}) };
+}
 type Found = { entities: Record<string, string | undefined>; options?: Record<string, string | undefined> } | null;
 /** Tell the module the card's entities and settings: only what differs from what the module uses now (its settings over its own finding),
  * remembering the value each key had before — kept from the first save of the card, so a later edit never forgets what the house had. */
 export function tellModule(c: HouseConfig, moduleId: string, roles: string[], bindings: Record<string, string>, optionKeys: string[], opts: Record<string, string>, found: Found, prev?: ModuleUndo): ModuleUndo {
-  const was = c.modules[moduleId] ?? {}, undo: ModuleUndo = { entities: { ...(prev?.entities ?? {}) }, options: { ...(prev?.options ?? {}) }, set: { ...(prev?.set ?? {}) }, ...(prev?.enabled === false ? { enabled: false as const } : {}), ...(prev ? (prev.fresh ? { fresh: true as const } : {}) : !c.modules[moduleId] ? { fresh: true as const } : {}) };
+  const p = sane(prev), was = c.modules[moduleId] ?? {}, undo: ModuleUndo = { entities: { ...(p?.entities ?? {}) }, options: { ...(p?.options ?? {}) }, wrote: { ...(p?.wrote ?? {}) }, set: { ...(p?.set ?? {}) }, ...(p?.enabled === false ? { enabled: false as const } : {}), ...(p ? (p.fresh ? { fresh: true as const } : {}) : !c.modules[moduleId] ? { fresh: true as const } : {}) };
   const ents: Record<string, string> = { ...(was.entities ?? {}) }, o: Record<string, string> = { ...((was.options ?? {}) as Record<string, string>) };
-  for (const k of roles) { const v = bindings[k], now = ents[k] ?? found?.entities[k]; if (v && v !== now) { if (!(k in undo.entities)) undo.entities[k] = ents[k] ?? null; ents[k] = v; } }
+  for (const k of roles) {
+    const v = bindings[k], now = ents[k] ?? found?.entities[k];
+    if (v && v !== now) { if (!(k in undo.entities)) undo.entities[k] = ents[k] ?? null; ents[k] = v; undo.wrote![k] = v; }
+    // a field cleared in an edit: the card's own value goes, what the house had before comes back
+    else if (!v && k in undo.entities) { if (ents[k] === undo.wrote?.[k]) { const b = undo.entities[k]; if (b === null) delete ents[k]; else ents[k] = b; } delete undo.entities[k]; delete undo.wrote![k]; }
+  }
   for (const k of optionKeys) { const v = opts[k]?.trim(), now = o[k] ?? found?.options?.[k]; if (v && v !== now) { if (!(k in undo.options)) undo.options[k] = o[k] ?? null; o[k] = v; undo.set![k] = v; } }
-  if (was.enabled === false && !prev) undo.enabled = false;
-  const next = { ...was, ...(was.enabled === false ? { enabled: true } : {}), ...(Object.keys(ents).length ? { entities: ents } : {}), ...(Object.keys(o).length ? { options: o } : {}) };
+  // switched off by the house (before the card, or since): the card turns it on, and its removal turns it off again
+  if (was.enabled === false) undo.enabled = false;
+  const { entities: _e, options: _o, ...rest } = was; void _e; void _o;
+  const next = { ...rest, ...(was.enabled === false ? { enabled: true } : {}), ...(Object.keys(ents).length ? { entities: ents } : {}), ...(Object.keys(o).length ? { options: o } : {}) };
   if (c.modules[moduleId] || Object.keys(next).length) c.modules[moduleId] = next; // nothing to tell: no empty settings are made
   return undo;
 }
 /** Put back what the card changed — only where the setting still holds the card's value (a change the house made since stays). */
 export function untellModule(c: HouseConfig, moduleId: string, inst: { bindings: Record<string, string>; moduleUndo?: ModuleUndo }) {
-  const u = inst.moduleUndo, was = c.modules[moduleId]; if (!u || !was) return;
+  const u = sane(inst.moduleUndo), was = c.modules[moduleId]; if (!u || !was) return;
   const ents: Record<string, string> = { ...(was.entities ?? {}) }, o: Record<string, string> = { ...((was.options ?? {}) as Record<string, string>) };
-  for (const [k, before] of Object.entries(u.entities)) if (ents[k] === inst.bindings[k]) { if (before === null) delete ents[k]; else ents[k] = before; }
+  for (const [k, before] of Object.entries(u.entities)) if (ents[k] === (u.wrote ? u.wrote[k] : inst.bindings[k])) { if (before === null) delete ents[k]; else ents[k] = before; }
   for (const [k, before] of Object.entries(u.options)) if (o[k] === u.set?.[k]) { if (before === null) delete o[k]; else o[k] = before; }
   const next: Record<string, unknown> = { ...was, entities: ents, options: o }; if (u.enabled === false) next.enabled = false;
   if (!Object.keys(ents).length) delete next.entities; if (!Object.keys(o).length) delete next.options;

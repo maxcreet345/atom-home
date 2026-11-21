@@ -138,6 +138,8 @@ const ru = {
   'cat.r.map': "Карта",
   'cat.selfPlaced': "Эта карточка сама встаёт на своё место: на главную, в комнату прибора или в свой раздел. Здесь указываются только её сущности.",
   'cat.moduleTaken': "Такая карточка в доме уже есть. Откройте её, чтобы поменять сущности.",
+  'cat.moduleOtherDevice': "Эта карточка пока работает с одним прибором такой модели — с тем, что найден первым. Выберите его.",
+  'cat.optBad': "Только латинские буквы, цифры, «_», «.» и «-», до 64 знаков: {list}.",
 };
 const ro: typeof ru = {
   'cat.add': 'Adaugă un card',
@@ -276,6 +278,8 @@ const ro: typeof ru = {
   'cat.r.map': "Hartă",
   'cat.selfPlaced': "Acest card își ia singur locul: pe pagina principală, în camera aparatului sau în secțiunea lui. Aici se aleg doar entitățile lui.",
   'cat.moduleTaken': "Casa are deja acest card. Deschideți-l pentru a schimba entitățile.",
+  'cat.moduleOtherDevice': "Deocamdată acest card lucrează cu un singur aparat de acest model — cel găsit primul. Alegeți-l pe acela.",
+  'cat.optBad': "Doar litere latine, cifre, „_”, „.” și „-”, până la 64 de caractere: {list}.",
 };
 const en: typeof ru = {
   'cat.add': 'Add a card',
@@ -414,5 +418,7 @@ const en: typeof ru = {
   'cat.r.map': "Map",
   'cat.selfPlaced': "This card takes its own place: Home, its device’s room or its own section. Only its entities are set here.",
   'cat.moduleTaken': "This home already has this card. Open it to change its entities.",
+  'cat.moduleOtherDevice': "For now this card works with one appliance of this model — the one found first. Choose that one.",
+  'cat.optBad': "Latin letters, digits, “_”, “.” and “-” only, up to 64 characters: {list}.",
 };
 export const wordsCatalog = { ru, en, ro };
