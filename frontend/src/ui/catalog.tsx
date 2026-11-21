@@ -24,7 +24,7 @@ import { CameraTile } from './camera-tile.tsx';
 import { familyOf } from '../appliances/profiles.ts';
 import { applianceUi } from '../appliances/index.ts';
 import {
-  CATEGORIES, PROFILES, tellModule, untellModule, type ModuleUndo, brandsOf, candidates, candidateValue, cardRoom, defaultPlacement, devicesFor, foundHere, instanceView, moduleDevice, moduleMatch, newInstanceId, ofDevice, profileById, searchProfiles, selfDrawn, suggestBindings, suggestRoom,
+  CATEGORIES, PROFILES, tellModule, untellModule, type ModuleUndo, brandsOf, candidates, candidateValue, defaultPlacement, devicesFor, foundHere, instanceView, moduleDevice, moduleMatch, newInstanceId, ofDevice, profileById, searchProfiles, selfDrawn, suggestBindings, suggestRoom,
   type Category, type Place, type Profile, type ProfileInstance, type RoleSpec, type InstanceRoom,
 } from '../model/card-catalog.ts';
 
@@ -89,7 +89,7 @@ function CardForm({ registry, config, rooms, t, lang, host, roomId, save, onClos
   // where it goes follows the card's room — the chosen device's, the room page it was opened from — until the installer presses a place himself;
   // the room follows the chosen device until he picks one himself. An edit starts from what was saved
   const [placed, setPlaced] = useState<Place[] | null>(editing ? editing.placement : null), [roomTouched, setRoomTouched] = useState(false);
-  const placement = placed ?? defaultPlacement(profile, cardRoom(registry, { roomId: room || undefined, deviceId, bindings }, profile));
+  const placement = placed ?? defaultPlacement(profile, room || dev?.area_id);
   const [busy, setBusy] = useState(false), [question, ask] = useState<Question | null>(null), [note, setNote] = useState('');
   const chooseDevice = (id: string) => { setDeviceId(id); setBindings({ ...suggestBindings(registry, profile, id), ...told(id) }); const d = registry.devices.find(x => x.id === id); if (!editing && !roomId && !roomTouched) setRoom(d?.area_id ?? ''); };
   const needDevice = profile.models.length > 0;

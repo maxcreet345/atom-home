@@ -40,7 +40,7 @@ test('the washer\'s fields are filled from its own entities by their suffixes', 
   assert.equal(b.delayEnd.split('.')[0], 'number'); assert.equal(b.delayEndAt.split('.')[0], 'sensor');
   assert.equal(b.plugPower, 'sensor.bath_washer_socket_power', 'the socket named after the washer is its own (1.36.1); any other is the installer\'s choice');
 });
-test('the dryer\'s fields are filled, the diagnostic alarm code included; the template switch and the cloud copy are not taken', () => {
+test('the dryer\'s fields are filled, the diagnostic alarm code included; the template switch is not taken, the cloud copy is never one of the dryer\'s own entities', () => {
   const b = dryerInst().bindings;
   for (const role of ['running', 'machine', 'stage', 'progress', 'left', 'finishAt', 'alarm', 'remote', 'childLock', 'power', 'cycle', 'dryLevel', 'dryTime', 'delay', 'finishBy', 'start', 'pause', 'stop', 'wrinkle', 'wrinkleActive', 'damp', 'drumClean', 'light', 'buzzer', 'finishSound', 'energy'])
     assert.ok(b[role], `${role} is bound`);

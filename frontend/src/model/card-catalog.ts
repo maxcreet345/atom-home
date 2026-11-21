@@ -379,7 +379,8 @@ export function instanceView(reg: Registry, id: string, inst: ProfileInstance, r
   // a reading is called by its field («Ресурс фильтра»), not by the integration's name («Filter Filter Life Level»)
   const pick = (as: RoleSpec['as']) => profile.roles.filter(r => r.as === as && inst.bindings[r.id]).map(r => { const x = refOf(reg, inst.bindings[r.id]); return x && label ? { ...x, name: label(r.labelKey) } : x; }).filter((x): x is EntityRef => !!x);
   const dev = inst.deviceId ? reg.devices.find(d => d.id === inst.deviceId) : (anchorId ? reg.devices.find(d => d.id === reg.entities.find(e => e.entity_id === anchorId)?.device_id) : undefined);
-  const roomId = cardRoom(reg, inst, profile) ?? NO_ROOM;
+  const anchorEnt = anchorId ? reg.entities.find(e => e.entity_id === anchorId) : undefined;
+  const roomId = inst.roomId ?? dev?.area_id ?? areaOf(reg, anchorEnt) ?? NO_ROOM;
   // an appliance is called by its own HA device («Ванная · Сушильная машина (Samsung DV8400D)» → «Сушильная машина»), never by its anchor entity
   // («Сушилка · Работает»): the room stands beside it, the model is the sheet's
   const devName = profile.renderer === 'appliance' && dev ? stripRoom(((dev as { name_by_user?: string | null }).name_by_user ?? dev.name ?? '').replace(/\s*\([^)]*\)/g, '').trim(), roomName(roomId)) || null : null;
@@ -390,12 +391,6 @@ export function instanceView(reg: Registry, id: string, inst: ProfileInstance, r
     manufacturer: dev?.manufacturer ?? null, model: dev?.model ?? null, haDeviceId: dev?.id ?? null, section: profile.kind === 'climate' ? 'climate' : 'systems',
   };
   return { id, instance: inst, profile, device, lost, incomplete };
-}
-/** The room a card is in: the one the installer gave it, else its device's, else its main field's own. */
-export function cardRoom(reg: Registry, inst: Pick<ProfileInstance, 'roomId' | 'deviceId' | 'bindings'>, profile: Pick<Profile, 'anchor'>): string | null {
-  const main = inst.bindings[profile.anchor ?? ''], ent = main ? reg.entities.find(e => e.entity_id === main) : undefined;
-  const dev = inst.deviceId ? reg.devices.find(d => d.id === inst.deviceId) : ent ? reg.devices.find(d => d.id === ent.device_id) : undefined;
-  return inst.roomId ?? dev?.area_id ?? areaOf(reg, ent) ?? null;
 }
 /** Where a new card goes while the installer has not said: in its room, when it has one and the card may stand in a room (opened from Home,
  * every card went «На главной» and none was in its room — 21.11.2026); else the card's first place. */

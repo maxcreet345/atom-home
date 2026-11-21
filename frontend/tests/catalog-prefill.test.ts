@@ -3,19 +3,20 @@
 // device is filled by the suffixes alone, and a second integration's copy and the appliance's socket are found by their names — or left empty.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import type { Registry } from '../src/model/registry.ts';
-import { PROFILES, candidates, cardDevice, cardRoom, defaultPlacement, devicesFor, instanceViews, profileById, roomCards, shownInRoom, siblingDevices, stemOf, suggestBindings, suggestion, type Profile, type ProfileInstance } from '../src/model/card-catalog.ts';
+import { PROFILES, candidates, cardDevice, defaultPlacement, devicesFor, instanceViews, profileById, roomCards, shownInRoom, siblingDevices, stemOf, suggestBindings, suggestion, type Profile, type ProfileInstance } from '../src/model/card-catalog.ts';
 import { readRoom } from '../src/model/room.ts';
 
-const live: Registry = JSON.parse(readFileSync(new URL('../../private/fixtures/criuleni-registry-live-20261121.json', import.meta.url), 'utf8'));
+const FIXTURE = new URL('../../private/fixtures/criuleni-registry-live-20261121.json', import.meta.url), have = existsSync(FIXTURE), skip = !have && 'no house fixture';
+const live: Registry = have ? JSON.parse(readFileSync(FIXTURE, 'utf8')) : { areas: [], devices: [], entities: [], states: {} } as unknown as Registry;
 const clone = (): Registry => structuredClone(live);
 const P = (id: string): Profile => profileById(id)!;
 /** The form's first bindings for the house's one device of this model. */
 const first = (id: string, reg: Registry = live) => { const d = devicesFor(reg, P(id)); assert.equal(d.length, 1, `${id}: one device`); return suggestBindings(reg, P(id), d[0].id); };
 const copyEntity = (reg: Registry, from: string, to: string, patch: Partial<Registry['entities'][number]> = {}) => { reg.entities.push({ ...reg.entities.find(e => e.entity_id === from)!, entity_id: to, ...patch }); reg.states[to] = { ...structuredClone(reg.states[from]), entity_id: to }; };
 
-test('prefill: a field with a suffix is never filled with an entity that has not got it (the scale\'s «Импеданс» stays empty)', () => {
+test('prefill: a field with a suffix is never filled with an entity that has not got it (the scale\'s «Импеданс» stays empty)', { skip }, () => {
   const b = first('xiaomi.scale2');
   assert.equal(b.weight, 'sensor.home_scale_weight'); assert.equal(b.stable, 'binary_sensor.home_scale_stabilized');
   assert.equal(b.impedance, undefined, 'the scale has no impedance sensor: its weight is not one');
@@ -27,7 +28,7 @@ test('prefill: a field with a suffix is never filled with an entity that has not
   const reg = clone(); copyEntity(reg, 'sensor.home_scale_weight', 'sensor.home_scale_impedance');
   assert.equal(first('xiaomi.scale2', reg).impedance, 'sensor.home_scale_impedance');
 });
-test('prefill: one entity is never suggested for two fields; the main and the required fields choose first', () => {
+test('prefill: one entity is never suggested for two fields; the main and the required fields choose first', { skip }, () => {
   const dev = { id: 'dv', name: 'X', model: 'm.x', area_id: null } as Registry['devices'][number];
   const reg: Registry = { ...clone(), devices: [dev], entities: [{ entity_id: 'sensor.x_value', device_id: 'dv' } as Registry['entities'][number]], states: { 'sensor.x_value': { entity_id: 'sensor.x_value', state: '1', attributes: {} } as Registry['states'][string] } };
   const role = (id: string, required = false) => ({ id, labelKey: id, required, domains: ['sensor'], source: 'own' as const });
@@ -38,7 +39,7 @@ test('prefill: one entity is never suggested for two fields; the main and the re
   // on the house: no card of any model gets one entity in two fields
   for (const p of PROFILES) for (const d of devicesFor(live, p)) { const v = Object.values(suggestBindings(live, p, d.id)); assert.equal(new Set(v).size, v.length, `${p.id}: ${v}`); }
 });
-test('prefill: a card with no device is filled by the one entity that has the field\'s suffix (the dashcam)', () => {
+test('prefill: a card with no device is filled by the one entity that has the field\'s suffix (the dashcam)', { skip }, () => {
   const b = suggestBindings(live, P('70mai.a810_up04'));
   for (const [role, id] of Object.entries({ tracker: 'device_tracker.car_dashcam', voltage: 'sensor.car_dashcam_battery_voltage', alarm: 'event.car_dashcam_alarm', network: 'sensor.car_dashcam_network_level', upload: 'binary_sensor.car_dashcam_monitor_upload', simPower: 'binary_sensor.car_dashcam_sim_out_power' })) assert.equal(b[role], id, role);
   // eight «…_firmware» sensors in the house (sockets, drives): the dashcam's is the one on the tracker's own device, and not its modem's
@@ -50,7 +51,7 @@ test('prefill: a card with no device is filled by the one entity that has the fi
   const two = suggestBindings(reg, P('70mai.a810_up04'));
   for (const role of ['tracker', 'voltage', 'alarm', 'network', 'upload', 'simPower', 'firmware']) assert.equal(two[role], undefined, role);
 });
-test('prefill: the gas meter read by a camera — every field by its suffix, the answer among 23 «…_raw» by the meter\'s name; a field with no suffix is not guessed', () => {
+test('prefill: the gas meter read by a camera — every field by its suffix, the answer among 23 «…_raw» by the meter\'s name; a field with no suffix is not guessed', { skip }, () => {
   const gas = P('meter.gas_camera'), b = suggestBindings(live, gas);
   assert.deepEqual(b, { meter: 'sensor.kitchen_gas_meter', camera: 'camera.kitchen_gas_meter', lastRead: 'input_datetime.kitchen_gas_meter_last_read', answer: 'input_text.kitchen_gas_meter_raw' });
   assert.ok(candidates(live, gas.roles.find(r => r.id === 'answer')!, {}).filter(c => c.exact).length > 1, 'the suffix alone would not tell');
@@ -61,7 +62,7 @@ test('prefill: the gas meter read by a camera — every field by its suffix, the
   const noSuffix = { ...gas, roles: gas.roles.map(r => ({ ...r, suffix: undefined })) };
   assert.deepEqual(suggestBindings(live, noSuffix), {});
 });
-test('prefill: the same appliance through a second integration is found by the main entity\'s name, or by the twin device of the room', () => {
+test('prefill: the same appliance through a second integration is found by the main entity\'s name, or by the twin device of the room', { skip }, () => {
   assert.equal(first('hisense.55u6').airplay, 'media_player.kids_tv_airplay');
   const s = first('samsung.q60t');
   assert.equal(s.smartthings, 'media_player.bedroom_tv_smartthings'); assert.equal(s.channel, 'sensor.bedroom_tv_channel'); assert.equal(s.channelName, 'sensor.bedroom_tv_channel_name');
@@ -80,7 +81,7 @@ test('prefill: the same appliance through a second integration is found by the m
   const busy = clone(); copyEntity(busy, cloud, 'sensor.bath_dryer_cloud_job_state');
   assert.equal(first(dryer.id, busy).cloud, undefined);
 });
-test('prefill: the appliance\'s socket is found by the appliance\'s own name; a socket called otherwise is left to the installer', () => {
+test('prefill: the appliance\'s socket is found by the appliance\'s own name; a socket called otherwise is left to the installer', { skip }, () => {
   assert.equal(stemOf(['bath_washer_current_status', 'bath_washer_power']), 'bath_washer'); assert.equal(stemOf(['living_humidifier', 'living_humidifier_fan_level']), 'living_humidifier');
   assert.equal(stemOf(['living_humidifier']), 'living_humidifier'); assert.equal(stemOf(['bath_dryer_stage', 'vannaia_drum_light']), ''); assert.equal(stemOf([]), '');
   const h = first('xiaomi.humidifier2'); assert.equal(h.plug, 'switch.living_humidifier_plug'); assert.equal(h.plugPower, 'sensor.living_humidifier_plug_power');
@@ -106,7 +107,7 @@ const GAS = card('meter.gas_camera', { meter: 'sensor.kitchen_gas_meter', camera
 const nas = () => { const d = devicesFor(live, P('ugreen.dxp2800'))[0]; return { dev: d, inst: card('ugreen.dxp2800', suggestBindings(live, P('ugreen.dxp2800'), d.id), { deviceId: d.id }) }; };
 const drawnOnce = (p: ReturnType<typeof plan>, id: string) => [...p.own.values()].filter(v => v && v.id === id).length + p.extra.filter(v => v.id === id).length;
 
-test('room page: a card whose device is none of the room\'s tiles is still drawn there (the NAS in the Hall)', () => {
+test('room page: a card whose device is none of the room\'s tiles is still drawn there (the NAS in the Hall)', { skip }, () => {
   const { dev, inst } = nas(); assert.equal(dev.areaId, 'prikhozhaia');
   const p = plan('prikhozhaia', { nas: inst });
   assert.ok(!p.things.some(t => t.key === dev.id), 'the NAS is no «thing» of the Hall: nothing to switch, no watts');
@@ -115,7 +116,7 @@ test('room page: a card whose device is none of the room\'s tiles is still drawn
   assert.equal(drawnOnce(plan('prikhozhaia', { nas: { ...inst, placement: ['home'] } }), 'nas'), 0);
   assert.equal(drawnOnce(plan('prikhozhaia', { nas: { ...inst, roomId: 'kukhnia' } }), 'nas'), 0); assert.equal(drawnOnce(plan('kukhnia', { nas: { ...inst, roomId: 'kukhnia' } }), 'nas'), 1);
 });
-test('room page: a card with no device stands for the device of its main field — one «Счётчик газа» in the Kitchen, not two', () => {
+test('room page: a card with no device stands for the device of its main field — one «Счётчик газа» in the Kitchen, not two', { skip }, () => {
   const gasDev = live.entities.find(e => e.entity_id === 'sensor.kitchen_gas_meter')!.device_id!;
   assert.equal(cardDevice(live, GAS), gasDev); assert.equal(cardDevice(live, { ...GAS, bindings: {} }), null);
   const bare = plan('kukhnia', {}); assert.ok(bare.things.some(t => t.key === gasDev), 'without the card the camera\'s device has a tile of its own');
@@ -126,7 +127,7 @@ test('room page: a card with no device stands for the device of its main field �
   // a heating card is not an appliance: it claims no device by its thermostat
   assert.equal(cardDevice(live, card('heating.single', { thermostat: 'climate.kitchen_trv' })), null);
 });
-test('room page: on the house with every appliance card added, each card of a room is drawn exactly once and a card\'s device has no second tile', () => {
+test('room page: on the house with every appliance card added, each card of a room is drawn exactly once and a card\'s device has no second tile', { skip }, () => {
   const all: Record<string, ProfileInstance> = { gas: GAS, dash: card('70mai.a810_up04', suggestBindings(live, P('70mai.a810_up04'))) };
   for (const p of PROFILES.filter(x => x.renderer === 'appliance' && x.models.length)) for (const d of devicesFor(live, p)) all[`c${Object.keys(all).length}`] = card(p.id, suggestBindings(live, p, d.id), { deviceId: d.id });
   const views = instanceViews(live, all, roomName); assert.ok(views.length >= 17, `${views.length} cards`);
@@ -141,15 +142,13 @@ test('room page: on the house with every appliance card added, each card of a ro
 });
 
 // ---- where a new card goes by default (ui/catalog.tsx) ----
-test('a new card goes «В комнате» when it has a room and may stand in one; else to the profile\'s first place', () => {
+test('a new card goes «В комнате» when it has a room and may stand in one; else to the profile\'s first place', { skip }, () => {
   const tv = P('hisense.55u6'), gas = P('meter.gas_camera');
   assert.deepEqual(tv.places, ['home', 'room']);
   assert.deepEqual(defaultPlacement(tv, 'detskaia'), ['room']); assert.deepEqual(defaultPlacement(tv, null), ['home']); assert.deepEqual(defaultPlacement(tv, ''), ['home']); assert.deepEqual(defaultPlacement(tv, 'none'), ['home']);
   assert.deepEqual(defaultPlacement(P('heating.rooms'), 'kukhnia'), ['home'], 'a card that cannot stand in a room'); assert.deepEqual(defaultPlacement(P('xiaomi.kettle2pro'), 'kukhnia'), [], 'a card that draws itself has no place to choose');
-  // the room of a card in the making: the chosen device's, the installer's own choice over it, the main field's for a card with no device
-  const kids = devicesFor(live, tv)[0];
-  assert.equal(cardRoom(live, { deviceId: kids.id, bindings: {} }, tv), 'detskaia'); assert.equal(cardRoom(live, { deviceId: kids.id, bindings: {}, roomId: 'spalnia' }, tv), 'spalnia');
-  assert.equal(cardRoom(live, { bindings: {} }, gas), null); assert.equal(cardRoom(live, { bindings: { meter: 'sensor.kitchen_gas_meter' } }, gas), 'kukhnia');
-  // every appliance card of the house, added from Home with nothing touched, lands in its room
-  for (const p of PROFILES.filter(x => x.renderer === 'appliance' && x.models.length)) for (const d of devicesFor(live, p)) assert.deepEqual(defaultPlacement(p, cardRoom(live, { deviceId: d.id, bindings: suggestBindings(live, p, d.id) }, p)), d.areaId ? ['room'] : ['home'], p.id);
+  // a card with no device has no room until the installer picks one: its first place, then «В комнате» with the room
+  assert.deepEqual(defaultPlacement(gas, undefined), ['home']); assert.deepEqual(defaultPlacement(gas, 'kukhnia'), ['room']);
+  // every appliance card of the house, added from Home with nothing touched, lands in its device's room (the scale has none: Home)
+  for (const p of PROFILES.filter(x => x.renderer === 'appliance' && x.models.length)) for (const d of devicesFor(live, p)) assert.deepEqual(defaultPlacement(p, d.areaId), d.areaId ? ['room'] : ['home'], p.id);
 });
