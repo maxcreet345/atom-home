@@ -1,1 +1,53 @@
-/* The nas family cards (src/appliances/nas.tsx). */
+/* The nas family cards (src/appliances/nas.tsx). «Тихий дом»: neutral glass for what is fine; amber for «внимание», red for a fault or no answer. */
+.hm-shell{--nas-warn:#b25e00;--nas-warn-bg:#ff9f0a24;--nas-alert:#c4271d;--nas-alert-bg:#ff3b3020;--nas-bar:#3a3a3c}
+.hm-shell.ah-shell[data-theme="dark"]{--nas-warn:#ffb340;--nas-warn-bg:#ff9f0a2e;--nas-alert:#ff6961;--nas-alert-bg:#ff3b3033;--nas-bar:#e5e5ea}
+.hm-shell .at-nas-sheet{display:grid;gap:12px;overflow-x:clip}
+.hm-shell .at-nas-sheet>.at-nas-head{padding:14px 16px 0;align-items:center}.hm-shell .at-nas-head .hm-icon-btn{width:44px;height:44px;margin-left:auto}
+.hm-shell .at-nas-face{width:40px;height:40px;flex:none}.hm-shell .at-nas-face>.ah-photo{width:100%;height:100%;border-radius:12px}
+.hm-shell .at-nas-cols{display:grid;gap:12px;padding:0 16px 20px}.hm-shell .at-nas-col{display:grid;gap:12px;align-content:start;min-width:0}
+.hm-shell .at-nas-sheet.is-wide .at-nas-cols{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
+.hm-shell .at-nas-err{color:var(--nas-alert);font-size:.84375rem;margin:0 16px}
+/* the drawing */
+.hm-shell .at-nas-art{width:100%;height:100%}.hm-shell .at-nas-art-body{fill:var(--ah-group);stroke:var(--ah-glyph);stroke-width:1.6}.hm-shell .at-nas-art-bay{fill:none;stroke:var(--ah-glyph);stroke-width:1.4}
+.hm-shell .at-nas-art-led{fill:var(--ah-glyph)}.hm-shell .at-nas-art.is-warn .at-nas-art-led{fill:#ff9f0a}.hm-shell .at-nas-art.is-alert .at-nas-art-led{fill:#ff3b30}.hm-shell .at-nas-art.is-off{opacity:.55}
+/* the sentence */
+.hm-shell .at-nas-hero{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:6px 14px;padding:18px;border-radius:24px;background:var(--ah-group)}
+.hm-shell .at-nas-hero-ico{display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:var(--ah-tile);color:var(--ah-ink)}
+.hm-shell .at-nas-hero.is-warn{background:var(--nas-warn-bg)}.hm-shell .at-nas-hero.is-warn .at-nas-hero-ico{background:#ff9f0a;color:#1c1c1e}
+.hm-shell .at-nas-hero.is-alert{background:var(--nas-alert-bg)}.hm-shell .at-nas-hero.is-alert .at-nas-hero-ico{background:#ff3b30;color:#fff}
+.hm-shell .at-nas-hero-text{display:grid;gap:3px;min-width:0}.hm-shell .at-nas-say{font-size:1.25rem;font-weight:600;line-height:1.25;letter-spacing:-.2px}
+.hm-shell .at-nas-hero-text small,.hm-shell .at-nas-update{font-size:.84375rem;color:var(--ah-muted);line-height:1.35}
+.hm-shell .at-nas-update{grid-column:1/-1}
+.hm-shell .at-nas-issues{grid-column:1/-1;display:grid;gap:4px;margin:4px 0 0;padding:0;list-style:none}.hm-shell .at-nas-issues li{font-size:.9375rem;font-weight:500;padding-left:16px;position:relative}
+.hm-shell .at-nas-issues li::before{content:'';position:absolute;left:2px;top:.5em;width:7px;height:7px;border-radius:50%;background:#ff9f0a}.hm-shell .at-nas-issues li.is-alert::before{background:#ff3b30}
+/* the cards of the sheet */
+.hm-shell .at-nas-card{display:grid;padding:4px 0 8px;border-radius:24px;background:var(--ah-group)}
+.hm-shell .at-nas-card h3{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:.90625rem;font-weight:500;color:var(--ah-muted);padding:14px 18px 8px}
+.hm-shell .at-nas-card h3 small{font-size:.75rem;font-weight:400}
+.hm-shell .at-nas-vol{display:grid;gap:6px;padding:8px 18px 10px}.hm-shell .at-nas-vol+.at-nas-vol{border-top:1px solid var(--ah-line)}
+.hm-shell .at-nas-vol-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}.hm-shell .at-nas-vol-head b{font-size:1.0625rem;font-weight:600}.hm-shell .at-nas-vol-head small{font-size:.875rem;color:var(--ah-muted);font-variant-numeric:tabular-nums}
+.hm-shell .at-nas-bar{display:block;height:10px;border-radius:5px;background:var(--ah-tile);overflow:hidden}.hm-shell .at-nas-bar i{display:block;height:100%;border-radius:5px;background:var(--nas-bar)}
+.hm-shell .at-nas-vol.is-full .at-nas-bar i{background:#ff9f0a}.hm-shell .at-nas-vol.is-full .at-nas-vol-head small,.hm-shell .at-nas-vol.is-warn .at-nas-vol-head small{color:var(--nas-warn);font-weight:600}
+.hm-shell .at-nas-vol-free{font-size:.875rem;color:var(--ah-muted);font-variant-numeric:tabular-nums}
+.hm-shell .at-nas-disks{display:grid;grid-template-columns:repeat(auto-fill,minmax(8.5rem,1fr));gap:8px;padding:2px 12px 4px}
+.hm-shell .at-nas-disk{display:grid;gap:2px;padding:12px 14px;border-radius:16px;background:var(--ah-tile);min-width:0}
+.hm-shell .at-nas-disk b{font-size:.9375rem;font-weight:600}.hm-shell .at-nas-disk small{font-size:.8125rem;color:var(--ah-muted);font-variant-numeric:tabular-nums}
+.hm-shell .at-nas-disk-state{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:.8125rem;font-weight:600}
+.hm-shell .at-nas-disk-state i{width:8px;height:8px;border-radius:50%;background:var(--ah-glyph);flex:none}
+.hm-shell .at-nas-disk.is-warn{background:var(--nas-warn-bg)}.hm-shell .at-nas-disk.is-warn .at-nas-disk-state{color:var(--nas-warn)}.hm-shell .at-nas-disk.is-warn .at-nas-disk-state i{background:#ff9f0a}
+.hm-shell .at-nas-disk.is-alert{background:var(--nas-alert-bg)}.hm-shell .at-nas-disk.is-alert .at-nas-disk-state{color:var(--nas-alert)}.hm-shell .at-nas-disk.is-alert .at-nas-disk-state i{background:#ff3b30}
+.hm-shell .at-nas-facts{margin:0 12px 4px;border-radius:16px;background:var(--ah-tile)}.hm-shell .at-nas-facts .hm-fact{background:none}.hm-shell .at-nas-facts .hm-fact strong{font-variant-numeric:tabular-nums}
+/* folds: pools with their drives and volumes, the device */
+.hm-shell .at-nas-row{padding:10px 14px;gap:12px}.hm-shell .at-nas-row .ah-row-text{min-width:0}.hm-shell .at-nas-row .ah-row-text strong{white-space:normal}
+.hm-shell .at-nas-row .ah-row-text small{white-space:normal;overflow-wrap:anywhere}
+.hm-shell .at-nas-row>small{flex:none;text-align:right;max-width:45%;font-variant-numeric:tabular-nums}
+.hm-shell .at-nas-row.is-head .ah-row-text strong{font-weight:700}.hm-shell .at-nas-pool+.at-nas-pool{border-top:6px solid var(--ah-line)}
+.hm-shell .at-nas-row-state.is-warn{color:var(--nas-warn);font-weight:600}.hm-shell .at-nas-row-state.is-alert{color:var(--nas-alert);font-weight:600}
+/* the administrator's controls */
+.hm-shell .at-nas-row.is-col{flex-direction:column;align-items:stretch;padding:10px 18px}
+.hm-shell .at-nas-seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:4px;padding:3px;border-radius:14px;background:var(--ah-tile);align-self:stretch}
+.hm-shell .at-nas-seg button{min-height:44px;padding:4px 8px;line-height:1.2;border-radius:11px;border:0;background:none;color:var(--ah-ink);font-weight:600}
+.hm-shell .at-nas-seg button.is-on{background:var(--ah-group);box-shadow:0 1px 3px #0000002e}.hm-shell .at-nas-seg button:disabled{opacity:.5}
+.hm-shell .at-nas-power{display:flex;flex-wrap:wrap;gap:8px;padding:8px 18px 6px}
+.hm-shell .at-nas-power-btn{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 18px;font-weight:600}.hm-shell .at-nas-power-btn.is-shutdown{color:var(--nas-alert)}
+.hm-shell .at-nas-power-btn:disabled{opacity:.5}
