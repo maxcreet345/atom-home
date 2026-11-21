@@ -1,1 +1,38 @@
-/* The humidifier family cards (src/appliances/humidifier.tsx). */
+/* The humidifier family cards (src/appliances/humidifier.tsx). The sheet stands on the kettle's structure (.at-kt-*: hero, cards, stepper,
+ * switches, apple.css) in the water's blue; colour only while it humidifies and on «Нет воды». White on the blue is 6.4:1. */
+.hm-shell .at-hu-sheet{--kt-teal:#0b5fa5;--kt-teal-2:#1270b8;--kt-ink:#0b5fa5;--kt-strong:#0b5fa5}
+.hm-shell.ah-shell[data-theme="dark"] .at-hu-sheet{--kt-ink:#7cc4ff}
+.hm-shell .at-hu-close{margin-left:auto}
+.hm-shell .at-hu-hero.is-idle,.hm-shell .at-hu-hero.is-off{background:linear-gradient(180deg,#5b6770,#6b7780)}
+.hm-shell .at-hu-hero .at-kt-temp i{margin-top:14px}
+.hm-shell .at-hu-power{display:inline-flex;align-items:center;gap:8px;color:var(--kt-ink)}
+.hm-shell .at-hu-hero.is-idle .at-hu-power,.hm-shell .at-hu-hero.is-off .at-hu-power{color:#3d4850}
+.hm-shell .at-hu-ask{display:grid;gap:10px;justify-items:center;max-width:340px;margin-top:8px}
+.hm-shell .at-hu-ask p{font-size:.9375rem;line-height:1.4}
+.hm-shell .at-hu-ask div{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}.hm-shell .at-hu-ask .at-kt-stop{margin-top:0;color:#3d4850}
+.hm-shell .at-hu-ask .at-kt-stop.is-quiet{background:#ffffff33;color:#fff;box-shadow:inset 0 0 0 1px #ffffff99}
+/* «Нет воды», «Бак снят»: the one alarm of this card, orange in both themes, words first */
+.hm-shell .at-hu-warn{display:grid;grid-template-columns:44px minmax(0,1fr);align-items:center;gap:12px;padding:14px 16px;border-radius:22px;background:#fff1dc;color:#7a3e00;box-shadow:inset 0 0 0 1px #ff9f0a66}
+.hm-shell .at-hu-warn-ico{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:#ff9f0a;color:#3b1d00}
+.hm-shell .at-hu-warn>span:last-child{display:grid;gap:2px;min-width:0}.hm-shell .at-hu-warn b{font-size:1.0625rem;font-weight:700}.hm-shell .at-hu-warn small{font-size:.875rem;line-height:1.35}
+.hm-shell.ah-shell[data-theme="dark"] .at-hu-warn{background:#3a2608;color:#ffd08a;box-shadow:inset 0 0 0 1px #ff9f0a80}
+.hm-shell .at-hu-target{display:grid;justify-items:center;gap:8px;padding:12px 16px 16px}
+.hm-shell .at-hu-target .at-kt-stepper{gap:22px}.hm-shell .at-hu-target .at-kt-stepper b{min-width:96px;font-size:2.25rem;font-weight:500}
+.hm-shell .at-hu-target .at-kt-stepper .hm-round{width:52px;height:52px;font-size:1.5rem}
+.hm-shell .at-hu-target .at-kt-note{text-align:center}
+.hm-shell .at-hu-modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(68px,1fr));gap:8px;padding:12px 12px 4px}
+.hm-shell .at-hu-mode{display:grid;justify-items:center;gap:6px;min-height:76px;padding:10px 4px;border:0;border-radius:18px;background:var(--ah-tile);color:var(--ah-ink);font-size:.875rem;font-weight:600;cursor:pointer}
+.hm-shell .at-hu-mode-glyph{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--ah-group);color:var(--ah-muted)}
+.hm-shell .at-hu-mode-glyph rect{fill:currentColor;opacity:.3}.hm-shell .at-hu-mode-glyph rect.is-lit{opacity:1}
+.hm-shell .at-hu-mode.is-on{background:var(--kt-strong);color:#fff}.hm-shell .at-hu-mode.is-on .at-hu-mode-glyph{background:#ffffff33;color:#fff}
+.hm-shell .at-hu-mode:disabled{cursor:default;opacity:.55}.hm-shell .at-hu-mode.is-on:disabled{opacity:.8}
+.hm-shell .at-hu-mode:focus-visible{outline:3px solid var(--kt-ink);outline-offset:2px}
+.hm-shell .at-hu-pad{display:block;padding:6px 16px 12px}
+.hm-shell .at-hu-val{font-variant-numeric:tabular-nums;font-weight:600;color:var(--ah-ink)}
+.hm-shell .at-hu-sheet.is-wide .at-hu-hero{min-height:0}
+/* the drawing: a white column, its water in blue, mist while it works */
+.hm-shell .at-hu-art{width:100%;height:100%}.hm-shell .at-hu-art .at-hu-body{fill:#fff;stroke:#c9ced3;stroke-width:1.4}.hm-shell .at-hu-art .at-hu-top{fill:#eef0f2;stroke:#c9ced3;stroke-width:1.2}
+.hm-shell .at-hu-art .at-hu-water{fill:#9fd0f5}.hm-shell .at-hu-art .at-hu-dot{fill:#8e8e93}.hm-shell .at-hu-art.is-on .at-hu-dot{fill:#0b5fa5}.hm-shell .at-hu-art .at-hu-shadow{fill:#0000001a}
+.hm-shell .at-hu-art .at-hu-mist path{fill:none;stroke:#64b5f6;stroke-width:2.6;stroke-linecap:round;opacity:.75;animation:at-kt-steam 2.4s ease-in-out infinite}.hm-shell .at-hu-art .at-hu-mist path:nth-child(2){animation-delay:.4s}.hm-shell .at-hu-art .at-hu-mist path:nth-child(3){animation-delay:.8s}
+@media (prefers-reduced-motion:reduce){.hm-shell .at-hu-art .at-hu-mist path{animation:none}}
+.hm-shell.ah-shell[data-theme="dark"] .at-hu-art .at-hu-body{fill:#e5e5ea;stroke:#8e8e93}.hm-shell.ah-shell[data-theme="dark"] .at-hu-art .at-hu-top{fill:#d1d1d6;stroke:#8e8e93}
