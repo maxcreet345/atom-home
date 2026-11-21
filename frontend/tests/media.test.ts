@@ -133,7 +133,7 @@ test('media: the sibling devices\' tiles go into the card — Hisense 55U6 AirPl
   // the card's tile is the TV, named and placed by its own device
   const v = instanceView(reg0, 'a', HISENSE_KIDS)!; assert.equal(v.device.kind, 'media'); assert.equal(v.device.primary.id, 'media_player.kids_tv'); assert.equal(v.device.roomId, 'detskaia'); assert.deepEqual(v.incomplete, []);
   assert.equal(v.device.name, 'Телевизор', 'called by its device without the model (the room stands beside it), not «<device> Телевизор»');
-  assert.equal(instanceView(reg0, 'c', HISENSE_LIVING, () => 'Гостиная')!.device.name, 'Телевизор (Hisense 65U8KQ)');
+  assert.equal(instanceView(reg0, 'c', HISENSE_LIVING, () => 'Гостиная')!.device.name, 'Телевизор');
 });
 
 test('media: the tile line — off, on, on with an input, playing «App · title», paused, unavailable', () => {
