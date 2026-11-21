@@ -1,1 +1,86 @@
 /* card sizes: modules (ui/slot-size.ts). Only under .at-slot[data-size]: a card outside an arrangement is untouched. */
+
+/* ---- a room's plain device (room.tsx `Tile`, .rm-tile): a row of a list without an arrangement, a cell with one ----
+ *   s  — the glyph, the name, the state; the power as a round 44 px button beside the glyph when the action is on/off (any other action is in its sheet);
+ *   w  — glyph | name and state | the button: round on a narrow card, the worded 44 px button on a wide one; the facts join when there is room;
+ *   t  — glyph, name, state, the facts, the worded button at the foot;
+ *   l, xl — the same, glyph and words grown with the card. */
+.hm-shell .at-slot[data-size] .rm-tile{min-height:0;gap:clamp(6px,4cqmin,14px);padding:clamp(10px,6cqmin,22px)}
+.hm-shell .at-slot[data-size] .rm-tile-act .rm-tile-act-tx{display:block}
+.hm-shell .at-slot[data-size] .rm-tile-act svg{display:none}
+.hm-shell .at-slot[data-size] .rm-tile-act{min-height:44px;padding:6px 10px;line-height:1.15;white-space:normal}
+.hm-shell .at-slot[data-size] .rm-tile-name strong{overflow-wrap:normal;word-break:normal;hyphens:manual}
+/* the round power button (s) */
+.hm-shell .at-slot[data-size="s"] .rm-tile-act.is-power{flex:none;align-self:auto;margin:0;width:44px;height:44px;min-height:44px;padding:0;border-radius:50%;display:grid;place-items:center}
+.hm-shell .at-slot[data-size="s"] .rm-tile-act.is-power svg{display:block}
+.hm-shell .at-slot[data-size="s"] .rm-tile-act.is-power .rm-tile-act-tx{display:none}
+
+/* s: one cell (123 px on a phone) */
+.hm-shell .at-slot[data-size="s"] .rm-tile{gap:6px;padding:9px}
+.hm-shell .at-slot[data-size="s"] .rm-tile-head{gap:6px;flex:1;min-height:0}
+.hm-shell .at-slot[data-size="s"] .rm-tile-ic{width:clamp(32px,26cqmin,44px);height:clamp(32px,26cqmin,44px)}
+.hm-shell .at-slot[data-size="s"] .rm-tile-ic svg{width:58%;height:58%}
+.hm-shell .at-slot[data-size="s"] .rm-tile:has(.rm-tile-act.is-power) .rm-tile-ic{width:44px;height:44px}
+.hm-shell .at-slot[data-size="s"] .rm-tile-name{margin-top:auto}
+.hm-shell .at-slot[data-size="s"] .rm-tile-name strong{font-size:clamp(.75rem,10cqmin,1rem);line-height:1.15;-webkit-line-clamp:3}
+.hm-shell .at-slot[data-size="s"] .rm-tile-name small{font-size:clamp(.75rem,9.5cqmin,.875rem);line-height:1.15;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.hm-shell .at-slot[data-size="s"] .rm-facts,.hm-shell .at-slot[data-size="s"] .rm-tile-act:not(.is-power){display:none}
+.hm-shell .at-slot[data-size="s"] .rm-tile-act.is-power{position:absolute;top:9px;right:9px}
+
+/* w: across, one row high */
+.hm-shell .at-slot[data-size="w"] .rm-tile{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;align-content:center;align-items:center;column-gap:clamp(10px,4cqw,20px);row-gap:6px;padding:10px clamp(12px,5cqw,22px)}
+.hm-shell .at-slot[data-size="w"] .rm-tile-head{grid-column:1;grid-row:1;flex-direction:row;align-items:center;gap:clamp(10px,4cqw,18px)}
+.hm-shell .at-slot[data-size="w"] .rm-tile-ic{width:clamp(40px,40cqh,60px);height:clamp(40px,40cqh,60px)}
+.hm-shell .at-slot[data-size="w"] .rm-tile-ic svg{width:55%;height:55%}
+.hm-shell .at-slot[data-size="w"] .rm-tile-name strong{font-size:clamp(.9375rem,14cqh,1.125rem)}
+.hm-shell .at-slot[data-size="w"] .rm-tile-name small{font-size:clamp(.8125rem,11cqh,.9375rem);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.hm-shell .at-slot[data-size="w"] .rm-facts{grid-column:1;grid-row:2;flex-wrap:nowrap;overflow:hidden}
+.hm-shell .at-slot[data-size="w"] .rm-facts li:nth-child(n+2){display:none}
+.hm-shell .at-slot[data-size="w"] .rm-tile-act{grid-column:2;grid-row:1/3;margin:0;align-self:center;min-width:44px;max-width:clamp(120px,34cqw,200px);padding:6px 14px}
+/* a narrow w (2×1 on a phone): no facts, the power round, any other action in the sheet */
+@container slot (max-width:340px){
+  .hm-shell .at-slot[data-size="w"] .rm-facts,.hm-shell .at-slot[data-size="w"] .rm-tile-act:not(.is-power){display:none}
+  .hm-shell .at-slot[data-size="w"] .rm-tile-act.is-power{width:44px;height:44px;padding:0;border-radius:50%;display:grid;place-items:center;max-width:none}
+  .hm-shell .at-slot[data-size="w"] .rm-tile-act.is-power svg{display:block}
+  .hm-shell .at-slot[data-size="w"] .rm-tile-act.is-power .rm-tile-act-tx{display:none}
+}
+@container slot (max-width:280px){.hm-shell .at-slot[data-size="w"] .rm-tile-ic{width:36px;height:36px}.hm-shell .at-slot[data-size="w"] .rm-tile-name strong{font-size:.8125rem}}
+
+/* t, l, xl: stacked, grown with the card */
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) .rm-tile-head{gap:clamp(8px,4cqmin,16px)}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) .rm-tile-ic{width:clamp(40px,28cqmin,104px);height:clamp(40px,28cqmin,104px)}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) .rm-tile-ic svg{width:55%;height:55%}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) .rm-tile-name strong{font-size:clamp(.9375rem,7cqmin,1.625rem);-webkit-line-clamp:3}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) .rm-tile-name small{font-size:clamp(.8125rem,5cqmin,1.25rem)}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) .rm-facts li{font-size:clamp(.75rem,4cqmin,1.0625rem);padding:clamp(4px,1.6cqmin,8px) clamp(8px,3cqmin,12px);white-space:normal}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) .rm-tile-act{min-height:clamp(44px,14cqmin,60px);font-size:clamp(.875rem,5cqmin,1.125rem);border-radius:clamp(12px,4cqmin,16px)}
+.hm-shell .at-slot[data-size="t"] .rm-tile-act{padding:6px}
+.hm-shell .at-slot[data-size="t"] .rm-tile-name strong{font-size:clamp(.75rem,10cqw,1.25rem)}
+.hm-shell .at-slot[data-size="t"] .rm-facts li{font-size:clamp(.6875rem,9cqw,1rem);text-wrap:balance}
+
+/* ---- the feeder's card (pet-feeder.tsx, a reading tile with our drawn cat): the one-cell card is the natural size ----
+ *   w  — the number, the name and the line beside it, the cat on the right at the card's height;
+ *   t  — the cat across the top, the number and the words below;
+ *   l, xl — the cat and the number grown; the day's plan (its hours, the next one marked) under the words. */
+.hm-shell .at-slot[data-size="w"] .at-fd-tile .ah-tile-hit{padding-right:calc(min(90cqh,30cqw) + 8px)}
+.hm-shell .at-slot[data-size] .at-fd-tile .ah-tile-text strong{overflow-wrap:normal;word-break:normal;hyphens:manual}
+.hm-shell .at-slot[data-size="w"] .at-fd-tile .at-fd-tile-cat{top:50%;right:clamp(8px,3cqw,18px);width:min(90cqh,30cqw);transform:translateY(-50%)}
+.hm-shell .at-slot[data-size="t"] .at-fd-tile .at-fd-tile-cat{left:8px;right:8px;top:10px;width:auto}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-fd-tile .at-fd-tile-cat{top:clamp(8px,4cqmin,22px);right:clamp(8px,4cqmin,22px);width:min(70cqh,50cqw)}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) .at-fd-tile .ah-value-num b{line-height:1.12}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-fd-tile .ah-value-num i{font-size:clamp(.875rem,7cqmin,1.75rem)}
+.hm-shell .at-fd-tile-plan{display:flex;flex-wrap:wrap;gap:clamp(4px,2cqmin,8px)}
+.hm-shell .at-fd-tile-plan i{font-style:normal;font-weight:600;font-variant-numeric:tabular-nums;font-size:clamp(.75rem,4.5cqmin,1.125rem);line-height:1.2;padding:clamp(3px,1.4cqmin,6px) clamp(7px,2.6cqmin,12px);border-radius:999px;background:color-mix(in srgb,var(--ah-ink) 9%,transparent);color:var(--ah-ink)}
+.hm-shell .at-fd-tile-plan i.is-next{background:#ffae3b;color:#2b2118}
+
+/* ---- kettle and airfryer (kettle.tsx, airfryer.tsx: a device tile with the appliance's drawing or photo); the one-cell card is the natural size ----
+ *   w  — the drawing on the left at the card's height, the name and the state beside it (common.css);
+ *   t, l, xl — the drawing grown with the card; the kettle's water temperature as a big number at l and xl. */
+.hm-shell .at-slot[data-size="w"] .at-kt-tile .at-kt-tile-art{flex:none;width:clamp(44px,56cqh,96px)}
+.hm-shell .at-slot[data-size="t"] .at-kt-tile .at-kt-tile-art{width:clamp(56px,72cqw,120px)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-kt-tile .at-kt-tile-art{width:clamp(64px,min(32cqh,40cqw),220px)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-af-tile .at-kt-tile-art{width:clamp(72px,min(48cqh,44cqw),280px)}
+.hm-shell .at-slot:is([data-size="t"],[data-size="l"],[data-size="xl"]) .at-kt-tile .ah-tile-hit{padding:clamp(12px,6cqmin,24px)}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-kt-tile .at-kt-tile-temp{margin-top:auto}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-kt-tile .at-kt-tile-temp b{font-size:clamp(2.25rem,19cqmin,5.5rem);line-height:1.1}
+.hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-kt-tile .at-kt-tile-temp i{font-size:clamp(1.25rem,10cqmin,2.5rem);color:var(--ah-muted)}
