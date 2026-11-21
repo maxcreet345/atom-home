@@ -113,8 +113,8 @@ export function AccessoryTile({ device, name, sub, room, pending, onToggle, onOp
   // second line: the room for things you switch; the state (plus the room unless the name already ends with it) for everything else
   const roomShown = roomBeside(label, room);
   // a thing you switch says «Вкл · Ванная» / «Выкл · Ванная»: on or off is never told by the glyph's colour alone, and an unknown state is not «off»
-  const switched = !e.available ? t('state.unavailable') : e.state === 'on' ? t('state.on') : e.state === 'off' ? t('state.off') : tileStatus(device, t, lang); // a tile says «Выключено»; «Выкл» is for small mode buttons (critique 19.11.2026)
-  const line2 = sub ?? (device.kind === 'climate' || device.kind === 'light' ? tileStatus(device, t, lang) : onToggle && !device.tileLine /* an appliance card's own line («52 % → 60 %», «Нет воды») says more than «Вкл» */ ? [switched, roomShown].filter(Boolean).join(' · ') : [tileStatus(device, t, lang), roomShown].filter(Boolean).join(' · '));
+  const switched = !e.available ? t('state.unavailable') : device.tileLine ? device.tileLine /* an appliance card says its own line («Включён · Apple TV»), on or off alike */ : e.state === 'on' ? t('state.on') : e.state === 'off' ? t('state.off') : tileStatus(device, t, lang); // a tile says «Выключено»; «Выкл» is for small mode buttons (critique 19.11.2026)
+  const line2 = sub ?? (device.kind === 'climate' || device.kind === 'light' ? tileStatus(device, t, lang) : onToggle ? [switched, roomShown].filter(Boolean).join(' · ') : [tileStatus(device, t, lang), roomShown].filter(Boolean).join(' · '));
   // where the page's heading carries the room («Свет» under «Ванная»), assistive tech gets the device's full name: eight buttons «Свет» tell nothing apart
   const full = label !== ownName && ownName ? ownName : label;
   // long press (500 ms) opens details, like a press-and-hold on a HomeView module

@@ -1,1 +1,76 @@
-/* The media family cards (src/appliances/media.tsx). */
+/* The media family cards (src/appliances/media.tsx): TVs and TV boxes. «Тихий дом»: the hero is a dark screen only while the TV is on; off and
+ * «нет связи» are quiet. Colour (the panel's lavender, dark words on it in the dark theme) only on what is on: the chosen input, a mode, mute. */
+.hm-shell{--md-on:#5a52bf;--md-on-ink:#fff;--md-screen:#1d1d22;--md-screen-2:#2b2a36}
+.hm-shell.ah-shell[data-theme="dark"]{--md-on:#c4bfff;--md-on-ink:#1c1c1e;--md-screen:#0b0d12;--md-screen-2:#1d1f2a}
+.hm-shell .at-md-sheet{display:grid;gap:12px;overflow-x:clip}
+.hm-shell .at-md-sheet>.at-md-head{padding:14px 16px 0;align-items:center}
+.hm-shell .at-md-head .hm-icon-btn{width:44px;height:44px}.hm-shell .at-md-head .at-md-gear{margin-left:auto}.hm-shell .at-md-head .at-md-gear+.hm-icon-btn{margin-left:6px}
+.hm-shell .at-md-face{width:40px;height:40px;flex:none;display:grid;place-items:center;color:var(--ah-glyph)}.hm-shell .at-md-face>.ah-photo{width:100%;height:100%;border-radius:12px}
+.hm-shell .at-md-glyph{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}.hm-shell .at-md-glyph .is-dot{fill:currentColor;stroke:none}
+.hm-shell .at-md-cols,.hm-shell .at-md-body{display:grid;gap:12px;padding:0 16px 20px}.hm-shell .at-md-col{display:grid;gap:12px;align-content:start;min-width:0}
+.hm-shell .at-md-sheet.is-wide .at-md-cols{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:start}
+/* the hero: what is on */
+.hm-shell .at-md-hero{position:relative;display:grid;gap:14px;padding:18px;border-radius:26px;overflow:hidden;background:var(--ah-group);color:var(--ah-ink);isolation:isolate}
+.hm-shell .at-md-hero:is(.is-on,.is-playing,.is-paused){background:linear-gradient(160deg,var(--md-screen-2),var(--md-screen));color:#fff}
+.hm-shell .at-md-art-bg{position:absolute;inset:-20px;z-index:-1;background-size:cover;background-position:center;filter:blur(28px) saturate(1.2);opacity:.45}
+.hm-shell .at-md-art-bg::after{content:'';position:absolute;inset:0;background:#0000008c}
+.hm-shell .at-md-now{display:grid;grid-template-columns:72px minmax(0,1fr);gap:14px;align-items:center;min-width:0}
+.hm-shell .at-md-cover{width:72px;height:72px;border-radius:16px;display:grid;place-items:center;overflow:hidden;background:var(--ah-tile);color:var(--ah-glyph);padding:12px}
+.hm-shell .at-md-hero:is(.is-on,.is-playing,.is-paused) .at-md-cover{background:#ffffff1f;color:#fff}
+.hm-shell .at-md-cover>img{width:calc(100% + 24px);height:calc(100% + 24px);margin:-12px;object-fit:cover}
+.hm-shell .at-md-cover>.ah-photo{width:calc(100% + 24px);height:calc(100% + 24px);margin:-12px}
+.hm-shell .at-md-what{display:grid;gap:2px;min-width:0}
+.hm-shell .at-md-what small{font-size:.875rem;font-weight:600;color:var(--ah-muted)}
+.hm-shell .at-md-hero:is(.is-on,.is-playing,.is-paused) .at-md-what small{color:#ffffffd9}
+.hm-shell .at-md-what b{font-size:1.5rem;font-weight:700;letter-spacing:-.3px;line-height:1.2;overflow-wrap:anywhere}
+.hm-shell .at-md-title{font-size:.96875rem;line-height:1.35;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.hm-shell .at-md-hero.is-off .at-md-title,.hm-shell .at-md-hero.is-unavailable .at-md-title{color:var(--ah-muted);font-size:.875rem}
+.hm-shell .at-md-acts{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.hm-shell .at-md-acts:empty{display:none}
+.hm-shell .at-md-power{display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:#ffffff26;color:#fff}
+.hm-shell .at-md-on{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:0 22px;background:var(--md-on);color:var(--md-on-ink);font-weight:700}
+.hm-shell .at-md-trans{display:flex;align-items:center;gap:8px;margin-left:auto}
+.hm-shell .at-md-trans button{display:grid;place-items:center;width:48px;height:48px;border-radius:50%;color:#fff}
+.hm-shell .at-md-trans button svg{width:22px;height:22px;fill:currentColor;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round}
+.hm-shell .at-md-trans button.is-main{width:56px;height:56px;background:#fff;color:#1c1c1e}
+.hm-shell .at-md-trans button.is-main svg{fill:none;stroke-width:2.2}
+.hm-shell .at-md-trans button.is-main svg path[d^="M8 5"]{fill:currentColor}
+.hm-shell .at-md-hero button:disabled{opacity:.5}
+/* groups */
+.hm-shell .at-md-card{display:grid;gap:12px;padding:14px 16px 16px;border-radius:24px;background:var(--ah-group)}
+.hm-shell .at-md-card h3{font-size:.90625rem;font-weight:500;color:var(--ah-muted)}
+.hm-shell .at-md-vol{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.hm-shell .at-md-vol-text{display:grid;gap:2px;min-width:7.5rem;flex:1 1 7.5rem}.hm-shell .at-md-vol-text strong{font-size:1.0625rem;font-weight:600}.hm-shell .at-md-vol-text small{font-size:.875rem;color:var(--ah-muted);font-variant-numeric:tabular-nums}
+.hm-shell .at-md-vol-bar{order:3;flex:1 0 100%;display:block;height:6px;border-radius:3px;background:var(--ah-tile);overflow:hidden}.hm-shell .at-md-vol-bar i{display:block;height:100%;border-radius:3px;background:var(--md-on)}.hm-shell .at-md-vol-bar.is-muted i{background:var(--ah-muted);opacity:.5}
+.hm-shell .at-md-vol-btns{display:flex;gap:8px;margin-left:auto}
+.hm-shell .at-md-vol-btns .hm-round{width:48px;height:48px}
+.hm-shell .at-md-mute svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.hm-shell .at-md-mute.is-on{background:var(--md-on);color:var(--md-on-ink)}
+/* the remote pad: a ring with OK in its middle, then Back · Home · Menu */
+.hm-shell .at-md-ring{position:relative;justify-self:center;width:min(100%,220px);aspect-ratio:1;border-radius:50%;background:var(--ah-tile)}
+.hm-shell .at-md-dir{position:absolute;display:grid;place-items:center;width:33%;height:33%;border-radius:50%;color:var(--ah-ink)}
+.hm-shell .at-md-dir.is-up{top:0;left:33.5%}.hm-shell .at-md-dir.is-down{bottom:0;left:33.5%}.hm-shell .at-md-dir.is-left{left:0;top:33.5%}.hm-shell .at-md-dir.is-right{right:0;top:33.5%}
+.hm-shell .at-md-arrow{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.hm-shell .at-md-arrow.is-down{transform:rotate(180deg)}.hm-shell .at-md-arrow.is-left{transform:rotate(-90deg)}.hm-shell .at-md-arrow.is-right{transform:rotate(90deg)}
+.hm-shell .at-md-ok{position:absolute;left:31%;top:31%;width:38%;height:38%;border-radius:50%;background:var(--ah-group);box-shadow:0 1px 4px #0000001f;font-size:1.0625rem;font-weight:700;color:var(--ah-ink)}
+.hm-shell .at-md-dir:active:not(:disabled),.hm-shell .at-md-ok:active:not(:disabled),.hm-shell .at-md-keys button:active:not(:disabled){background:var(--md-on);color:var(--md-on-ink)}
+.hm-shell .at-md-keys{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px;justify-self:stretch;max-width:360px;width:100%;margin-inline:auto}
+.hm-shell .at-md-keys button{display:grid;justify-items:center;align-content:center;gap:2px;min-height:56px;padding:6px 4px;border-radius:18px;overflow-wrap:anywhere;background:var(--ah-tile);font-size:.8125rem;font-weight:600;color:var(--ah-ink)}
+.hm-shell .at-md-keys svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.hm-shell .at-md-pad.is-idle :is(.at-md-ring,.at-md-keys){opacity:.45}
+.hm-shell .at-md-pad button:disabled{cursor:default}
+.hm-shell .at-md-note{font-size:.875rem;color:var(--ah-muted);text-align:center}.hm-shell .at-md-note.is-pad{text-align:left}
+.hm-shell .at-md-err{color:#c4271d;font-size:.84375rem}.hm-shell.ah-shell[data-theme="dark"] .at-md-err{color:#ff8a80}.hm-shell .at-md-err.is-top{margin:0 16px}
+/* inputs, apps, modes */
+.hm-shell .at-md-chips{display:flex;flex-wrap:wrap;gap:8px}
+.hm-shell .at-md-chips button{display:inline-grid;justify-items:start;align-content:center;min-height:44px;padding:4px 14px;border-radius:14px;background:var(--ah-tile);color:var(--ah-ink);font-size:.9375rem;font-weight:600;text-align:left;max-width:100%;overflow-wrap:anywhere}
+.hm-shell .at-md-chips button small{font-size:.75rem;font-weight:500;color:var(--ah-muted)}
+.hm-shell .at-md-chips button.is-on{background:var(--md-on);color:var(--md-on-ink)}.hm-shell .at-md-chips button.is-on small{color:inherit;opacity:.85}
+.hm-shell .at-md-chips button:disabled:not(.is-on){opacity:.5}
+.hm-shell .at-md-set{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0}.hm-shell .at-md-set+.at-md-set{border-top:1px solid var(--ah-line,#0000000f)}
+.hm-shell .at-md-set.is-col{flex-direction:column;align-items:stretch}
+.hm-shell .at-md-set>strong,.hm-shell .at-md-set-head strong{font-size:1rem;font-weight:600}
+.hm-shell .at-md-set-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}.hm-shell .at-md-set-head small{font-size:.875rem;color:var(--ah-muted);font-variant-numeric:tabular-nums}
+.hm-shell .at-md-set-head.is-text{display:grid;gap:2px;min-width:0}
+.hm-shell .at-md-set input[type=range]{width:100%;min-height:44px;accent-color:var(--md-on)}
+.hm-shell .at-md-sw.is-on i{background:var(--md-on)}
+@container (max-width:360px){.hm-shell .at-md-now{grid-template-columns:56px minmax(0,1fr)}.hm-shell .at-md-cover{width:56px;height:56px;padding:9px}.hm-shell .at-md-what b{font-size:1.25rem}.hm-shell .at-md-trans{margin-left:0}}

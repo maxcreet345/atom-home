@@ -120,7 +120,7 @@ export function liveHost(current: () => Hass): Host {
         // the floors only name the buildings of the Energy panel: an HA that will not say (older, no floors) is one building, never a failed load
         current().callWS<FloorRow[]>({ type: 'config/floor_registry/list' }).catch(() => [] as FloorRow[]),
       ]);
-      return { areas, devices: devices.map(d => ({ id: String(d.id), name: ((d.name_by_user ?? d.name) as string | null) ?? null, model: (d.model as string | null) ?? null, manufacturer: (d.manufacturer as string | null) ?? null, area_id: (d.area_id as string | null) ?? null, entry_type: (d.entry_type as string | null) ?? null, disabled_by: (d.disabled_by as string | null) ?? null, via_device_id: (d.via_device_id as string | null) ?? null, labels: Array.isArray(d.labels) ? (d.labels as unknown[]).map(String) : [] } satisfies DeviceRow)), entities: entities.map(toRow), floors };
+      return { areas, devices: devices.map(d => ({ id: String(d.id), name: ((d.name_by_user ?? d.name) as string | null) ?? null, model: (d.model as string | null) ?? null, model_id: (d.model_id as string | null) ?? null, manufacturer: (d.manufacturer as string | null) ?? null, area_id: (d.area_id as string | null) ?? null, entry_type: (d.entry_type as string | null) ?? null, disabled_by: (d.disabled_by as string | null) ?? null, via_device_id: (d.via_device_id as string | null) ?? null, labels: Array.isArray(d.labels) ? (d.labels as unknown[]).map(String) : [] } satisfies DeviceRow)), entities: entities.map(toRow), floors };
     },
     async call(domain, service, data) { await current().callService(domain, service, data); },
     ws: <T,>(message: Record<string, unknown>) => current().callWS<T>(message),
