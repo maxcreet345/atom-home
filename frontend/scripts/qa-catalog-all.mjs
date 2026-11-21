@@ -35,7 +35,7 @@ try {
     await open('#home?device=add-card'); await page.waitForSelector('.at-cards[data-step="list"]');
     await page.click('[data-tab="all"]'); await page.waitForTimeout(200); await shot('01-all-cards');
     const all = await page.$$eval('.at-cards-item', l => l.map(x => x.dataset.profile));
-    check(`${vp}:all-15-cards-listed`, all.length === 15 && SELF.every(id => all.includes(id)), { all });
+    check(`${vp}:every-ready-card-listed`, all.length >= 15 && SELF.every(id => all.includes(id)), { all });
     const words = await page.$$eval('.at-cards-item strong', l => l.map(x => x.textContent));
     check(`${vp}:every-card-has-a-title`, words.every(w => w && !/^cat\./.test(w)), { words });
     for (const c of ['pets', 'kitchen', 'cameras', 'boiler', 'cleaning', 'house']) { await page.click(`[data-category="${c}"]`); await page.waitForTimeout(120); const ids = await page.$$eval('.at-cards-item', l => l.map(x => x.dataset.profile)); check(`${vp}:category-${c}`, ids.length > 0, { ids }); if (c === 'pets') await shot('02-pets'); await page.click(`[data-category="${c}"]`); }

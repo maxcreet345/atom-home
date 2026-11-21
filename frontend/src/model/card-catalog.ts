@@ -328,7 +328,10 @@ const refOf = (reg: Registry, id: string): EntityRef | null => { const e = reg.e
 export function instanceView(reg: Registry, id: string, inst: ProfileInstance, roomName: (areaId: string) => string | null = () => null, list: Profile[] = PROFILES, label?: (key: string) => string): InstanceView | null {
   const profile = profileById(inst.profileId, list); if (!profile) return null;
   const lost: string[] = [], incomplete: string[] = [];
-  const isLost = (eid: string) => { const s = reg.states[eid]; return !s || s.state === 'unavailable' || !reg.entities.some(e => e.entity_id === eid && !e.disabled_by); };
+  // an appliance that is only out of reach (a TV unplugged, a station offline) says «Нет связи» in its own card: its fields are not «lost»,
+  // only those gone from HA or switched off there are
+  const appliance = profile.renderer === 'appliance';
+  const isLost = (eid: string) => { const s = reg.states[eid]; return (!appliance && (!s || s.state === 'unavailable')) || !reg.entities.some(e => e.entity_id === eid && !e.disabled_by); };
   for (const r of profile.roles) { const b = inst.bindings[r.id]; if (!b) { if (r.required) incomplete.push(r.id); continue; } if (isLost(b)) lost.push(r.id); }
   for (const room of inst.rooms ?? []) for (const r of profile.roomRoles ?? []) { const b = room.bindings[r.id]; if (!b) { if (r.required) incomplete.push(`${room.id}.${r.id}`); continue; } if (isLost(b)) lost.push(`${room.id}.${r.id}`); }
   const anchorId = inst.bindings[profile.anchor ?? ''];

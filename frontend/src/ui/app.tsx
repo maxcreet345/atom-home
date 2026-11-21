@@ -590,7 +590,8 @@ function useSwipeClose() {
   }, []);
 }
 type Common = { runner: Runner; go: Nav; t: ReturnType<typeof translator>; lang: 'ru' | 'ro' | 'en'; admin?: boolean };
-const canToggle = (d: HomeDevice) => actionsFor(d).some(a => a.id === 'toggle');
+// an appliance's card (a TV, a humidifier, a station) opens with a tap — its power is the card's first button; a lamp or a relay still switches
+const canToggle = (d: HomeDevice) => d.tileLine === undefined && actionsFor(d).some(a => a.id === 'toggle');
 /** − / + of a plain thermostat tile (Home and «Климат» alike): `send` is the target itself, and a thermostat that is off gets `ask` — the tap
  * becomes the confirmed «Включить нагрев до N°», never a silent new target for a heating that stays off. */
 const thermoSteps = (d: HomeDevice, temp: Action, runner: Runner, t: ReturnType<typeof translator>, lang: 'ru' | 'ro' | 'en') => ({ range: temp, send: (v: number) => runner.run(d, temp, v), ask: d.primary.state === 'off' ? (v: number) => void runner.run(d, heatOn(temp, v, t, lang), v) : undefined });
