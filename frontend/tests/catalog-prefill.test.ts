@@ -41,6 +41,8 @@ test('prefill: one entity is never suggested for two fields; the main and the re
 test('prefill: a card with no device is filled by the one entity that has the field\'s suffix (the dashcam)', () => {
   const b = suggestBindings(live, P('70mai.a810_up04'));
   for (const [role, id] of Object.entries({ tracker: 'device_tracker.car_dashcam', voltage: 'sensor.car_dashcam_battery_voltage', alarm: 'event.car_dashcam_alarm', network: 'sensor.car_dashcam_network_level', upload: 'binary_sensor.car_dashcam_monitor_upload', simPower: 'binary_sensor.car_dashcam_sim_out_power' })) assert.equal(b[role], id, role);
+  // eight «…_firmware» sensors in the house (sockets, drives): the dashcam's is the one on the tracker's own device, and not its modem's
+  assert.equal(b.firmware, 'sensor.car_dashcam_firmware');
   // the house has no «last report» and no parking photo: nothing is put there
   assert.equal(b.lastReport, undefined); assert.equal(b.parkingPhoto, undefined);
   // two dashcams in one house: which one is the installer's choice
@@ -48,9 +50,13 @@ test('prefill: a card with no device is filled by the one entity that has the fi
   const two = suggestBindings(reg, P('70mai.a810_up04'));
   for (const role of ['tracker', 'voltage', 'alarm', 'network', 'upload', 'simPower', 'firmware']) assert.equal(two[role], undefined, role);
 });
-test('prefill: the gas meter read by a camera — its camera and its last reading by their suffixes; a field with no suffix is not guessed', () => {
+test('prefill: the gas meter read by a camera — every field by its suffix, the answer among 23 «…_raw» by the meter\'s name; a field with no suffix is not guessed', () => {
   const gas = P('meter.gas_camera'), b = suggestBindings(live, gas);
-  assert.equal(b.camera, 'camera.kitchen_gas_meter'); assert.equal(b.lastRead, 'input_datetime.kitchen_gas_meter_last_read');
+  assert.deepEqual(b, { meter: 'sensor.kitchen_gas_meter', camera: 'camera.kitchen_gas_meter', lastRead: 'input_datetime.kitchen_gas_meter_last_read', answer: 'input_text.kitchen_gas_meter_raw' });
+  assert.ok(candidates(live, gas.roles.find(r => r.id === 'answer')!, {}).filter(c => c.exact).length > 1, 'the suffix alone would not tell');
+  // a second meter in the house: which one is the installer's choice, and nothing is filled after it
+  const two = clone(); copyEntity(two, 'sensor.kitchen_gas_meter', 'sensor.boiler_gas_meter'); copyEntity(two, 'input_text.kitchen_gas_meter_raw', 'input_text.boiler_gas_meter_raw');
+  const t2 = suggestBindings(two, gas); assert.equal(t2.meter, undefined); assert.equal(t2.answer, undefined);
   // a field without a suffix stays the installer's, though the house has one gas sensor only
   const noSuffix = { ...gas, roles: gas.roles.map(r => ({ ...r, suffix: undefined })) };
   assert.deepEqual(suggestBindings(live, noSuffix), {});

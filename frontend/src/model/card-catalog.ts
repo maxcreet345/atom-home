@@ -323,8 +323,11 @@ export function suggestBindings(reg: Registry, p: Profile, deviceId?: string): R
     const list = candidates(reg, r, { deviceId, areaId: dev?.area_id ?? null });
     let s = suggestion(list, r);
     const main = out[p.anchor ?? ''], named = (c: Candidate, by: string) => oid(c.id).startsWith(`${by}_`);
-    // the one entity with the field's own suffix is it; two or more are the installer's choice; a field with no suffix is never guessed
-    if (!s && deviceless) s = one(list.filter(c => c.exact));
+    // the one entity with the field's own suffix is it; two or more are the installer's choice; a field with no suffix is never guessed.
+    // Where the house has several (every socket and drive has a «firmware», every NAS reading a «…_raw»), the one that is the main field's own:
+    // of its HA device, or named after it (`sensor.kitchen_gas_meter` → `input_text.kitchen_gas_meter_raw`)
+    if (!s && deviceless) { const exact = list.filter(c => c.exact), md = main ? devOf(main) : null;
+      s = one(exact) ?? (p.renderer === 'appliance' && main ? one(exact.filter(c => named(c, oid(main)) || (!!md && devOf(c.id) === md))) : undefined); }
     // what is another device's must agree with the field's own suffix, where it has one
     const others = deviceId ? list.filter(c => !c.own && (!r.suffix || c.exact)) : [];
     // a second integration's copy: named after the card's main entity (`media_player.kids_tv` → `media_player.kids_tv_airplay`), or the twin device's

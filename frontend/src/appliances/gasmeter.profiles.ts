@@ -17,7 +17,7 @@ const CAMERA_METER: Profile = {
   terms: ['gas', 'gas meter', 'газ', 'счётчик', 'счетчик', 'gaz', 'contor', 'camera', 'камера', 'ocr', 'llm vision'],
   renderer: 'appliance', card: 'gasmeter', kind: 'measurement', icon: 'flame', kindKey: 'cat.kind.gasmeter', anchor: 'meter', places: ['home', 'room'],
   roles: [
-    field('meter', ['sensor'], { required: true, hintKey: 'cat.r.gm.meter.hint', deviceClass: ['gas'], units: ['m³', 'm3'], as: 'primary' }),
+    field('meter', ['sensor'], { required: true, hintKey: 'cat.r.gm.meter.hint', deviceClass: ['gas'], units: ['m³', 'm3'], suffix: /[._]gas_meter$/, as: 'primary' }),
     field('camera', ['camera'], { hintKey: 'cat.r.gm.camera.hint', suffix: /gas|meter|счетчик|contor/, as: 'metric' }),
     field('lastRead', ['input_datetime', 'sensor'], { suffix: /_last_read$/, as: 'metric' }),
     field('answer', ['input_text', 'sensor'], { hintKey: 'cat.r.gm.answer.hint', suffix: /_raw$/, as: 'metric' }),
