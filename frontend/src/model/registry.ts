@@ -1,7 +1,7 @@
 /** Read-only mirror of the Home Assistant registries and states that the panel needs. No tokens, no credentials. */
 export interface FloorRow { floor_id: string; name: string; level?: number | null }
 export interface AreaRow { area_id: string; name: string; floor_id?: string | null; icon?: string | null; picture?: string | null; temperature_entity_id?: string | null; humidity_entity_id?: string | null; labels?: string[] }
-export interface DeviceRow { id: string; name: string | null; model?: string | null; manufacturer?: string | null; area_id: string | null; entry_type?: string | null; disabled_by?: string | null; via_device_id?: string | null; labels?: string[] }
+export interface DeviceRow { id: string; name: string | null; model?: string | null; /** HA's own model code where `model` is a marketing name or empty (Samsung TV: model null, model_id QE50Q60TAUXUA) */ model_id?: string | null; manufacturer?: string | null; area_id: string | null; entry_type?: string | null; disabled_by?: string | null; via_device_id?: string | null; labels?: string[] }
 export interface EntityRow {
   entity_id: string; device_id: string | null; area_id: string | null; name: string | null; original_name: string | null; platform: string;
   entity_category: 'config' | 'diagnostic' | null; disabled_by: string | null; hidden_by: string | null; icon?: string | null; original_icon?: string | null;

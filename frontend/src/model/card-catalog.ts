@@ -5,7 +5,7 @@
  *  - the INSTANCE in a house (`HouseConfig.profileInstances`): its own stable id, its bindings, name, room and where it is shown. Two purifiers of
  *    one model are two instances; one purifier on Home and in its room is one.
  * Pure: reads the registry and the states, never calls a service. Opening the form, the preview and saving send nothing to a device. */
-import type { Registry, EntityRow, StateRow } from './registry.ts';
+import type { Registry, EntityRow, StateRow, DeviceRow } from './registry.ts';
 import { domainOf, unavailable } from './registry.ts';
 import { entityKind } from './kinds.ts';
 import type { Kind } from './kinds.ts';
@@ -233,11 +233,16 @@ export function devicesFor(reg: Registry, p: Profile): Array<{ id: string; name:
   const anchor = p.roles.find(r => r.id === p.anchor);
   const anyEntity = selfDrawn(p); // a camera's stream may live on its sibling device (ONVIF, generic): the model is enough
   const hasAnchor = (d: { id: string }) => !anchor || reg.entities.some(e => e.device_id === d.id && live(reg, e) && anchor.domains.includes(domainOf(e.entity_id)));
-  let list = reg.devices.filter(d => !d.disabled_by && d.model && p.models.includes(d.model) && reg.entities.some(e => e.device_id === d.id && live(reg, e)) && (anyEntity || hasAnchor(d)));
+  // the model code is `model`, or `model_id` where an integration leaves `model` empty (Samsung TV: null and QE50Q60TAUXUA)
+  const fits = (d: DeviceRow) => [d.model, d.model_id].some(m => !!m && p.models.includes(m));
+  let list = reg.devices.filter(d => !d.disabled_by && fits(d) && reg.entities.some(e => e.device_id === d.id && live(reg, e)) && (anyEntity || hasAnchor(d)));
   // one camera seen through two integrations (Sonoff's own and ONVIF) is one appliance: the device that carries the card's main entity, when one does
   if (anyEntity && list.length > 1 && list.some(hasAnchor)) list = list.filter(hasAnchor);
+  // one TV seen through two integrations (Samsung TV and SmartThings, same model code): the device of the profile's own integration, when one is it
+  const viaOwn = (d: { id: string }) => !!p.integration && reg.entities.some(e => e.device_id === d.id && live(reg, e) && e.platform === p.integration!.platform && (!anchor || anchor.domains.includes(domainOf(e.entity_id))));
+  if (p.renderer === 'appliance' && list.length > 1 && list.some(viaOwn)) list = list.filter(viaOwn);
   return list
-    .map(d => ({ id: d.id, name: (d as { name_by_user?: string | null }).name_by_user ?? d.name ?? d.model ?? d.id, areaId: d.area_id, model: d.model ?? null }));
+    .map(d => ({ id: d.id, name: (d as { name_by_user?: string | null }).name_by_user ?? d.name ?? d.model ?? d.id, areaId: d.area_id, model: d.model ?? d.model_id ?? null }));
 }
 /** Is the profile «found in this house»: an appliance whose model is here, a scheme whose main field has something to bind. */
 export const foundHere = (reg: Registry, p: Profile): boolean => {
