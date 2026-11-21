@@ -16,22 +16,24 @@
 .hm-shell .at-slot .hz-off .at-heat-mini-flame{color:var(--ah-muted)}
 .hm-shell .at-slot .at-heat-mini-set{grid-column:2;grid-row:1;justify-self:end;font-size:clamp(1.75rem,28cqw,3.5rem);font-weight:400;letter-spacing:-1px;line-height:1.05;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--ah-ink)}
 .hm-shell .at-slot .at-heat-mini-set i{font-style:normal;font-size:.5em;vertical-align:.7em;line-height:0;margin-left:1px;letter-spacing:0}
+.hm-shell .at-slot .at-heat-mini-set.is-range{grid-column:1/-1;grid-row:2;justify-self:start;font-size:clamp(1.375rem,20cqw,2.5rem);letter-spacing:-.5px}
 .hm-shell .at-slot .at-heat-mini-set.is-off{font-size:clamp(1.25rem,18cqw,2.5rem);font-weight:600;color:var(--ah-muted)}
 .hm-shell .at-slot .at-heat-mini-set :is(.at-oc-big,.at-oc-word){font-size:inherit;letter-spacing:inherit;line-height:inherit}
 .hm-shell .at-slot .at-heat-mini-set .at-oc-big i{line-height:0}
 .hm-shell .at-slot .at-heat-mini-set .at-oc-word{font-size:clamp(1.125rem,15cqw,2rem);font-weight:600;color:var(--ah-muted)}
 .hm-shell .at-slot .at-heat-mini-head{grid-column:1/-1;display:grid;gap:1px;min-width:0}
 .hm-shell .at-slot .at-heat-mini-head strong{font-size:clamp(.9375rem,8cqw,1.25rem);font-weight:600;color:var(--ah-ink)}
-.hm-shell .at-slot .at-heat-mini-head small{font-size:clamp(.8125rem,6.5cqw,1.0625rem);font-weight:600;line-height:1.2;color:var(--hz-ink);overflow-wrap:anywhere}
+.hm-shell .at-slot .at-heat-mini-head small{font-size:clamp(.8125rem,6.5cqw,1.0625rem);font-weight:600;line-height:1.2;color:var(--hz-ink);overflow-wrap:break-word;hyphens:auto}
 .hm-shell .at-slot[data-size="s"] .at-heat-mini-head strong{display:none}
-.hm-shell .at-slot[data-size="s"] .at-heat-mini{grid-template-rows:auto minmax(0,1fr)}
-.hm-shell .at-slot[data-size="s"] .at-heat-mini-head{align-self:end}
+.hm-shell .at-slot[data-size="s"] .at-heat-mini{align-content:space-between}
 .hm-shell .at-slot .at-heat-mini .at-heat-err{grid-column:1/-1;font-size:.8125rem}
 /* across: the number with − / + beside the flame, the sentence under them; wide enough, all three on one line */
 .hm-shell .at-slot[data-size="w"] .at-heat-mini{align-content:center}
 .hm-shell .at-slot[data-size="w"] .at-heat-mini .at-heat-step{grid-column:2;grid-row:1;justify-self:start;gap:8px}
 .hm-shell .at-slot[data-size="w"] .at-heat-mini .at-heat-step b{font-size:clamp(2rem,32cqh,3.5rem);min-width:0}
 .hm-shell .at-slot[data-size="w"] .at-heat-mini .at-heat-step b i{line-height:0}
+.hm-shell .at-slot[data-size="w"] .at-heat-mini .at-heat-step.is-range{gap:6px}
+.hm-shell .at-slot[data-size="w"] .at-heat-mini .at-heat-step.is-range b{font-size:clamp(1.125rem,min(22cqh,8cqw),2.5rem);letter-spacing:-.5px}
 .hm-shell .at-slot[data-size="w"] .at-heat-mini .at-heat-mini-set{justify-self:start}
 .hm-shell .at-slot[data-size="w"] .at-heat-mini-head strong{display:none}
 @container slot (min-width:360px){
@@ -43,9 +45,9 @@
 }
 /* tall: the flame and the number, the sentence, then the rooms */
 .hm-shell .at-slot .at-heat-mini-rooms{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr);gap:clamp(2px,1.5cqh,6px);margin:0;padding:0;list-style:none;align-content:start;min-width:0}
-.hm-shell .at-slot .at-heat-mini-room{display:flex;align-items:baseline;justify-content:space-between;gap:6px;min-width:0;font-size:clamp(.75rem,9cqw,1.0625rem);line-height:1.2}
-.hm-shell .at-slot .at-heat-mini-room>span[aria-hidden]{min-width:0;color:var(--ah-muted);font-weight:500;overflow-wrap:anywhere}
-.hm-shell .at-slot .at-heat-mini-room b{flex:none;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ah-ink);white-space:nowrap}
+.hm-shell .at-slot .at-heat-mini-room{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:0 6px;min-width:0;font-size:clamp(.75rem,9cqw,1.0625rem);line-height:1.2}
+.hm-shell .at-slot .at-heat-mini-room>span[aria-hidden]{min-width:0;color:var(--ah-muted);font-weight:500;overflow-wrap:break-word;hyphens:auto}
+.hm-shell .at-slot .at-heat-mini-room b{flex:none;margin-left:auto;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ah-ink);white-space:nowrap}
 .hm-shell .at-slot .at-heat-mini-room b i{font-style:normal;font-weight:500}
 .hm-shell .at-slot .at-heat-mini-room.is-heating b{color:var(--hz-hot,#ff7a1a)}
 .hm-shell .at-slot .at-heat-mini-room.is-window b{color:#0a84ff}
@@ -58,14 +60,19 @@
 .hm-shell .at-slot .at-heat-tile .at-vh{inset:0 auto auto 0;width:auto;max-width:100%;height:auto;white-space:normal;overflow:visible}
 /* the raised degree does not make its line taller */
 .hm-shell .at-slot .at-heat-tile .at-heat-step b i,.hm-shell .at-slot .at-oc-big i{line-height:0}
-.hm-shell .at-slot .at-heat-tile .at-heat-step b,.hm-shell .at-slot .at-heat-tile .at-oc-big{line-height:1.15}
+.hm-shell .at-slot[data-size="xl"] .at-heat-tile .at-heat-step b,.hm-shell .at-slot[data-size="xl"] .at-heat-tile .at-oc-big{line-height:1.15}
 .hm-shell .at-slot .at-heat-mini-rooms.is-alt{display:none}
+/* the office's zones have long names («Кабинет бухгалтеров»): one column per zone, the name on two lines instead of cut */
+.hm-shell .at-slot .at-oc-tile .at-heat-chips{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
+.hm-shell .at-slot .at-oc-tile .at-heat-chip small{white-space:normal;text-overflow:clip;overflow:visible;overflow-wrap:break-word;line-height:1.1;text-align:center}
 /* short (the phone's natural 3×2 is 255 px high): the mode stands beside the number, the line under them */
 @container slot (max-height:300px) and (min-width:300px){
   .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini){gap:6px;padding-block:11px 10px}
   .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-tile-mid{grid-template-columns:repeat(2,auto);justify-content:center;align-items:center;column-gap:clamp(12px,5cqw,28px);row-gap:2px}
   .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-tile-mid>.at-heat-cap{grid-column:1/-1}
   .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-step b{font-size:clamp(2.25rem,22cqh,3.5rem)}
+  .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-step.is-range b{font-size:clamp(1.25rem,min(14cqh,5.6cqw),2.5rem);letter-spacing:-.5px}
+  .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-step.is-range{gap:8px}
 }
 /* narrow (a phone's 2×2): five chips would cut the rooms' names, so the rooms are a list in two columns; the line under the number goes */
 @container slot (max-width:300px){
@@ -77,25 +84,27 @@
   .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-cap{display:none}
   .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-step{gap:10px}
   .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-step b{font-size:2.5rem}
+  .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-step.is-range b{font-size:1.625rem;letter-spacing:-.5px}
 }
 /* big (from 360 px high): the same card, everything larger */
 @container slot (min-height:360px){
-  .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini){gap:clamp(8px,3cqh,18px);padding:clamp(14px,4cqh,24px)}
+  .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini){gap:clamp(8px,3cqh,18px);padding:clamp(14px,4cqh,24px) clamp(14px,min(4cqh,3cqw),24px)}
   .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-tile-buddy{width:clamp(64px,22cqh,120px)}
   .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-tile-head{padding-right:clamp(70px,24cqh,130px)}
   .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-tile-head strong{font-size:clamp(.9375rem,4.5cqh,1.5rem)}
   .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-tile-head small{font-size:clamp(.8125rem,3.6cqh,1.1875rem)}
   .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-tile-mid{gap:clamp(6px,2.4cqh,16px)}
-  .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) :is(.at-heat-step b,.at-oc-big){font-size:clamp(4.125rem,20cqh,7.5rem)}
+  .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) :is(.at-heat-step b,.at-oc-big){font-size:clamp(2.5rem,min(20cqh,26cqw),7.5rem)}
+  .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-step.is-range b{font-size:clamp(1.875rem,min(12cqh,11cqw),4.5rem);letter-spacing:-1px}
   .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-step{gap:clamp(14px,4cqh,28px)}
   .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-pm{width:clamp(44px,12cqh,64px);height:clamp(44px,12cqh,64px)}
   .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-mode button{min-height:clamp(44px,11cqh,56px);font-size:clamp(.8125rem,3.4cqh,1.0625rem);padding-inline:clamp(12px,4cqh,22px)}
   .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-cap{font-size:clamp(.78125rem,3cqh,1.0625rem)}
-  .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-chips{gap:clamp(5px,1.6cqh,10px)}
+  .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-chips{gap:clamp(5px,min(1.6cqh,1.5cqw),10px)}
   .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-chip{padding:clamp(6px,2cqh,14px) 2px;border-radius:clamp(12px,3cqh,18px);gap:clamp(1px,.8cqh,5px)}
   .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-chip-dot{width:clamp(22px,7cqh,34px);height:clamp(22px,7cqh,34px)}
-  .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-chip b{font-size:clamp(.9375rem,4cqh,1.375rem)}
-  .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-chip small{font-size:clamp(.6875rem,2.8cqh,.9375rem)}
+  .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-chip b{font-size:clamp(.9375rem,min(4cqh,4.4cqw),1.375rem)}
+  .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-heat-tile:not(.at-heat-mini) .at-heat-chip small{font-size:clamp(.6875rem,min(2.8cqh,2.6cqw),.9375rem)}
 }
 
 /* ---------- «Воздух» ---------- */
@@ -106,7 +115,9 @@
 /* one cell: the sentence (without its tail) and the one reading that matters, large */
 .hm-shell .at-slot[data-size="s"] .ah-tile.hm-card.at-air-tile .ah-tile-hit.at-air-hit{padding:10px 11px;gap:4px}
 .hm-shell .at-slot[data-size="s"] .at-air-tile-cloud{width:clamp(38px,30cqw,56px);right:6px;top:6px}
-.hm-shell .at-slot[data-size="s"] .at-air-tile-head{padding-right:clamp(38px,30cqw,56px)}
+.hm-shell .at-slot[data-size="s"] .at-air-tile-head{padding-right:0;grid-template-columns:minmax(0,1fr)}
+.hm-shell .at-slot[data-size="s"] .at-air-tile-head strong{padding-right:clamp(38px,30cqw,56px)}
+.hm-shell .at-slot[data-size="s"] .at-air-nb{white-space:normal}
 .hm-shell .at-slot[data-size="s"] .at-air-tile-tail{display:none}
 .hm-shell .at-slot[data-size="s"] .at-air-cells{grid-template-columns:minmax(0,1fr)}
 .hm-shell .at-slot[data-size="s"] .at-air-cell:not([data-rank="0"]){display:none}
@@ -149,4 +160,17 @@
 .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-air-cell small{font-size:clamp(.75rem,4cqmin,1.0625rem)}
 @container slot (min-width:460px){
   .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-air-cells{grid-template-columns:repeat(4,minmax(0,auto));justify-content:space-between}
+  .hm-shell .at-slot:is([data-size="l"],[data-size="xl"]) .at-air-cell b{font-size:clamp(1.5rem,min(13cqmin,6.6cqw),4.5rem)}
 }
+
+/* ---------- the gas boiler on eBUS (modules/boiler-ebus.tsx, its compact card in Home's module tile): the pressure and its word ---------- */
+/* not on the stand (no house there has the boiler): kept to type that fits the cell and grows with it */
+.hm-shell .at-slot[data-lay^="m:boiler"]:is([data-size="s"],[data-size="w"],[data-size="t"]) .ah-module .hm-status-text strong{font-size:clamp(1.125rem,min(17cqw,26cqh),2.125rem);white-space:nowrap}
+.hm-shell .at-slot[data-lay^="m:boiler"][data-size="xl"] .ah-module .hm-status-text strong{font-size:clamp(2.125rem,14cqmin,4rem)}
+.hm-shell .at-slot[data-lay^="m:boiler"][data-size="xl"] .ah-module .hm-status-text :is(small,em){font-size:clamp(.8125rem,5cqmin,1.25rem)}
+.hm-shell .at-slot[data-lay^="m:boiler"]:is([data-size="xl"],[data-size="t"]) .ah-module .hm-status-icon{width:clamp(28px,16cqmin,56px);height:clamp(28px,16cqmin,56px)}
+.hm-shell .at-slot[data-lay^="m:boiler"]:is([data-size="xl"],[data-size="t"]) .ah-module .hm-status-icon svg{width:58%;height:58%}
+.hm-shell .at-slot[data-lay^="m:boiler"][data-size="w"] .ah-module .hm-status{flex-direction:row;align-items:center;justify-content:flex-start;gap:clamp(12px,5cqw,20px)}
+.hm-shell .at-slot[data-lay^="m:boiler"][data-size="w"] .ah-module .hm-status-icon{width:clamp(36px,36cqh,56px);height:clamp(36px,36cqh,56px)}
+/* a small range keeps its degree readable */
+.hm-shell .at-slot .at-heat-tile .at-heat-step.is-range b i,.hm-shell .at-slot .at-heat-mini-set.is-range i{font-size:max(.6875rem,.5em)}

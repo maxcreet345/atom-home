@@ -173,7 +173,7 @@ export function HeatingTile({ h, host, t, lang, onOpen, now }: { h: Heating; hos
     <span className="at-heat-mini-flame" aria-hidden="true"><Icon name="flame" size={20} /></span>
     <div className="at-heat-mini-head"><strong>{tk(t, 'title')}</strong><small>{sentence(h, t, lang)}</small></div>
     {mini === 'w' && h.system ? <Stepper value={st.shown} text={text} onStep={st.step} t={t} label={tk(t, 'houseTemp')} wait={offline} onWait={() => ui.refuse('house')} atMin={st.atMin} atMax={st.atMax} pending={st.pending} />
-      : <b className={`at-heat-mini-set ${h.system ? '' : 'is-off'}`}>{h.system || !h.systemKnown ? <>{text}<i>°</i></> : tk(t, 'offWord')}</b>}
+      : <b className={`at-heat-mini-set ${h.system || !h.systemKnown ? '' : 'is-off'} ${text.includes('–') ? 'is-range' : ''}`}>{h.system || !h.systemKnown ? <>{text}<i>°</i></> : tk(t, 'offWord')}</b>}
     {mini === 'w' && <Err text={ui.err('house')} />}
     {mini === 't' && <ul className="at-heat-mini-rooms">{h.rooms.map(r => <MiniRoom r={r} t={t} lang={lang} now={now} />)}</ul>}
   </div>;

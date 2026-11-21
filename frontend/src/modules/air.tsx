@@ -74,9 +74,10 @@ function roomHint(room: AirRoom, heard: Metric[], t: T): { text: string; tone: T
 const heardOf = (room: AirRoom, actions: AirAction[]): Metric[] => !room.excluded ? ['co2', 'pm25', 'humidity', 'temperature'] : actions.length || room.ventOn ? [...(room.allowed.includes('dehumidify') ? ['humidity' as Metric] : []), ...(room.allowed.includes('purify') ? ['pm25' as Metric] : [])] : [];
 export interface AirProps { registry: Registry; rooms: Rooms; host: Host; t: T; lang: Lang }
 const SEVERITY: Record<Tone, number> = { bad: 0, warn: 1, ok: 2 }, ORDER = ['co2', 'pm25', 'humidity', 'temperature'];
-/** The readings from the most to the least telling: the reading the sentence is about, then the worst tone, then CO₂, PM2.5, humidity, temperature. */
-function rankOf(cells: Array<{ key: string; tone: Tone }>, problem: Metric | null): Map<string, number> {
-  const sorted = [...cells].sort((a, b) => (a.key === problem ? -1 : 0) - (b.key === problem ? -1 : 0) || SEVERITY[a.tone] - SEVERITY[b.tone] || ORDER.indexOf(a.key) - ORDER.indexOf(b.key));
+/** The readings from the most to the least telling: the reading the sentence is about, then any with data before those without, the worst tone, then CO₂, PM2.5, humidity, temperature. */
+function rankOf(cells: Array<{ key: string; tone: Tone; value: string }>, problem: Metric | null): Map<string, number> {
+  const blank = (c: { value: string }) => c.value === '—' ? 1 : 0; // a reading with no data says nothing: it goes last
+  const sorted = [...cells].sort((a, b) => (a.key === problem ? -1 : 0) - (b.key === problem ? -1 : 0) || blank(a) - blank(b) || SEVERITY[a.tone] - SEVERITY[b.tone] || ORDER.indexOf(a.key) - ORDER.indexOf(b.key));
   return new Map(sorted.map((c, i) => [c.key, i]));
 }
 /** The tile: the sentence and four numbers, tinted by how the air is. */
