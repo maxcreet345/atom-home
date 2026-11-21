@@ -1,0 +1,1755 @@
+{
+ "at": "2026-11-21T17:19:12.278Z",
+ "passed": 325,
+ "total": 325,
+ "checks": [
+  {
+   "n": "phone:light:washer:idle:sheet-drawn",
+   "p": true,
+   "phase": "idle"
+  },
+  {
+   "n": "phone:light:washer:idle:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nОжидание\n\nПрограмма займёт 1 ч 22 мин\nЗапустить\nВыключить\nСегодня 0,81 кВт·ч\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончан"
+  },
+  {
+   "n": "phone:light:washer:idle:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "phone:light:washer:idle:words",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nОжидание\n\nПрограмма займёт 1 ч 22 мин\nЗапустить\nВыключить\nСегодня 0,81 кВт·ч\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончание\nСразу\n−\n0ч\n+\nФункции\nСтирок всего\n4"
+  },
+  {
+   "n": "phone:light:washer:idle:no-commands",
+   "p": true
+  },
+  {
+   "n": "phone:light:washer:running:sheet-drawn",
+   "p": true,
+   "phase": "running"
+  },
+  {
+   "n": "phone:light:washer:running:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\nОсталось\n\n42\nмин\n\nПолоскание · осталось 42 мин\n\nЗакончит в 19:58\nСтирка\nПолоскание\nОтжим\nОстановить\nСейчас 2 035 Вт · Сегодня 0,81 кВт·ч\nПрограмма\n\nПрограмму выбирают на сам"
+  },
+  {
+   "n": "phone:light:washer:running:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "phone:light:washer:running:words",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\nОсталось\n\n42\nмин\n\nПолоскание · осталось 42 мин\n\nЗакончит в 19:58\nСтирка\nПолоскание\nОтжим\nОстановить\nСейчас 2 035 Вт · Сегодня 0,81 кВт·ч\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончание\nСразу\n−\n0ч\n+\nФункции\nСтирок всего\n4"
+  },
+  {
+   "n": "phone:light:washer:running:end-time-and-stages",
+   "p": true
+  },
+  {
+   "n": "phone:light:washer:running:no-commands",
+   "p": true
+  },
+  {
+   "n": "phone:light:washer:done:sheet-drawn",
+   "p": true,
+   "phase": "done"
+  },
+  {
+   "n": "phone:light:washer:done:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nГотово\n\nЗакончила в 19:10 · Бельё можно доставать\nСтирка\nПолоскание\nОтжим\nВыключить\nСегодня 0,81 кВт·ч\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт е"
+  },
+  {
+   "n": "phone:light:washer:done:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "phone:light:washer:done:words",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nГотово\n\nЗакончила в 19:10 · Бельё можно доставать\nСтирка\nПолоскание\nОтжим\nВыключить\nСегодня 0,81 кВт·ч\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончание\nСразу\n−\n0ч\n+\nФункции\nСтирок всего\n4"
+  },
+  {
+   "n": "phone:light:washer:done:no-commands",
+   "p": true
+  },
+  {
+   "n": "phone:light:washer:error:sheet-drawn",
+   "p": true,
+   "phase": "error"
+  },
+  {
+   "n": "phone:light:washer:error:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nОшибка: вода не сливается\n\nВыключить\nСегодня 0,81 кВт·ч\n\nПосмотрите на экран машины. После устранения запустите стирку снова.\n\nПрограмма\n\nПрограмму выбирают на самой машине"
+  },
+  {
+   "n": "phone:light:washer:error:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "phone:light:washer:error:words",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nОшибка: вода не сливается\n\nВыключить\nСегодня 0,81 кВт·ч\n\nПосмотрите на экран машины. После устранения запустите стирку снова.\n\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончание\nСразу\n−\n0ч\n+\nФункции\nСтирок всего\n4"
+  },
+  {
+   "n": "phone:light:washer:error:no-commands",
+   "p": true
+  },
+  {
+   "n": "phone:light:washer:unavailable:sheet-drawn",
+   "p": true,
+   "phase": "unavailable"
+  },
+  {
+   "n": "phone:light:washer:unavailable:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nНет связи со стиральной машиной\n\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончание\nСразу\n−\n—\n+\nФункции"
+  },
+  {
+   "n": "phone:light:washer:unavailable:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "phone:light:washer:unavailable:words",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nНет связи со стиральной машиной\n\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончание\nСразу\n−\n—\n+\nФункции"
+  },
+  {
+   "n": "phone:light:washer:unavailable:no-commands",
+   "p": true
+  },
+  {
+   "n": "phone:light:dryer:idle:sheet-drawn",
+   "p": true,
+   "phase": "idle"
+  },
+  {
+   "n": "phone:light:dryer:idle:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\nОжидание\n\nПрограмма займёт 3 ч 10 мин\nЗапустить\nСегодня 0,02 кВт·ч\nПрограмма и параметры\nПрограмма\nЭко хлопок\nAI-сушка+\nБыстрая 35 мин\nСупербыстрая\nСинтетика\nДели"
+  },
+  {
+   "n": "phone:light:dryer:idle:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "phone:light:dryer:idle:words",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\nОжидание\n\nПрограмма займёт 3 ч 10 мин\nЗапустить\nСегодня 0,02 кВт·ч\nПрограмма и параметры\nПрограмма\nЭко хлопок\nAI-сушка+\nБыстрая 35 мин\nСупербыстрая\nСинтетика\nДеликатная\nПолотенца\nПостельное бельё\nРубашки\nГигиена\nШерсть\nВерхняя одежда\nТихая сушка\nПод глажку\nСушка"
+  },
+  {
+   "n": "phone:light:dryer:idle:no-commands",
+   "p": true
+  },
+  {
+   "n": "phone:light:dryer:running:sheet-drawn",
+   "p": true,
+   "phase": "running"
+  },
+  {
+   "n": "phone:light:dryer:running:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\n42\nмин\n\nСушка · осталось 42 мин\n\nЗакончит в 19:58\nСушка\nОхлаждение\nЗащита от сминания\nПауза\nОтменить\nСейчас 2 210 Вт · Сегодня 0,02 кВт·ч\nПрограмма и параметры\nПр"
+  },
+  {
+   "n": "phone:light:dryer:running:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "phone:light:dryer:running:words",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\n42\nмин\n\nСушка · осталось 42 мин\n\nЗакончит в 19:58\nСушка\nОхлаждение\nЗащита от сминания\nПауза\nОтменить\nСейчас 2 210 Вт · Сегодня 0,02 кВт·ч\nПрограмма и параметры\nПрограмма\nЭко хлопок\nAI-сушка+\nБыстрая 35 мин\nСупербыстрая\nСинтетика\nДеликатная\nПолотенца\nПостельное б"
+  },
+  {
+   "n": "phone:light:dryer:running:end-time-and-stages",
+   "p": true
+  },
+  {
+   "n": "phone:light:dryer:running:program-name",
+   "p": true
+  },
+  {
+   "n": "phone:light:dryer:running:no-commands",
+   "p": true
+  },
+  {
+   "n": "phone:light:dryer:done:sheet-drawn",
+   "p": true,
+   "phase": "done"
+  },
+  {
+   "n": "phone:light:dryer:done:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\nГотово · защита от сминания\n\nЗакончила в 19:04 · Бельё сухое, можно доставать\nСушка\nОхлаждение\nЗащита от сминания\nСегодня 0,02 кВт·ч\n\nУдалённое управление выключе"
+  },
+  {
+   "n": "phone:light:dryer:done:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "phone:light:dryer:done:words",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\nГотово · защита от сминания\n\nЗакончила в 19:04 · Бельё сухое, можно доставать\nСушка\nОхлаждение\nЗащита от сминания\nСегодня 0,02 кВт·ч\n\nУдалённое управление выключено\nВключите Smart Control кнопкой на сушилке. Оно выключается само, когда открывают дверцу или нажим"
+  },
+  {
+   "n": "phone:light:dryer:done:no-commands",
+   "p": true
+  },
+  {
+   "n": "phone:light:dryer:error:sheet-drawn",
+   "p": true,
+   "phase": "error"
+  },
+  {
+   "n": "phone:light:dryer:error:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\nОшибка: код dE\n\nСегодня 0,02 кВт·ч\n\nКод смотрите в инструкции или в приложении SmartThings.\n\nПочистите фильтр ворса\n\nУдалённое управление выключено\nВключите Smart"
+  },
+  {
+   "n": "phone:light:dryer:error:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "phone:light:dryer:error:words",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\nОшибка: код dE\n\nСегодня 0,02 кВт·ч\n\nКод смотрите в инструкции или в приложении SmartThings.\n\nПочистите фильтр ворса\n\nУдалённое управление выключено\nВключите Smart Control кнопкой на сушилке. Оно выключается само, когда открывают дверцу или нажимают кнопки на маш"
+  },
+  {
+   "n": "phone:light:dryer:error:no-commands",
+   "p": true
+  },
+  {
+   "n": "phone:light:dryer:unavailable:sheet-drawn",
+   "p": true,
+   "phase": "unavailable"
+  },
+  {
+   "n": "phone:light:dryer:unavailable:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\n\nНет связи с сушильной машиной\n\nПрограмма и параметры\nПрограмма\nЭко хлопок\nAI-сушка+\nБыстрая 35 мин\nСупербыстрая\nСинтетика\nДеликатная\nПолотенца\nПостельное бельё\nРубашки\nГигие"
+  },
+  {
+   "n": "phone:light:dryer:unavailable:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "phone:light:dryer:unavailable:words",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\n\nНет связи с сушильной машиной\n\nПрограмма и параметры\nПрограмма\nЭко хлопок\nAI-сушка+\nБыстрая 35 мин\nСупербыстрая\nСинтетика\nДеликатная\nПолотенца\nПостельное бельё\nРубашки\nГигиена\nШерсть\nВерхняя одежда\nТихая сушка\nПод глажку\nСушка по времени\nТёплый воздух\nХолодный воздух\nСамоо"
+  },
+  {
+   "n": "phone:light:dryer:unavailable:no-commands",
+   "p": true
+  },
+  {
+   "n": "phone:dark:washer:idle:sheet-drawn",
+   "p": true,
+   "phase": "idle"
+  },
+  {
+   "n": "phone:dark:washer:idle:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nОжидание\n\nПрограмма займёт 1 ч 22 мин\nЗапустить\nВыключить\nСегодня 0,81 кВт·ч\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончан"
+  },
+  {
+   "n": "phone:dark:washer:idle:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "phone:dark:washer:idle:words",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nОжидание\n\nПрограмма займёт 1 ч 22 мин\nЗапустить\nВыключить\nСегодня 0,81 кВт·ч\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончание\nСразу\n−\n0ч\n+\nФункции\nСтирок всего\n4"
+  },
+  {
+   "n": "phone:dark:washer:idle:no-commands",
+   "p": true
+  },
+  {
+   "n": "phone:dark:washer:running:sheet-drawn",
+   "p": true,
+   "phase": "running"
+  },
+  {
+   "n": "phone:dark:washer:running:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\nОсталось\n\n42\nмин\n\nПолоскание · осталось 42 мин\n\nЗакончит в 19:58\nСтирка\nПолоскание\nОтжим\nОстановить\nСейчас 2 035 Вт · Сегодня 0,81 кВт·ч\nПрограмма\n\nПрограмму выбирают на сам"
+  },
+  {
+   "n": "phone:dark:washer:running:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "phone:dark:washer:running:words",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\nОсталось\n\n42\nмин\n\nПолоскание · осталось 42 мин\n\nЗакончит в 19:58\nСтирка\nПолоскание\nОтжим\nОстановить\nСейчас 2 035 Вт · Сегодня 0,81 кВт·ч\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончание\nСразу\n−\n0ч\n+\nФункции\nСтирок всего\n4"
+  },
+  {
+   "n": "phone:dark:washer:running:end-time-and-stages",
+   "p": true
+  },
+  {
+   "n": "phone:dark:washer:running:no-commands",
+   "p": true
+  },
+  {
+   "n": "phone:dark:washer:done:sheet-drawn",
+   "p": true,
+   "phase": "done"
+  },
+  {
+   "n": "phone:dark:washer:done:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nГотово\n\nЗакончила в 19:10 · Бельё можно доставать\nСтирка\nПолоскание\nОтжим\nВыключить\nСегодня 0,81 кВт·ч\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт е"
+  },
+  {
+   "n": "phone:dark:washer:done:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "phone:dark:washer:done:words",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nГотово\n\nЗакончила в 19:10 · Бельё можно доставать\nСтирка\nПолоскание\nОтжим\nВыключить\nСегодня 0,81 кВт·ч\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончание\nСразу\n−\n0ч\n+\nФункции\nСтирок всего\n4"
+  },
+  {
+   "n": "phone:dark:washer:done:no-commands",
+   "p": true
+  },
+  {
+   "n": "phone:dark:washer:error:sheet-drawn",
+   "p": true,
+   "phase": "error"
+  },
+  {
+   "n": "phone:dark:washer:error:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nОшибка: вода не сливается\n\nВыключить\nСегодня 0,81 кВт·ч\n\nПосмотрите на экран машины. После устранения запустите стирку снова.\n\nПрограмма\n\nПрограмму выбирают на самой машине"
+  },
+  {
+   "n": "phone:dark:washer:error:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "phone:dark:washer:error:words",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nОшибка: вода не сливается\n\nВыключить\nСегодня 0,81 кВт·ч\n\nПосмотрите на экран машины. После устранения запустите стирку снова.\n\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончание\nСразу\n−\n0ч\n+\nФункции\nСтирок всего\n4"
+  },
+  {
+   "n": "phone:dark:washer:error:no-commands",
+   "p": true
+  },
+  {
+   "n": "phone:dark:washer:unavailable:sheet-drawn",
+   "p": true,
+   "phase": "unavailable"
+  },
+  {
+   "n": "phone:dark:washer:unavailable:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nНет связи со стиральной машиной\n\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончание\nСразу\n−\n—\n+\nФункции"
+  },
+  {
+   "n": "phone:dark:washer:unavailable:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "phone:dark:washer:unavailable:words",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nНет связи со стиральной машиной\n\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончание\nСразу\n−\n—\n+\nФункции"
+  },
+  {
+   "n": "phone:dark:washer:unavailable:no-commands",
+   "p": true
+  },
+  {
+   "n": "phone:dark:dryer:idle:sheet-drawn",
+   "p": true,
+   "phase": "idle"
+  },
+  {
+   "n": "phone:dark:dryer:idle:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\nОжидание\n\nПрограмма займёт 3 ч 10 мин\nЗапустить\nСегодня 0,02 кВт·ч\nПрограмма и параметры\nПрограмма\nЭко хлопок\nAI-сушка+\nБыстрая 35 мин\nСупербыстрая\nСинтетика\nДели"
+  },
+  {
+   "n": "phone:dark:dryer:idle:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "phone:dark:dryer:idle:words",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\nОжидание\n\nПрограмма займёт 3 ч 10 мин\nЗапустить\nСегодня 0,02 кВт·ч\nПрограмма и параметры\nПрограмма\nЭко хлопок\nAI-сушка+\nБыстрая 35 мин\nСупербыстрая\nСинтетика\nДеликатная\nПолотенца\nПостельное бельё\nРубашки\nГигиена\nШерсть\nВерхняя одежда\nТихая сушка\nПод глажку\nСушка"
+  },
+  {
+   "n": "phone:dark:dryer:idle:no-commands",
+   "p": true
+  },
+  {
+   "n": "phone:dark:dryer:running:sheet-drawn",
+   "p": true,
+   "phase": "running"
+  },
+  {
+   "n": "phone:dark:dryer:running:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\n42\nмин\n\nСушка · осталось 42 мин\n\nЗакончит в 19:58\nСушка\nОхлаждение\nЗащита от сминания\nПауза\nОтменить\nСейчас 2 210 Вт · Сегодня 0,02 кВт·ч\nПрограмма и параметры\nПр"
+  },
+  {
+   "n": "phone:dark:dryer:running:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "phone:dark:dryer:running:words",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\n42\nмин\n\nСушка · осталось 42 мин\n\nЗакончит в 19:58\nСушка\nОхлаждение\nЗащита от сминания\nПауза\nОтменить\nСейчас 2 210 Вт · Сегодня 0,02 кВт·ч\nПрограмма и параметры\nПрограмма\nЭко хлопок\nAI-сушка+\nБыстрая 35 мин\nСупербыстрая\nСинтетика\nДеликатная\nПолотенца\nПостельное б"
+  },
+  {
+   "n": "phone:dark:dryer:running:end-time-and-stages",
+   "p": true
+  },
+  {
+   "n": "phone:dark:dryer:running:program-name",
+   "p": true
+  },
+  {
+   "n": "phone:dark:dryer:running:no-commands",
+   "p": true
+  },
+  {
+   "n": "phone:dark:dryer:done:sheet-drawn",
+   "p": true,
+   "phase": "done"
+  },
+  {
+   "n": "phone:dark:dryer:done:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\nГотово · защита от сминания\n\nЗакончила в 19:04 · Бельё сухое, можно доставать\nСушка\nОхлаждение\nЗащита от сминания\nСегодня 0,02 кВт·ч\n\nУдалённое управление выключе"
+  },
+  {
+   "n": "phone:dark:dryer:done:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "phone:dark:dryer:done:words",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\nГотово · защита от сминания\n\nЗакончила в 19:04 · Бельё сухое, можно доставать\nСушка\nОхлаждение\nЗащита от сминания\nСегодня 0,02 кВт·ч\n\nУдалённое управление выключено\nВключите Smart Control кнопкой на сушилке. Оно выключается само, когда открывают дверцу или нажим"
+  },
+  {
+   "n": "phone:dark:dryer:done:no-commands",
+   "p": true
+  },
+  {
+   "n": "phone:dark:dryer:error:sheet-drawn",
+   "p": true,
+   "phase": "error"
+  },
+  {
+   "n": "phone:dark:dryer:error:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\nОшибка: код dE\n\nСегодня 0,02 кВт·ч\n\nКод смотрите в инструкции или в приложении SmartThings.\n\nПочистите фильтр ворса\n\nУдалённое управление выключено\nВключите Smart"
+  },
+  {
+   "n": "phone:dark:dryer:error:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "phone:dark:dryer:error:words",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\nОшибка: код dE\n\nСегодня 0,02 кВт·ч\n\nКод смотрите в инструкции или в приложении SmartThings.\n\nПочистите фильтр ворса\n\nУдалённое управление выключено\nВключите Smart Control кнопкой на сушилке. Оно выключается само, когда открывают дверцу или нажимают кнопки на маш"
+  },
+  {
+   "n": "phone:dark:dryer:error:no-commands",
+   "p": true
+  },
+  {
+   "n": "phone:dark:dryer:unavailable:sheet-drawn",
+   "p": true,
+   "phase": "unavailable"
+  },
+  {
+   "n": "phone:dark:dryer:unavailable:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\n\nНет связи с сушильной машиной\n\nПрограмма и параметры\nПрограмма\nЭко хлопок\nAI-сушка+\nБыстрая 35 мин\nСупербыстрая\nСинтетика\nДеликатная\nПолотенца\nПостельное бельё\nРубашки\nГигие"
+  },
+  {
+   "n": "phone:dark:dryer:unavailable:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "phone:dark:dryer:unavailable:words",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\n\nНет связи с сушильной машиной\n\nПрограмма и параметры\nПрограмма\nЭко хлопок\nAI-сушка+\nБыстрая 35 мин\nСупербыстрая\nСинтетика\nДеликатная\nПолотенца\nПостельное бельё\nРубашки\nГигиена\nШерсть\nВерхняя одежда\nТихая сушка\nПод глажку\nСушка по времени\nТёплый воздух\nХолодный воздух\nСамоо"
+  },
+  {
+   "n": "phone:dark:dryer:unavailable:no-commands",
+   "p": true
+  },
+  {
+   "n": "phone:tile:washer:running",
+   "p": true,
+   "line": "Полоскание · осталось 42 мин"
+  },
+  {
+   "n": "phone:tile:washer:done",
+   "p": true,
+   "line": "Готово"
+  },
+  {
+   "n": "phone:tile:washer:error",
+   "p": true,
+   "line": "Ошибка: вода не сливается"
+  },
+  {
+   "n": "phone:tile:washer:unavailable",
+   "p": true,
+   "line": "Нет связи"
+  },
+  {
+   "n": "phone:tile:dryer:running",
+   "p": true,
+   "line": "Сушка · осталось 42 мин"
+  },
+  {
+   "n": "phone:tile:dryer:done",
+   "p": true,
+   "line": "Готово · защита от сминания"
+  },
+  {
+   "n": "phone:tile:dryer:unavailable",
+   "p": true,
+   "line": "Нет связи"
+  },
+  {
+   "n": "phone:before:short-cards-were-there",
+   "p": true,
+   "roomBefore": [
+    "t:3b7ac90207cc36d288dca057d95b9929",
+    "t:4ad5abb20db718389ace669f8f249df9"
+   ],
+   "listBefore": [
+    "app:3b7ac90207cc36d288dca057d95b9929"
+   ]
+  },
+  {
+   "n": "phone:room:cards-once",
+   "p": true,
+   "roomAfter": [
+    "t:3b7ac90207cc36d288dca057d95b9929",
+    "p:lnWasher",
+    "t:4ad5abb20db718389ace669f8f249df9",
+    "p:lnDryer",
+    "t:f43463216ca0c42aee0489e96ff46dce",
+    "t:a2609adb7410c28481c0c39c0e6be45e"
+   ]
+  },
+  {
+   "n": "phone:room:machine-places-hold-the-cards",
+   "p": true,
+   "places": [
+    true,
+    true
+   ],
+   "roomAfter": [
+    "t:3b7ac90207cc36d288dca057d95b9929",
+    "p:lnWasher",
+    "t:4ad5abb20db718389ace669f8f249df9",
+    "p:lnDryer",
+    "t:f43463216ca0c42aee0489e96ff46dce",
+    "t:a2609adb7410c28481c0c39c0e6be45e"
+   ]
+  },
+  {
+   "n": "phone:room:no-short-cards",
+   "p": true,
+   "before": [
+    "t:3b7ac90207cc36d288dca057d95b9929",
+    "t:4ad5abb20db718389ace669f8f249df9"
+   ],
+   "after": [
+    "t:3b7ac90207cc36d288dca057d95b9929",
+    "t:4ad5abb20db718389ace669f8f249df9"
+   ]
+  },
+  {
+   "n": "phone:list:cards-once",
+   "p": true,
+   "listAfter": [
+    "app:bc32f53b3fa5be79a27e499e77e9e5af",
+    "app:060f044ccd3c174d977bc6cb63fbb4c6",
+    "app:a2609adb7410c28481c0c39c0e6be45e",
+    "p:lnWasher",
+    "p:lnDryer"
+   ]
+  },
+  {
+   "n": "phone:list:no-short-cards",
+   "p": true,
+   "before": [
+    "app:3b7ac90207cc36d288dca057d95b9929"
+   ],
+   "after": []
+  },
+  {
+   "n": "phone:washer:pause:press-asks-sends-nothing",
+   "p": true,
+   "q": "Подтвердите\n\nОстановить стирку? Продолжить можно здесь или на машине.\n\nОтмена\nОстановить"
+  },
+  {
+   "n": "phone:washer:pause:cancel-sends-nothing",
+   "p": true
+  },
+  {
+   "n": "phone:washer:pause:yes-sends-exactly-one",
+   "p": true,
+   "sent": [
+    {
+     "d": "select",
+     "s": "select_option",
+     "e": "select.bath_washer_operation",
+     "o": "stop"
+    }
+   ]
+  },
+  {
+   "n": "phone:dryer:pause:press-asks-sends-nothing",
+   "p": true,
+   "q": "Подтвердите\n\nПоставить сушку на паузу?\n\nОтмена\nОстановить"
+  },
+  {
+   "n": "phone:dryer:pause:cancel-sends-nothing",
+   "p": true
+  },
+  {
+   "n": "phone:dryer:pause:yes-sends-exactly-one",
+   "p": true,
+   "sent": [
+    {
+     "d": "button",
+     "s": "press",
+     "e": "button.bath_dryer_pause"
+    }
+   ]
+  },
+  {
+   "n": "phone:dryer:stop:press-asks-sends-nothing",
+   "p": true,
+   "q": "Подтвердите\n\nОтменить сушку? Программа закончится, бельё может остаться влажным.\n\nОтмена\nОтменить"
+  },
+  {
+   "n": "phone:dryer:stop:cancel-sends-nothing",
+   "p": true
+  },
+  {
+   "n": "phone:dryer:stop:yes-sends-exactly-one",
+   "p": true,
+   "sent": [
+    {
+     "d": "button",
+     "s": "press",
+     "e": "button.bath_dryer_stop"
+    }
+   ]
+  },
+  {
+   "n": "phone:washer:start:press-asks-sends-nothing",
+   "p": true,
+   "q": "Подтвердите\n\nЗапустить стирку? Машина начнёт программу, выбранную на ней.\n\nОтмена\nЗапустить"
+  },
+  {
+   "n": "phone:washer:start:cancel-sends-nothing",
+   "p": true
+  },
+  {
+   "n": "phone:washer:start:yes-sends-exactly-one",
+   "p": true,
+   "sent": [
+    {
+     "d": "select",
+     "s": "select_option",
+     "e": "select.bath_washer_operation",
+     "o": "start"
+    }
+   ]
+  },
+  {
+   "n": "phone:dryer:start:press-asks-sends-nothing",
+   "p": true,
+   "q": "Подтвердите\n\nЗапустить сушку «Эко хлопок»?\n\nОтмена\nЗапустить"
+  },
+  {
+   "n": "phone:dryer:start:cancel-sends-nothing",
+   "p": true
+  },
+  {
+   "n": "phone:dryer:start:yes-sends-exactly-one",
+   "p": true,
+   "sent": [
+    {
+     "d": "button",
+     "s": "press",
+     "e": "button.bath_dryer_start"
+    }
+   ]
+  },
+  {
+   "n": "phone:washer:offline",
+   "p": true,
+   "live": [],
+   "sheet": "Ванная\nСтиральная машина\n×\n\nНет связи со стиральной машиной\n\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не "
+  },
+  {
+   "n": "phone:dryer:offline",
+   "p": true,
+   "live": [],
+   "sheet": "Ванная\nСушильная машина\n×\n\nНет связи с сушильной машиной\n\nПрограмма и параметры\nПрограмма\nЭко хлопок\nAI-сушка+\nБыстрая 3"
+  },
+  {
+   "n": "phone:dryer:cycle-energy",
+   "p": true,
+   "energy": "Сейчас 2 210 Вт · За цикл 1,2 кВт·ч"
+  },
+  {
+   "n": "phone:ro:washer:idle",
+   "p": true,
+   "bad": [],
+   "sheet": "Ванная\nСтиральная машина\n×\n\nÎn așteptare\n\nProgramul durează 1 h 22 min\nPornește\nStinge\nAzi 0,81 kWh\nProgram\n\nProgramul s"
+  },
+  {
+   "n": "phone:ro:washer:running",
+   "p": true,
+   "bad": [],
+   "sheet": "Ванная\nСтиральная машина\n×\nRămas\n\n42\nmin\n\nClătire · au rămas 42 min\n\nTermină la 19:59\nSpălare\nClătire\nCentrifugare\nOpreș"
+  },
+  {
+   "n": "phone:ro:washer:error",
+   "p": true,
+   "bad": [],
+   "sheet": "Ванная\nСтиральная машина\n×\n\nEroare: apa nu se scurge\n\nStinge\nAzi 0,81 kWh\n\nUitați-vă pe ecranul mașinii. După remediere "
+  },
+  {
+   "n": "phone:ro:dryer:idle",
+   "p": true,
+   "bad": [],
+   "sheet": "Ванная\nСушильная машина\n×\nEco bumbac\n\nÎn așteptare\n\nProgramul durează 3 h 10 min\nPornește\nAzi 0,02 kWh\nProgram și parame"
+  },
+  {
+   "n": "phone:ro:dryer:running",
+   "p": true,
+   "bad": [],
+   "sheet": "Ванная\nСушильная машина\n×\nEco bumbac\n\n42\nmin\n\nUscare · au rămas 42 min\n\nTermină la 19:59\nUscare\nRăcire\nAnti-șifonare\nPau"
+  },
+  {
+   "n": "phone:ro:dryer:error",
+   "p": true,
+   "bad": [],
+   "sheet": "Ванная\nСушильная машина\n×\nEco bumbac\n\nEroare: cod dE\n\nAzi 0,02 kWh\n\nCăutați codul în instrucțiuni sau în aplicația Smart"
+  },
+  {
+   "n": "phone:en:washer:idle",
+   "p": true,
+   "bad": [],
+   "sheet": "Ванная\nСтиральная машина\n×\n\nIdle\n\nThe program takes 1 h 22 min\nStart\nPower off\nToday 0.81 kWh\nProgram\n\nThe program is ch"
+  },
+  {
+   "n": "phone:en:washer:running",
+   "p": true,
+   "bad": [],
+   "sheet": "Ванная\nСтиральная машина\n×\nTime left\n\n42\nmin\n\nRinse · 42 min left\n\nEnds at 19:59\nWash\nRinse\nSpin\nStop\nNow 2,035 W · Toda"
+  },
+  {
+   "n": "phone:en:washer:error",
+   "p": true,
+   "bad": [],
+   "sheet": "Ванная\nСтиральная машина\n×\n\nError: the water does not drain\n\nPower off\nToday 0.81 kWh\n\nLook at the machine’s display. On"
+  },
+  {
+   "n": "phone:en:dryer:idle",
+   "p": true,
+   "bad": [],
+   "sheet": "Ванная\nСушильная машина\n×\nEco Cotton\n\nIdle\n\nThe program takes 3 h 10 min\nStart\nToday 0.02 kWh\nProgram and settings\nProgr"
+  },
+  {
+   "n": "phone:en:dryer:running",
+   "p": true,
+   "bad": [],
+   "sheet": "Ванная\nСушильная машина\n×\nEco Cotton\n\n42\nmin\n\nDry · 42 min left\n\nEnds at 19:59\nDry\nCool down\nWrinkle prevent\nPause\nCance"
+  },
+  {
+   "n": "phone:en:dryer:error",
+   "p": true,
+   "bad": [],
+   "sheet": "Ванная\nСушильная машина\n×\nEco Cotton\n\nError: code dE\n\nToday 0.02 kWh\n\nLook the code up in the manual or the SmartThings "
+  },
+  {
+   "n": "phone:washer:axe",
+   "p": true,
+   "v": []
+  },
+  {
+   "n": "phone:dryer:axe",
+   "p": true,
+   "v": []
+  },
+  {
+   "n": "phone:washer:remote-off-said",
+   "p": true,
+   "enabled": 0,
+   "settings": 0
+  },
+  {
+   "n": "phone:washer:remote-off:no-commands",
+   "p": true
+  },
+  {
+   "n": "phone:dryer:remote-off-said",
+   "p": true,
+   "enabled": 0,
+   "settings": 0
+  },
+  {
+   "n": "phone:dryer:remote-off:no-commands",
+   "p": true
+  },
+  {
+   "n": "phone:dryer:settings",
+   "p": true,
+   "set": "Сушильная машина\nНастройки\n×\nГромкость сигнала\nБез звука\nТихо\nСредне\nГромко\nМелодия окончания\nМелодия 1\nМелодия 2\nМелодия 3"
+  },
+  {
+   "n": "phone:settings:no-commands",
+   "p": true
+  },
+  {
+   "n": "phone:catalog:laundry",
+   "p": true,
+   "listed": [
+    "lg.washer_f_r7",
+    "samsung.dryer_dv8400"
+   ]
+  },
+  {
+   "n": "phone:catalog:found-here",
+   "p": true,
+   "found": [
+    "lg.washer_f_r7",
+    "samsung.dryer_dv8400"
+   ]
+  },
+  {
+   "n": "phone:catalog:lg.washer_f_r7:preview",
+   "p": true,
+   "preview": 1,
+   "devs": 0
+  },
+  {
+   "n": "phone:catalog:samsung.dryer_dv8400:preview",
+   "p": true,
+   "preview": 1,
+   "devs": 0
+  },
+  {
+   "n": "phone:catalog:no-commands",
+   "p": true
+  },
+  {
+   "n": "tablet:light:washer:idle:sheet-drawn",
+   "p": true,
+   "phase": "idle"
+  },
+  {
+   "n": "tablet:light:washer:idle:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nОжидание\n\nПрограмма займёт 1 ч 22 мин\nЗапустить\nВыключить\nСегодня 0,81 кВт·ч\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончан"
+  },
+  {
+   "n": "tablet:light:washer:idle:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "tablet:light:washer:idle:words",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nОжидание\n\nПрограмма займёт 1 ч 22 мин\nЗапустить\nВыключить\nСегодня 0,81 кВт·ч\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончание\nСразу\n−\n0ч\n+\nФункции\nСтирок всего\n4"
+  },
+  {
+   "n": "tablet:light:washer:idle:no-commands",
+   "p": true
+  },
+  {
+   "n": "tablet:light:washer:running:sheet-drawn",
+   "p": true,
+   "phase": "running"
+  },
+  {
+   "n": "tablet:light:washer:running:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\nОсталось\n\n42\nмин\n\nПолоскание · осталось 42 мин\n\nЗакончит в 19:59\nСтирка\nПолоскание\nОтжим\nОстановить\nСейчас 2 035 Вт · Сегодня 0,81 кВт·ч\nПрограмма\n\nПрограмму выбирают на сам"
+  },
+  {
+   "n": "tablet:light:washer:running:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "tablet:light:washer:running:words",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\nОсталось\n\n42\nмин\n\nПолоскание · осталось 42 мин\n\nЗакончит в 19:59\nСтирка\nПолоскание\nОтжим\nОстановить\nСейчас 2 035 Вт · Сегодня 0,81 кВт·ч\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончание\nСразу\n−\n0ч\n+\nФункции\nСтирок всего\n4"
+  },
+  {
+   "n": "tablet:light:washer:running:end-time-and-stages",
+   "p": true
+  },
+  {
+   "n": "tablet:light:washer:running:no-commands",
+   "p": true
+  },
+  {
+   "n": "tablet:light:washer:done:sheet-drawn",
+   "p": true,
+   "phase": "done"
+  },
+  {
+   "n": "tablet:light:washer:done:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nГотово\n\nЗакончила в 19:11 · Бельё можно доставать\nСтирка\nПолоскание\nОтжим\nВыключить\nСегодня 0,81 кВт·ч\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт е"
+  },
+  {
+   "n": "tablet:light:washer:done:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "tablet:light:washer:done:words",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nГотово\n\nЗакончила в 19:11 · Бельё можно доставать\nСтирка\nПолоскание\nОтжим\nВыключить\nСегодня 0,81 кВт·ч\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончание\nСразу\n−\n0ч\n+\nФункции\nСтирок всего\n4"
+  },
+  {
+   "n": "tablet:light:washer:done:no-commands",
+   "p": true
+  },
+  {
+   "n": "tablet:light:washer:error:sheet-drawn",
+   "p": true,
+   "phase": "error"
+  },
+  {
+   "n": "tablet:light:washer:error:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nОшибка: вода не сливается\n\nВыключить\nСегодня 0,81 кВт·ч\n\nПосмотрите на экран машины. После устранения запустите стирку снова.\n\nПрограмма\n\nПрограмму выбирают на самой машине"
+  },
+  {
+   "n": "tablet:light:washer:error:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "tablet:light:washer:error:words",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nОшибка: вода не сливается\n\nВыключить\nСегодня 0,81 кВт·ч\n\nПосмотрите на экран машины. После устранения запустите стирку снова.\n\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончание\nСразу\n−\n0ч\n+\nФункции\nСтирок всего\n4"
+  },
+  {
+   "n": "tablet:light:washer:error:no-commands",
+   "p": true
+  },
+  {
+   "n": "tablet:light:washer:unavailable:sheet-drawn",
+   "p": true,
+   "phase": "unavailable"
+  },
+  {
+   "n": "tablet:light:washer:unavailable:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nНет связи со стиральной машиной\n\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончание\nСразу\n−\n—\n+\nФункции"
+  },
+  {
+   "n": "tablet:light:washer:unavailable:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "tablet:light:washer:unavailable:words",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nНет связи со стиральной машиной\n\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончание\nСразу\n−\n—\n+\nФункции"
+  },
+  {
+   "n": "tablet:light:washer:unavailable:no-commands",
+   "p": true
+  },
+  {
+   "n": "tablet:light:dryer:idle:sheet-drawn",
+   "p": true,
+   "phase": "idle"
+  },
+  {
+   "n": "tablet:light:dryer:idle:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\nОжидание\n\nПрограмма займёт 3 ч 10 мин\nЗапустить\nСегодня 0,02 кВт·ч\nПрограмма и параметры\nПрограмма\nЭко хлопок\nAI-сушка+\nБыстрая 35 мин\nСупербыстрая\nСинтетика\nДели"
+  },
+  {
+   "n": "tablet:light:dryer:idle:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "tablet:light:dryer:idle:words",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\nОжидание\n\nПрограмма займёт 3 ч 10 мин\nЗапустить\nСегодня 0,02 кВт·ч\nПрограмма и параметры\nПрограмма\nЭко хлопок\nAI-сушка+\nБыстрая 35 мин\nСупербыстрая\nСинтетика\nДеликатная\nПолотенца\nПостельное бельё\nРубашки\nГигиена\nШерсть\nВерхняя одежда\nТихая сушка\nПод глажку\nСушка"
+  },
+  {
+   "n": "tablet:light:dryer:idle:no-commands",
+   "p": true
+  },
+  {
+   "n": "tablet:light:dryer:running:sheet-drawn",
+   "p": true,
+   "phase": "running"
+  },
+  {
+   "n": "tablet:light:dryer:running:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\n42\nмин\n\nСушка · осталось 42 мин\n\nЗакончит в 19:59\nСушка\nОхлаждение\nЗащита от сминания\nПауза\nОтменить\nСейчас 2 210 Вт · Сегодня 0,02 кВт·ч\nПрограмма и параметры\nПр"
+  },
+  {
+   "n": "tablet:light:dryer:running:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "tablet:light:dryer:running:words",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\n42\nмин\n\nСушка · осталось 42 мин\n\nЗакончит в 19:59\nСушка\nОхлаждение\nЗащита от сминания\nПауза\nОтменить\nСейчас 2 210 Вт · Сегодня 0,02 кВт·ч\nПрограмма и параметры\nПрограмма\nЭко хлопок\nAI-сушка+\nБыстрая 35 мин\nСупербыстрая\nСинтетика\nДеликатная\nПолотенца\nПостельное б"
+  },
+  {
+   "n": "tablet:light:dryer:running:end-time-and-stages",
+   "p": true
+  },
+  {
+   "n": "tablet:light:dryer:running:program-name",
+   "p": true
+  },
+  {
+   "n": "tablet:light:dryer:running:no-commands",
+   "p": true
+  },
+  {
+   "n": "tablet:light:dryer:done:sheet-drawn",
+   "p": true,
+   "phase": "done"
+  },
+  {
+   "n": "tablet:light:dryer:done:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\nГотово · защита от сминания\n\nЗакончила в 19:05 · Бельё сухое, можно доставать\nСушка\nОхлаждение\nЗащита от сминания\nСегодня 0,02 кВт·ч\n\nУдалённое управление выключе"
+  },
+  {
+   "n": "tablet:light:dryer:done:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "tablet:light:dryer:done:words",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\nГотово · защита от сминания\n\nЗакончила в 19:05 · Бельё сухое, можно доставать\nСушка\nОхлаждение\nЗащита от сминания\nСегодня 0,02 кВт·ч\n\nУдалённое управление выключено\nВключите Smart Control кнопкой на сушилке. Оно выключается само, когда открывают дверцу или нажим"
+  },
+  {
+   "n": "tablet:light:dryer:done:no-commands",
+   "p": true
+  },
+  {
+   "n": "tablet:light:dryer:error:sheet-drawn",
+   "p": true,
+   "phase": "error"
+  },
+  {
+   "n": "tablet:light:dryer:error:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\nОшибка: код dE\n\nСегодня 0,02 кВт·ч\n\nКод смотрите в инструкции или в приложении SmartThings.\n\nПочистите фильтр ворса\n\nУдалённое управление выключено\nВключите Smart"
+  },
+  {
+   "n": "tablet:light:dryer:error:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "tablet:light:dryer:error:words",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\nОшибка: код dE\n\nСегодня 0,02 кВт·ч\n\nКод смотрите в инструкции или в приложении SmartThings.\n\nПочистите фильтр ворса\n\nУдалённое управление выключено\nВключите Smart Control кнопкой на сушилке. Оно выключается само, когда открывают дверцу или нажимают кнопки на маш"
+  },
+  {
+   "n": "tablet:light:dryer:error:no-commands",
+   "p": true
+  },
+  {
+   "n": "tablet:light:dryer:unavailable:sheet-drawn",
+   "p": true,
+   "phase": "unavailable"
+  },
+  {
+   "n": "tablet:light:dryer:unavailable:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\n\nНет связи с сушильной машиной\n\nПрограмма и параметры\nПрограмма\nЭко хлопок\nAI-сушка+\nБыстрая 35 мин\nСупербыстрая\nСинтетика\nДеликатная\nПолотенца\nПостельное бельё\nРубашки\nГигие"
+  },
+  {
+   "n": "tablet:light:dryer:unavailable:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "tablet:light:dryer:unavailable:words",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\n\nНет связи с сушильной машиной\n\nПрограмма и параметры\nПрограмма\nЭко хлопок\nAI-сушка+\nБыстрая 35 мин\nСупербыстрая\nСинтетика\nДеликатная\nПолотенца\nПостельное бельё\nРубашки\nГигиена\nШерсть\nВерхняя одежда\nТихая сушка\nПод глажку\nСушка по времени\nТёплый воздух\nХолодный воздух\nСамоо"
+  },
+  {
+   "n": "tablet:light:dryer:unavailable:no-commands",
+   "p": true
+  },
+  {
+   "n": "tablet:dark:washer:idle:sheet-drawn",
+   "p": true,
+   "phase": "idle"
+  },
+  {
+   "n": "tablet:dark:washer:idle:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nОжидание\n\nПрограмма займёт 1 ч 22 мин\nЗапустить\nВыключить\nСегодня 0,81 кВт·ч\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончан"
+  },
+  {
+   "n": "tablet:dark:washer:idle:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "tablet:dark:washer:idle:words",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nОжидание\n\nПрограмма займёт 1 ч 22 мин\nЗапустить\nВыключить\nСегодня 0,81 кВт·ч\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончание\nСразу\n−\n0ч\n+\nФункции\nСтирок всего\n4"
+  },
+  {
+   "n": "tablet:dark:washer:idle:no-commands",
+   "p": true
+  },
+  {
+   "n": "tablet:dark:washer:running:sheet-drawn",
+   "p": true,
+   "phase": "running"
+  },
+  {
+   "n": "tablet:dark:washer:running:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\nОсталось\n\n42\nмин\n\nПолоскание · осталось 42 мин\n\nЗакончит в 19:59\nСтирка\nПолоскание\nОтжим\nОстановить\nСейчас 2 035 Вт · Сегодня 0,81 кВт·ч\nПрограмма\n\nПрограмму выбирают на сам"
+  },
+  {
+   "n": "tablet:dark:washer:running:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "tablet:dark:washer:running:words",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\nОсталось\n\n42\nмин\n\nПолоскание · осталось 42 мин\n\nЗакончит в 19:59\nСтирка\nПолоскание\nОтжим\nОстановить\nСейчас 2 035 Вт · Сегодня 0,81 кВт·ч\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончание\nСразу\n−\n0ч\n+\nФункции\nСтирок всего\n4"
+  },
+  {
+   "n": "tablet:dark:washer:running:end-time-and-stages",
+   "p": true
+  },
+  {
+   "n": "tablet:dark:washer:running:no-commands",
+   "p": true
+  },
+  {
+   "n": "tablet:dark:washer:done:sheet-drawn",
+   "p": true,
+   "phase": "done"
+  },
+  {
+   "n": "tablet:dark:washer:done:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nГотово\n\nЗакончила в 19:12 · Бельё можно доставать\nСтирка\nПолоскание\nОтжим\nВыключить\nСегодня 0,81 кВт·ч\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт е"
+  },
+  {
+   "n": "tablet:dark:washer:done:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "tablet:dark:washer:done:words",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nГотово\n\nЗакончила в 19:12 · Бельё можно доставать\nСтирка\nПолоскание\nОтжим\nВыключить\nСегодня 0,81 кВт·ч\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончание\nСразу\n−\n0ч\n+\nФункции\nСтирок всего\n4"
+  },
+  {
+   "n": "tablet:dark:washer:done:no-commands",
+   "p": true
+  },
+  {
+   "n": "tablet:dark:washer:error:sheet-drawn",
+   "p": true,
+   "phase": "error"
+  },
+  {
+   "n": "tablet:dark:washer:error:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nОшибка: вода не сливается\n\nВыключить\nСегодня 0,81 кВт·ч\n\nПосмотрите на экран машины. После устранения запустите стирку снова.\n\nПрограмма\n\nПрограмму выбирают на самой машине"
+  },
+  {
+   "n": "tablet:dark:washer:error:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "tablet:dark:washer:error:words",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nОшибка: вода не сливается\n\nВыключить\nСегодня 0,81 кВт·ч\n\nПосмотрите на экран машины. После устранения запустите стирку снова.\n\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончание\nСразу\n−\n0ч\n+\nФункции\nСтирок всего\n4"
+  },
+  {
+   "n": "tablet:dark:washer:error:no-commands",
+   "p": true
+  },
+  {
+   "n": "tablet:dark:washer:unavailable:sheet-drawn",
+   "p": true,
+   "phase": "unavailable"
+  },
+  {
+   "n": "tablet:dark:washer:unavailable:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nНет связи со стиральной машиной\n\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончание\nСразу\n−\n—\n+\nФункции"
+  },
+  {
+   "n": "tablet:dark:washer:unavailable:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "tablet:dark:washer:unavailable:words",
+   "p": true,
+   "sheet": "Ванная\nСтиральная машина\n×\n\nНет связи со стиральной машиной\n\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не передаёт её в дом.\n\nОтложить окончание\nСразу\n−\n—\n+\nФункции"
+  },
+  {
+   "n": "tablet:dark:washer:unavailable:no-commands",
+   "p": true
+  },
+  {
+   "n": "tablet:dark:dryer:idle:sheet-drawn",
+   "p": true,
+   "phase": "idle"
+  },
+  {
+   "n": "tablet:dark:dryer:idle:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\nОжидание\n\nПрограмма займёт 3 ч 10 мин\nЗапустить\nСегодня 0,02 кВт·ч\nПрограмма и параметры\nПрограмма\nЭко хлопок\nAI-сушка+\nБыстрая 35 мин\nСупербыстрая\nСинтетика\nДели"
+  },
+  {
+   "n": "tablet:dark:dryer:idle:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "tablet:dark:dryer:idle:words",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\nОжидание\n\nПрограмма займёт 3 ч 10 мин\nЗапустить\nСегодня 0,02 кВт·ч\nПрограмма и параметры\nПрограмма\nЭко хлопок\nAI-сушка+\nБыстрая 35 мин\nСупербыстрая\nСинтетика\nДеликатная\nПолотенца\nПостельное бельё\nРубашки\nГигиена\nШерсть\nВерхняя одежда\nТихая сушка\nПод глажку\nСушка"
+  },
+  {
+   "n": "tablet:dark:dryer:idle:no-commands",
+   "p": true
+  },
+  {
+   "n": "tablet:dark:dryer:running:sheet-drawn",
+   "p": true,
+   "phase": "running"
+  },
+  {
+   "n": "tablet:dark:dryer:running:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\n42\nмин\n\nСушка · осталось 42 мин\n\nЗакончит в 20:00\nСушка\nОхлаждение\nЗащита от сминания\nПауза\nОтменить\nСейчас 2 210 Вт · Сегодня 0,02 кВт·ч\nПрограмма и параметры\nПр"
+  },
+  {
+   "n": "tablet:dark:dryer:running:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "tablet:dark:dryer:running:words",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\n42\nмин\n\nСушка · осталось 42 мин\n\nЗакончит в 20:00\nСушка\nОхлаждение\nЗащита от сминания\nПауза\nОтменить\nСейчас 2 210 Вт · Сегодня 0,02 кВт·ч\nПрограмма и параметры\nПрограмма\nЭко хлопок\nAI-сушка+\nБыстрая 35 мин\nСупербыстрая\nСинтетика\nДеликатная\nПолотенца\nПостельное б"
+  },
+  {
+   "n": "tablet:dark:dryer:running:end-time-and-stages",
+   "p": true
+  },
+  {
+   "n": "tablet:dark:dryer:running:program-name",
+   "p": true
+  },
+  {
+   "n": "tablet:dark:dryer:running:no-commands",
+   "p": true
+  },
+  {
+   "n": "tablet:dark:dryer:done:sheet-drawn",
+   "p": true,
+   "phase": "done"
+  },
+  {
+   "n": "tablet:dark:dryer:done:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\nГотово · защита от сминания\n\nЗакончила в 19:06 · Бельё сухое, можно доставать\nСушка\nОхлаждение\nЗащита от сминания\nСегодня 0,02 кВт·ч\n\nУдалённое управление выключе"
+  },
+  {
+   "n": "tablet:dark:dryer:done:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "tablet:dark:dryer:done:words",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\nГотово · защита от сминания\n\nЗакончила в 19:06 · Бельё сухое, можно доставать\nСушка\nОхлаждение\nЗащита от сминания\nСегодня 0,02 кВт·ч\n\nУдалённое управление выключено\nВключите Smart Control кнопкой на сушилке. Оно выключается само, когда открывают дверцу или нажим"
+  },
+  {
+   "n": "tablet:dark:dryer:done:no-commands",
+   "p": true
+  },
+  {
+   "n": "tablet:dark:dryer:error:sheet-drawn",
+   "p": true,
+   "phase": "error"
+  },
+  {
+   "n": "tablet:dark:dryer:error:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\nОшибка: код dE\n\nСегодня 0,02 кВт·ч\n\nКод смотрите в инструкции или в приложении SmartThings.\n\nПочистите фильтр ворса\n\nУдалённое управление выключено\nВключите Smart"
+  },
+  {
+   "n": "tablet:dark:dryer:error:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "tablet:dark:dryer:error:words",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\nЭко хлопок\n\nОшибка: код dE\n\nСегодня 0,02 кВт·ч\n\nКод смотрите в инструкции или в приложении SmartThings.\n\nПочистите фильтр ворса\n\nУдалённое управление выключено\nВключите Smart Control кнопкой на сушилке. Оно выключается само, когда открывают дверцу или нажимают кнопки на маш"
+  },
+  {
+   "n": "tablet:dark:dryer:error:no-commands",
+   "p": true
+  },
+  {
+   "n": "tablet:dark:dryer:unavailable:sheet-drawn",
+   "p": true,
+   "phase": "unavailable"
+  },
+  {
+   "n": "tablet:dark:dryer:unavailable:no-raw-keys",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\n\nНет связи с сушильной машиной\n\nПрограмма и параметры\nПрограмма\nЭко хлопок\nAI-сушка+\nБыстрая 35 мин\nСупербыстрая\nСинтетика\nДеликатная\nПолотенца\nПостельное бельё\nРубашки\nГигие"
+  },
+  {
+   "n": "tablet:dark:dryer:unavailable:no-overflow",
+   "p": true,
+   "bad": []
+  },
+  {
+   "n": "tablet:dark:dryer:unavailable:words",
+   "p": true,
+   "sheet": "Ванная\nСушильная машина\n×\n\nНет связи с сушильной машиной\n\nПрограмма и параметры\nПрограмма\nЭко хлопок\nAI-сушка+\nБыстрая 35 мин\nСупербыстрая\nСинтетика\nДеликатная\nПолотенца\nПостельное бельё\nРубашки\nГигиена\nШерсть\nВерхняя одежда\nТихая сушка\nПод глажку\nСушка по времени\nТёплый воздух\nХолодный воздух\nСамоо"
+  },
+  {
+   "n": "tablet:dark:dryer:unavailable:no-commands",
+   "p": true
+  },
+  {
+   "n": "tablet:tile:washer:running",
+   "p": true,
+   "line": "Полоскание · осталось 42 мин"
+  },
+  {
+   "n": "tablet:tile:washer:done",
+   "p": true,
+   "line": "Готово"
+  },
+  {
+   "n": "tablet:tile:washer:error",
+   "p": true,
+   "line": "Ошибка: вода не сливается"
+  },
+  {
+   "n": "tablet:tile:washer:unavailable",
+   "p": true,
+   "line": "Нет связи"
+  },
+  {
+   "n": "tablet:tile:dryer:running",
+   "p": true,
+   "line": "Сушка · осталось 42 мин"
+  },
+  {
+   "n": "tablet:tile:dryer:done",
+   "p": true,
+   "line": "Готово · защита от сминания"
+  },
+  {
+   "n": "tablet:tile:dryer:unavailable",
+   "p": true,
+   "line": "Нет связи"
+  },
+  {
+   "n": "tablet:before:short-cards-were-there",
+   "p": true,
+   "roomBefore": [
+    "t:3b7ac90207cc36d288dca057d95b9929",
+    "t:4ad5abb20db718389ace669f8f249df9"
+   ],
+   "listBefore": [
+    "app:3b7ac90207cc36d288dca057d95b9929"
+   ]
+  },
+  {
+   "n": "tablet:room:cards-once",
+   "p": true,
+   "roomAfter": [
+    "t:3b7ac90207cc36d288dca057d95b9929",
+    "p:lnWasher",
+    "t:4ad5abb20db718389ace669f8f249df9",
+    "p:lnDryer",
+    "t:f43463216ca0c42aee0489e96ff46dce",
+    "t:a2609adb7410c28481c0c39c0e6be45e"
+   ]
+  },
+  {
+   "n": "tablet:room:machine-places-hold-the-cards",
+   "p": true,
+   "places": [
+    true,
+    true
+   ],
+   "roomAfter": [
+    "t:3b7ac90207cc36d288dca057d95b9929",
+    "p:lnWasher",
+    "t:4ad5abb20db718389ace669f8f249df9",
+    "p:lnDryer",
+    "t:f43463216ca0c42aee0489e96ff46dce",
+    "t:a2609adb7410c28481c0c39c0e6be45e"
+   ]
+  },
+  {
+   "n": "tablet:room:no-short-cards",
+   "p": true,
+   "before": [
+    "t:3b7ac90207cc36d288dca057d95b9929",
+    "t:4ad5abb20db718389ace669f8f249df9"
+   ],
+   "after": [
+    "t:3b7ac90207cc36d288dca057d95b9929",
+    "t:4ad5abb20db718389ace669f8f249df9"
+   ]
+  },
+  {
+   "n": "tablet:list:cards-once",
+   "p": true,
+   "listAfter": [
+    "app:bc32f53b3fa5be79a27e499e77e9e5af",
+    "app:060f044ccd3c174d977bc6cb63fbb4c6",
+    "app:a2609adb7410c28481c0c39c0e6be45e",
+    "p:lnWasher",
+    "p:lnDryer"
+   ]
+  },
+  {
+   "n": "tablet:list:no-short-cards",
+   "p": true,
+   "before": [
+    "app:3b7ac90207cc36d288dca057d95b9929"
+   ],
+   "after": []
+  },
+  {
+   "n": "tablet:washer:pause:press-asks-sends-nothing",
+   "p": true,
+   "q": "Подтвердите\n\nОстановить стирку? Продолжить можно здесь или на машине.\n\nОтмена\nОстановить"
+  },
+  {
+   "n": "tablet:washer:pause:cancel-sends-nothing",
+   "p": true
+  },
+  {
+   "n": "tablet:washer:pause:yes-sends-exactly-one",
+   "p": true,
+   "sent": [
+    {
+     "d": "select",
+     "s": "select_option",
+     "e": "select.bath_washer_operation",
+     "o": "stop"
+    }
+   ]
+  },
+  {
+   "n": "tablet:dryer:pause:press-asks-sends-nothing",
+   "p": true,
+   "q": "Подтвердите\n\nПоставить сушку на паузу?\n\nОтмена\nОстановить"
+  },
+  {
+   "n": "tablet:dryer:pause:cancel-sends-nothing",
+   "p": true
+  },
+  {
+   "n": "tablet:dryer:pause:yes-sends-exactly-one",
+   "p": true,
+   "sent": [
+    {
+     "d": "button",
+     "s": "press",
+     "e": "button.bath_dryer_pause"
+    }
+   ]
+  },
+  {
+   "n": "tablet:dryer:stop:press-asks-sends-nothing",
+   "p": true,
+   "q": "Подтвердите\n\nОтменить сушку? Программа закончится, бельё может остаться влажным.\n\nОтмена\nОтменить"
+  },
+  {
+   "n": "tablet:dryer:stop:cancel-sends-nothing",
+   "p": true
+  },
+  {
+   "n": "tablet:dryer:stop:yes-sends-exactly-one",
+   "p": true,
+   "sent": [
+    {
+     "d": "button",
+     "s": "press",
+     "e": "button.bath_dryer_stop"
+    }
+   ]
+  },
+  {
+   "n": "tablet:washer:start:press-asks-sends-nothing",
+   "p": true,
+   "q": "Подтвердите\n\nЗапустить стирку? Машина начнёт программу, выбранную на ней.\n\nОтмена\nЗапустить"
+  },
+  {
+   "n": "tablet:washer:start:cancel-sends-nothing",
+   "p": true
+  },
+  {
+   "n": "tablet:washer:start:yes-sends-exactly-one",
+   "p": true,
+   "sent": [
+    {
+     "d": "select",
+     "s": "select_option",
+     "e": "select.bath_washer_operation",
+     "o": "start"
+    }
+   ]
+  },
+  {
+   "n": "tablet:dryer:start:press-asks-sends-nothing",
+   "p": true,
+   "q": "Подтвердите\n\nЗапустить сушку «Эко хлопок»?\n\nОтмена\nЗапустить"
+  },
+  {
+   "n": "tablet:dryer:start:cancel-sends-nothing",
+   "p": true
+  },
+  {
+   "n": "tablet:dryer:start:yes-sends-exactly-one",
+   "p": true,
+   "sent": [
+    {
+     "d": "button",
+     "s": "press",
+     "e": "button.bath_dryer_start"
+    }
+   ]
+  },
+  {
+   "n": "tablet:washer:offline",
+   "p": true,
+   "live": [],
+   "sheet": "Ванная\nСтиральная машина\n×\n\nНет связи со стиральной машиной\n\nПрограмма\n\nПрограмму выбирают на самой машине: LG ThinQ не "
+  },
+  {
+   "n": "tablet:dryer:offline",
+   "p": true,
+   "live": [],
+   "sheet": "Ванная\nСушильная машина\n×\n\nНет связи с сушильной машиной\n\nПрограмма и параметры\nПрограмма\nЭко хлопок\nAI-сушка+\nБыстрая 3"
+  },
+  {
+   "n": "tablet:dryer:cycle-energy",
+   "p": true,
+   "energy": "Сейчас 2 210 Вт · За цикл 1,2 кВт·ч"
+  },
+  {
+   "n": "tablet:ro:washer:idle",
+   "p": true,
+   "bad": [],
+   "sheet": "Ванная\nСтиральная машина\n×\n\nÎn așteptare\n\nProgramul durează 1 h 22 min\nPornește\nStinge\nAzi 0,81 kWh\nProgram\n\nProgramul s"
+  },
+  {
+   "n": "tablet:ro:washer:running",
+   "p": true,
+   "bad": [],
+   "sheet": "Ванная\nСтиральная машина\n×\nRămas\n\n42\nmin\n\nClătire · au rămas 42 min\n\nTermină la 20:00\nSpălare\nClătire\nCentrifugare\nOpreș"
+  },
+  {
+   "n": "tablet:ro:washer:error",
+   "p": true,
+   "bad": [],
+   "sheet": "Ванная\nСтиральная машина\n×\n\nEroare: apa nu se scurge\n\nStinge\nAzi 0,81 kWh\n\nUitați-vă pe ecranul mașinii. După remediere "
+  },
+  {
+   "n": "tablet:ro:dryer:idle",
+   "p": true,
+   "bad": [],
+   "sheet": "Ванная\nСушильная машина\n×\nEco bumbac\n\nÎn așteptare\n\nProgramul durează 3 h 10 min\nPornește\nAzi 0,02 kWh\nProgram și parame"
+  },
+  {
+   "n": "tablet:ro:dryer:running",
+   "p": true,
+   "bad": [],
+   "sheet": "Ванная\nСушильная машина\n×\nEco bumbac\n\n42\nmin\n\nUscare · au rămas 42 min\n\nTermină la 20:00\nUscare\nRăcire\nAnti-șifonare\nPau"
+  },
+  {
+   "n": "tablet:ro:dryer:error",
+   "p": true,
+   "bad": [],
+   "sheet": "Ванная\nСушильная машина\n×\nEco bumbac\n\nEroare: cod dE\n\nAzi 0,02 kWh\n\nCăutați codul în instrucțiuni sau în aplicația Smart"
+  },
+  {
+   "n": "tablet:en:washer:idle",
+   "p": true,
+   "bad": [],
+   "sheet": "Ванная\nСтиральная машина\n×\n\nIdle\n\nThe program takes 1 h 22 min\nStart\nPower off\nToday 0.81 kWh\nProgram\n\nThe program is ch"
+  },
+  {
+   "n": "tablet:en:washer:running",
+   "p": true,
+   "bad": [],
+   "sheet": "Ванная\nСтиральная машина\n×\nTime left\n\n42\nmin\n\nRinse · 42 min left\n\nEnds at 20:00\nWash\nRinse\nSpin\nStop\nNow 2,035 W · Toda"
+  },
+  {
+   "n": "tablet:en:washer:error",
+   "p": true,
+   "bad": [],
+   "sheet": "Ванная\nСтиральная машина\n×\n\nError: the water does not drain\n\nPower off\nToday 0.81 kWh\n\nLook at the machine’s display. On"
+  },
+  {
+   "n": "tablet:en:dryer:idle",
+   "p": true,
+   "bad": [],
+   "sheet": "Ванная\nСушильная машина\n×\nEco Cotton\n\nIdle\n\nThe program takes 3 h 10 min\nStart\nToday 0.02 kWh\nProgram and settings\nProgr"
+  },
+  {
+   "n": "tablet:en:dryer:running",
+   "p": true,
+   "bad": [],
+   "sheet": "Ванная\nСушильная машина\n×\nEco Cotton\n\n42\nmin\n\nDry · 42 min left\n\nEnds at 20:00\nDry\nCool down\nWrinkle prevent\nPause\nCance"
+  },
+  {
+   "n": "tablet:en:dryer:error",
+   "p": true,
+   "bad": [],
+   "sheet": "Ванная\nСушильная машина\n×\nEco Cotton\n\nError: code dE\n\nToday 0.02 kWh\n\nLook the code up in the manual or the SmartThings "
+  },
+  {
+   "n": "tablet:washer:axe",
+   "p": true,
+   "v": []
+  },
+  {
+   "n": "tablet:dryer:axe",
+   "p": true,
+   "v": []
+  },
+  {
+   "n": "tablet:washer:remote-off-said",
+   "p": true,
+   "enabled": 0,
+   "settings": 0
+  },
+  {
+   "n": "tablet:washer:remote-off:no-commands",
+   "p": true
+  },
+  {
+   "n": "tablet:dryer:remote-off-said",
+   "p": true,
+   "enabled": 0,
+   "settings": 0
+  },
+  {
+   "n": "tablet:dryer:remote-off:no-commands",
+   "p": true
+  },
+  {
+   "n": "tablet:dryer:settings",
+   "p": true,
+   "set": "Сушильная машина\nНастройки\n×\nГромкость сигнала\nБез звука\nТихо\nСредне\nГромко\nМелодия окончания\nМелодия 1\nМелодия 2\nМелодия 3"
+  },
+  {
+   "n": "tablet:settings:no-commands",
+   "p": true
+  },
+  {
+   "n": "tablet:catalog:laundry",
+   "p": true,
+   "listed": [
+    "lg.washer_f_r7",
+    "samsung.dryer_dv8400"
+   ]
+  },
+  {
+   "n": "tablet:catalog:found-here",
+   "p": true,
+   "found": [
+    "lg.washer_f_r7",
+    "samsung.dryer_dv8400"
+   ]
+  },
+  {
+   "n": "tablet:catalog:lg.washer_f_r7:preview",
+   "p": true,
+   "preview": 1,
+   "devs": 0
+  },
+  {
+   "n": "tablet:catalog:samsung.dryer_dv8400:preview",
+   "p": true,
+   "preview": 1,
+   "devs": 0
+  },
+  {
+   "n": "tablet:catalog:no-commands",
+   "p": true
+  },
+  {
+   "n": "no-page-errors",
+   "p": true,
+   "errors": []
+  }
+ ],
+ "errors": []
+}
