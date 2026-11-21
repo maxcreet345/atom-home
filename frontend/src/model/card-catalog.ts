@@ -12,13 +12,16 @@ import type { Kind } from './kinds.ts';
 import { entityRefOf, NO_ROOM, type EntityRef, type HomeDevice } from './discover.ts';
 import { MODULE_SPECS } from '../modules/catalog.ts';
 import type { HouseConfig } from './config.ts';
+import { APPLIANCE_PROFILES } from '../appliances/profiles.ts';
 
-export type Category = 'air_purifier' | 'heating' | 'boiler' | 'pets' | 'kitchen' | 'cleaning' | 'cameras' | 'house';
-export const CATEGORIES: readonly Category[] = ['air_purifier', 'heating', 'boiler', 'pets', 'kitchen', 'cleaning', 'cameras', 'house'];
+export type Category = 'air_purifier' | 'heating' | 'boiler' | 'pets' | 'kitchen' | 'cleaning' | 'cameras' | 'house' | 'humidifiers' | 'laundry' | 'tv' | 'speakers' | 'health' | 'car' | 'network' | 'meters';
+export const CATEGORIES: readonly Category[] = ['air_purifier', 'humidifiers', 'heating', 'boiler', 'pets', 'kitchen', 'laundry', 'cleaning', 'tv', 'speakers', 'cameras', 'health', 'car', 'network', 'meters', 'house'];
 /** `module`: the card is one of the panel's device modules (modules/catalog.ts: the feeder, the kettle, a camera…) — it draws itself where its
  * module puts it, and the instance tells it which entities are its own (`config.modules[id].entities`, over what the module found by itself).
  * `native`: the panel draws this appliance with its own card already (the robot, the fountain's room card); the instance records it. */
-export type Renderer = 'device' | 'thermostat' | 'heatingRooms' | 'module' | 'native';
+/** `appliance`: one card per appliance, drawn by its family (src/appliances/: a TV, a station, a washer…). Unlike a module it may stand many
+ * times in a house — three TVs are three instances, each driving only the entities bound to it. */
+export type Renderer = 'device' | 'thermostat' | 'heatingRooms' | 'module' | 'native' | 'appliance';
 /** The card draws itself (a module, the panel's own card): no tile is made from the instance, nothing is taken from the auto-made cards. */
 export const selfDrawn = (p: Pick<Profile, 'renderer'>) => p.renderer === 'module' || p.renderer === 'native';
 export type Place = 'home' | 'room';
@@ -31,6 +34,9 @@ export interface RoleSpec {
   /** `own`: only the chosen device's entities; `prefer` (default): its own first, any other on purpose (an external sensor) */ source?: 'own' | 'prefer';
   /** never offered: a boiler's flow, a target, a set point is no room's air temperature */ exclude?: RegExp;
   /** how it stands on the card: a reading, a setting (parameter), the main control */ as?: 'primary' | 'metric' | 'parameter';
+  /** the same appliance seen through a second integration (a Samsung TV's SmartThings device, a Hisense's AirPlay one): offered from devices in
+   * the chosen device's room only, and the card takes every entity of that device from the auto-made tiles (no second TV beside the card) */
+  sibling?: boolean;
 }
 export interface Profile {
   id: string; version: string; category: Category; brand: string | null; titleKey: string; descKey: string;
@@ -39,6 +45,7 @@ export interface Profile {
   /** words the search finds it by, besides its title, brand and model codes */ terms: string[];
   renderer: Renderer; kind: Kind;
   /** the device module that draws it (`renderer: 'module'`), one per house */ module?: string;
+  /** the appliance family that draws it (`renderer: 'appliance'`): src/appliances/<card>.tsx */ card?: string;
   /** the glyph of its tile and the word above its sheet's name («Очиститель воздуха», not the HA domain's «Вентилятор») */ icon?: string; kindKey?: string;
   /** the entity a device is found by (the purifier's `fan`); its role id */ anchor?: string;
   roles: RoleSpec[];
@@ -155,7 +162,7 @@ const HOUSE_CLOCK: Profile = {
   id: 'house.clock', version: '1.0.0', category: 'house', brand: null, titleKey: 'cat.p.clock', descKey: 'cat.p.clock.desc', models: [], terms: ['clock', 'часы', 'ceas', 'таймер', 'будильник', 'timer'], renderer: 'module', module: 'clock', kind: 'environment', icon: 'clock', anchor: 'sun', places: [],
   roles: [{ id: 'sun', labelKey: 'module.clock.role.sun', required: true, domains: ['sun'] }, { id: 'weather', labelKey: 'module.clock.role.weather', required: false, domains: ['weather'] }, { id: 'timer1', labelKey: 'module.clock.role.timer1', required: false, domains: ['timer'] }],
 };
-export const PROFILES: Profile[] = [PURIFIER_4, HEAT_SINGLE, HEAT_ROOMS, NITROMIX_P24, FEEDER_2, FOUNTAIN_2, KETTLE_2PRO, AIRFRYER_55, SAROS_Z70, AQARA_G4, IMOU_RANGER, SONOFF_C44, XIAOMI_C700, HOUSE_AIR, HOUSE_CLOCK];
+export const PROFILES: Profile[] = [PURIFIER_4, HEAT_SINGLE, HEAT_ROOMS, NITROMIX_P24, FEEDER_2, FOUNTAIN_2, KETTLE_2PRO, AIRFRYER_55, SAROS_Z70, AQARA_G4, IMOU_RANGER, SONOFF_C44, XIAOMI_C700, HOUSE_AIR, HOUSE_CLOCK, ...APPLIANCE_PROFILES];
 /** What the profile's module finds by itself in this house (its own `detect`): the catalog and the panel never disagree on «found». */
 export function moduleMatch(reg: Registry, p: Profile) { const spec = p.module ? MODULE_SPECS.find(m => m.id === p.module) : undefined; try { return spec?.detect(reg) ?? null; } catch { return null; } }
 /** Is this entity part of the chosen appliance (its own HA device), or may it be (one appliance of this model in the house: a camera's stream on its sibling device)? */
@@ -252,6 +259,7 @@ export function candidates(reg: Registry, role: RoleSpec, ctx: { deviceId?: stri
     if (!live(reg, e) || !role.domains.includes(domainOf(e.entity_id))) continue;
     const own = !!ctx.deviceId && e.device_id === ctx.deviceId;
     if (role.source === 'own' && ctx.deviceId && !own) continue;
+    if (role.sibling && ctx.deviceId && !own) { const chosen = reg.devices.find(d => d.id === ctx.deviceId)?.area_id ?? null; if (!chosen || areaOf(reg, e) !== chosen) continue; }
     const s = reg.states[e.entity_id], full = friendly(reg, e), dc = dcOf(e, s), unit = unitOf(e, s);
     // «Гостиная · Очиститель воздуха (Xiaomi Air Purifier 4) PM2.5» is «PM2.5» in its own device's list: the device is said once, above
     const devName = e.device_id ? reg.devices.find(d => d.id === e.device_id)?.name ?? '' : '', rest = devName && full.startsWith(devName) ? full.slice(devName.length).trim() : '';
@@ -349,7 +357,10 @@ export function instanceClaims(reg: Registry, all: Record<string, ProfileInstanc
     const profile = profileById(inst.profileId, list); if (!profile) continue;
     if (selfDrawn(profile)) continue; // it draws itself: the module claims its own entities
     if (inst.deviceId) for (const e of reg.entities) if (e.device_id === inst.deviceId) out.add(e.entity_id);
-    if (profile.renderer !== 'device') { const a = inst.bindings[profile.anchor ?? '']; if (a) out.add(a); for (const r of inst.rooms ?? []) if (r.bindings.trv) out.add(r.bindings.trv); }
+    if (profile.renderer === 'appliance') {
+      // every field it draws, and every entity of the same appliance seen through a second integration
+      for (const r of profile.roles) { const b = inst.bindings[r.id]; if (!b) continue; out.add(b); const dev = r.sibling ? reg.entities.find(e => e.entity_id === b)?.device_id : null; if (dev) for (const e of reg.entities) if (e.device_id === dev) out.add(e.entity_id); }
+    } else if (profile.renderer !== 'device') { const a = inst.bindings[profile.anchor ?? '']; if (a) out.add(a); for (const r of inst.rooms ?? []) if (r.bindings.trv) out.add(r.bindings.trv); }
   }
   return out;
 }

@@ -21,6 +21,8 @@ import { MODULES } from '../modules/index.ts';
 import { readVacuum } from '../model/vacuum.ts';
 import { VacuumTile } from './vacuum.tsx';
 import { CameraTile } from './camera-tile.tsx';
+import { familyOf } from '../appliances/profiles.ts';
+import { applianceUi } from '../appliances/index.ts';
 import {
   CATEGORIES, PROFILES, tellModule, untellModule, type ModuleUndo, brandsOf, candidates, candidateValue, devicesFor, foundHere, instanceView, moduleDevice, moduleMatch, newInstanceId, ofDevice, profileById, searchProfiles, selfDrawn, suggestBindings, suggestRoom,
   type Category, type Place, type Profile, type ProfileInstance, type RoleSpec, type InstanceRoom,
@@ -192,6 +194,7 @@ function Preview({ view, registry, host, t, lang, roomName }: { view: NonNullabl
   else if (view.profile.renderer === 'native' && view.profile.kind === 'vacuum') { const v = readVacuum(registry); tile = v ? <VacuumTile v={v} host={h0} t={t} lang={lang} onOpen={() => undefined} pics={{ robot: null, dock: null }} /> : null; sheet = null; }
   else if (view.profile.renderer === 'heatingRooms') { const h = readHeating(registry, now, heatLayoutOf(view.instance)); tile = h ? <HeatingTile h={h} host={h0} t={t} lang={lang} now={now} onOpen={() => undefined} /> : null; sheet = h ? <HeatingPanel h={h} host={h0} t={t} lang={lang} now={now} /> : null; }
   else if (view.profile.renderer === 'thermostat') { const air = d.metrics.find(m => m.deviceClass === 'temperature'), cur = air && Number.isFinite(Number(air.state)) ? Number(air.state) : typeof d.primary.attributes.current_temperature === 'number' ? d.primary.attributes.current_temperature : null; tile = <ThermostatTile device={d} name={d.name} sub={roomName} target={typeof d.primary.attributes.temperature === 'number' ? d.primary.attributes.temperature : null} current={cur} onOpen={() => undefined} t={t} lang={lang} />; sheet = <DeviceSheet device={d} runner={noRunner} onClose={() => undefined} t={t} lang={lang} host={h0} room={roomName} />; }
+  else if (view.profile.renderer === 'appliance') { const ui = applianceUi(view.profile.card), line = familyOf(view.profile.card)?.tileLine?.(registry, view.instance, t, lang) ?? null; tile = <AccessoryTile device={{ ...d, tileLine: line }} name={d.name} room={roomName} pending={false} onToggle={() => undefined} onOpen={() => undefined} t={t} lang={lang} />; sheet = ui ? <ui.Sheet view={view} registry={registry} host={h0} t={t} lang={lang} runner={noRunner} onClose={() => undefined} room={roomName} wide={false} /> : null; }
   else { tile = <AccessoryTile device={d} name={d.name} room={roomName} pending={false} onToggle={() => undefined} onOpen={() => undefined} t={t} lang={lang} />; sheet = <DeviceSheet device={d} runner={noRunner} onClose={() => undefined} t={t} lang={lang} host={h0} room={roomName} kindLabel={view.profile.kindKey ? t(view.profile.kindKey as Key) : undefined} />; }
   return <div className="at-cards-preview" inert aria-hidden="true"><div className="ah-grid ah-face at-cards-preview-tile">{tile}</div>{sheet && <div className="at-cards-preview-sheet">{sheet}</div>}</div>;
 }

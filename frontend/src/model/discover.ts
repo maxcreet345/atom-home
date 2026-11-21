@@ -13,6 +13,7 @@ export interface HomeDevice {
   key: string; kind: Kind; name: string; roomId: string; icon: string | null; photo: string | null; art: string | null; favorite: boolean; order: number; enabled: boolean; available: boolean;
   primary: EntityRef; controls: EntityRef[]; metrics: EntityRef[]; parameters: EntityRef[]; diagnostics: EntityRef[];
   manufacturer: string | null; model: string | null; haDeviceId: string | null; section: Section | null;
+  /** the second line of its tile, said by its own card (an appliance family: «Идёт стирка · 42 мин»), over the generic state */ tileLine?: string | null;
 }
 export interface Home { name: string; rooms: Room[]; devices: HomeDevice[]; warnings: string[]; counts: Record<string, number> }
 

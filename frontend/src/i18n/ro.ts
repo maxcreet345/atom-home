@@ -3,6 +3,14 @@ import { wordsClimate } from './words-climate.ts';
 import { wordsSetup } from './words-setup.ts';
 import { wordsCatalog } from './words-catalog.ts';
 import { wordsLayout } from './words-layout.ts';
+import { words_media } from './words-media.ts';
+import { words_speaker } from './words-speaker.ts';
+import { words_laundry } from './words-laundry.ts';
+import { words_humidifier } from './words-humidifier.ts';
+import { words_scale } from './words-scale.ts';
+import { words_dashcam } from './words-dashcam.ts';
+import { words_nas } from './words-nas.ts';
+import { words_gasmeter } from './words-gasmeter.ts';
 import { wordsStatus } from './words-status.ts';
 import type { Dictionary } from './ru.ts';
 export const ro: Dictionary = {
@@ -1065,4 +1073,12 @@ export const ro: Dictionary = {
   ...wordsSetup.ro,
   ...wordsCatalog.ro,
   ...wordsLayout.ro,
+  ...words_media.ro,
+  ...words_speaker.ro,
+  ...words_laundry.ro,
+  ...words_humidifier.ro,
+  ...words_scale.ro,
+  ...words_dashcam.ro,
+  ...words_nas.ro,
+  ...words_gasmeter.ro,
 };

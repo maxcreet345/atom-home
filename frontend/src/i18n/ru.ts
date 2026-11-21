@@ -3,6 +3,14 @@ import { wordsClimate } from './words-climate.ts';
 import { wordsSetup } from './words-setup.ts';
 import { wordsCatalog } from './words-catalog.ts';
 import { wordsLayout } from './words-layout.ts';
+import { words_media } from './words-media.ts';
+import { words_speaker } from './words-speaker.ts';
+import { words_laundry } from './words-laundry.ts';
+import { words_humidifier } from './words-humidifier.ts';
+import { words_scale } from './words-scale.ts';
+import { words_dashcam } from './words-dashcam.ts';
+import { words_nas } from './words-nas.ts';
+import { words_gasmeter } from './words-gasmeter.ts';
 import { wordsStatus } from './words-status.ts';
 export const ru = {
   // C-1 of the audit of 17.11.2026: what a part of the panel that failed to draw says instead of a blank screen
@@ -1065,5 +1073,13 @@ export const ru = {
   ...wordsSetup.ru,
   ...wordsCatalog.ru,
   ...wordsLayout.ru,
+  ...words_media.ru,
+  ...words_speaker.ru,
+  ...words_laundry.ru,
+  ...words_humidifier.ru,
+  ...words_scale.ru,
+  ...words_dashcam.ru,
+  ...words_nas.ru,
+  ...words_gasmeter.ru,
 };
 export type Dictionary = typeof ru;

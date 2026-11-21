@@ -75,6 +75,8 @@ import { houseStatus, type HouseStatus } from '../model/house-status.ts';
 import { HouseStatusStrip } from './house-status.tsx';
 import { people } from '../model/people.ts';
 import { instanceViews, selfDrawn, INSTANCE_PREFIX, type InstanceView } from '../model/card-catalog.ts';
+import { familyOf } from '../appliances/profiles.ts';
+import { applianceUi } from '../appliances/index.ts';
 import { heatLayoutOf } from '../model/heating-layout.ts';
 import { CardCatalog, AddCardButton, LostNote } from './catalog.tsx';
 import { CameraTile } from './camera-tile.tsx';
@@ -159,8 +161,8 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
   // the cards the installer added from the catalog (model/card-catalog.ts): each its own device of the house, drawn by the panel's own tile and
   // sheet; a card whose required fields are not bound is not drawn for the residents. The heating scheme is drawn by the heating screen.
   const cardViews = useMemo<InstanceView[]>(() => config.profileInstances ? instanceViews(registry, config.profileInstances, a => found.rooms.find(r => r.id === a)?.name ?? null, undefined, k => t(k as Key)).filter(v => !selfDrawn(v.profile) /* a module or the panel's own card draws itself */) : [], [registry, config.profileInstances, found.rooms, t]);
-  const home = useMemo(() => { const own = cardViews.filter(v => !v.incomplete.length && v.profile.renderer !== 'heatingRooms').map(v => ({ ...v.device, photo: config.devices[`d:${v.device.haDeviceId}`]?.photo ?? (v.instance.legacyKey ? config.devices[v.instance.legacyKey]?.photo : null) ?? null }));
-    return own.length ? { ...found, devices: [...found.devices, ...own] } : found; }, [found, cardViews, config.devices]);
+  const home = useMemo(() => { const own = cardViews.filter(v => !v.incomplete.length && v.profile.renderer !== 'heatingRooms').map(v => ({ ...v.device, photo: config.devices[`d:${v.device.haDeviceId}`]?.photo ?? (v.instance.legacyKey ? config.devices[v.instance.legacyKey]?.photo : null) ?? null, ...(v.profile.renderer === 'appliance' ? { tileLine: familyOf(v.profile.card)?.tileLine?.(registry, v.instance, t, lang) ?? null } : {}) }));
+    return own.length ? { ...found, devices: [...found.devices, ...own] } : found; }, [found, cardViews, config.devices, registry, t, lang]);
   const [view, setView] = useState<View>(() => decode(navigationWindow.location.hash));
   /** The module that plays a camera: its own `camera`, or one of its `cameras` (a two-lens camera). */
   const camerasOf = (m: ActiveModule) => m.def.cameras?.(m.entities) ?? (m.entities.camera ? [m.entities.camera] : []);
@@ -540,7 +542,7 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
       const sheetWide = !!mod && wide && landscape && viewport.width >= 800; // a phone on its side (874×402) splits too: video left, controls right, instead of a video that fills the whole height
       return <div className="hm-scrim" key="sheet" inert={!!confirm || undefined} onClick={e => { if (e.target === e.currentTarget) close(); }}><section className={`hm-sheet ${sheetWide ? 'is-split' : ''} ${roomy ? 'is-roomy' : ''} ${autoClose?.key === device.key ? 'is-alarm' : ''}`} role="dialog" aria-modal="true" aria-label={device.name} ref={sheetRef} tabIndex={-1} {...swipe(close)} onPointerDownCapture={() => { if (autoClose?.key === device.key) setAutoClose(null); }} onKeyDownCapture={() => { if (autoClose?.key === device.key) setAutoClose(null); }}>
         {(c => c && <LostNote lost={c.lost} profile={c.profile} t={t} onFix={host.admin ? () => go({ ...viewNow.current, device: `card:${c.id}` }) : undefined} />)(cardOf(device))}
-        <Guard key={device.key} where={`sheet:${device.key}`} kind="sheet" t={t} onClose={close}>{mod?.def.Sheet ? <mod.def.Sheet device={device} registry={registry} entities={mod.entities} options={mod.options} host={host} t={t} lang={lang} runner={runner} onClose={close} room={roomName_} stage={stage} wide={sheetWide} setOption={setModuleOption(mod.def.id)} autoClose={autoCloseFor(device.key)} /> : <DeviceSheet device={device} runner={runner} onClose={close} t={t} lang={lang} stage={stage} host={host} room={roomName_} automations={automationsFor(device)} title={inRoomName(device, roomName_ ?? '')} kindLabel={(c => c?.profile.kindKey ? t(c.profile.kindKey as Key) : undefined)(cardOf(device))} />}</Guard>
+        <Guard key={device.key} where={`sheet:${device.key}`} kind="sheet" t={t} onClose={close}>{(c => { const ui = c?.profile.renderer === 'appliance' ? applianceUi(c.profile.card) : null; return ui && c ? <ui.Sheet view={c} registry={registry} host={host} t={t} lang={lang} runner={runner} onClose={close} room={roomName_} wide={wide && landscape && viewport.width >= 800} /> : null; })(cardOf(device)) ?? (mod?.def.Sheet ? <mod.def.Sheet device={device} registry={registry} entities={mod.entities} options={mod.options} host={host} t={t} lang={lang} runner={runner} onClose={close} room={roomName_} stage={stage} wide={sheetWide} setOption={setModuleOption(mod.def.id)} autoClose={autoCloseFor(device.key)} /> : <DeviceSheet device={device} runner={runner} onClose={close} t={t} lang={lang} stage={stage} host={host} room={roomName_} automations={automationsFor(device)} title={inRoomName(device, roomName_ ?? '')} kindLabel={(c => c?.profile.kindKey ? t(c.profile.kindKey as Key) : undefined)(cardOf(device))} />)}</Guard>
         {host.admin && cardOf(device) && <div className="at-cards-editbar"><button type="button" className="hm-pill" data-action="edit-card" onClick={() => go({ ...viewNow.current, device: `card:${cardOf(device)!.id}` })}>{t('cat.edit' as Key)}</button></div>}
       </section></div>;
     })()}

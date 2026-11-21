@@ -100,6 +100,7 @@ export function tileColor(device: HomeDevice): string {
 export function tileStatus(device: HomeDevice, t: T, lang: Lang): string {
   const e = device.primary;
   if (!e.available) return t('state.unavailable');
+  if (device.tileLine) return device.tileLine;
   if (device.kind === 'climate') { const cur = typeof e.attributes.current_temperature === 'number' ? e.attributes.current_temperature : null, target = typeof e.attributes.temperature === 'number' ? e.attributes.temperature : null; return e.state === 'off' ? (cur === null ? t('state.off') : `${t('state.off')} · ${num(cur, lang)}°`) : `${target === null ? '—' : num(target, lang) + '°'}${cur === null ? '' : ` · ${num(cur, lang)}°`}`; }
   if (device.kind === 'light' && isOn(e) && typeof e.attributes.brightness === 'number') return `${t('mode.on')} · ${Math.max(1, Math.round(e.attributes.brightness / 2.55))} %`;
   return stateText(e, t, lang);
