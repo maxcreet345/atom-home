@@ -70,7 +70,7 @@ const STATES = {
 };
 // the tile's expected second line per state (the generic tile: «Недоступно» when the card's main field is gone)
 const TILE = {
-  scale: { live: /^Взвешивание · 1 нояб/, nobody: /^Взвешиваний ещё не было/, unavailable: /^Нет связи/ },
+  scale: { live: /^Взвешивание · 1 нояб/, nobody: /^Взвешиваний ещё не было/, unavailable: /^Взвешивание · 1 нояб/ /* the last weighing stays true while the scale is out of reach */ },
   dashcam: { live: /^Кто-то у машины · (\d\d:\d\d|вчера)/, home: /^Дома · 12,6 В/, collision: /^Удар по машине · /, unavailable: /^Нет связи/ },
   gasmeter: { live: /^Не читается · 970,684 м³/, healthy: /^970,684 м³ · \d\d:\d\d/, unavailable: /^Нет связи/ },
 };

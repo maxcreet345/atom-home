@@ -53,7 +53,7 @@ test('the dryer\'s fields are filled, the diagnostic alarm code included; the te
   const cloud = candidates(live, SAMSUNG_DRYER.roles.find(r => r.id === 'cloud')!, { deviceId: dryerDev().id, areaId: 'vannaia' });
   assert.ok(cloud.some(c => /smartthings/.test(c.id)));
 });
-test('a card claims its machine, and the cloud copy it is bound to; the plug's readings stay on the plug', () => {
+test('a card claims its machine, and the cloud copy it is bound to; the plug readings stay on the plug', () => {
   const cloudId = live.entities.find(e => /smartthings.*progress$/.test(e.entity_id))!.entity_id;
   const d = dryerInst(); d.bindings.cloud = cloudId; d.bindings.plugPower = 'sensor.bath_dryer_socket_power';
   const claims = instanceClaims(live, { a: washerInst(), b: d });

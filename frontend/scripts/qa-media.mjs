@@ -111,14 +111,11 @@ try {
       await open('#home?device=p:cLiving', 'on'); await page.click('.at-md-ok'); await page.waitForTimeout(400);
       const sent = await log(); check(`${tag}: OK → remote.living_tv KEY_OK only`, sent.length === 1 && sent[0].domain === 'remote' && sent[0].service === 'send_command' && sent[0].data.entity_id === 'remote.living_tv' && sent[0].data.command === 'KEY_OK', { sent });
       await page.screenshot({ path: resolve(out, `${vp}-${theme}-pressed-ok-refused-by-preview.png`) });
-      // the Home tile: what a tap does (the panel's generic media tile — a power toggle on the card's OWN media_player, the sheet opens by «…» / long press)
+      // the Home tile: a tap opens the TV's card and sends nothing (appliance cards open on a tap; power is the card's first button)
       await open('#home', 'on'); await page.evaluate(() => document.getElementById('root').shadowRoot.querySelector('[data-device-key="p:cLiving"]')?.scrollIntoView({ block: 'center' }));
       await page.click('[data-device-key="p:cLiving"] .ah-tile-hit'); await page.waitForTimeout(400);
-      const tap = await log(), opened = await page.evaluate(() => !!document.getElementById('root').shadowRoot.querySelector('.at-md-sheet'));
-      check(`${tag}: tile tap touches only its own TV`, tap.every(c => c.data?.entity_id === 'media_player.living_tv'), { tap, opened });
-      console.log('tile tap:', JSON.stringify(tap), 'sheet opened:', opened);
-      await page.click('[data-device-key="p:cLiving"] .ah-tile-more'); await page.waitForTimeout(400);
-      check(`${tag}: «…» opens the TV sheet`, await page.evaluate(() => document.getElementById('root').shadowRoot.querySelector('.at-md-sheet')?.dataset.media === 'hisense.65u8kq'));
+      const tap = await log();
+      check(`${tag}: tile tap opens the TV sheet and sends nothing`, tap.length === 0 && await page.evaluate(() => document.getElementById('root').shadowRoot.querySelector('.at-md-sheet')?.dataset.media === 'hisense.65u8kq'), { tap });
       // the house offline: everything quiet, nothing sent
       await open('#home?device=p:cLiving', 'on'); await page.evaluate(() => window.atomPreview.setOnline(false)); await page.waitForTimeout(300);
       const off = await page.evaluate(() => { const s = document.getElementById('root').shadowRoot.querySelector('.at-md-sheet'); return { phase: s?.dataset.phase, enabled: [...(s?.querySelectorAll('.at-md-ring button, .at-md-acts button') ?? [])].filter(b => !b.disabled).length }; });

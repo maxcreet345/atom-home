@@ -43,7 +43,7 @@ export const STATION_MINI2 = station('yandex.station_mini2', 'Станция М�
 export const PULSAR_MINI2: Profile = {
   id: 'pulsar.mini2_satellite', version: '1.0.0', category: 'speakers', brand: 'Yandex', titleKey: 'cat.p.spPulsar', descKey: 'cat.p.spPulsar.desc', models: ['satellite'],
   integration: { platform: 'esphome', name: 'ESPHome (pulsar)' }, terms: ['pulsar', 'assist', 'satellite', 'спутник', 'голосовой', 'мини 2', 'mini 2', 'esphome', 'колонка', 'boxă', 'speaker'],
-  renderer: 'appliance', card: 'speaker', kind: 'media', icon: 'mic', kindKey: 'cat.kind.voice', anchor: 'satellite', places: ['home', 'room'],
+  renderer: 'appliance', card: 'speaker', kind: 'media', icon: 'mic', kindKey: 'cat.kind.voice', nameKey: 'cat.kind.voice', anchor: 'satellite', places: ['home', 'room'],
   roles: [
     own('satellite', 'cat.r.spSatellite', ['assist_satellite'], /_assist_satellite$/, { required: true, as: 'primary' }),
     own('player', 'cat.r.spPlayer', ['media_player'], /_media_player$/),

@@ -48,6 +48,7 @@ export interface Profile {
   renderer: Renderer; kind: Kind;
   /** the device module that draws it (`renderer: 'module'`), one per house */ module?: string;
   /** the appliance family that draws it (`renderer: 'appliance'`): src/appliances/<card>.tsx */ card?: string;
+  /** the card's name when the installer gives none and its HA device's name would say another appliance (a reflashed Station Mini 2 is still «Яндекс Станция Мини 2» in HA) */ nameKey?: string;
   /** the glyph of its tile and the word above its sheet's name («Очиститель воздуха», not the HA domain's «Вентилятор») */ icon?: string; kindKey?: string;
   /** the entity a device is found by (the purifier's `fan`); its role id */ anchor?: string;
   roles: RoleSpec[];
@@ -348,7 +349,7 @@ export function instanceView(reg: Registry, id: string, inst: ProfileInstance, r
   // an appliance is called by its own HA device («Ванная · Сушильная машина (Samsung DV8400D)» → «Сушильная машина»), never by its anchor entity
   // («Сушилка · Работает»): the room stands beside it, the model is the sheet's
   const devName = profile.renderer === 'appliance' && dev ? stripRoom(((dev as { name_by_user?: string | null }).name_by_user ?? dev.name ?? '').replace(/\s*\([^)]*\)/g, '').trim(), roomName(roomId)) || null : null;
-  const name = inst.name ?? devName ?? (typeof p.attributes.friendly_name === 'string' ? stripRoom(p.attributes.friendly_name, roomName(roomId)) : null) ?? dev?.name ?? id;
+  const name = inst.name ?? (profile.nameKey && label ? label(profile.nameKey) : null) ?? devName ?? (typeof p.attributes.friendly_name === 'string' ? stripRoom(p.attributes.friendly_name, roomName(roomId)) : null) ?? dev?.name ?? id;
   const device: HomeDevice = {
     key: instanceKey(id), kind: profile.kind, name, roomId, icon: profile.icon ?? null, photo: null, art: null, favorite: inst.placement.includes('home'), order: 0, enabled: true,
     available: !!primary && primary.available, primary: { ...p, name }, controls: primary ? [{ ...p, name }] : [], metrics: pick('metric'), parameters: pick('parameter'), diagnostics: [],

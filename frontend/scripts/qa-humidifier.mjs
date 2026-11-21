@@ -59,7 +59,7 @@ try {
       // the tile on Home
       await open('#home', { theme, v });
       const tile = await page.evaluate(`(() => { const el = ${R}.querySelector('[data-device-key="p:hu"]'); if (!el) return null; el.scrollIntoView({ block: 'center' }); return { line: el.querySelector('.ah-tile-text small')?.textContent ?? '', on: el.classList.contains('is-on') }; })()`);
-      const want = { on: /52\s%\s→\s60\s%/, off: /Выключен · 52\s%/, noWater: /Нет воды/, plugOff: /Нет связи/, offline: /Нет связи/ }[v];
+      const want = { on: /52\s%\s→\s60\s%/, off: /Выключен · 52\s%/, noWater: /Нет воды/, plugOff: /Розетка выключена/, offline: /Нет связи/ }[v];
       check(`${vp}:${theme}:${v}:tile-line`, !!tile && want.test(tile.line), tile ?? {});
       await page.waitForTimeout(250); await shot(`tile-${v}-${theme}`);
       check(`${vp}:${theme}:${v}:no-commands`, (await log()).length === 0, { log: await log() });
