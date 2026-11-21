@@ -124,6 +124,11 @@ try {
         check(`${tag(fam, state)}:tile`, tile && (!TILE[fam][state] || TILE[fam][state].test(tile.line)), tile ?? {});
         if (fam === 'scale') for (const page2 of ['#home', '#systems', '#rooms?room=none']) { if (page2 !== '#home') await open(page2, { fam, state }); const txt = await page.evaluate(R2 => eval(R2).querySelector('.hm-shell').innerText, R); check(`${tag(fam, state)}:no-weight-on-${page2}`, !WEIGHT.test(txt) && !KG.test(txt), { at: (txt.match(KG) ?? [])[0] }); }
         if (fam === 'scale') await open('#home', { fam, state });
+        // the Kitchen (1.36.1): the card with no device stands for the camera's own HA device — one «Счётчик газа» there, its card, and no second tile
+        if (fam === 'gasmeter' && state === 'live') { await open('#rooms?room=kukhnia', { fam, state, stats: true });
+          const room = await page.evaluate(([id, R2]) => { const r = eval(R2); return { cards: r.querySelectorAll(`[data-device-key="p:${id}"]`).length, plain: [...r.querySelectorAll('.rm-tile .rm-tile-name strong')].map(e => e.textContent).filter(n => /газ/i.test(n)) }; }, [f.id, R]);
+          check(`${tag(fam, state)}:kitchen-one-gas-meter`, room.cards === 1 && room.plain.length === 0, room);
+          await open('#home', { fam, state, stats: true }); }
         const loc = page.locator(`[data-device-key="p:${f.id}"]`); if (await loc.count()) { await loc.scrollIntoViewIfNeeded(); await page.waitForTimeout(150); await loc.screenshot({ path: resolve(out, `${vp}-${theme}-${state}-tile.png`) }); }
         check(`${tag(fam, state)}:tile-no-commands`, await cmds() === 0);
       }

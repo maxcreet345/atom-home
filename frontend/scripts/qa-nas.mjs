@@ -75,7 +75,10 @@ try {
       // the drives' own tiles: there before the card, gone with it — on Home, in the Hall and in «Устройства»
       const count = () => page.evaluate(`${R}.querySelectorAll(${JSON.stringify(parts.map(id => `[data-device-key="d:${id}"]`).join(',') || 'x')}).length`);
       const before = {}, after = {};
-      for (const h of ['#home', '#rooms?room=prikhozhaia', '#systems']) { await open(h, 'ok', false); before[h] = await count(); await open(h, 'ok', true); after[h] = await count(); }
+      const own = {}, cardCount = () => page.evaluate(`${R}.querySelectorAll('[data-device-key="p:${ID}"]').length`);
+      for (const h of ['#home', '#rooms?room=prikhozhaia', '#systems']) { await open(h, 'ok', false); before[h] = await count(); await open(h, 'ok', true); after[h] = await count(); own[h] = await cardCount(); }
+      // the card is put on Home and in the room: one tile on each — in the Hall too, where the NAS is none of the room's own devices (1.36.1)
+      check(`${vp}: the card stands once on Home and once in the Hall`, own['#home'] === 1 && own['#rooms?room=prikhozhaia'] === 1, { own });
       // the panel lists a NAS's parts as «sensor (air)» (model/device-list.ts) and never draws them: with the card or without, no stray drive tiles
       check(`${vp}: no stray tiles of the pools, drives or volumes`, Object.values(after).every(x => x === 0) && Object.values(before).every(x => x === 0), { before, after });
       // a resident who is not an administrator: no power buttons, no modes

@@ -30,7 +30,7 @@ export interface RoomProps { reg: Registry; roomId: string; roomName: string; he
   /** a device drawn by a module (the kettle): the module's sheet key, and how to open it */ sheetOf?: (deviceId: string) => string | undefined; openSheet?: (key: string) => void;
   /** an appliance HA knows only through switches (1.27.0, model/appliance.ts): the device a tap opens — never one of its switches */ applianceOf?: (deviceId: string) => HomeDevice | undefined;
   /** the device's own card, when one was made for it (kettle, feeder, robot, camera): the room draws exactly that card */ ownCard?: (th: Thing, all: Thing[]) => ComponentChildren | null | false;
-  /** cards the installer put in this room from the catalog that no device of the room draws (model/card-catalog.ts) */ extra?: Array<{ key: string; node: ComponentChildren }>;
+  /** cards the installer put in this room from the catalog that no device of the room draws (model/card-catalog.ts) */ extra?: (all: Thing[]) => Array<{ key: string; node: ComponentChildren }>;
   /** «＋ Добавить карточку», for the administrator */ addCard?: ComponentChildren }
 type P = RoomProps;
 
@@ -138,16 +138,16 @@ export function RoomView(p: RoomProps) {
   const tiles = [...m.things.filter(t => t.kind !== 'light' || m.things.filter(x => x.kind === 'light').length > 1), ...m.air].filter(th => !p.hidden?.(th));
   // a device that already has its own card (kettle, feeder, robot, camera) is drawn by it, the same as on Home; the rest get the room's card
   const cards = tiles.map(th => [th, p.ownCard?.(th, tiles) ?? null] as const), own = cards.filter(([, c]) => c !== null && c !== false), plain = cards.filter(([, c]) => c === null).map(([th]) => th); // false: drawn by another device's card (the room's cameras card)
-  const side = m.heat || m.consumers.length;
-  const items: LayItem[] = [...own.map(([th, card]) => ({ key: `t:${th.key}`, node: card, label: th.name })), ...(p.extra ?? []), ...plain.map(th => ({ key: `t:${th.key}`, node: <Tile th={th} p={p} />, label: th.name, unit: true }))];
+  const side = m.heat || m.consumers.length, extra = p.extra?.(tiles) ?? [];
+  const items: LayItem[] = [...own.map(([th, card]) => ({ key: `t:${th.key}`, node: card, label: th.name })), ...extra, ...plain.map(th => ({ key: `t:${th.key}`, node: <Tile th={th} p={p} />, label: th.name, unit: true }))];
   return <div className="rm-page rm-b">
     <div className="rm-b-top"><Hero m={m} p={p} /><Quick m={m} p={p} /></div>
     <Alarms p={p} />
     <div className="rm-b-cols">
-      {(tiles.length > 0 || !!p.extra?.length || !!p.addCard) && <div className="rm-b-main"><h2 className="rm-h">{rk(p.t, 'devices')}</h2>
+      {(tiles.length > 0 || extra.length > 0 || !!p.addCard) && <div className="rm-b-main"><h2 className="rm-h">{rk(p.t, 'devices')}</h2>
         {/* this device's arrangement of the room (ui/layout-grid.tsx): one grid of every card; without one, the room's own cards above its plain devices, as before */}
         <LayoutGrid scope={roomScope(p.roomId)} className="ah-grid ah-face rm-own rm-arranged" items={items}
-          fallback={mark => <>{(own.length > 0 || !!p.extra?.length) && <div className="ah-grid ah-face rm-own">{items.filter(i => !i.unit).map(mark)}</div>}
+          fallback={mark => <>{(own.length > 0 || extra.length > 0) && <div className="ah-grid ah-face rm-own">{items.filter(i => !i.unit).map(mark)}</div>}
             {plain.length > 0 && <div className="rm-tile-grid">{items.filter(i => i.unit).map(mark)}</div>}</>} />
         {p.addCard && <div className="at-add-card-row">{p.addCard}</div>}</div>}
       {side ? <div className="rm-b-side"><h2 className="rm-h">{m.heat && m.consumers.length ? rk(p.t, 'climateEnergy') : m.heat ? rk(p.t, 'climate') : rk(p.t, 'energy')}</h2>{m.heat && p.heating && <div className="rm-heat"><HeatRoomCard h={p.heating} room={m.heat} host={p.host} t={p.t} lang={p.lang} now={p.now} /></div>}{m.consumers.length > 0 && <LiveLoad title={rk(p.t, 'liveTitle')} rows={m.consumers.map(c => ({ key: c.key, name: c.name, watts: c.power, icon: GLYPH[[...m.things, ...m.air].find(x => x.key === c.key)?.kind ?? 'other'] }))} today={m.consumers.reduce((s, c) => s + (c.today ?? 0), 0)} t={p.t} lang={p.lang} />}</div> : null}

@@ -376,8 +376,7 @@ export function instanceView(reg: Registry, id: string, inst: ProfileInstance, r
   // a reading is called by its field («Ресурс фильтра»), not by the integration's name («Filter Filter Life Level»)
   const pick = (as: RoleSpec['as']) => profile.roles.filter(r => r.as === as && inst.bindings[r.id]).map(r => { const x = refOf(reg, inst.bindings[r.id]); return x && label ? { ...x, name: label(r.labelKey) } : x; }).filter((x): x is EntityRef => !!x);
   const dev = inst.deviceId ? reg.devices.find(d => d.id === inst.deviceId) : (anchorId ? reg.devices.find(d => d.id === reg.entities.find(e => e.entity_id === anchorId)?.device_id) : undefined);
-  const anchorEnt = anchorId ? reg.entities.find(e => e.entity_id === anchorId) : undefined;
-  const roomId = inst.roomId ?? dev?.area_id ?? areaOf(reg, anchorEnt) ?? NO_ROOM;
+  const roomId = cardRoom(reg, inst, profile) ?? NO_ROOM;
   // an appliance is called by its own HA device («Ванная · Сушильная машина (Samsung DV8400D)» → «Сушильная машина»), never by its anchor entity
   // («Сушилка · Работает»): the room stands beside it, the model is the sheet's
   const devName = profile.renderer === 'appliance' && dev ? stripRoom(((dev as { name_by_user?: string | null }).name_by_user ?? dev.name ?? '').replace(/\s*\([^)]*\)/g, '').trim(), roomName(roomId)) || null : null;
@@ -389,11 +388,26 @@ export function instanceView(reg: Registry, id: string, inst: ProfileInstance, r
   };
   return { id, instance: inst, profile, device, lost, incomplete };
 }
+/** The room a card is in: the one the installer gave it, else its device's, else its main field's own. */
+export function cardRoom(reg: Registry, inst: Pick<ProfileInstance, 'roomId' | 'deviceId' | 'bindings'>, profile: Pick<Profile, 'anchor'>): string | null {
+  const main = inst.bindings[profile.anchor ?? ''], ent = main ? reg.entities.find(e => e.entity_id === main) : undefined;
+  const dev = inst.deviceId ? reg.devices.find(d => d.id === inst.deviceId) : ent ? reg.devices.find(d => d.id === ent.device_id) : undefined;
+  return inst.roomId ?? dev?.area_id ?? areaOf(reg, ent) ?? null;
+}
+/** Where a new card goes while the installer has not said: in its room, when it has one and the card may stand in a room (opened from Home,
+ * every card went «На главной» and none was in its room — 21.11.2026); else the card's first place. */
+export const defaultPlacement = (p: Pick<Profile, 'places'>, roomId: string | null | undefined): Place[] => roomId && roomId !== NO_ROOM && p.places.includes('room') ? ['room'] : p.places.slice(0, 1);
 /** «Гостиная · Очиститель воздуха» on the Living room's card is «Очиститель воздуха»: the room stands beside it. */
 const stripRoom = (n: string, room: string | null) => { const parts = n.split(' · '); return parts.length > 1 && (!room || parts[0].trim() === room) ? parts.slice(1).join(' · ').trim() : n; };
 /** Every instance of the house this panel can draw, with the problems of each. Unknown profiles (a newer panel's) are skipped, not lost. */
 export function instanceViews(reg: Registry, all: Record<string, ProfileInstance>, roomName?: (areaId: string) => string | null, list: Profile[] = PROFILES, label?: (key: string) => string): InstanceView[] {
   return Object.entries(all).map(([id, inst]) => instanceView(reg, id, inst, roomName, list, label)).filter((v): v is InstanceView => !!v);
+}
+/** The HA device a card stands for: the chosen one; for an appliance card with no model (a gas meter read by a camera) the device of its main field. */
+export function cardDevice(reg: Registry, inst: ProfileInstance, profile: Profile | null = profileById(inst.profileId)): string | null {
+  if (inst.deviceId) return inst.deviceId;
+  const main = profile?.renderer === 'appliance' ? inst.bindings[profile.anchor ?? ''] : undefined;
+  return main ? reg.entities.find(e => e.entity_id === main)?.device_id ?? null : null;
 }
 /** The entities an instance takes from the auto-made cards, so that a profile that already represents an appliance never stands beside its old
  * tile: every entity of its own HA device and its bound ones of that device. An external sensor bound on purpose stays where it was. */
@@ -407,7 +421,7 @@ export function instanceClaims(reg: Registry, all: Record<string, ProfileInstanc
       // every field it draws, and every entity of the same appliance seen through a second integration
       // an external sensor or plug bound on purpose (the bedroom's humidity, the station's plug, a POW meter) keeps its own tile and its place in «Энергия»
       // its own device: the chosen one, or for a card with no model (a gas meter read by a camera) the device of its main field
-      const anchorDev = inst.bindings[profile.anchor ?? ''] ? reg.entities.find(e => e.entity_id === inst.bindings[profile.anchor!])?.device_id ?? null : null, ownDev = inst.deviceId ?? anchorDev;
+      const ownDev = cardDevice(reg, inst, profile);
       if (!inst.deviceId && ownDev) for (const e of reg.entities) if (e.device_id === ownDev) out.add(e.entity_id);
       for (const r of profile.roles) { const b = inst.bindings[r.id]; if (!b) continue; const dev = reg.entities.find(e => e.entity_id === b)?.device_id ?? null;
         if (r.sibling && dev) { for (const e of reg.entities) if (e.device_id === dev) out.add(e.entity_id); } else if (r.claim || !dev || dev === ownDev) out.add(b); }
@@ -420,6 +434,28 @@ export function siblingDevices(reg: Registry, inst: ProfileInstance, list: Profi
   const out = new Set<string>(), profile = profileById(inst.profileId, list); if (!profile) return out;
   for (const r of profile.roles) { const b = r.sibling ? inst.bindings[r.id] : undefined; const d = b ? reg.entities.find(e => e.entity_id === b)?.device_id : null; if (d && d !== inst.deviceId) out.add(d); }
   return out;
+}
+/** A card the installer put «В комнате» is drawn on that room's page: complete, and not the heating scheme (it has its own block there). */
+export const shownInRoom = (v: InstanceView, roomId: string) => v.instance.placement.includes('room') && !v.incomplete.length && v.profile.renderer !== 'heatingRooms' && v.device.roomId === roomId;
+/** The catalog's cards on one room's page. `things` are the devices the room draws (their HA device id as the key, their entities).
+ *  - `own`: the device's tile is its card's — the card itself where it is shown in this room, `false` where the card stands for the device
+ *    elsewhere (on Home only, in another room) or the device is the card's second integration: no tile of its own then;
+ *  - `extra`: the cards of this room that no device of the room draws (a NAS whose device is none of the room's «things», a card moved here
+ *    from another room, a card with no device at all).
+ * Every card shown in this room is in exactly one of the two, once. */
+export function roomCards(reg: Registry, cards: InstanceView[], roomId: string, things: Array<{ key: string; ids?: string[] }>, list: Profile[] = PROFILES): { own: Map<string, InstanceView | false>; extra: InstanceView[] } {
+  const own = new Map<string, InstanceView | false>(), drawn = new Set<string>();
+  const devOf = new Map(reg.entities.map(e => [e.entity_id, e.device_id ?? null]));
+  const of = cards.map(v => ({ v, dev: cardDevice(reg, v.instance, v.profile), twins: siblingDevices(reg, v.instance, list) }));
+  for (const th of things) {
+    // two HA devices of one name are one tile (model/room.ts): it is the card's when either of them is
+    const devs = new Set<string>([th.key, ...(th.ids ?? []).map(id => devOf.get(id)).filter((d): d is string => !!d)]);
+    const mine = of.filter(c => c.dev && devs.has(c.dev));
+    const card = mine.find(c => shownInRoom(c.v, roomId) && !drawn.has(c.v.id));
+    if (card) { own.set(th.key, card.v); drawn.add(card.v.id); }
+    else if (mine.length || of.some(c => [...c.twins].some(d => devs.has(d)))) own.set(th.key, false);
+  }
+  return { own, extra: cards.filter(v => shownInRoom(v, roomId) && !drawn.has(v.id)) };
 }
 /** The value a candidate shows in the form: its state with its unit, words for on/off. */
 export const candidateValue = (c: Pick<Candidate, 'value' | 'unit'>) => unavailable(c.value) ? '' : `${c.value}${c.unit ? ` ${c.unit}` : ''}`;

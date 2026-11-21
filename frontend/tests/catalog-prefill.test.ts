@@ -5,7 +5,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import type { Registry } from '../src/model/registry.ts';
-import { PROFILES, candidates, devicesFor, profileById, stemOf, suggestBindings, suggestion, type Profile } from '../src/model/card-catalog.ts';
+import { PROFILES, candidates, cardDevice, cardRoom, defaultPlacement, devicesFor, instanceViews, profileById, roomCards, shownInRoom, siblingDevices, stemOf, suggestBindings, suggestion, type Profile, type ProfileInstance } from '../src/model/card-catalog.ts';
+import { readRoom } from '../src/model/room.ts';
 
 const live: Registry = JSON.parse(readFileSync(new URL('../../private/fixtures/criuleni-registry-live-20261121.json', import.meta.url), 'utf8'));
 const clone = (): Registry => structuredClone(live);
@@ -88,4 +89,61 @@ test('prefill: the appliance\'s socket is found by the appliance\'s own name; a 
   assert.equal(first('xiaomi.humidifier2', two).plug, undefined);
   // the appliance's own entity is never its socket
   for (const id of ['xiaomi.humidifier2', 'lg.washer_f_r7', 'yandex.station_max']) { const dev = devicesFor(live, P(id))[0].id, b = first(id); for (const r of P(id).roles.filter(x => x.plug)) if (b[r.id]) assert.notEqual(live.entities.find(e => e.entity_id === b[r.id])!.device_id, dev, `${id}.${r.id}`); }
+});
+
+// ---- the room page: every card put «В комнате» is drawn there once (model/card-catalog.ts roomCards) ----
+const card = (profileId: string, bindings: Record<string, string>, extra: Partial<ProfileInstance> = {}): ProfileInstance => ({ profileId, profileVersion: '1.0.0', bindings, placement: ['room'], ...extra });
+const roomName = (a: string) => live.areas.find(x => x.area_id === a)?.name ?? null;
+/** The tiles a room draws (model/room.ts) and the plan of the catalog's cards over them. */
+const plan = (roomId: string, all: Record<string, ProfileInstance>, reg: Registry = live) => { const m = readRoom(reg, roomId, roomName(roomId) ?? '', null, null), things = [...m.things, ...m.air]; return { things, ...roomCards(reg, instanceViews(reg, all, roomName), roomId, things) }; };
+const GAS = card('meter.gas_camera', { meter: 'sensor.kitchen_gas_meter', camera: 'camera.kitchen_gas_meter', lastRead: 'input_datetime.kitchen_gas_meter_last_read', answer: 'input_text.kitchen_gas_meter_raw' }, { roomId: 'kukhnia' });
+const nas = () => { const d = devicesFor(live, P('ugreen.dxp2800'))[0]; return { dev: d, inst: card('ugreen.dxp2800', suggestBindings(live, P('ugreen.dxp2800'), d.id), { deviceId: d.id }) }; };
+const drawnOnce = (p: ReturnType<typeof plan>, id: string) => [...p.own.values()].filter(v => v && v.id === id).length + p.extra.filter(v => v.id === id).length;
+
+test('room page: a card whose device is none of the room\'s tiles is still drawn there (the NAS in the Hall)', () => {
+  const { dev, inst } = nas(); assert.equal(dev.areaId, 'prikhozhaia');
+  const p = plan('prikhozhaia', { nas: inst });
+  assert.ok(!p.things.some(t => t.key === dev.id), 'the NAS is no «thing» of the Hall: nothing to switch, no watts');
+  assert.deepEqual(p.extra.map(v => v.id), ['nas']); assert.equal(drawnOnce(p, 'nas'), 1);
+  // on Home only: not in the room; in another room: there, not here
+  assert.equal(drawnOnce(plan('prikhozhaia', { nas: { ...inst, placement: ['home'] } }), 'nas'), 0);
+  assert.equal(drawnOnce(plan('prikhozhaia', { nas: { ...inst, roomId: 'kukhnia' } }), 'nas'), 0); assert.equal(drawnOnce(plan('kukhnia', { nas: { ...inst, roomId: 'kukhnia' } }), 'nas'), 1);
+});
+test('room page: a card with no device stands for the device of its main field — one «Счётчик газа» in the Kitchen, not two', () => {
+  const gasDev = live.entities.find(e => e.entity_id === 'sensor.kitchen_gas_meter')!.device_id!;
+  assert.equal(cardDevice(live, GAS), gasDev); assert.equal(cardDevice(live, { ...GAS, bindings: {} }), null);
+  const bare = plan('kukhnia', {}); assert.ok(bare.things.some(t => t.key === gasDev), 'without the card the camera\'s device has a tile of its own');
+  const p = plan('kukhnia', { gas: GAS });
+  assert.equal(drawnOnce(p, 'gas'), 1); assert.equal((p.own.get(gasDev) || null)?.id, 'gas', 'the card takes the device\'s place: no second tile');
+  // the card on Home only: its device has no tile of its own in the Kitchen either (the card stands for it, as for any appliance)
+  const home = plan('kukhnia', { gas: { ...GAS, placement: ['home'] } }); assert.equal(home.own.get(gasDev), false); assert.equal(drawnOnce(home, 'gas'), 0);
+  // a heating card is not an appliance: it claims no device by its thermostat
+  assert.equal(cardDevice(live, card('heating.single', { thermostat: 'climate.kitchen_trv' })), null);
+});
+test('room page: on the house with every appliance card added, each card of a room is drawn exactly once and a card\'s device has no second tile', () => {
+  const all: Record<string, ProfileInstance> = { gas: GAS, dash: card('70mai.a810_up04', suggestBindings(live, P('70mai.a810_up04'))) };
+  for (const p of PROFILES.filter(x => x.renderer === 'appliance' && x.models.length)) for (const d of devicesFor(live, p)) all[`c${Object.keys(all).length}`] = card(p.id, suggestBindings(live, p, d.id), { deviceId: d.id });
+  const views = instanceViews(live, all, roomName); assert.ok(views.length >= 17, `${views.length} cards`);
+  for (const area of [...live.areas.map(a => a.area_id), 'none']) {
+    const p = plan(area, all), here = views.filter(v => shownInRoom(v, area));
+    for (const v of here) assert.equal(drawnOnce(p, v.id), 1, `${area}: ${v.profile.id}`);
+    assert.equal([...p.own.values()].filter(Boolean).length + p.extra.length, here.length, `${area}: nothing else is drawn as a card`);
+    // no plain tile is left for a device a card stands for (its own device, or its copy through a second integration)
+    for (const th of p.things) if (!p.own.has(th.key)) for (const v of views) { assert.notEqual(cardDevice(live, v.instance, v.profile), th.key, `${area}: ${th.name}`); assert.ok(!siblingDevices(live, v.instance).has(th.key), `${area}: ${th.name} is ${v.profile.id}'s copy`); }
+  }
+  assert.ok(views.every(v => v.incomplete.length === 0), views.filter(v => v.incomplete.length).map(v => `${v.profile.id}: ${v.incomplete}`).join('; '));
+});
+
+// ---- where a new card goes by default (ui/catalog.tsx) ----
+test('a new card goes «В комнате» when it has a room and may stand in one; else to the profile\'s first place', () => {
+  const tv = P('hisense.55u6'), gas = P('meter.gas_camera');
+  assert.deepEqual(tv.places, ['home', 'room']);
+  assert.deepEqual(defaultPlacement(tv, 'detskaia'), ['room']); assert.deepEqual(defaultPlacement(tv, null), ['home']); assert.deepEqual(defaultPlacement(tv, ''), ['home']); assert.deepEqual(defaultPlacement(tv, 'none'), ['home']);
+  assert.deepEqual(defaultPlacement(P('heating.rooms'), 'kukhnia'), ['home'], 'a card that cannot stand in a room'); assert.deepEqual(defaultPlacement(P('xiaomi.kettle2pro'), 'kukhnia'), [], 'a card that draws itself has no place to choose');
+  // the room of a card in the making: the chosen device's, the installer's own choice over it, the main field's for a card with no device
+  const kids = devicesFor(live, tv)[0];
+  assert.equal(cardRoom(live, { deviceId: kids.id, bindings: {} }, tv), 'detskaia'); assert.equal(cardRoom(live, { deviceId: kids.id, bindings: {}, roomId: 'spalnia' }, tv), 'spalnia');
+  assert.equal(cardRoom(live, { bindings: {} }, gas), null); assert.equal(cardRoom(live, { bindings: { meter: 'sensor.kitchen_gas_meter' } }, gas), 'kukhnia');
+  // every appliance card of the house, added from Home with nothing touched, lands in its room
+  for (const p of PROFILES.filter(x => x.renderer === 'appliance' && x.models.length)) for (const d of devicesFor(live, p)) assert.deepEqual(defaultPlacement(p, cardRoom(live, { deviceId: d.id, bindings: suggestBindings(live, p, d.id) }, p)), d.areaId ? ['room'] : ['home'], p.id);
 });

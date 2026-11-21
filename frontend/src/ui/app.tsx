@@ -74,7 +74,7 @@ import { shellAlarm, announcement, sk } from '../model/security-words.ts';
 import { houseStatus, type HouseStatus } from '../model/house-status.ts';
 import { HouseStatusStrip } from './house-status.tsx';
 import { people } from '../model/people.ts';
-import { instanceViews, selfDrawn, siblingDevices, INSTANCE_PREFIX, type InstanceView } from '../model/card-catalog.ts';
+import { instanceViews, selfDrawn, roomCards, INSTANCE_PREFIX, type InstanceView } from '../model/card-catalog.ts';
 import { familyOf } from '../appliances/profiles.ts';
 import { applianceUi } from '../appliances/index.ts';
 import { heatLayoutOf } from '../model/heating-layout.ts';
@@ -692,14 +692,16 @@ function RoomPage({ home, registry, roomId, runner, toggle, go, t, lang, alarms,
   // a device that already has its own card is drawn by that very card, here as on Home and in its panel (owner, 09.11.2026): the kettle, the feeder, the robot, a camera
   const roomCams = camViews.filter(v => v.device.roomId === roomId);
   let things: Thing[] = [];
-  // a catalog card of this appliance: drawn by its own tile here, the same one Home shows; not placed in the room — no card here at all
-  const shownHere = (v: InstanceView) => v.instance.placement.includes('room') && !v.incomplete.length && v.profile.renderer !== 'heatingRooms';
+  // a catalog card of this appliance: drawn by its own tile here, the same one Home shows; not placed in the room — no card here at all.
+  // Which card stands in which device's place, and which stand by themselves, is one plan over the tiles the room draws (model/card-catalog.ts
+  // roomCards): every card put in this room is drawn once — the NAS whose device is none of the room's tiles, the gas meter that has no device
+  const plans = new WeakMap<Thing[], ReturnType<typeof roomCards>>();
+  const planOf = (all: Thing[]) => plans.get(all) ?? plans.set(all, roomCards(registry, cards, roomId, all)).get(all)!;
   const cardTile = (v: InstanceView) => { const x = home.devices.find(dv => dv.key === v.device.key) ?? v.device; return <Guard where={`card:${v.id}`} kind="tile" t={t}><AccessoryTile device={x} name={x.name} pending={runner.busy.has(x.key)} onToggle={canToggle(x) ? () => toggle(x) : undefined} onOpen={() => go({ section: 'rooms', room: roomId, device: x.key })} t={t} lang={lang} /></Guard>; };
-  const extra = cards.filter(v => shownHere(v) && v.device.roomId === roomId && !(v.instance.deviceId && registry.devices.find(dv => dv.id === v.instance.deviceId)?.area_id === roomId)).map(v => ({ key: `card:${v.id}`, node: cardTile(v) }));
+  const extra = (all: Thing[]) => planOf(all).extra.map(v => ({ key: `card:${v.id}`, node: cardTile(v) }));
   const ownCard = (th: Thing, all: Thing[]) => { things = all;
-    const card = cards.find(v => v.instance.deviceId === th.key);
-    if (card) return shownHere(card) && card.device.roomId === roomId ? cardTile(card) : false;
-    if (cards.some(v => siblingDevices(registry, v.instance).has(th.key))) return false; // the same TV through SmartThings or AirPlay: its card stands for it
+    const card = planOf(all).own.get(th.key);
+    if (card !== undefined) return card ? cardTile(card) : false; // false: its card is shown elsewhere, or it is the same TV through SmartThings or AirPlay — the card stands for it
     const m = modules.find(x => x.entities.device === th.key);
     if (m) return m.def.sheetKey ? <Guard where={`card:${m.def.id}`} kind="tile" t={t}><m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} compact rooms={home.rooms} onOpen={() => go({ section: 'rooms', room: roomId, device: m.def.sheetKey })} /></Guard> : <Guard where={`card:${m.def.id}`} kind="tile" t={t}><m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} /></Guard>;
     if (th.kind === 'vacuum' && vacuum && th.ids.includes(vacuum.entity)) return <Guard where="tile:vacuum" kind="tile" t={t}><VacuumTile pics={vacPics} v={vacuum} host={host} t={t} lang={lang} onOpen={() => go({ section: 'cleaning' })} /></Guard>;
