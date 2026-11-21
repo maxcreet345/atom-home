@@ -53,11 +53,12 @@ test('the dryer\'s fields are filled, the diagnostic alarm code included; the te
   const cloud = candidates(live, SAMSUNG_DRYER.roles.find(r => r.id === 'cloud')!, { deviceId: dryerDev().id, areaId: 'vannaia' });
   assert.ok(cloud.some(c => /smartthings/.test(c.id)));
 });
-test('a card claims its machine, the cloud copy it is bound to, and the plug readings bound on purpose', () => {
+test('a card claims its machine, and the cloud copy it is bound to; the plug's readings stay on the plug', () => {
   const cloudId = live.entities.find(e => /smartthings.*progress$/.test(e.entity_id))!.entity_id;
   const d = dryerInst(); d.bindings.cloud = cloudId; d.bindings.plugPower = 'sensor.bath_dryer_socket_power';
   const claims = instanceClaims(live, { a: washerInst(), b: d });
-  for (const id of ['sensor.bath_washer_current_status', 'switch.bath_washer_power', 'sensor.bath_dryer_stage', 'switch.bath_dryer_run', cloudId, 'sensor.bath_dryer_socket_power']) assert.ok(claims.has(id), id);
+  for (const id of ['sensor.bath_washer_current_status', 'switch.bath_washer_power', 'sensor.bath_dryer_stage', 'switch.bath_dryer_run', cloudId]) assert.ok(claims.has(id), id);
+  assert.ok(!claims.has('sensor.bath_dryer_socket_power'), 'the plug\'s readings stay on its tile and in «Энергия»');
   assert.ok(!claims.has('switch.bath_dryer_socket'), 'the plug stays a plug');
 });
 test('the snapshot: the washer runs (status «running», though its «Питание» switch says off), the dryer is off, Smart Control off, child lock off', () => {

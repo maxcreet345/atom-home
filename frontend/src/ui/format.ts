@@ -1,7 +1,7 @@
 import type { EntityRef } from '../model/discover.ts';
 import type { T, Key } from '../i18n/index.ts';
 import { CommandError } from '../runtime/commands.ts';
-import { SaveError } from '../runtime/store.ts';
+import type { SaveError } from '../runtime/store.ts';
 import { dateFormat, numberFormat } from '../runtime/zone.ts';
 export const locales = { ru: 'ru-RU', ro: 'ro-RO', en: 'en-GB' } as const;
 export type Lang = keyof typeof locales;
@@ -10,7 +10,8 @@ export type Lang = keyof typeof locales;
  * connection library's numeric codes, an Error, a string. Home Assistant's own words are quoted only where it wrote them for people
  * (a refused service); a parser's or a script's text is never shown, and neither is «[object Object]». */
 export function errorText(e: unknown, t: T): string {
-  if (e instanceof SaveError) { const k = `save.error.${e.code}` as Key; return t(k) === k ? t('save.error.failed') : t(k); }
+  if (e instanceof Error && e.name === 'SaveError') { // by name: importing the store here closed a loop store → config → catalog → appliances → format
+    const se = e as SaveError; const k = `save.error.${se.code}` as Key; return t(k) === k ? t('save.error.failed') : t(k); }
   const inner = typeof e === 'object' && e !== null && typeof (e as { error?: unknown }).error === 'object' && (e as { error?: unknown }).error !== null ? (e as { error: unknown }).error : e;
   const o = (typeof inner === 'object' && inner !== null ? inner : {}) as { code?: unknown; message?: unknown };
   const code = typeof e === 'number' ? e : o.code;

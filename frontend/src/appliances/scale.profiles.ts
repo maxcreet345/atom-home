@@ -14,7 +14,7 @@ import { dateFormat, houseDay, zoneOption } from '../runtime/zone.ts';
 const own = (id: string, labelKey: string, domains: string[], suffix: RegExp, extra: Partial<RoleSpec> = {}): RoleSpec => ({ id, labelKey, domains, suffix, required: false, source: 'own', ...extra });
 /** a person's weight from the router: any weight sensor of the house, the installer picks whose (they are not the scale's own device). No
  * suffix: the scale's own `…_weight` would be «the» suggestion for every person; the card finds the people by itself when these stay empty. */
-const person = (n: number): RoleSpec => ({ id: `person${n}`, labelKey: `cat.r.scalePerson${n}`, hintKey: 'cat.r.scalePerson.hint', required: false, domains: ['sensor'], deviceClass: ['weight'], units: ['kg'], exclude: /_raw$|нестабил|unstab/i }); // no `as`: a person's weight is never one of the card's shown readings
+const person = (n: number): RoleSpec => ({ id: `person${n}`, labelKey: `cat.r.scalePerson${n}`, hintKey: 'cat.r.scalePerson.hint', required: false, domains: ['sensor'], deviceClass: ['weight'], units: ['kg'], exclude: /_raw$|нестабил|unstab/i, claim: true }); // claim: the router's own tile would show everyone's weight on the wall; no `as`: a person's weight is never one of the card's shown readings
 const MI_SCALE_2: Profile = {
   id: 'xiaomi.scale2', version: '1.0.0', category: 'health', brand: 'Xiaomi', titleKey: 'cat.p.scale2', descKey: 'cat.p.scale2.desc',
   models: ['XMTZC02HM/XMTZC05HM/NUN4049CN'], integration: { platform: 'xiaomi_ble', name: 'Xiaomi BLE' },

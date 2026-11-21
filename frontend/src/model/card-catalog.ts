@@ -37,6 +37,8 @@ export interface RoleSpec {
   /** the same appliance seen through a second integration (a Samsung TV's SmartThings device, a Hisense's AirPlay one): offered from devices in
    * the chosen device's room only, and the card takes every entity of that device from the auto-made tiles (no second TV beside the card) */
   sibling?: boolean;
+  /** the card takes this field's own tile although it is another device's (a person's weight on the scale's router: health data stays on the card) */
+  claim?: boolean;
 }
 export interface Profile {
   id: string; version: string; category: Category; brand: string | null; titleKey: string; descKey: string;
@@ -370,9 +372,20 @@ export function instanceClaims(reg: Registry, all: Record<string, ProfileInstanc
     if (inst.deviceId) for (const e of reg.entities) if (e.device_id === inst.deviceId) out.add(e.entity_id);
     if (profile.renderer === 'appliance') {
       // every field it draws, and every entity of the same appliance seen through a second integration
-      for (const r of profile.roles) { const b = inst.bindings[r.id]; if (!b) continue; out.add(b); const dev = r.sibling ? reg.entities.find(e => e.entity_id === b)?.device_id : null; if (dev) for (const e of reg.entities) if (e.device_id === dev) out.add(e.entity_id); }
+      // an external sensor or plug bound on purpose (the bedroom's humidity, the station's plug, a POW meter) keeps its own tile and its place in «Энергия»
+      // its own device: the chosen one, or for a card with no model (a gas meter read by a camera) the device of its main field
+      const anchorDev = inst.bindings[profile.anchor ?? ''] ? reg.entities.find(e => e.entity_id === inst.bindings[profile.anchor!])?.device_id ?? null : null, ownDev = inst.deviceId ?? anchorDev;
+      if (!inst.deviceId && ownDev) for (const e of reg.entities) if (e.device_id === ownDev) out.add(e.entity_id);
+      for (const r of profile.roles) { const b = inst.bindings[r.id]; if (!b) continue; const dev = reg.entities.find(e => e.entity_id === b)?.device_id ?? null;
+        if (r.sibling && dev) { for (const e of reg.entities) if (e.device_id === dev) out.add(e.entity_id); } else if (r.claim || !dev || dev === ownDev) out.add(b); }
     } else if (profile.renderer !== 'device') { const a = inst.bindings[profile.anchor ?? '']; if (a) out.add(a); for (const r of inst.rooms ?? []) if (r.bindings.trv) out.add(r.bindings.trv); }
   }
+  return out;
+}
+/** The HA devices that are the same appliance as the card's own, seen through a second integration (its `sibling` fields). */
+export function siblingDevices(reg: Registry, inst: ProfileInstance, list: Profile[] = PROFILES): Set<string> {
+  const out = new Set<string>(), profile = profileById(inst.profileId, list); if (!profile) return out;
+  for (const r of profile.roles) { const b = r.sibling ? inst.bindings[r.id] : undefined; const d = b ? reg.entities.find(e => e.entity_id === b)?.device_id : null; if (d && d !== inst.deviceId) out.add(d); }
   return out;
 }
 /** The value a candidate shows in the form: its state with its unit, words for on/off. */

@@ -3,7 +3,7 @@
  * left, the moment it ends, the stages of the cycle and its buttons; beside it the program and its options where the machine lets them be
  * changed from here; behind the gear its sounds. Start, pause and stop always ask first. A machine whose remote control is off says so, and
  * what to press on the machine, instead of offering buttons that would be refused. */
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import type { ApplianceSheetProps, ApplianceUi } from './types.ts';
 import { readLaundry, lineOf, actsFor, callFor, minutesText, clockText, stepText, cycleName, alertText, machineName, type Act, type Laundry, type Step } from './laundry.profiles.ts';
 import { HOLD_MS, onOffOf, useRun } from '../modules/kettle.tsx';
@@ -29,6 +29,7 @@ type Draft = { cycle?: string; dryLevel?: string; dryTime?: string; delay?: numb
 function LaundrySheet({ view, registry, host, t, lang, onClose, room, wide }: ApplianceSheetProps) {
   const inst = view.instance, B = inst.bindings, now = useNow();
   const read = readLaundry(registry, inst, t, now)!;
+  const latest = useRef({ registry, inst, read }); latest.current = { registry, inst, read }; // what the machine says when «да» is pressed, not when it was asked
   const l: Laundry = host.online ? read : { ...read, phase: 'unavailable' }; // with no connection to the house nothing it last said is «now»
   const dryer = l.machine === 'dryer', there = l.phase !== 'unavailable';
   const photo = usePhoto(B.status ?? B.running), ui = useRun(host, t);
@@ -41,7 +42,7 @@ function LaundrySheet({ view, registry, host, t, lang, onClose, room, wide }: Ap
   const watts = there ? numOf(st('plugPower')?.state) : null, today = there ? numOf(st('plugToday')?.state) : null;
   const cycle = useCycleEnergy(host, B.plugEnergy, l, now);
   // ---- commands ----
-  const act = (a: Act) => { const c = callFor(registry, inst, a); if (!c) return; setAsk({ text: w(t, `ask.${a}.${l.machine}`, { p: l.program ?? '' }).replace(' «»', ''), yes: w(t, `yes.${a}`), run: () => void ui.run(a, [c], HOLD_MS) }); };
+  const act = (a: Act) => { const c = callFor(registry, inst, a); if (!c) return; setAsk({ text: w(t, `ask.${a}.${l.machine}`, { p: l.program ?? '' }).replace(' «»', ''), yes: w(t, `yes.${a}`), run: () => { const x = latest.current; if (!actsFor(x.read, x.registry, x.inst).includes(a)) return; /* the machine moved on (it finished) while the question was open: nothing is sent */ const now2 = callFor(x.registry, x.inst, a); if (now2) void ui.run(a, [now2], HOLD_MS); } }); };
   const set = (role: string, domain: string, service: string, data: Record<string, unknown>, key: keyof Draft, value: string | number) => { const id = B[role]; if (!id) return; setDraft(d => ({ ...d, [key]: value })); void ui.run(role, [[domain, service, { entity_id: id, ...data }]]).then(ok => { if (!ok) setDraft(d => { const x = { ...d }; delete x[key]; return x; }); }); };
   // a value the machine now reports wins over the draft
   useEffect(() => { setDraft({}); }, [st('cycle')?.state, st('dryLevel')?.state, st('dryTime')?.state, st('delay')?.state, st('delayEnd')?.state, st('buzzer')?.state, st('finishSound')?.state]);

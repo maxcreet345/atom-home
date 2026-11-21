@@ -131,7 +131,7 @@ test('the station\'s socket is optional: without it nothing about power; with it
   assert.equal(r.plug?.on, true); assert.ok(r.watts !== null && r.watts > 0);
   assert.deepEqual(speakerCommands(withPlug).plug(false), [['switch', 'turn_off', { entity_id: plug.id }]]);
   // the card takes the bound socket's switch off the auto-made cards (instanceClaims), not the socket's other entities
-  const claims = instanceClaims(live, { a: withPlug }); assert.ok(claims.has(plug.id)); assert.ok(claims.has(b.player!));
+  const claims = instanceClaims(live, { a: withPlug }); assert.ok(!claims.has(plug.id), 'the plug keeps its own tile (bound on purpose, another device)'); assert.ok(claims.has(b.player!));
   // the view is complete either way
   assert.deepEqual(instanceView(live, 'a', withPlug)!.incomplete, []); assert.deepEqual(instanceView(live, 'b', inst(STATION_MAX.id, max.id, b))!.incomplete, []);
 });

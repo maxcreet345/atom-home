@@ -74,7 +74,7 @@ import { shellAlarm, announcement, sk } from '../model/security-words.ts';
 import { houseStatus, type HouseStatus } from '../model/house-status.ts';
 import { HouseStatusStrip } from './house-status.tsx';
 import { people } from '../model/people.ts';
-import { instanceViews, selfDrawn, INSTANCE_PREFIX, type InstanceView } from '../model/card-catalog.ts';
+import { instanceViews, selfDrawn, siblingDevices, INSTANCE_PREFIX, type InstanceView } from '../model/card-catalog.ts';
 import { familyOf } from '../appliances/profiles.ts';
 import { applianceUi } from '../appliances/index.ts';
 import { heatLayoutOf } from '../model/heating-layout.ts';
@@ -161,7 +161,7 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
   // the cards the installer added from the catalog (model/card-catalog.ts): each its own device of the house, drawn by the panel's own tile and
   // sheet; a card whose required fields are not bound is not drawn for the residents. The heating scheme is drawn by the heating screen.
   const cardViews = useMemo<InstanceView[]>(() => config.profileInstances ? instanceViews(registry, config.profileInstances, a => found.rooms.find(r => r.id === a)?.name ?? null, undefined, k => t(k as Key)).filter(v => !selfDrawn(v.profile) /* a module or the panel's own card draws itself */) : [], [registry, config.profileInstances, found.rooms, t]);
-  const home = useMemo(() => { const own = cardViews.filter(v => !v.incomplete.length && v.profile.renderer !== 'heatingRooms').map(v => ({ ...v.device, photo: config.devices[`d:${v.device.haDeviceId}`]?.photo ?? (v.instance.legacyKey ? config.devices[v.instance.legacyKey]?.photo : null) ?? null, ...(v.profile.renderer === 'appliance' ? { tileLine: familyOf(v.profile.card)?.tileLine?.(registry, v.instance, t, lang) ?? null } : {}) }));
+  const home = useMemo(() => { const own = cardViews.filter(v => !v.incomplete.length && v.profile.renderer !== 'heatingRooms').map(v => ({ ...v.device, photo: config.devices[`d:${v.device.haDeviceId}`]?.photo ?? (v.instance.legacyKey ? config.devices[v.instance.legacyKey]?.photo : null) ?? null, ...(v.profile.renderer === 'appliance' ? { tileLine: (() => { try { return familyOf(v.profile.card)?.tileLine?.(registry, v.instance, t, lang) ?? null; } catch { return null; } })() } : {}) }));
     return own.length ? { ...found, devices: [...found.devices, ...own] } : found; }, [found, cardViews, config.devices, registry, t, lang]);
   const [view, setView] = useState<View>(() => decode(navigationWindow.location.hash));
   /** The module that plays a camera: its own `camera`, or one of its `cameras` (a two-lens camera). */
@@ -699,6 +699,7 @@ function RoomPage({ home, registry, roomId, runner, toggle, go, t, lang, alarms,
   const ownCard = (th: Thing, all: Thing[]) => { things = all;
     const card = cards.find(v => v.instance.deviceId === th.key);
     if (card) return shownHere(card) && card.device.roomId === roomId ? cardTile(card) : false;
+    if (cards.some(v => siblingDevices(registry, v.instance).has(th.key))) return false; // the same TV through SmartThings or AirPlay: its card stands for it
     const m = modules.find(x => x.entities.device === th.key);
     if (m) return m.def.sheetKey ? <Guard where={`card:${m.def.id}`} kind="tile" t={t}><m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} compact rooms={home.rooms} onOpen={() => go({ section: 'rooms', room: roomId, device: m.def.sheetKey })} /></Guard> : <Guard where={`card:${m.def.id}`} kind="tile" t={t}><m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} /></Guard>;
     if (th.kind === 'vacuum' && vacuum && th.ids.includes(vacuum.entity)) return <Guard where="tile:vacuum" kind="tile" t={t}><VacuumTile pics={vacPics} v={vacuum} host={host} t={t} lang={lang} onOpen={() => go({ section: 'cleaning' })} /></Guard>;

@@ -99,8 +99,8 @@ export function tileColor(device: HomeDevice): string {
 }
 export function tileStatus(device: HomeDevice, t: T, lang: Lang): string {
   const e = device.primary;
+  if (device.tileLine) return device.tileLine; // an appliance card says its own state, «Нет связи» and «Розетка выключена» included
   if (!e.available) return t('state.unavailable');
-  if (device.tileLine) return device.tileLine;
   if (device.kind === 'climate') { const cur = typeof e.attributes.current_temperature === 'number' ? e.attributes.current_temperature : null, target = typeof e.attributes.temperature === 'number' ? e.attributes.temperature : null; return e.state === 'off' ? (cur === null ? t('state.off') : `${t('state.off')} · ${num(cur, lang)}°`) : `${target === null ? '—' : num(target, lang) + '°'}${cur === null ? '' : ` · ${num(cur, lang)}°`}`; }
   if (device.kind === 'light' && isOn(e) && typeof e.attributes.brightness === 'number') return `${t('mode.on')} · ${Math.max(1, Math.round(e.attributes.brightness / 2.55))} %`;
   return stateText(e, t, lang);
@@ -113,7 +113,7 @@ export function AccessoryTile({ device, name, sub, room, pending, onToggle, onOp
   // second line: the room for things you switch; the state (plus the room unless the name already ends with it) for everything else
   const roomShown = roomBeside(label, room);
   // a thing you switch says «Вкл · Ванная» / «Выкл · Ванная»: on or off is never told by the glyph's colour alone, and an unknown state is not «off»
-  const switched = !e.available ? t('state.unavailable') : device.tileLine ? device.tileLine /* an appliance card says its own line («Включён · Apple TV»), on or off alike */ : e.state === 'on' ? t('state.on') : e.state === 'off' ? t('state.off') : tileStatus(device, t, lang); // a tile says «Выключено»; «Выкл» is for small mode buttons (critique 19.11.2026)
+  const switched = device.tileLine ? device.tileLine /* an appliance card says its own line («Включён · Apple TV», «Нет связи»), on or off alike */ : !e.available ? t('state.unavailable') : e.state === 'on' ? t('state.on') : e.state === 'off' ? t('state.off') : tileStatus(device, t, lang); // a tile says «Выключено»; «Выкл» is for small mode buttons (critique 19.11.2026)
   const line2 = sub ?? (device.kind === 'climate' || device.kind === 'light' ? tileStatus(device, t, lang) : onToggle ? [switched, roomShown].filter(Boolean).join(' · ') : [tileStatus(device, t, lang), roomShown].filter(Boolean).join(' · '));
   // where the page's heading carries the room («Свет» under «Ванная»), assistive tech gets the device's full name: eight buttons «Свет» tell nothing apart
   const full = label !== ownName && ownName ? ownName : label;

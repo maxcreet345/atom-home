@@ -57,7 +57,7 @@ export function deviceVerdict(d: Dev, cx: ListContext = {}): ListVerdict {
   if (d.kind === 'camera' && cx.cameras && !cx.cameras.has(d.key)) return { shown: false, group: null, why: 'another stream of a camera' };
   if (OPERATED_KINDS.includes(d.kind)) return { shown: true, group: GROUP_OF[d.kind]!, why: d.kind };
   // an appliance card added from the catalog that reads rather than switches (a washer, a dryer: src/appliances/): an appliance, not a sensor
-  if (d.key.startsWith('p:') && d.kind === 'measurement') return { shown: true, group: 'appliances', why: 'appliance card' };
+  if (d.key.startsWith('p:') && (d.kind === 'measurement' || d.kind === 'environment')) return { shown: true, group: 'appliances', why: 'appliance card' };
   if (RELAY_KINDS.includes(d.kind)) return relayIsAppliance(d) ? { shown: true, group: 'appliances', why: 'appliance on a plug or relay', toggle: true } : { shown: false, group: null, why: d.kind === 'socket' ? 'bare plug' : 'relay or plug' };
   return { shown: false, group: null, why: HIDDEN_WHY[d.kind] ?? 'not a device' };
 }
