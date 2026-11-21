@@ -334,12 +334,15 @@ export function suggestBindings(reg: Registry, p: Profile, deviceId?: string): R
     if (!s && r.sibling) s = one(others.filter(c => (!!main && named(c, oid(main))) || twins.has(devOf(c.id) ?? '')));
     // the appliance's socket: named after the appliance (`…_washer_socket_power`); a socket called otherwise is the installer's choice.
     // The socket's own settings (`…_plug_led`, `…_plug_auto_off`) are not the socket
-    if (!s && r.plug) s = one(others.filter(c => /plug|socket/.test(oid(c.id)) && [stem, main ? oid(main) : ''].some(by => !!by && named(c, by)) && !reg.entities.find(e => e.entity_id === c.id)?.entity_category));
+    // The name must be whole: `plug` or `socket` comes right after it (`living_humidifier_2_plug` is a second humidifier's), and what the
+    // appliance's entities share must be more than the room's word (`living` alone would take any socket of the room)
+    if (!s && r.plug) { const bys = [stem.includes('_') ? stem : '', main ? oid(main) : ''].filter(Boolean);
+      s = one(others.filter(c => bys.some(by => /^_(plug|socket)(_|$)/.test(oid(c.id).slice(by.length)) && oid(c.id).startsWith(by)) && !reg.entities.find(e => e.entity_id === c.id)?.entity_category)); }
     put(r, s);
   }
   // what the module finds by itself fills the fields still open — only with entities of the chosen appliance (two feeders never mix)
   const m = moduleMatch(reg, p);
-  if (m) for (const r of p.roles) { const e = m.entities[r.id]; if (e && reg.states[e] && r.domains.includes(domainOf(e)) && ofDevice(reg, p, e, deviceId)) put(r, e); }
+  if (m) for (const r of p.roles) { const e = m.entities[r.id]; if (!out[r.id] && e && reg.states[e] && r.domains.includes(domainOf(e)) && ofDevice(reg, p, e, deviceId)) out[r.id] = e; } // the module's own finding may be one entity for two fields (a kettle seen as one switch)
   return out;
 }
 /** The room bindings a scheme suggests for one area: the area's own head and its air sensor; the timer and the temperatures by the head's name. */

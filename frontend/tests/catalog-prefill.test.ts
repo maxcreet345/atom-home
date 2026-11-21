@@ -152,3 +152,12 @@ test('a new card goes «В комнате» when it has a room and may stand in 
   // every appliance card of the house, added from Home with nothing touched, lands in its device's room (the scale has none: Home)
   for (const p of PROFILES.filter(x => x.renderer === 'appliance' && x.models.length)) for (const d of devicesFor(live, p)) assert.deepEqual(defaultPlacement(p, d.areaId), d.areaId ? ['room'] : ['home'], p.id);
 });
+
+test('prefill: a socket is the appliance\'s only by its whole name — a second humidifier\'s, or the room\'s other socket, is not taken', { skip }, () => {
+  const rename = (reg: Registry, from: string, to: string) => { const e = reg.entities.find(x => x.entity_id === from)!; e.entity_id = to; reg.states[to] = { ...reg.states[from], entity_id: to } as never; delete reg.states[from]; };
+  assert.equal(first('xiaomi.humidifier2').plug, 'switch.living_humidifier_plug');
+  const second = clone(); rename(second, 'switch.living_humidifier_plug', 'switch.living_humidifier_2_plug');
+  assert.equal(first('xiaomi.humidifier2', second).plug, undefined, '«…_humidifier_2_plug» is another humidifier\'s socket');
+  const other = clone(); rename(other, 'switch.living_humidifier_plug', 'switch.living_tv_plug');
+  assert.equal(first('xiaomi.humidifier2', other).plug, undefined, 'the room\'s word alone names no socket');
+});
