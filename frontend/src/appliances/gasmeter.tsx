@@ -50,7 +50,7 @@ export function GasMeterSheet({ view, registry, host, t, lang, onClose, room, wi
     <p className="at-gm-note">{gk(t, b.camera ? 'how' : 'howNoCamera')}</p></section>;
   return <div className={`at-kt-sheet at-gm-sheet ${wide ? 'is-wide' : ''}`} data-appliance="gasmeter">
     <div className="hm-sheet-head at-kt-head"><span className="at-kt-face at-gm-face" aria-hidden="true"><Icon name="flame" size={24} /></span>
-      <div>{room && <small>{room}</small>}<h2>{view.device.name}</h2></div>
+      <div>{room && <small>{room}</small>}<h2>{view.instance.name ?? (view.profile.kindKey ? t(view.profile.kindKey as Key) : view.device.name)}</h2></div>
       <button type="button" className="hm-icon-btn" aria-label={t('ui.closeSheet')} onClick={onClose}><Icon name="close" size={20} /></button></div>
     {offline && <p className="at-gm-warn" role="status">{t('ui.offline')}</p>}
     <div className="at-kt-cols"><div className="at-kt-col"><Still g={g} registry={registry} host={host} t={t} /></div><div className="at-kt-col">{reading}{figs}</div></div>

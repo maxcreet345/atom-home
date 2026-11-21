@@ -52,7 +52,7 @@ export function readGasMeter(reg: Registry, b: Record<string, string>, now = Dat
   // the automation refused the AI's figure (it was below the reading or grew faster than the meter can): it is said, never shown as the reading
   const rejected = answerValue !== null && value !== null && Math.abs(answerValue - value) > 0.05;
   const cam = st('camera');
-  return { available: !!ms && ms.state !== 'unavailable', value, unit, lastRead, answer, answerValue, unread, problem: stale ? 'stale' : rejected ? 'rejected' : unread ? 'unread' : null, camera: b.camera ?? null, cameraOnline: !!cam && !unavailable(cam.state) };
+  return { available: !!ms && ms.state !== 'unavailable', value, unit, lastRead, answer, answerValue, unread, problem: !(ms && ms.state !== 'unavailable') ? null : stale ? 'stale' : rejected ? 'rejected' : unread ? 'unread' : null, camera: b.camera ?? null, cameraOnline: !!cam && !unavailable(cam.state) };
 }
 export const m3 = (v: number | null, lang: Lang, t: T, digits = 3) => v === null ? '—' : `${num(v, lang, digits)} ${t('gas.m3' as Key)}`;
 

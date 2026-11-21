@@ -70,7 +70,7 @@ export function ScaleSheet({ view, registry, host, t, lang, onClose, room, wide 
   </section>;
   return <div className={`at-kt-sheet at-sc-sheet ${wide ? 'is-wide' : ''}`} data-appliance="scale">
     <div className="hm-sheet-head at-kt-head at-sc-head"><span className="at-kt-face at-sc-face" aria-hidden="true"><ProductPhoto src={photo} eager><ScaleGlyph /></ProductPhoto></span>
-      <div>{room && <small>{room}</small>}<h2>{view.device.name}</h2></div>
+      <div>{room && <small>{room}</small>}<h2>{view.instance.name ?? (view.profile.kindKey ? t(view.profile.kindKey as Key) : view.device.name)}</h2></div>
       <button type="button" className="hm-icon-btn" aria-label={t('ui.closeSheet')} onClick={onClose}><Icon name="close" size={20} /></button></div>
     <div className="at-kt-cols"><div className="at-kt-col">{hero}</div><div className="at-kt-col">{people}</div></div>
   </div>;

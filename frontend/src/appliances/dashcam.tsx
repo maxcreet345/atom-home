@@ -32,7 +32,7 @@ export function DashcamSheet({ view, registry, host, t, lang, onClose, room, wid
   const offline = host.online === false;
   const parkingPic = b.parkingPhoto ? host.previewFrame?.(b.parkingPhoto) ?? d.parkingPhoto : null;
   const battery = b.voltage ? <section className={`at-kt-card at-dc-card at-dc-battery ${d.battery === 'low' ? 'is-warn' : ''}`} data-part="battery"><h3>{dk(t, 'battery')}</h3>
-    <div className="at-dc-pad"><p className="at-dc-big"><b>{d.volts === null ? '—' : num(d.volts, lang, 1)}</b><i>{dk(t, 'v')}</i></p>
+    <div className="at-dc-pad"><p className="at-dc-big"><b>{d.volts === null ? '—' : num(d.volts, lang, 1)}</b>{d.volts !== null && <i>{dk(t, 'v')}</i>}</p>
       <p className="at-dc-sub">{d.battery ? dk(t, `bat.${d.battery}`) : t('state.unavailable')}</p></div></section> : null;
   const alarm = b.alarm ? <section className={`at-kt-card at-dc-card at-dc-alarm ${d.alarm?.fresh && /collision|suspicious|alarm/.test(d.alarm.kind) ? 'is-alert' : ''}`} data-part="alarm"><h3>{dk(t, 'lastAlarm')}</h3>
     <div className="at-dc-pad">{d.alarm ? <><p className="at-dc-ev"><Icon name={d.alarm.kind === 'battery_protection' ? 'battery' : 'warning'} size={22} /><b>{alarmText(d.alarm.kind, t)}</b></p><p className="at-dc-sub">{whenText(d.alarm.at, t, lang)}</p>
@@ -47,9 +47,9 @@ export function DashcamSheet({ view, registry, host, t, lang, onClose, room, wid
   const park = parkingPic ? <section className="at-kt-card at-dc-card" data-part="parking"><h3>{dk(t, 'parkingPhoto')}</h3><div className="at-dc-pad"><img className="at-dc-pic" src={parkingPic} alt={dk(t, 'parkingPhoto')} loading="lazy" /></div></section> : null;
   return <div className={`at-kt-sheet at-dc-sheet ${wide ? 'is-wide' : ''}`} data-appliance="dashcam">
     <div className="hm-sheet-head at-kt-head"><span className="at-kt-face at-dc-face" aria-hidden="true"><ProductPhoto src={photo} eager><Icon name="car" size={26} /></ProductPhoto></span>
-      <div>{room && <small>{room}</small>}<h2>{view.device.name}</h2></div>
+      <div>{room && <small>{room}</small>}<h2>{view.instance.name ?? (view.profile.kindKey ? t(view.profile.kindKey as Key) : view.device.name)}</h2></div>
       <button type="button" className="hm-icon-btn" aria-label={t('ui.closeSheet')} onClick={onClose}><Icon name="close" size={20} /></button></div>
-    {(offline || !d.available) && <p className="at-dc-warn" role="status">{offline ? t('ui.offline') : dk(t, 'noLink')}</p>}
+    {offline && <p className="at-dc-warn" role="status">{t('ui.offline')}</p>}
     <div className="at-kt-cols"><div className="at-kt-col"><Where d={d} t={t} lang={lang} />{battery}</div><div className="at-kt-col">{alarm}{park}{link}</div></div>
   </div>;
 }
