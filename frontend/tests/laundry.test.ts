@@ -88,7 +88,7 @@ test('the washer\'s tile line in every state', () => {
   assert.equal(at('error', { [b.error]: { state: iso(NOW), attributes: { event_type: 'water_drain_error' } } }), 'Ошибка: вода не сливается');
   assert.equal(at('error', { [b.error]: { state: 'unknown', attributes: { event_type: null } } }), 'Ошибка: машина сообщила об ошибке');
   assert.equal(at('reserved', { [b.delayEndAt]: { state: '2026-11-21T18:30:00Z' } }).startsWith('Отложено · закончит в'), true);
-  assert.equal(at('unavailable'), null, 'the tile says «Недоступно» itself');
+  assert.equal(at('unavailable'), 'Нет связи', 'said by the card itself (audit 22.11.2026, H-3)');
   // the generic tile of a primary that is not there: the instance's own device is unavailable
   const v = instanceView(withStates({ [b.status]: { state: 'unavailable' } }), 'x', w)!; assert.equal(v.device.available, false);
 });
@@ -121,7 +121,10 @@ test('the dryer\'s tile line in every state', () => {
   assert.deepEqual(readLaundry(withStates({ [b.alarm]: { state: 'FilterAlarm, DoorA_Opened' } }), d, t, NOW)!.alerts, ['FilterAlarm', 'DoorA_Opened']);
   assert.equal(alertText('FilterAlarm', t), 'Почистите фильтр ворса');
   assert.equal(at('active', 'delaywash', { [b.running]: { state: 'off' } }).startsWith('Отложено · закончит в'), true);
-  assert.equal(line(withStates({ [b.running]: { state: 'unavailable' } }), d), null);
+  assert.equal(line(withStates({ [b.running]: { state: 'unavailable' } }), d), 'Нет связи');
+  // the state sensor silent while the «running» flag still reads «off», and a machine that says «unknown»: «Нет связи», never «Выключено» or «Ожидание»
+  if (b.machine) assert.equal(line(withStates({ [b.machine]: { state: 'unavailable' } }), d), 'Нет связи');
+  assert.equal(line(withStates({ [b.running]: { state: 'unknown' } }), d), 'Нет связи');
 });
 test('start, pause and stop are the machine\'s own controls; only what the machine has is offered; nothing while remote control is off', () => {
   const w = washerInst(), d = dryerInst();

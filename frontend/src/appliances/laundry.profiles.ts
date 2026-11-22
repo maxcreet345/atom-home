@@ -103,7 +103,7 @@ export interface Laundry {
 }
 const n = (v: unknown): number | null => { if (v === null || v === undefined || typeof v === 'boolean' || (typeof v === 'string' && !v.trim())) return null; const x = Number(v); return Number.isFinite(x) ? x : null; };
 const ms = (v: unknown): number | null => { if (typeof v !== 'string' || !/^\d{4}-\d\d-\d\d/.test(v)) return null; const x = Date.parse(v); return Number.isFinite(x) ? x : null; };
-const dead = (s: StateRow | undefined) => !s || s.state === 'unavailable';
+const dead = (s: StateRow | undefined) => !s || s.state === 'unavailable' || s.state === 'unknown'; // audit 22.11.2026, H-3: a machine that says nothing is not «ожидание» with a live «Запустить»
 const onOff = (s: StateRow | undefined): boolean | null => s?.state === 'on' ? true : s?.state === 'off' ? false : null;
 const familyKind = (profileId: string): 'lg' | 'samsung' | null => profileId === LG_WASHER.id ? 'lg' : profileId === SAMSUNG_DRYER.id ? 'samsung' : null;
 /** «Готово» stays this long after an LG washer finished and switched itself off — until it is switched on or started again */
@@ -188,7 +188,7 @@ export function errorWords(l: Laundry, t: T): string { const e = l.error; if (!e
 /** What the machine is doing, in a few words: the tile's line and the sheet's status. */
 export function lineOf(l: Laundry, t: T, lang: Lang): string | null {
   switch (l.phase) {
-    case 'unavailable': return null; // the tile says «Недоступно» by itself
+    case 'unavailable': return t('state.unavailable'); // said by the card itself: the tile's own word goes by the main entity alone, and a machine whose state sensor is silent while its «running» flag still reads «off» was «Выключено» (audit 22.11.2026, H-3)
     case 'off': return t('laundry.off');
     case 'idle': return t('laundry.idle');
     case 'delay': return l.delayAt !== null ? t('laundry.delayEnds', { time: clockText(l.delayAt, lang) }) : t('laundry.delay');
