@@ -3,6 +3,11 @@ import type { Kind } from './kinds.ts';
 import { normaliseInstances, type ProfileInstance } from './card-catalog.ts';
 
 export type Language = 'ru' | 'ro' | 'en';
+/** The panel's look («Оформление»): colours, shadows, radii and the wall over the same cards and the same places of the buttons. `classic` is the look the panel has without the setting; it is not stored. */
+export const LOOKS = ['classic', 'glass', 'glass-clear', 'soft', 'premium', 'aurora', 'minimal', 'material'] as const;
+export type Look = typeof LOOKS[number];
+export function isLook(v: unknown): v is Look { return typeof v === 'string' && (LOOKS as readonly string[]).includes(v); }
+
 export interface RoomOverride { name?: string; photo?: string | null; hidden?: boolean; order?: number; /** the house feed (an SPM channel key) the room hangs on: the Energy panel splits the rooms by apartment with it */ feed?: string }
 export interface DeviceOverride { enabled?: boolean; name?: string; roomId?: string; icon?: string; kind?: Kind; mergeInto?: string; order?: number; photo?: string | null; /** stock illustration: a DeviceArtType, 'none', or unset = guessed */ art?: string; /** pinned to the Home face */ favorite?: boolean }
 export interface ModuleOverride { enabled?: boolean; entities?: Record<string, string>; options?: Record<string, string> }
@@ -17,7 +22,7 @@ export interface CustomButton { id: string; label: string; icon?: string; roomId
 export interface Tariff { from: string; lei: number }
 export interface HouseConfig {
   schemaVersion: 1;
-  home: { name: string; logo?: string | null; language: Language; theme: 'light' | 'dark' };
+  home: { name: string; logo?: string | null; language: Language; theme: 'light' | 'dark'; look?: Look };
   rooms: Record<string, RoomOverride>;
   devices: Record<string, DeviceOverride>;
   entities: Record<string, EntityOverride>;
@@ -44,6 +49,7 @@ export function normaliseConfig(input: unknown): { config: HouseConfig; warnings
     if (typeof input.home.logo === 'string' && /^(data:image\/(png|jpeg|webp);base64,|\/local\/|https?:\/\/)/.test(input.home.logo)) out.home.logo = input.home.logo.slice(0, 200000);
     if (input.home.language === 'ru' || input.home.language === 'ro' || input.home.language === 'en') out.home.language = input.home.language;
     if (input.home.theme === 'light' || input.home.theme === 'dark') out.home.theme = input.home.theme;
+    if (isLook(input.home.look) && input.home.look !== 'classic') out.home.look = input.home.look;
   }
   const compact = (o: Record<string, unknown>) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined));
   const map = (src: unknown, pick: (v: Record<string, unknown>) => Record<string, unknown> | null) => {

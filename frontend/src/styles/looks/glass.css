@@ -1,0 +1,122 @@
+/* Look «Жидкое стекло, мягкое»: dense glass tiles, a floating tab bar on the phone; real blur only on the rail, the tab bar and the sheet. Every rule is scoped to [data-look="glass"]: the classic look matches none of them. Colours, shadows, radii and the wall only — no layout. */
+.hm-shell.ah-shell[data-look="glass"][data-theme="dark"]{
+  --ah-tile:#0a2126a3;                                   
+  --ah-tile-shadow:
+    inset 0 1px 0 #ffffff38,                             
+    inset 0 0 0 1px #ffffff0f,                           
+    inset 0 28px 36px -30px #ffffff1f,                   
+    0 1px 1px #00000033,                                 
+    0 14px 28px -16px #00000073;                         
+  --ah-lift-shadow:
+    inset 0 1px 0 #ffffff59, inset 0 0 0 1px #ffffff1a, inset 0 28px 36px -30px #ffffff2e,
+    0 2px 2px #00000033, 0 22px 40px -16px #00000099;    
+  --ah-bar:#0b1c1fc7;                                    
+  --ah-sheet:#16282bd1;                                  
+  --ah-group:#ffffff12;                                  
+  --ah-line:#ffffff1c;
+  --ah-muted:#ffffffdb;
+  --ah-radius:24px;                                      
+  --lg-blur-bar:blur(24px) saturate(1.6);
+  --lg-blur-sheet:blur(32px) saturate(1.7);
+  --lg-edge:inset 0 1px 0 #ffffff2e, inset 0 0 0 1px #ffffff12;
+  --wp:#16383c;
+}
+.hm-shell.ah-shell[data-look="glass"]:not([data-theme="dark"]){
+  --ah-tile:#ffffffc7;                                   
+  --ah-tile-shadow:
+    inset 0 1px 0 #ffffff, inset 0 0 0 1px #1018280a,
+    0 1px 2px #1018280f, 0 12px 26px -16px #10182838;    
+  --ah-lift-shadow:inset 0 1px 0 #fff, inset 0 0 0 1px #1018280f, 0 2px 4px #10182814, 0 22px 40px -18px #10182852;
+  --ah-bar:#f6f7fae8;                                    
+  --ah-sheet:#f4f5f9e0;                                  
+  --ah-group:#ffffffd9;
+  --ah-line:#1018281a;                                   
+  --ah-radius:24px;
+  --lg-blur-bar:blur(24px) saturate(1.8);
+  --lg-blur-sheet:blur(32px) saturate(1.8);
+  --lg-edge:inset 0 1px 0 #ffffff, inset 0 0 0 1px #10182812;
+  --wp:#e6eaf1;
+}
+.hm-shell.ah-shell[data-look="glass"][data-theme="dark"] .ah-wallpaper{
+  background:
+    radial-gradient(70% 55% at 12% 0%,#2b716b 0,transparent 68%),
+    radial-gradient(60% 50% at 96% 100%,#1d5f66 0,transparent 70%),
+    radial-gradient(40% 35% at 70% 20%,#27606680 0,transparent 75%),
+    linear-gradient(165deg,#1c4d50,#143a3f 55%,#0e2a2f);
+  background-size:auto;
+}
+.hm-shell.ah-shell[data-look="glass"]:not([data-theme="dark"]) .ah-wallpaper{
+  background:
+    radial-gradient(70% 55% at 10% 0%,#dcd8fb 0,transparent 65%),
+    radial-gradient(60% 50% at 100% 100%,#d2ecee 0,transparent 68%),
+    linear-gradient(165deg,#eef0f6,#e6eaf1 60%,#e1e6ee);
+}
+.hm-shell.ah-shell[data-look="glass"]{font-variant-numeric:tabular-nums}
+.hm-shell.ah-shell[data-look="glass"] .hm-head h1{font-size:1.75rem;letter-spacing:-.02em;line-height:1.12}
+.hm-shell.ah-shell[data-look="glass"] .ah-tile.is-on{
+  background:linear-gradient(180deg,#e9e6ff,#cdc7f5);
+  box-shadow:inset 0 1px 0 #ffffff, inset 0 0 0 1px #ffffff66, 0 1px 1px #0000002e, 0 14px 30px -14px #8f86e699;
+}
+.hm-shell.ah-shell[data-look="glass"][data-theme="dark"] .ah-tile.is-off{
+  background:#0a212652;
+  box-shadow:inset 0 0 0 1px #ffffff14;
+  outline:1.5px dashed #ffffff3d;outline-offset:-5px;
+}
+.hm-shell.ah-shell[data-look="glass"]:not([data-theme="dark"]) .ah-tile.is-off{
+  background:#ffffff66;
+  box-shadow:none;
+  outline:1.5px dashed #10182840;outline-offset:-5px;
+}
+.hm-shell.ah-shell[data-look="glass"] .hm-sidebar{
+  background:var(--ah-bar);
+  -webkit-backdrop-filter:var(--lg-blur-bar);backdrop-filter:var(--lg-blur-bar);
+  border-right:0;box-shadow:inset -1px 0 0 var(--ah-line);
+}
+.hm-shell.ah-shell[data-look="glass"] .hm-sidebar nav .hm-nav-ind{
+  background:linear-gradient(180deg,#ffffff24,#ffffff12);box-shadow:var(--lg-edge);border-radius:16px;
+}
+.hm-shell.ah-shell[data-look="glass"]:not([data-theme="dark"]) .hm-sidebar nav .hm-nav-ind{background:#ffffffd9;box-shadow:var(--lg-edge),0 6px 16px -10px #10182840}
+.hm-shell.ah-shell[data-look="glass"].is-narrow .hm-tabbar{
+  left:10px;right:10px;bottom:calc(8px + env(safe-area-inset-bottom));
+  padding:5px 6px;border-top:0;border-radius:28px;
+  background:color-mix(in srgb,var(--ah-bar-solid) 94%,transparent);
+  -webkit-backdrop-filter:var(--lg-blur-bar);backdrop-filter:var(--lg-blur-bar);
+  box-shadow:var(--lg-edge),0 10px 30px -8px #00000080;
+}
+.hm-shell.ah-shell[data-look="glass"].is-narrow:not([data-theme="dark"]) .hm-tabbar{box-shadow:var(--lg-edge),0 10px 30px -10px #10182859}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .hm-shell.ah-shell[data-look="glass"] .hm-sidebar,.hm-shell.ah-shell[data-look="glass"].is-narrow .hm-tabbar{background:var(--ah-bar-solid)}
+  .hm-shell.ah-shell[data-look="glass"][data-theme="dark"] :is(.hm-sheet,.hm-confirm){background:#1c2a2c}
+  .hm-shell.ah-shell[data-look="glass"]:not([data-theme="dark"]) :is(.hm-sheet,.hm-confirm){background:#f2f2f7}
+}
+.hm-shell.ah-shell[data-look="glass"] .hm-scrim{background:#040c0e85;-webkit-backdrop-filter:none;backdrop-filter:none}
+.hm-shell.ah-shell[data-look="glass"]:not([data-theme="dark"]) .hm-scrim{background:#1c243359}
+.hm-shell.ah-shell[data-look="glass"] .hm-sheet,.hm-shell.ah-shell[data-look="glass"] .hm-confirm{
+  background:var(--ah-sheet);
+  -webkit-backdrop-filter:var(--lg-blur-sheet);backdrop-filter:var(--lg-blur-sheet);
+  box-shadow:var(--lg-edge),0 30px 80px -10px #00000099;
+}
+.hm-shell.ah-shell[data-look="glass"] .hm-sheet-head{background:transparent}
+.hm-shell.ah-shell[data-look="glass"].is-wide .hm-sheet{border-radius:32px}
+.hm-shell.ah-shell[data-look="glass"] .hm-sheet{border-radius:32px 32px 0 0}
+.hm-shell.ah-shell[data-look="glass"][data-theme="dark"] :is(.ah-segments,.hm-range-tabs){background:#0000003d;box-shadow:inset 0 1px 2px #00000059,inset 0 0 0 1px #ffffff0f}
+.hm-shell.ah-shell[data-look="glass"][data-theme="dark"] .ah-segments button.is-active,
+.hm-shell.ah-shell[data-look="glass"][data-theme="dark"] .hm-range-tabs button.is-active{
+  background:linear-gradient(180deg,#ffffff3d,#ffffff24);color:#fff; 
+  box-shadow:inset 0 1px 0 #ffffff59,0 2px 8px #00000040;
+}
+.hm-shell.ah-shell[data-look="glass"]:not([data-theme="dark"]) :is(.ah-segments,.hm-range-tabs){background:#10182814;box-shadow:inset 0 1px 2px #1018281f}
+.hm-shell.ah-shell[data-look="glass"]:not([data-theme="dark"]) :is(.ah-segments,.hm-range-tabs) button.is-active{background:#fff;box-shadow:0 1px 2px #1018281f,0 4px 10px -4px #10182833}
+.hm-shell.ah-shell[data-look="glass"] :is(.hm-pill:not(.is-primary,.is-main,.is-danger),.hm-icon-btn){box-shadow:var(--lg-edge)}
+.hm-shell.ah-shell[data-look="glass"] .hm-rows{background:var(--ah-line);box-shadow:var(--lg-edge);border-radius:18px}
+@media (prefers-reduced-transparency:reduce){
+  .hm-shell.ah-shell[data-look="glass"][data-theme="dark"]{--ah-tile:#12292d;--ah-bar:#0f1a1c;--ah-sheet:#1c2a2c}
+  .hm-shell.ah-shell[data-look="glass"]:not([data-theme="dark"]){--ah-tile:#ffffff;--ah-bar:#f6f6f8;--ah-sheet:#f2f2f7}
+  .hm-shell.ah-shell[data-look="glass"] :is(.hm-sidebar,.hm-tabbar,.hm-sheet,.hm-confirm){-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+}
+@media (prefers-contrast:more){
+  .hm-shell.ah-shell[data-look="glass"][data-theme="dark"]{--ah-tile:#0c1f23;--ah-line:#ffffff66;--ah-muted:#ffffff}
+  .hm-shell.ah-shell[data-look="glass"] .ah-tile{box-shadow:inset 0 0 0 1.5px var(--ah-line)}
+}
+.hm-shell.ah-shell[data-look="glass"]:not([data-theme="dark"]) :is(.hm-chips>button:not(.is-active),.hm-icon-btn,.ah-tile-more,.hm-light-more){background:#10182814}
+.hm-shell.ah-shell[data-look="glass"]:not([data-theme="dark"]){--ah-sheet:#f4f5f9}

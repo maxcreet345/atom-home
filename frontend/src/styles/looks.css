@@ -1,0 +1,8 @@
+/* The panel's looks («Оформление» in the settings): one file each, all scoped to the shell's data-look. The classic look has no file. */
+@import "./looks/glass.css";
+@import "./looks/glass-clear.css";
+@import "./looks/soft.css";
+@import "./looks/premium.css";
+@import "./looks/aurora.css";
+@import "./looks/minimal.css";
+@import "./looks/material.css";

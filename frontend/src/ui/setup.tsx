@@ -4,7 +4,7 @@ import { Icon } from './primitives.tsx';
 import type { Registry } from '../model/registry.ts';
 import { discover, NO_ROOM, type Home, type HomeDevice } from '../model/discover.ts';
 import { SECTIONS, type Kind } from '../model/kinds.ts';
-import { dayKey, normaliseConfig, normaliseTariffs, offeredSections, tariffDayProblem, tariffDeleteEffect, tariffPrice, withNewTariff, type HouseConfig, type CustomButton, type Tariff } from '../model/config.ts';
+import { LOOKS, isLook, dayKey, normaliseConfig, normaliseTariffs, offeredSections, tariffDayProblem, tariffDeleteEffect, tariffPrice, withNewTariff, type HouseConfig, type CustomButton, type Tariff } from '../model/config.ts';
 import { languages, type T, type Key } from '../i18n/index.ts';
 import { checkImport, configCounts, exportConfig, type PhotoStore } from '../runtime/store.ts';
 import { MODULES, claimedEntities } from '../modules/index.ts';
@@ -354,6 +354,7 @@ function HomeTab({ config, fresh, patch, ask, onImport, t, lock }: { config: Hou
     <label className="at-field"><span>{t('setup.homeName')}</span><DraftInput type="text" value={config.home.name} maxLength={60} autocomplete="off" onCommit={v => { if (!v.trim()) return t('setup.err.homeName'); patch(c => { c.home.name = v.trim(); }); }} /></label>
     <label className="at-field"><span>{t('setup.language')}</span><select value={config.home.language} onChange={e => patch(c => { c.home.language = (e.target as HTMLSelectElement).value as HouseConfig['home']['language']; })}>{languages.map(l => <option value={l}>{({ ru: 'Русский', ro: 'Română', en: 'English' })[l]}</option>)}</select></label>
     <label className="at-field"><span>{t('setup.theme')}</span><select value={config.home.theme} onChange={e => patch(c => { c.home.theme = (e.target as HTMLSelectElement).value as 'light' | 'dark'; })}><option value="light">{t('setup.theme.light')}</option><option value="dark">{t('setup.theme.dark')}</option></select></label>
+    <label className="at-field"><span>{t('setup.look')}</span><select data-field="look" value={config.home.look ?? 'classic'} onChange={e => patch(c => { const v = (e.target as HTMLSelectElement).value; if (isLook(v) && v !== 'classic') c.home.look = v; else delete c.home.look; })}>{LOOKS.map(l => <option value={l}>{t(`setup.look.${l}` as Key)}</option>)}</select></label>
     <label className="at-field"><span>{t('setup.logo')}</span><DraftInput type="url" inputMode="url" {...CODE} value={config.home.logo ?? ''} placeholder="/local/logo.png" onCommit={logo} /></label>
     <div className="hm-chips"><button type="button" data-action="export" aria-disabled={sending || undefined} onClick={() => { if (busy.current) return; version.current++; setText(exportConfig(config)); setErr(''); }}>{t('setup.export')}</button><button type="button" data-action="import" ref={importer} onClick={doImport} disabled={!text.trim()} aria-disabled={sending || undefined} aria-busy={sending || undefined}>{t('setup.import')}</button><button type="button" data-action="reset" aria-disabled={sending || undefined} onClick={() => { if (!busy.current) ask({ text: t('setup.reset.ask'), yes: t('setup.reset.yes'), run: () => send(normaliseConfig({ schemaVersion: 1, home: fresh().home }).config) }); }}>{t('setup.reset')}</button></div>
     {err && <p className="hm-badge tone-danger at-setup-err" role="alert" id={errId}>{err}</p>}
