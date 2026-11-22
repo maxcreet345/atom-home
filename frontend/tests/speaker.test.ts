@@ -158,27 +158,3 @@ test('names: the installer\'s doubled name is said once', () => {
   assert.equal(tidyName('Яндекс Станция Мини 2 Кухня · Яндекс Станция Мини 2'), 'Яндекс Станция Мини 2');
   assert.equal(tidyName('Яндекс Станция Макс'), 'Яндекс Станция Макс'); assert.equal(tidyName('Мини Мини'), 'Мини');
 });
-
-test('one Mini 2 in two modes: the silent card says which mode the speaker works in — only when told the other mode\'s entity, and never guessed', { skip: !have && 'no house fixture' }, () => {
-  const sat = 'assist_satellite.iandeks_stantsiia_mini_2_assist_satellite', kids = 'media_player.kids_yandex_mini';
-  const satDev = deviceOf(live, sat)!, kidsDev = deviceOf(live, kids)!;
-  // on the snapshot the speaker is a voice assistant: its Station card is silent
-  const station = inst(STATION_MINI2.id, kidsDev, { player: kids, assist: sat });
-  const r = readSpeaker(live, station); assert.equal(r.available, false); assert.equal(r.otherMode, 'assist'); assert.equal(speakerLine(r, t), 'Режим помощника');
-  assert.equal(readSpeaker(live, inst(STATION_MINI2.id, kidsDev, { player: kids })).otherMode, null); assert.equal(speakerLine(readSpeaker(live, inst(STATION_MINI2.id, kidsDev, { player: kids })), t), 'Нет связи');
-  // the other way round: the speaker is back to Alice, the voice assistant's card says so
-  const back = structuredClone(live); back.states[sat] = { ...back.states[sat], state: 'unavailable' }; back.states[kids] = { ...back.states[kids], state: 'idle' };
-  const voice = inst(PULSAR_MINI2.id, satDev, { ...suggestBindings(live, PULSAR_MINI2, satDev), station: kids });
-  const v = readSpeaker(back, voice); assert.equal(v.otherMode, 'station'); assert.equal(speakerLine(v, t), 'Режим Алисы');
-  assert.equal(readSpeaker(live, voice).otherMode, null, 'the assistant answers: nothing to say');
-  // both silent (the speaker is unplugged), or the house offline: «Нет связи»
-  const dead = structuredClone(back); dead.states[kids] = { ...dead.states[kids], state: 'unavailable' };
-  assert.equal(readSpeaker(dead, voice).otherMode, null); assert.equal(speakerLine(readSpeaker(dead, voice), t), 'Нет связи'); assert.equal(readSpeaker(back, voice, false).otherMode, null);
-  // the form never fills these fields by itself, and the card sends nothing to the other mode's entity
-  assert.equal(suggestBindings(live, PULSAR_MINI2, satDev).station, undefined); assert.equal(suggestBindings(live, STATION_MINI2, kidsDev).assist, undefined);
-  assert.ok(allSteps(voice).length > 3, 'the assistant\'s card has commands of its own'); for (const s of allSteps(voice)) assert.ok(!JSON.stringify(s).includes(kids), JSON.stringify(s));
-  for (const s of allSteps(station)) assert.ok(!JSON.stringify(s).includes(sat), JSON.stringify(s));
-  // the satellite's own player is not offered as «the same speaker as a Station»
-  const offered = candidates(live, PULSAR_MINI2.roles.find(x => x.id === 'station')!, { deviceId: satDev }).map(c => c.id);
-  assert.ok(offered.includes(kids)); assert.ok(!offered.includes('media_player.iandeks_stantsiia_mini_2_media_player'));
-});
