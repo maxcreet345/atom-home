@@ -168,7 +168,7 @@ test('one Mini 2 in two modes: the silent card says which mode the speaker works
   assert.equal(readSpeaker(live, inst(STATION_MINI2.id, kidsDev, { player: kids })).otherMode, null); assert.equal(speakerLine(readSpeaker(live, inst(STATION_MINI2.id, kidsDev, { player: kids })), t), 'Нет связи');
   // the other way round: the speaker is back to Alice, the voice assistant's card says so
   const back = structuredClone(live); back.states[sat] = { ...back.states[sat], state: 'unavailable' }; back.states[kids] = { ...back.states[kids], state: 'idle' };
-  const voice = inst(PULSAR_MINI2.id, satDev, { satellite: sat, station: kids });
+  const voice = inst(PULSAR_MINI2.id, satDev, { ...suggestBindings(live, PULSAR_MINI2, satDev), station: kids });
   const v = readSpeaker(back, voice); assert.equal(v.otherMode, 'station'); assert.equal(speakerLine(v, t), 'Сейчас Станция с Алисой');
   assert.equal(readSpeaker(live, voice).otherMode, null, 'the assistant answers: nothing to say');
   // both silent (the speaker is unplugged), or the house offline: «Нет связи»
@@ -176,7 +176,7 @@ test('one Mini 2 in two modes: the silent card says which mode the speaker works
   assert.equal(readSpeaker(dead, voice).otherMode, null); assert.equal(speakerLine(readSpeaker(dead, voice), t), 'Нет связи'); assert.equal(readSpeaker(back, voice, false).otherMode, null);
   // the form never fills these fields by itself, and the card sends nothing to the other mode's entity
   assert.equal(suggestBindings(live, PULSAR_MINI2, satDev).station, undefined); assert.equal(suggestBindings(live, STATION_MINI2, kidsDev).assist, undefined);
-  for (const s of allSteps(voice)) assert.ok(!JSON.stringify(s).includes(kids), JSON.stringify(s));
+  assert.ok(allSteps(voice).length > 3, 'the assistant\'s card has commands of its own'); for (const s of allSteps(voice)) assert.ok(!JSON.stringify(s).includes(kids), JSON.stringify(s));
   for (const s of allSteps(station)) assert.ok(!JSON.stringify(s).includes(sat), JSON.stringify(s));
   // the satellite's own player is not offered as «the same speaker as a Station»
   const offered = candidates(live, PULSAR_MINI2.roles.find(x => x.id === 'station')!, { deviceId: satDev }).map(c => c.id);

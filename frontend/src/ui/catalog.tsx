@@ -85,10 +85,10 @@ function CardForm({ registry, config, rooms, t, lang, host, roomId, save, onClos
   const [bindings, setBindings] = useState<Record<string, string>>(() => editing ? { ...editing.bindings, ...told(editing.deviceId) } : { ...suggestBindings(registry, profile, firstDevice), ...told(firstDevice) });
   const [roomsDraft, setRooms] = useState<InstanceRoom[]>(() => editing?.rooms ? editing.rooms.map(r => ({ ...r, bindings: { ...r.bindings } })) : []);
   const dev = deviceId ? registry.devices.find(d => d.id === deviceId) : undefined;
-  const [name, setName] = useState(editing?.name ?? ''), [roomPicked, setRoom] = useState<string>(editing?.roomId ?? roomId ?? dev?.area_id ?? '');
+  const [name, setName] = useState(editing?.name ?? ''), [roomPicked, setRoom] = useState<string>(editing?.roomId === NO_ROOM ? '' : editing?.roomId ?? roomId ?? dev?.area_id ?? '');
   // where it goes follows the card's room — the chosen device's, the room page it was opened from — until the installer presses a place himself;
   // the room follows the chosen device until he picks one himself. An edit starts from what was saved
-  const [placed, setPlaced] = useState<Place[] | null>(editing ? editing.placement : null), [roomTouched, setRoomTouched] = useState(false);
+  const [placed, setPlaced] = useState<Place[] | null>(editing ? editing.placement : null), [roomTouched, setRoomTouched] = useState(editing?.roomId === NO_ROOM);
   // a card with no device to choose (the gas meter, the dashcam) stands where its main field's entity does, until the room is picked by hand
   const room = roomPicked || (!editing && !roomId && !roomTouched && !deviceId ? anchorRoom(registry, profile, bindings) ?? '' : '');
   const placement = placed ?? defaultPlacement(profile, room || dev?.area_id);
@@ -110,7 +110,7 @@ function CardForm({ registry, config, rooms, t, lang, host, roomId, save, onClos
   // the module drives the appliance it found: a card for another one of the same model is refused in words
   const otherDevice = !!(modDev && deviceId && deviceId !== modDev);
   const areaName = (a: string) => rooms.find(r => r.id === a)?.name ?? null;
-  const draft: ProfileInstance = { profileId: profile.id, profileVersion: profile.version, bindings, placement, ...(deviceId ? { deviceId } : {}), ...(name.trim() ? { name: name.trim() } : {}), ...(room ? { roomId: room } : {}), ...(profile.roomRoles ? { rooms: roomsDraft } : {}) };
+  const draft: ProfileInstance = { profileId: profile.id, profileVersion: profile.version, bindings, placement, ...(deviceId ? { deviceId } : {}), ...(name.trim() ? { name: name.trim() } : {}), ...(room ? { roomId: room } : roomTouched ? { roomId: NO_ROOM } /* «Без комнаты», said by hand: not the device's room */ : {}), ...(profile.roomRoles ? { rooms: roomsDraft } : {}) };
   const view = (!needDevice || deviceId) ? instanceView(registry, instanceId ?? 'draft', draft, areaName, list, k => t(k as Key)) : null;
   const missing = view ? view.incomplete : profile.roles.filter(r => r.required).map(r => r.id);
   const ready = !sameModule && !otherDevice && optsMissing.length === 0 && optsBad.length === 0 && (!needDevice || (!!deviceId && !takenBy(deviceId))) && missing.length === 0 && (self || placement.length > 0) && (!profile.roomRoles || roomsDraft.length > 0);

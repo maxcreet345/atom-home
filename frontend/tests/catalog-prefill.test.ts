@@ -211,3 +211,21 @@ test('a card with no device stands in the room of its main field: the gas meter 
   const noArea = clone(); noArea.devices.find(d => d.id === live.entities.find(e => e.entity_id === 'sensor.kitchen_gas_meter')!.device_id)!.area_id = null;
   assert.equal(anchorRoom(noArea, gas, suggestBindings(noArea, gas)), null);
 });
+
+test('prefill: a name another device is called by too names no socket — a neighbour of the same make, a second appliance HA numbered «_2», an exact namesake', { skip }, () => {
+  const hum = P('xiaomi.humidifier2'), dev = devicesFor(live, hum)[0].id;
+  const rename = (reg: Registry, from: string, to: string) => { const e = reg.entities.find(x => x.entity_id === from)!; e.entity_id = to; reg.states[to] = { ...reg.states[from], entity_id: to } as never; delete reg.states[from]; };
+  // most of the humidifier's entities carry the make's word, and so does a socket of the room: not the humidifier's
+  const make = clone(); let n = 0; for (const e of live.entities.filter(x => x.device_id === dev && live.states[x.entity_id])) if (n++ >= 2) rename(make, e.entity_id, e.entity_id.replace(/\.living_humidifier/, '.living_xiaomi'));
+  for (const e of live.entities.filter(x => /living_humidifier_plug/.test(x.entity_id))) rename(make, e.entity_id, e.entity_id.replace('living_humidifier_plug', 'living_xiaomi_plug'));
+  copyEntity(make, 'fan.living_air_purifier' in make.states ? 'fan.living_air_purifier' : Object.keys(make.states).find(k => k.startsWith('sensor.living_purifier'))!, 'sensor.living_xiaomi_purifier_pm25', { device_id: 'a-neighbour' });
+  assert.equal(stemOf(make.entities.filter(x => x.device_id === dev && make.states[x.entity_id]).map(x => x.entity_id.split('.')[1])), 'living_xiaomi');
+  assert.equal(suggestBindings(make, hum, dev).plug, undefined, 'the make\'s word is the neighbour\'s too');
+  // a second humidifier whose entities HA numbered: its name is the first one's — neither is given the socket
+  const second = clone(); for (const e of live.entities.filter(x => x.device_id === dev && live.states[x.entity_id])) copyEntity(second, e.entity_id, `${e.entity_id}_2`, { device_id: 'second-humidifier' });
+  second.devices.push({ ...second.devices.find(d => d.id === dev)!, id: 'second-humidifier' });
+  assert.equal(suggestBindings(second, hum, 'second-humidifier').plug, undefined); assert.equal(suggestBindings(second, hum, dev).plug, undefined);
+  // the offer: a device called exactly by the shorter name owns it
+  const lite = P('yandex.station_lite'), ld = devicesFor(live, lite)[0].id, exact = clone(); copyEntity(exact, 'media_player.office_yandex_lite', 'media_player.office_yandex', { device_id: 'an-older-station' });
+  assert.deepEqual(likelyBindings(exact, lite, ld, suggestBindings(exact, lite, ld)), {});
+});

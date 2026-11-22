@@ -311,6 +311,8 @@ export function stemOf(objectIds: string[]): string {
 }
 /** Is this entity the socket called after `by` — `<by>_plug…` or `<by>_socket…`, the word right after the whole name? */
 const socketOf = (objectId: string, by: string) => !!by && objectId.startsWith(by) && /^_(plug|socket)(_|$)/.test(objectId.slice(by.length));
+/** Is a device other than these called by this name — has it a live entity named exactly so, or `<name>_…`? */
+const calledBy = (reg: Registry, by: string, except: Set<string>) => reg.entities.some(e => { if (!e.device_id || except.has(e.device_id) || !live(reg, e)) return false; const o = oid(e.entity_id); return (o === by || o.startsWith(`${by}_`)) && !socketOf(o, by) /* the socket's own readings, kept on a helper device */; });
 /** The first bindings of a new card on a chosen device: every unambiguous field; nothing else. The main field is settled first, then the
  * required ones, then the rest in their order — and one entity is one field's: what a field took is never suggested for another. */
 export function suggestBindings(reg: Registry, p: Profile, deviceId?: string): Record<string, string> {
@@ -343,8 +345,11 @@ export function suggestBindings(reg: Registry, p: Profile, deviceId?: string): R
     // The socket's own settings (`…_plug_led`, `…_plug_auto_off`) are not the socket
     // The name must be whole: `plug` or `socket` comes right after it (`living_humidifier_2_plug` is a second humidifier's), and what the
     // appliance's entities share must be more than the room's word (`living` alone would take any socket of the room)
+    // And the name must be this appliance's alone: when another device of the house is called by it too (a second humidifier whose entities HA
+    // numbered `…_2`, a neighbour sharing the make's word `living_xiaomi_…`), the socket may be that one's — left to the installer
     if (!s && r.plug) { const bys = [stem.includes('_') ? stem : '', main ? oid(main) : ''].filter(Boolean);
-      s = one(others.filter(c => bys.some(by => socketOf(oid(c.id), by)) && !reg.entities.find(e => e.entity_id === c.id)?.entity_category)); }
+      const mine = new Set<string>([dev?.id ?? '', ...p.roles.filter(x => x.sibling && out[x.id]).map(x => devOf(out[x.id]) ?? '')]); // itself and its copies already found — not every device of its model: a second humidifier is another appliance
+      s = one(others.filter(c => !reg.entities.find(e => e.entity_id === c.id)?.entity_category && bys.some(by => socketOf(oid(c.id), by) && !calledBy(reg, by, new Set([...mine, devOf(c.id) ?? '']))))); }
     put(r, s);
   }
   // what the module finds by itself fills the fields still open — only with entities of the chosen appliance (two feeders never mix)
@@ -369,7 +374,7 @@ export function likelyBindings(reg: Registry, p: Profile, deviceId: string | und
   for (const by of shorts) {
     const sockets = new Set(reg.entities.filter(e => live(reg, e) && socketOf(oid(e.entity_id), by)).map(e => e.device_id ?? ''));
     if (sockets.size !== 1 || sockets.has('') || sockets.has(dev.id)) continue;
-    const others = reg.entities.some(e => live(reg, e) && e.device_id !== dev.id && !sockets.has(e.device_id ?? '') && oid(e.entity_id).startsWith(`${by}_`));
+    const others = reg.entities.some(e => { if (!live(reg, e) || e.device_id === dev.id || sockets.has(e.device_id ?? '')) return false; const o = oid(e.entity_id); return o === by || o.startsWith(`${by}_`); });
     if (others) continue;
     for (const r of p.roles) { if (!r.plug || bound[r.id] || out[r.id]) continue;
       const fit = candidates(reg, r, { deviceId, areaId: dev.area_id ?? null }).filter(c => !c.own && (!r.suffix || c.exact) && sockets.has(devOf(c.id) ?? '') && socketOf(oid(c.id), by) && !taken.has(c.id) && !reg.entities.find(e => e.entity_id === c.id)?.entity_category);
