@@ -48,7 +48,7 @@ test('a look repaints neither the alarm card nor the danger status, and leaves a
     const css = readFileSync(resolve(dir, `${l}.css`), 'utf8');
     assert.ok(css.includes(`[data-look="${l}"] .hm-sheet.is-alarm{box-shadow:0 0 0 3px var(--ah-red`), `${l}: the alarm card's red ring`);
     assert.ok(css.includes(`[data-look="${l}"] .ah-tile-stack .ah-tile.ah-tile{background:none;box-shadow:none`), `${l}: stacked tiles`);
-    for (const m of css.matchAll(/:is\(\.hm-card,\.ah-tile,\.ah-status\)(:not\([^)]*\)[^)]*\))?/g)) assert.ok((m[1] ?? '').includes('.tone-danger'), `${l}: the shared surface rule spares the danger status`);
+    for (const m of css.matchAll(/([^{}]*:is\((?:\.hm-card|\.ah-tile|\.ah-status)(?:,(?:\.hm-card|\.ah-tile|\.ah-status))*\)[^{}]*)\{([^{}]*)\}/g)) if (/box-shadow/.test(m[2]) && /\.ah-status/.test(m[1])) assert.ok(m[1].includes('.tone-danger'), `${l}: «${m[1].trim().slice(0, 90)}» repaints the danger status' red ring`);
   }
 });
 

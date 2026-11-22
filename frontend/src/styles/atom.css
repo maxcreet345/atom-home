@@ -1008,7 +1008,7 @@
 /* ---- the card catalog (20.11.2026): «＋ Добавить карточку», the fields, the preview; on the panel's own tokens ---- */
 .hm-shell .at-add-card-row,.hm-shell .ah-grid>.at-add-card-row{display:flex;justify-content:center;align-items:center;grid-column:1/-1;aspect-ratio:auto;padding:8px 0 4px}
 .hm-shell .at-add-card-row>.at-add-card{flex:0 0 auto}
-.hm-shell .at-add-card{gap:8px;color:var(--ah-accent);background:var(--ah-tile)}
+.hm-shell .at-add-card{gap:8px;color:var(--ah-accent-ink);background:var(--ah-tile)}
 .hm-shell .at-cards{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-content:start}
 .hm-shell .at-cards select{max-width:100%;min-width:0;text-overflow:ellipsis}
 .hm-shell .at-cards-search .at-search{width:100%}
@@ -1046,7 +1046,7 @@
 
 /* ---- «Расставить» (ui/layout-grid.tsx, owner 20.11.2026): this device's order and size of the cards, in whole cells ---- */
 .hm-shell .at-add-card-row{gap:10px;flex-wrap:wrap}
-.hm-shell .at-arrange{gap:8px;color:var(--ah-accent);background:var(--ah-tile);flex:0 0 auto}
+.hm-shell .at-arrange{gap:8px;color:var(--ah-accent-ink);background:var(--ah-tile);flex:0 0 auto}
 .hm-shell .ah-grid.at-lay{grid-auto-flow:row;grid-auto-rows:auto} /* no «dense»: the cards stand in the order the arrows, the drag and Tab follow */
 .hm-shell .ah-grid.at-lay>.at-slot{position:relative;aspect-ratio:auto;min-width:0;min-height:0;height:calc(var(--lay-cell,9rem) * var(--h,1) + var(--ah-gap) * (var(--h,1) - 1));display:grid;grid-template:minmax(0,1fr)/minmax(0,1fr);border-radius:var(--ah-radius)}
 .hm-shell .ah-grid.at-lay .at-slot>:not(.at-slot-veil,.at-slot-size,.at-slot-grip,.at-slot-tools),.hm-shell .ah-grid.at-lay .at-slot-body>*{grid-area:1/1;min-width:0;min-height:0;width:100%;height:100%;max-height:100%;aspect-ratio:auto;margin:0;overflow:hidden}
@@ -1104,13 +1104,20 @@
 .hm-shell .at-page-cards{margin-top:14px}
 .hm-shell .at-page-row{justify-content:center}
 .hm-shell .at-rooms-arranged .hm-room{aspect-ratio:auto;height:100%;min-height:0}
-.hm-shell .at-tab-order{border:0;margin:0;padding:0;display:grid;gap:6px;min-width:0}
-.hm-shell .at-tab-order legend{padding:0;margin-bottom:6px;font-size:.8125rem;color:var(--ah-muted)}
+.hm-shell .at-tab-order{display:grid;gap:6px;min-width:0}
+.hm-shell .at-setup-fold>summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600;list-style-position:inside}
+.hm-shell .at-setup-h{margin:8px 0 0;font-size:.9375rem;font-weight:700}
+.hm-shell .at-setup-h:first-child{margin-top:0}
 .hm-shell .at-tab-order-row{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 4px 0 14px;border-radius:14px;background:var(--ah-field)}
 .hm-shell .at-tab-order-row>span{flex:1;min-width:0;font-weight:600}
 .hm-shell .at-tab-order-row .hm-icon-btn{width:44px;height:44px}
 .hm-shell .at-tab-order-row .hm-icon-btn:first-of-type svg{transform:rotate(90deg)}
 .hm-shell .at-tab-order-row .hm-icon-btn:last-of-type svg{transform:rotate(90deg)}
-.hm-shell .at-tab-order-row .hm-icon-btn:disabled{opacity:.35}
+.hm-shell .at-tab-order-row .hm-icon-btn[aria-disabled="true"]{opacity:.35}
 .hm-shell.is-narrow .at-rooms-arranged .hm-room{padding:10px}
 .hm-shell.is-narrow .at-rooms-arranged .hm-room-top strong{font-size:.875rem;line-height:1.15;white-space:normal;overflow-wrap:anywhere;hyphens:auto}
+/* arranged «Комнаты» start from the rooms' own tile width (two across on a phone), not the small module's */
+.hm-shell .at-rooms-arranged{--ah-cols:repeat(auto-fill,minmax(var(--ah-room-min),1fr))}
+/* the size label of a card being arranged: dark words on the dark theme's light accent */
+.hm-shell.ah-shell[data-theme="dark"] .at-slot-size{color:#1c1c1e}
+.hm-shell .at-slot-size{white-space:nowrap}

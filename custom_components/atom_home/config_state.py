@@ -56,7 +56,7 @@ def has_page_settings(config: Optional[dict]) -> bool:
     """True when a stored config holds what a panel before page_cards_v1 drops on save: the look, the order of the settings tabs, a card put on a page."""
     cfg = config or {}
     home = cfg.get("home")
-    if isinstance(home, dict) and isinstance(home.get("look"), str) and home.get("look"):
+    if isinstance(home, dict) and isinstance(home.get("look"), str) and home.get("look") not in ("", "classic"):
         return True
     tabs = cfg.get("setupTabs")
     if isinstance(tabs, list) and len(tabs) > 0:

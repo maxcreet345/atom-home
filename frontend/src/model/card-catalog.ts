@@ -484,7 +484,7 @@ export function siblingDevices(reg: Registry, inst: ProfileInstance, list: Profi
 }
 /** A card the installer put «В комнате» is drawn on that room's page: complete, and not the heating scheme (it has its own block there). */
 /** The cards put on a page of the panel: complete ones, each once. */
-export const shownOnPage = (views: InstanceView[], page: PagePlace) => views.filter(v => v.instance.placement.includes(page) && !v.incomplete.length);
+export const shownOnPage = (views: InstanceView[], page: PagePlace) => views.filter(v => v.instance.placement.includes(page) && !v.incomplete.length && v.profile.renderer !== 'heatingRooms' && !selfDrawn(v.profile));
 export const shownInRoom = (v: InstanceView, roomId: string) => v.instance.placement.includes('room') && !v.incomplete.length && v.profile.renderer !== 'heatingRooms' && v.device.roomId === roomId;
 /** The catalog's cards on one room's page. `things` are the devices the room draws (their HA device id as the key, their entities).
  *  - `own`: the device's tile is its card's — the card itself where it is shown in this room, `false` where the card stands for the device

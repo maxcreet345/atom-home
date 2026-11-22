@@ -110,12 +110,16 @@ export function LayoutProvider({ host, t, children }: { host: Host; t: T; childr
   };
   const forget = async (id: string) => { try { await host.layouts!.remove(id); } catch { setNote(lk(t, 'saveFailed')); } if (id === pointer) { writePointer(null); setPointer(null); } await load(); };
   const say = useCallback((text: string) => setSaid(text), []);
+  // leaving the arranging mode (saved, cancelled, put back): the keyboard returns to «Расставить», not to nowhere
+  useEffect(() => { if (!draft) return; const id = requestAnimationFrame(() => { const q = CSS.escape(draft.scope); if (!rootOf(anchor.current).querySelector(`[data-lay-scope="${q}"],.at-lay[data-scope="${q}"]`)) setDraft(null); }); return () => cancelAnimationFrame(id); });
+  const was = useRef(false);
+  useEffect(() => { const on = !!draft; if (was.current && !on) requestAnimationFrame(() => { const root = rootOf(anchor.current), a = root.activeElement; if (!a || a === (root as Document).body || !(a as HTMLElement).isConnected) root.querySelector<HTMLElement>('[data-action="arrange"]')?.focus({ preventScroll: true }); }); was.current = on; }, [draft]);
   const ctx: Ctx = { available, t, admin: host.admin, device, profile, profiles, draft, setList, begin, say };
   return <LayoutCtx.Provider value={ctx}>
     <i hidden ref={anchor} />
     {children}
     <span className="at-vh" aria-live="polite">{said}</span>
-    {draft && device && <div className="at-lay-bar" role="toolbar" aria-label={lk(t, 'bar')}>
+    {draft && device && !naming && !asking /* its own windows stand alone: on a phone the bar covered the name field and the question */ && <div className="at-lay-bar" role="toolbar" aria-label={lk(t, 'bar')}>
       <button type="button" className="at-lay-who" onClick={() => setNaming({ scope: null })} aria-label={`${lk(t, 'bar')}: ${device.name}. ${lk(t, 'deviceRename')}`}><Icon name="grid" size={18} /><span><b>{lk(t, 'bar')}</b><small>{device.name}</small></span></button>
       <span className="at-lay-help">{lk(t, matchMedia?.('(pointer: coarse)').matches ? 'helpTouch' : 'help')}</span>
       <span className="at-lay-tools-host" />
