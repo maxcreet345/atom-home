@@ -22,6 +22,7 @@ export function confirmWords(a: Action, device: string, t: T, security: Security
   }
   // a clean started from an owner's button asks the vacuum's own question («Начать уборку всего дома? Робот поедет сразу»)
   if (a.domain === 'vacuum' && a.id.startsWith('custom:') && starts(a.domain, a.service)) return { text: t('module.vac.startAskAll' as Key), no: t('confirm.no'), yes: t('module.vac.startYes' as Key), leak: false };
+  if (a.ask) return { text: t(a.ask, { device }), no: t('confirm.no'), yes: t('ui.turnOff'), leak: false };
   if (a.question) { const yes = a.yes ?? (t(a.label as Key) === a.label ? a.label : t(a.label as Key)); return { text: a.question, no: t('confirm.no'), yes, leak: false }; }
   const special = `confirm.${a.domain === 'alarm_control_panel' ? 'alarm' : a.domain}.${a.id}` as Key, hasSpecial = t(special) !== special;
   const label = t(a.label as Key) === a.label ? a.label : t(a.label as Key);

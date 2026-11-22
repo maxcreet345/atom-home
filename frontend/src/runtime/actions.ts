@@ -11,10 +11,24 @@ export interface Action {
   /** number: range; select: options; toggle: service for the other state is derived. */
   min?: number; max?: number; step?: number; unit?: string; options?: string[]; current?: unknown;
   /** the confirmation's question in plain words («Включить отопление на 20°?»), instead of «Выполнить «…» для «…»?» (UX-07 of the audit of 17.11.2026) */
+  /** the question of a load the house depends on, by its words' key («Выключить «{device}»? …»): asked only on the way OFF */ ask?: Key;
   question?: string; /** the confirm button's word when the question already names the action («Включить» under «Включить отопление на 22°?») */ yes?: string;
 }
 const num = (v: unknown, d: number) => typeof v === 'number' && Number.isFinite(v) ? v : d;
 const list = (v: unknown) => Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+/** A load the house itself depends on (audit 22.11.2026, C-1: the UPS socket, a mains input, the boiler's and the fridge's sockets went off with
+ * one touch, and with the UPS gone the panel cannot switch it back). Told by the entity's id and the device's own name and model — the words an
+ * installer gives such a thing. Returns the key of its question, or null. The Zigbee «router» switches and a socket's own settings are not it. */
+export function vitalAsk(entityId: string, deviceWords: string): Key | null {
+  const id = entityId.toLowerCase(), w = `${id} ${deviceWords}`.toLowerCase();
+  if (/_(led|lock|child_lock|indicator|overcharge|cutoff|delay|protection|limit|in_use|detach|memory|buzzer)(_|$)/.test(id)) return null;
+  if (/sonoff\s*spm|(^|[^a-z])spm([^a-z]|$)/.test(w)) return 'confirm.vital.mains';
+  if (/(^|[^a-z])ups([^a-z]|$)|ибп/.test(w)) return 'confirm.vital.ups';
+  if (/boiler|котл|котёл|котел/.test(w)) return 'confirm.vital.boiler';
+  if (/fridge|freezer|холодильн|морозил/.test(w)) return 'confirm.vital.fridge';
+  if (/(plug|socket|розетк)/.test(w) && /(^|[^a-z])(nas|router|modem)([^a-z]|$)|роутер|модем|сервер/.test(w)) return 'confirm.vital.network';
+  return null;
+}
 const supports = (e: EntityRef, bit: number) => (num(e.attributes.supported_features, 0) & bit) === bit;
 /** F2 of the audit: a card's kind is the owner's choice (a switch may be shown as a light), the service domain is the entity's. */
 const TOGGLE_DOMAINS = ['light', 'switch', 'fan', 'input_boolean', 'media_player', 'humidifier', 'siren', 'remote', 'cover'];
@@ -34,7 +48,8 @@ export function actionsFor(device: HomeDevice): Action[] {
       if (modes.some(m => ['rgb', 'rgbw', 'rgbww', 'hs', 'xy'].includes(m))) push({ id: 'color', label: 'light.color', kind: 'select', domain: 'light', service: 'turn_on', options: AMBIENT_COLORS.map(c => c.key), current: nearestColor(a.rgb_color) });
       if (modes.includes('color_temp')) push({ id: 'color_temp', label: 'action.color_temp', kind: 'number', domain: 'light', service: 'turn_on', min: num(a.min_color_temp_kelvin, 2000), max: num(a.max_color_temp_kelvin, 6500), step: 50, unit: 'K', current: a.color_temp_kelvin ?? null });
       break; }
-    case 'switch': case 'socket': push({ id: 'toggle', label: 'action.toggle', kind: 'toggle', domain: tdom(e), service: 'toggle', current: e.state === 'on' }); break;
+    case 'switch': case 'socket': { const ask = e.state === 'on' ? vitalAsk(id, `${device.name} ${device.model ?? ''} ${device.manufacturer ?? ''}`) : null; // on the way off only: switching a load back on is never the danger
+      push({ id: 'toggle', label: 'action.toggle', kind: 'toggle', domain: tdom(e), service: 'toggle', current: e.state === 'on', ...(ask ? { confirm: true, risk: 'custom' as Risk, ask } : {}) }); break; }
     case 'fan': push({ id: 'toggle', label: 'action.toggle', kind: 'toggle', domain: tdom(e), service: 'toggle', current: e.state === 'on' });
       // the device's own modes, as HA reports them (a purifier's Auto / Sleep / Favorite / Manual; PROMPT-CARD-CATALOG, 20.11.2026)
       if (device.key.startsWith('p:') && domOf(e) === 'fan' && list(a.preset_modes).length && supports(e, 8)) push({ id: 'preset', label: 'action.hvac_mode', kind: 'select', domain: 'fan', service: 'set_preset_mode', options: list(a.preset_modes), current: a.preset_mode ?? null });
