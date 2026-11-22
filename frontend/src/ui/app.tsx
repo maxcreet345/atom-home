@@ -162,7 +162,13 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
   // sheet; a card whose required fields are not bound is not drawn for the residents. The heating scheme is drawn by the heating screen.
   const cardViews = useMemo<InstanceView[]>(() => config.profileInstances ? instanceViews(registry, config.profileInstances, a => found.rooms.find(r => r.id === a)?.name ?? null, undefined, k => t(k as Key)).filter(v => !selfDrawn(v.profile) /* a module or the panel's own card draws itself */) : [], [registry, config.profileInstances, found.rooms, t]);
   const home = useMemo(() => { const own = cardViews.filter(v => !v.incomplete.length && v.profile.renderer !== 'heatingRooms').map(v => ({ ...v.device, photo: config.devices[`d:${v.device.haDeviceId}`]?.photo ?? (v.instance.legacyKey ? config.devices[v.instance.legacyKey]?.photo : null) ?? null, ...(v.profile.renderer === 'appliance' ? { tileLine: (() => { try { return familyOf(v.profile.card)?.tileLine?.(registry, v.instance, t, lang) ?? null; } catch { return null; } })() } : {}) }));
-    return own.length ? { ...found, devices: [...found.devices, ...own] } : found; }, [found, cardViews, config.devices, registry, t, lang]);
+    // one HA weather device may carry two entities with its first silent (Met.no: «Home Assistant» unavailable, «Home» alive): the tile AND the sheet
+    // read the one that answers; the device's key and its settings stay the same (audit 22.11.2026, H-1)
+    const silent = (e: { available: boolean; state: string }) => !e.available || e.state === 'unknown' || e.state === 'unavailable';
+    const devices = found.devices.map(d => { if (d.kind !== 'weather' || !silent(d.primary)) return d; const lists = ['controls', 'metrics', 'parameters', 'diagnostics'] as const;
+      for (const k of lists) { const alive = d[k].find(e => e.domain === 'weather' && !silent(e)); if (alive) return { ...d, primary: alive, available: true, [k]: d[k].filter(e => e !== alive) /* the silent twin is not listed beside it as «Нет связи» */ }; } return d; });
+    const changed = devices.some((d, i) => d !== found.devices[i]);
+    return own.length || changed ? { ...found, devices: [...devices, ...own] } : found; }, [found, cardViews, config.devices, registry, t, lang]);
   const [view, setView] = useState<View>(() => decode(navigationWindow.location.hash));
   /** The module that plays a camera: its own `camera`, or one of its `cameras` (a two-lens camera). */
   const camerasOf = (m: ActiveModule) => m.def.cameras?.(m.entities) ?? (m.entities.camera ? [m.entities.camera] : []);

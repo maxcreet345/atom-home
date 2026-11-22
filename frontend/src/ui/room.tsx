@@ -72,7 +72,10 @@ function verdict(m: RoomModel, t: T): { text: string; tone: 'ok' | 'warn' | 'bad
   return quiet === 'part' ? { text: rk(t, 'say.partOnly'), tone: 'warn' } : { text: rk(t, 'say.ok'), tone: 'ok' };
 }
 function Hero({ m, p }: { m: RoomModel; p: P }) {
-  const r = m.readings, v = verdict(m, p.t), list = cells(m, p.t, p.lang, p.now), heat = m.heat;
+  const r = m.readings, calm = verdict(m, p.t), list = cells(m, p.t, p.lang, p.now), heat = m.heat;
+  // «Всё в порядке» is about the whole room: a device of it that asks for a hand («Поилка: нет воды») is the headline (audit 22.11.2026, H-4)
+  const asks = calm.tone === 'ok' ? [...m.things, ...m.air].map(th => ({ th, x: detail(th, p) })).find(({ th, x }) => th.available && x.tone === 'warn') : undefined;
+  const v = asks ? { text: `${asks.th.name}: ${asks.x.status.charAt(0).toLowerCase()}${asks.x.status.slice(1)}`, tone: 'warn' as const } : calm;
   return <section className={`rm-hero is-${v.tone}`} aria-label={rk(p.t, 'strip')}>
     <div className="rm-hero-main">{/* no reading — no big number: a room without a temperature (no sensor, or one that does not answer) shows no «— °» */}{r.temperature && r.temperature.value !== null && <b>{fmt(r.temperature.value, p.lang, 1)}<i>°</i></b>}<span><strong>{v.text}</strong><small>{heat ? rk(p.t, 'heatLine', { w: heatRoomWord(heat, p.t, p.now).toLowerCase() }) + (heat.target !== null && heat.action !== 'window' && heat.action !== 'off' ? rk(p.t, 'heatTo', { v: heatSetText(heat.target, p.lang) }) : '') : ''}</small></span></div>
     {list.length > 0 && <ul className="rm-hero-cells">{list.map(c => <li className={`is-${c.tone}`}><Icon name={c.icon} size={15} /><b>{c.value}{c.unit ? ` ${c.unit}` : ''}</b><small>{c.label}</small></li>)}</ul>}

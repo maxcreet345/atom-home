@@ -146,7 +146,10 @@ export const problemRoom = (h: Heating): HeatRoom | null => h.system ? h.rooms.f
 /** The number the house is held at and what − and + start from. «Отпуск» holds its own temperature in either mode (the automation puts it above «Ручной»),
  * so the big number is the scenario's and is not stepped from the rooms' manual values; in «Ручной» otherwise the rooms' common value or their range. */
 export function houseSet(h: Heating): { value: number | null; shown: number | null; lo?: number; hi?: number } {
-  if (h.mode !== 'manual') return { shown: h.target, value: h.scenarioKnown ? h.target : null }; // an unknown scenario must not be taken for «Дома» and overwritten
+  // in Criuleni's scheme − and + write the scenario's own helper: with that helper gone there is nothing to step, and the number shown is what the
+  // house still holds (audit 22.11.2026, H-4: «20°» with live − and + while `input_number.heating_home_temp` was unavailable)
+  const helperGone = (h.ids?.legacy ?? true) && h.scenarioKnown && h.temps[h.scenario] === null;
+  if (h.mode !== 'manual') return { shown: h.target, value: h.scenarioKnown && !helperGone ? h.target : null }; // an unknown scenario must not be taken for «Дома» and overwritten
   if (h.scenarioKnown && h.scenario === 'vacation') return { shown: h.target ?? h.temps.vacation, value: null };
   const vals = h.rooms.map(r => r.manual).filter((x): x is number => x !== null), min = Math.min(...vals), max = Math.max(...vals);
   // a range: − starts from its low end, + from its high end, so neither raises or lowers every room by surprise
