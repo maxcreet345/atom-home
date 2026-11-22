@@ -28,6 +28,10 @@ export const hdUnsupported = (hd: boolean, status: string, hdWasLive: boolean, s
  * (off the screen, behind a sheet, the tab hidden) keeps what it last knew — the Cameras summary counts every camera, not only the tiles in sight —
  * and a tile that is trying again is still without a picture. */
 export const pictureLost = (was: boolean, status: string, slow: boolean): boolean => status === 'live' ? false : status === 'paused' ? was : was || slow;
+/** While a stream connects over the camera's last frame, nothing is written over the picture (owner, 23.11.2026: «чтобы не писало подключение, а был предыдущий кадр,
+ *  который потом обновится на потоковое видео»): the frame stands in, and its own time is on the chip. Words come back when there is something to say —
+ *  no frame to show, the stream failed or stalled, or the camera does not answer. */
+export const posterQuiet = (hasPoster: boolean, status: string, slow: boolean, down: boolean): boolean => hasPoster && !slow && !down && status !== 'error' && status !== 'stalled';
 /** Is the add-on's stream itself broken (then HA's own WebRTC is tried)? An «error» while the house is off the line says nothing about the add-on. */
 export const mseBroken = (status: string, online: boolean): boolean => status === 'error' && online;
 /** «Во весь экран» of a camera sheet's stage (the doorbell's and CameraSheet's; studio ST-08). The shell lets the first Escape leave the full screen only

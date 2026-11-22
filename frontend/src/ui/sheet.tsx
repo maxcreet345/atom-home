@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { stageFullscreen, type StageFullscreen } from '../modules/camera-state.ts';
 import type { ComponentChildren } from 'preact';
 import { Icon } from './primitives.tsx';
 import type { HomeDevice, EntityRef } from '../model/discover.ts';
@@ -183,6 +184,10 @@ export function Automations({ rows, t, lang }: { rows: SheetAutomation[]; t: T; 
 }
 export function DeviceSheet({ device, runner, onClose, t, lang, stage, host, room, automations = [], title, kindLabel }: { device: HomeDevice; runner: Runner; onClose: () => void; t: T; lang: Lang; stage?: ComponentChildren; host?: Host; room?: string; automations?: SheetAutomation[]; title?: string; /** what the device is, when its HA kind says it badly (a catalog card: «Очиститель воздуха», not «Вентилятор») */ kindLabel?: string }) {
   const heading = shownName(title ?? device.name, device.kind, t); // the same short name as on the tile; the room stands above it, once
+  // a camera without a sheet of its own (an ONVIF lens) has «Во весь экран» too, the same way as CameraSheet's (owner, 23.11.2026)
+  const stageRef = useRef<HTMLDivElement>(null), full = useRef<StageFullscreen | null>(null);
+  useEffect(() => () => full.current?.stop(), []);
+  const fullscreen = (e: Event) => { const el = stageRef.current; if (el) (full.current ??= stageFullscreen()).open(el, e.currentTarget as HTMLElement | null); };
   const offline = host?.online === false; // the house is unreachable: said in the head in words, every command control is marked and its press tells why
   const roomShown = roomBeside(heading, room);
   const acts = actionsFor(device), p = device.primary;
@@ -193,7 +198,7 @@ export function DeviceSheet({ device, runner, onClose, t, lang, stage, host, roo
   if (device.kind === 'light') return <div className="hm-sheet-body ah-sheet at-light-sheet" data-kind="light">{head}<LightBody device={device} runner={runner} t={t} lang={lang} host={host} sleepAt={parseSleep(host?.states?.()[SLEEP_MIRROR]?.state)[device.primary.id] ?? null} /><Facts device={device} t={t} lang={lang} /><Automations rows={automations} t={t} lang={lang} /><Settings device={device} runner={runner} t={t} lang={lang} host={host} offline={offline} /></div>;
   return <div className="hm-sheet-body ah-sheet" data-kind={device.kind}>
     {head}
-    {stage ? <div className="hm-camera-frame at-camera-stage">{stage}</div> : <Hero device={device} runner={runner} t={t} lang={lang} host={host} offline={offline} />}
+    {stage ? <><div className="hm-camera-frame at-camera-stage" ref={stageRef}>{stage}</div><div className="at-cam-tools"><button type="button" className="at-cam-tool at-cam-full" onClick={fullscreen}><b><Icon name="panel" size={22} /></b>{t('module.camera.tool.fullscreen' as Key)}</button></div></> : <Hero device={device} runner={runner} t={t} lang={lang} host={host} offline={offline} />}
     {toggle && <PowerRow device={device} action={toggle} runner={runner} t={t} lang={lang} offline={offline} />}
     {buttons.length > 0 && <div className="hm-chips at-actions">{buttons.map(a => <button type="button" className={`hm-pill ${a.confirm ? 'is-primary' : ''}`} aria-label={`${label(a, t)}: ${heading}`} {...held(runner.busy.has(device.key), offline)} disabled={!p.available} onClick={() => { if (!runner.busy.has(device.key)) void runner.run(device, a); }}>{label(a, t)}</button>)}</div>}
     {selects.map(a => <ModeRow device={device} action={a} runner={runner} t={t} lang={lang} nameOf={namesOf(host)} offline={offline} />)}
