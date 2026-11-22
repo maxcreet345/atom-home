@@ -23,7 +23,7 @@ MAX_ITEMS = 160
 MAX_SPAN = 8
 MAX_BYTES = 96_000
 PROFILE_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,39}$")
-SCOPE = re.compile(r"^(home|room:[A-Za-z0-9_.:-]{1,80})$")
+SCOPE = re.compile(r"^(home|room:[A-Za-z0-9_.:-]{1,80}|page:[a-z]{1,24})$")  # a page of the panel: page:lights, page:systems…
 KEY = re.compile(r"^[^\x00-\x1f]{1,200}$")
 
 

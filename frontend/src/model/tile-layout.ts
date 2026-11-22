@@ -14,8 +14,10 @@ export const MAX_SPAN = 8;
 export const MAX_KEPT = 150;
 export const SCOPE_HOME = 'home';
 export const roomScope = (roomId: string) => `room:${roomId}`;
+/** A page's own arrangement (owner, 23.11.2026: «расклад карточек должен распространяться на комнаты, свет, устройства, энергию, безопасность»). */
+export const pageScope = (page: string) => `page:${page}`;
 const PROFILE_ID = /^[a-z0-9][a-z0-9_-]{0,39}$/;
-const SCOPE = /^(home|room:[A-Za-z0-9_.:-]{1,80})$/;
+const SCOPE = /^(home|room:[A-Za-z0-9_.:-]{1,80}|page:[a-z]{1,24})$/;
 const int = (v: unknown, lo: number, hi: number) => typeof v === 'number' && Number.isInteger(v) && v >= lo && v <= hi;
 
 /** What the integration answered, kept only where it is well formed (a damaged entry is skipped, never repaired into something else). */

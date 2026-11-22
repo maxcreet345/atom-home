@@ -3,6 +3,15 @@ import type { Kind } from './kinds.ts';
 import { normaliseInstances, type ProfileInstance } from './card-catalog.ts';
 
 export type Language = 'ru' | 'ro' | 'en';
+export const SETUP_TABS = ['devices', 'rooms', 'energy', 'sections', 'buttons', 'modules', 'home'] as const;
+export type SetupTab = typeof SETUP_TABS[number];
+/** The saved order made whole: unknown names go, the tabs it does not name follow in the panel's own order. */
+export function setupTabOrder(saved: unknown): SetupTab[] {
+  const seen = new Set<string>(), out: SetupTab[] = [];
+  for (const x of Array.isArray(saved) ? saved : []) if (typeof x === 'string' && (SETUP_TABS as readonly string[]).includes(x) && !seen.has(x)) { seen.add(x); out.push(x as SetupTab); }
+  return [...out, ...SETUP_TABS.filter(x => !seen.has(x))];
+}
+
 /** The panel's look («Оформление»): colours, shadows, radii and the wall over the same cards and the same places of the buttons. `classic` is the look the panel has without the setting; it is not stored. */
 export const LOOKS = ['classic', 'glass', 'glass-clear', 'soft', 'premium', 'aurora', 'minimal', 'material'] as const;
 export type Look = typeof LOOKS[number];
@@ -30,6 +39,7 @@ export interface HouseConfig {
   sections: Partial<Record<Section, { hidden?: boolean }>>;
   modules: Record<string, ModuleOverride>;
   alarms: Alarm[];
+  /** the order of the tabs of «Настройка панели» (owner, 23.11.2026); absent — the panel's own order */ setupTabs?: string[];
   energy: { tariffs: Tariff[] };
   /** cards the installer added from the catalog (model/card-catalog.ts), by their own stable id; absent in a house that never added one */
   profileInstances?: Record<string, ProfileInstance>;
@@ -71,6 +81,7 @@ export function normaliseConfig(input: unknown): { config: HouseConfig; warnings
     out.buttons.push(compact({ id: b.id, label: b.label.slice(0, 60), icon: str(b.icon, 40), roomId: str(b.roomId), service: b.service, target: plain(b.target) ? b.target : undefined, data: plain(b.data) ? b.data : undefined, confirm: b.confirm !== false }) as unknown as CustomButton);
   }
   out.alarms = normaliseAlarms(input.alarms);
+  if (Array.isArray(input.setupTabs)) { const order = setupTabOrder(input.setupTabs); if (order.join() !== SETUP_TABS.join()) out.setupTabs = order; }
   out.energy = { tariffs: normaliseTariffs(plain(input.energy) ? input.energy.tariffs : undefined) };
   // added only when the house has some: a house that never used the catalog saves exactly what it saved before
   if (input.profileInstances !== undefined) { const inst = normaliseInstances(input.profileInstances, w => warnings.push(w)); if (Object.keys(inst).length) out.profileInstances = inst; }

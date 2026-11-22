@@ -1099,3 +1099,16 @@
 .hm-shell .at-slot-tools-name{flex-basis:100%;order:-1;text-align:center;font-size:.8125rem;font-weight:600;color:var(--ah-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hm-shell .at-slot-tools button{background:var(--ah-tile)}
 .hm-shell .ah-grid.at-lay.is-arranging{padding-bottom:200px;padding-top:12px}
+
+/* ---- pages as cards (23.11.2026): the cards put on a page, an arranged page, the order of the settings tabs ---- */
+.hm-shell .at-page-cards{margin-top:14px}
+.hm-shell .at-page-row{justify-content:center}
+.hm-shell .at-rooms-arranged .hm-room{aspect-ratio:auto;height:100%;min-height:0}
+.hm-shell .at-tab-order{border:0;margin:0;padding:0;display:grid;gap:6px;min-width:0}
+.hm-shell .at-tab-order legend{padding:0;margin-bottom:6px;font-size:.8125rem;color:var(--ah-muted)}
+.hm-shell .at-tab-order-row{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 4px 0 14px;border-radius:14px;background:var(--ah-field)}
+.hm-shell .at-tab-order-row>span{flex:1;min-width:0;font-weight:600}
+.hm-shell .at-tab-order-row .hm-icon-btn{width:44px;height:44px}
+.hm-shell .at-tab-order-row .hm-icon-btn:first-of-type svg{transform:rotate(90deg)}
+.hm-shell .at-tab-order-row .hm-icon-btn:last-of-type svg{transform:rotate(90deg)}
+.hm-shell .at-tab-order-row .hm-icon-btn:disabled{opacity:.35}

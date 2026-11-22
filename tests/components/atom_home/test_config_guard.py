@@ -118,7 +118,7 @@ class CardCatalogGuard(unittest.TestCase):
     def test_feature_name_is_what_the_panel_sends(self):
         ha_store = (pathlib.Path(__file__).parents[3] / "frontend/src/runtime/ha-store.ts").read_text(encoding="utf-8")
         self.assertIn(f"CARDS_FEATURE = '{const.CLIENT_FEATURE_CARDS}'", ha_store)
-        self.assertIn("CARDS_FEATURE, ...", ha_store, "the panel always declares it")
+        self.assertIn("CARDS_FEATURE, PAGES_FEATURE, ...", ha_store, "the panel always declares it")
 
     def test_cards_are_detected(self):
         self.assertFalse(cs.has_profile_instances(None))
@@ -212,6 +212,33 @@ class AlarmsOnly(unittest.TestCase):
             run(cs.ConfigState(self.STORED, 57, Saved()).write_alarms(lambda stored: [{"id": "x", "label": "я" * const.MAX_CONFIG_BYTES}], 57))
         self.assertEqual(err.exception.code, "too_large")
 
+
+
+class PageSettingsGuard(unittest.TestCase):
+    """The look, the order of the settings tabs and a card put on a page (22–23.11.2026): a panel that does not know them cannot save them away."""
+    OLD = [const.CLIENT_FEATURE_ROOM_FEED, const.CLIENT_FEATURE_TARIFF, const.CLIENT_FEATURE_CARDS]
+    NEW = OLD + [const.CLIENT_FEATURE_PAGES]
+
+    def test_feature_name_is_what_the_panel_sends(self):
+        ha_store = (pathlib.Path(__file__).parents[3] / "frontend/src/runtime/ha-store.ts").read_text(encoding="utf-8")
+        self.assertIn(f"PAGES_FEATURE = '{const.CLIENT_FEATURE_PAGES}'", ha_store)
+
+    def test_what_counts(self):
+        f = cs.has_page_settings
+        self.assertFalse(f(None)); self.assertFalse(f(BASE)); self.assertFalse(f({**BASE, "home": {"name": "T", "theme": "dark"}})); self.assertFalse(f(CARDS)); self.assertFalse(f({**BASE, "setupTabs": []}))
+        self.assertTrue(f({**BASE, "home": {"name": "T", "look": "glass"}}))
+        self.assertTrue(f({**BASE, "setupTabs": ["home", "devices"]}))
+        self.assertTrue(f({**BASE, "profileInstances": {"c1": {"profileId": "house.clock", "placement": ["home", "energy"]}}}))
+
+    def test_an_old_panel_cannot_save_them_away_and_a_new_one_can(self):
+        stored = {**BASE, "home": {"name": "T", "look": "aurora"}}
+        save = Saved(); s = cs.ConfigState(stored, 5, save)
+        for features in (None, [], self.OLD):
+            with self.assertRaises(cs.ConfigWriteError) as e:
+                run(s.write(BASE, 5, features))
+            self.assertEqual(e.exception.code, "client_outdated")
+        self.assertEqual(save.calls, [])
+        self.assertEqual(run(s.write(BASE, 5, self.NEW)), 6, "the new panel may change the look back to the classic one")
 
 if __name__ == "__main__":
     result = unittest.main(exit=False).result

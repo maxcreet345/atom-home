@@ -4,7 +4,7 @@ import { Icon } from './primitives.tsx';
 import type { Registry } from '../model/registry.ts';
 import { discover, NO_ROOM, type Home, type HomeDevice } from '../model/discover.ts';
 import { SECTIONS, type Kind } from '../model/kinds.ts';
-import { LOOKS, isLook, dayKey, normaliseConfig, normaliseTariffs, offeredSections, tariffDayProblem, tariffDeleteEffect, tariffPrice, withNewTariff, type HouseConfig, type CustomButton, type Tariff } from '../model/config.ts';
+import { LOOKS, isLook, SETUP_TABS, setupTabOrder, dayKey, normaliseConfig, normaliseTariffs, offeredSections, tariffDayProblem, tariffDeleteEffect, tariffPrice, withNewTariff, type HouseConfig, type CustomButton, type Tariff } from '../model/config.ts';
 import { languages, type T, type Key } from '../i18n/index.ts';
 import { checkImport, configCounts, exportConfig, type PhotoStore } from '../runtime/store.ts';
 import { MODULES, claimedEntities } from '../modules/index.ts';
@@ -18,7 +18,7 @@ import { ANRE_TARIFFS, channels } from '../model/energy-load.ts';
 import { houseDate } from '../runtime/zone.ts';
 import { customAction } from '../runtime/actions.ts';
 
-const TABS = ['devices', 'rooms', 'energy', 'sections', 'buttons', 'modules', 'home'] as const;
+const TABS = SETUP_TABS;
 type Tab = typeof TABS[number];
 const KINDS: Kind[] = ['light', 'switch', 'socket', 'climate', 'fan', 'cover', 'lock', 'vacuum', 'media', 'camera', 'weather', 'environment', 'energy', 'leak', 'opening', 'motion', 'alarm', 'valve', 'alarm_panel', 'person', 'measurement'];
 const ICONS = ['light', 'power', 'socket', 'heating', 'fan', 'blinds', 'lock', 'vacuum', 'media', 'camera', 'air', 'thermo', 'energy', 'water', 'door', 'motion', 'warning', 'shield', 'person', 'systems', 'home', 'rooms', 'flame', 'more'];
@@ -43,8 +43,11 @@ const activeIn = (node: Node | null | undefined): HTMLElement | null => ((node?.
 /** In-panel configurator: every control edits a copy of HouseConfig and hands it back; the caller saves and re-discovers. */
 export function Setup({ registry, config, onChange, admin, t, lang, warnings, photos, tab: placed, onTab, pending, haPrice, sections }: SetupProps) {
   const [own, setOwn] = useState<Tab>('devices');
-  const tab: Tab = onTab ? ((TABS as readonly string[]).includes(placed ?? '') ? placed as Tab : 'devices') : own;
-  const setTab = (id: Tab) => { if (onTab) onTab(id === 'devices' ? null : id); else setOwn(id); };
+  // the tabs in the owner's order (23.11.2026); the address without a tab opens the first of them, an address that names a tab opens that one
+  const order = setupTabOrder(config.setupTabs), first = order[0];
+  const [ownPicked, setOwnPicked] = useState(false);
+  const tab: Tab = onTab ? ((TABS as readonly string[]).includes(placed ?? '') ? placed as Tab : first) : ownPicked ? own : first;
+  const setTab = (id: Tab) => { if (onTab) onTab(id === first ? null : id); else { setOwn(id); setOwnPicked(true); } };
   const [note, setNote] = useState(''), [question, ask] = useState<Question | null>(null);
   const home = useMemo(() => discover(registry, config, claimedEntities(registry, config)), [registry, config]);
   /** «Saved» appears only after the store confirms; a refused save is reported by the panel and clears the note. */
@@ -62,7 +65,7 @@ export function Setup({ registry, config, onChange, admin, t, lang, warnings, ph
   const friendly = (id: string) => { const n = registry.states[id]?.attributes?.friendly_name; return typeof n === 'string' && n.trim() && !ENTITY_ID.test(n) ? n.trim() : undefined; };
   const lock = pending || undefined;
   if (!admin) return <div className="hm-card at-placeholder"><Icon name="lock" size={40} /><p className="hm-muted">{t('setup.adminOnly')}</p></div>;
-  const tabs: Array<[Tab, Key]> = [['devices', 'setup.devices'], ['rooms', 'setup.rooms'], ['energy', 'setup.energy'], ['sections', 'setup.sections'], ['buttons', 'setup.buttons'], ['modules', 'setup.modules'], ['home', 'setup.home']];
+  const tabs: Array<[Tab, Key]> = order.map(id => [id, `setup.${id}` as Key]);
   return <div className="at-setup" data-tab={tab} data-told={[pending !== undefined && 'pending', haPrice !== undefined && 'price', sections && 'sections'].filter(Boolean).join(' ') || undefined} onInput={() => { if (note) setNote(''); /* a stale «Сохранено» goes as soon as something new is typed; on the way UP, after the field has kept its text (in the capture phase this redraw reset the field and ate the first keystroke) */ }}>
     <div className="hm-range-tabs at-setup-tabs" role="group" aria-label={t('setup.title')}>{tabs.map(([id, key]) => <button type="button" key={id} aria-pressed={tab === id} className={tab === id ? 'is-active' : ''} onClick={() => setTab(id)}>{t(key)}</button>)}</div>
     {warnings.length > 0 && <details className="hm-fold"><summary><span>{t('setup.warnings')} ({warnings.length})</span><Icon name="next" size={18} /></summary><div className="hm-fold-body">{warnings.map(w => <p className="hm-muted">{w}</p>)}</div></details>}
@@ -355,6 +358,11 @@ function HomeTab({ config, fresh, patch, ask, onImport, t, lock }: { config: Hou
     <label className="at-field"><span>{t('setup.language')}</span><select value={config.home.language} onChange={e => patch(c => { c.home.language = (e.target as HTMLSelectElement).value as HouseConfig['home']['language']; })}>{languages.map(l => <option value={l}>{({ ru: 'Русский', ro: 'Română', en: 'English' })[l]}</option>)}</select></label>
     <label className="at-field"><span>{t('setup.theme')}</span><select value={config.home.theme} onChange={e => patch(c => { c.home.theme = (e.target as HTMLSelectElement).value as 'light' | 'dark'; })}><option value="light">{t('setup.theme.light')}</option><option value="dark">{t('setup.theme.dark')}</option></select></label>
     <label className="at-field"><span>{t('setup.look')}</span><select data-field="look" value={config.home.look ?? 'classic'} onChange={e => patch(c => { const v = (e.target as HTMLSelectElement).value; if (isLook(v) && v !== 'classic') c.home.look = v; else delete c.home.look; })}>{LOOKS.map(l => <option value={l}>{t(`setup.look.${l}` as Key)}</option>)}</select></label>
+    <fieldset className="at-field at-tab-order" data-field="tab-order"><legend>{t('setup.tabOrder')}</legend>
+      {(order => order.map((id, i) => <div className="at-tab-order-row" key={id}><span>{t(`setup.${id}` as Key)}</span>
+        <button type="button" className="hm-icon-btn" aria-label={`${t('setup.tabUp')}: ${t(`setup.${id}` as Key)}`} disabled={i === 0} onClick={() => patch(c => { const o = setupTabOrder(c.setupTabs), at = o.indexOf(id); if (at > 0) { [o[at - 1], o[at]] = [o[at], o[at - 1]]; c.setupTabs = o; } })}><Icon name="back" size={18} /></button>
+        <button type="button" className="hm-icon-btn" aria-label={`${t('setup.tabDown')}: ${t(`setup.${id}` as Key)}`} disabled={i === order.length - 1} onClick={() => patch(c => { const o = setupTabOrder(c.setupTabs), at = o.indexOf(id); if (at >= 0 && at < o.length - 1) { [o[at + 1], o[at]] = [o[at], o[at + 1]]; c.setupTabs = o; } })}><Icon name="next" size={18} /></button></div>))(setupTabOrder(config.setupTabs))}
+    </fieldset>
     <label className="at-field"><span>{t('setup.logo')}</span><DraftInput type="url" inputMode="url" {...CODE} value={config.home.logo ?? ''} placeholder="/local/logo.png" onCommit={logo} /></label>
     <div className="hm-chips"><button type="button" data-action="export" aria-disabled={sending || undefined} onClick={() => { if (busy.current) return; version.current++; setText(exportConfig(config)); setErr(''); }}>{t('setup.export')}</button><button type="button" data-action="import" ref={importer} onClick={doImport} disabled={!text.trim()} aria-disabled={sending || undefined} aria-busy={sending || undefined}>{t('setup.import')}</button><button type="button" data-action="reset" aria-disabled={sending || undefined} onClick={() => { if (!busy.current) ask({ text: t('setup.reset.ask'), yes: t('setup.reset.yes'), run: () => send(normaliseConfig({ schemaVersion: 1, home: fresh().home }).config) }); }}>{t('setup.reset')}</button></div>
     {err && <p className="hm-badge tone-danger at-setup-err" role="alert" id={errId}>{err}</p>}

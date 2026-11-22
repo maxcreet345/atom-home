@@ -54,6 +54,13 @@ class Layouts(unittest.TestCase):
         self.assertEqual(e.exception.code, "conflict")
         self.assertEqual(run(s.write("t", "T", HOME, 1)), 2)
 
+    def test_a_page_of_the_panel_keeps_its_own_arrangement(self):
+        ok = lay.clean_scopes({"page:lights": [["d:e:light.a", 1, 1]], "page:systems": [], "home": [["a", 2, 2]], "room:kukhnia": []})
+        self.assertEqual(sorted(ok), ["home", "page:lights", "page:systems", "room:kukhnia"])
+        for bad in ("page:Lights", "page:", "pages:lights", "page:lights2", "page:a b"):
+            with self.assertRaises(lay.LayoutError):
+                lay.clean_scopes({bad: []})
+
     def test_bad_payloads_are_refused_not_trimmed(self):
         s = lay.LayoutState(None, Saved())
         bad = [

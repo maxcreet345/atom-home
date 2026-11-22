@@ -24,7 +24,11 @@ export const CATEGORIES: readonly Category[] = ['air_purifier', 'humidifiers', '
 export type Renderer = 'device' | 'thermostat' | 'heatingRooms' | 'module' | 'native' | 'appliance';
 /** The card draws itself (a module, the panel's own card): no tile is made from the instance, nothing is taken from the auto-made cards. */
 export const selfDrawn = (p: Pick<Profile, 'renderer'>) => p.renderer === 'module' || p.renderer === 'native';
-export type Place = 'home' | 'room';
+/** A page of the panel a card can also stand on (owner, 23.11.2026): its own tile there, arranged with the page's cards. */
+export const PAGE_PLACES = ['rooms', 'lights', 'systems', 'energy', 'security'] as const;
+export type PagePlace = typeof PAGE_PLACES[number];
+export type Place = 'home' | 'room' | PagePlace;
+export const isPagePlace = (p: unknown): p is PagePlace => typeof p === 'string' && (PAGE_PLACES as readonly string[]).includes(p);
 /** One field of a card: what it is for, whether the card needs it, and what may fill it. */
 export interface RoleSpec {
   id: string; labelKey: string; hintKey?: string; required: boolean;
@@ -205,7 +209,7 @@ export function normaliseInstances(raw: unknown, warn: (w: string) => void = () 
   if (!plain(raw)) return out;
   for (const [id, v] of Object.entries(raw).slice(0, 200)) {
     if (!ID.test(id) || !plain(v) || typeof v.profileId !== 'string' || !/^[\w.-]{1,64}$/.test(v.profileId)) { warn(`config: dropped card ${id.slice(0, 40)}`); continue; }
-    const placement = Array.isArray(v.placement) ? [...new Set(v.placement.filter((p): p is Place => p === 'home' || p === 'room'))] : [];
+    const placement = Array.isArray(v.placement) ? [...new Set(v.placement.filter((p): p is Place => p === 'home' || p === 'room' || isPagePlace(p)))] : [];
     const rooms = Array.isArray(v.rooms) ? v.rooms.slice(0, 40).filter(plain).filter(r => typeof r.id === 'string' && ID.test(r.id) && typeof r.areaId === 'string' && r.areaId.length <= 128).map(r => ({ id: r.id as string, areaId: r.areaId as string, bindings: binds(r.bindings) })) : undefined;
     const str = (x: unknown, max: number) => typeof x === 'string' && x.trim() ? x.trim().slice(0, max) : undefined;
     // fields a newer panel added are carried as they are (spread first); the known ones are checked
@@ -479,6 +483,8 @@ export function siblingDevices(reg: Registry, inst: ProfileInstance, list: Profi
   return out;
 }
 /** A card the installer put «В комнате» is drawn on that room's page: complete, and not the heating scheme (it has its own block there). */
+/** The cards put on a page of the panel: complete ones, each once. */
+export const shownOnPage = (views: InstanceView[], page: PagePlace) => views.filter(v => v.instance.placement.includes(page) && !v.incomplete.length);
 export const shownInRoom = (v: InstanceView, roomId: string) => v.instance.placement.includes('room') && !v.incomplete.length && v.profile.renderer !== 'heatingRooms' && v.device.roomId === roomId;
 /** The catalog's cards on one room's page. `things` are the devices the room draws (their HA device id as the key, their entities).
  *  - `own`: the device's tile is its card's — the card itself where it is shown in this room, `false` where the card stands for the device

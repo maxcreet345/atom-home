@@ -9,7 +9,7 @@ import json
 from typing import Any, Awaitable, Callable, Optional
 from urllib.parse import unquote, urlsplit
 
-from .const import CLIENT_FEATURE_CARDS, CLIENT_FEATURE_COMPOSITION, CLIENT_FEATURE_ROOM_FEED, CLIENT_FEATURE_TARIFF, MAX_CONFIG_BYTES, WIZARD_DEVICE_FIELDS
+from .const import CLIENT_FEATURE_PAGES, PAGE_PLACES, CLIENT_FEATURE_CARDS, CLIENT_FEATURE_COMPOSITION, CLIENT_FEATURE_ROOM_FEED, CLIENT_FEATURE_TARIFF, MAX_CONFIG_BYTES, WIZARD_DEVICE_FIELDS
 
 
 class ConfigWriteError(Exception):
@@ -50,6 +50,24 @@ def has_profile_instances(config: Optional[dict]) -> bool:
     """True when a stored config holds cards added from the catalog (`profileInstances`), which a panel before card_catalog_v1 drops on save."""
     cards = (config or {}).get("profileInstances")
     return isinstance(cards, dict) and len(cards) > 0
+
+
+def has_page_settings(config: Optional[dict]) -> bool:
+    """True when a stored config holds what a panel before page_cards_v1 drops on save: the look, the order of the settings tabs, a card put on a page."""
+    cfg = config or {}
+    home = cfg.get("home")
+    if isinstance(home, dict) and isinstance(home.get("look"), str) and home.get("look"):
+        return True
+    tabs = cfg.get("setupTabs")
+    if isinstance(tabs, list) and len(tabs) > 0:
+        return True
+    cards = cfg.get("profileInstances")
+    if isinstance(cards, dict):
+        for card in cards.values():
+            place = card.get("placement") if isinstance(card, dict) else None
+            if isinstance(place, list) and any(p in PAGE_PLACES for p in place):
+                return True
+    return False
 
 
 # What `alarms/set` builds on when nothing is stored yet (a non-admin may set an alarm before the owner opens «Настройка»).
@@ -142,6 +160,8 @@ class ConfigState:
                 raise ConfigWriteError("client_outdated", "This panel version cannot keep the electricity tariff; reload the page")
             if has_profile_instances(self.config) and CLIENT_FEATURE_CARDS not in (client_features or []):
                 raise ConfigWriteError("client_outdated", "This panel version cannot keep the cards added from the catalog; reload the page")
+            if has_page_settings(self.config) and CLIENT_FEATURE_PAGES not in (client_features or []):
+                raise ConfigWriteError("client_outdated", "This panel version cannot keep the look, the order of the settings tabs or the cards put on pages; reload the page")
             auth = self._auth_for((self.config or {}).get("alarms", []), config.get("alarms", []), alarm_auth_update)
             revision = self.revision + 1
             try:

@@ -19,4 +19,7 @@ CLIENT_FEATURE_ROOM_FEED = "room_feed_v1"
 CLIENT_FEATURE_TARIFF = "energy_tariff_v1"
 # A panel that keeps profileInstances (the card catalog's cards, 20.11.2026) declares this; 1.31.1 and older drop the field on save.
 CLIENT_FEATURE_CARDS = "card_catalog_v1"
+# A panel that keeps home.look (the looks), setupTabs (the order of the settings tabs) and a card's place on a page declares this; 1.36.4 and older drop them on save.
+CLIENT_FEATURE_PAGES = "page_cards_v1"
+PAGE_PLACES = ("rooms", "lights", "systems", "energy", "security")
 WIZARD_DEVICE_FIELDS = ("type", "composition", "layout", "module")

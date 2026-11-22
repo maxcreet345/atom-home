@@ -7,6 +7,8 @@ export const ROOM_FEED_FEATURE = 'room_feed_v1';
 export const TARIFF_FEATURE = 'energy_tariff_v1';
 /** keeps `profileInstances` (the catalog's cards): an older panel would drop them on save, so the integration refuses its writes */
 export const CARDS_FEATURE = 'card_catalog_v1';
+/** This panel keeps the look, the order of the settings tabs and a card's place on a page (the integration refuses a save from a panel that would drop them). */
+export const PAGES_FEATURE = 'page_cards_v1';
 const CODES: SaveErrorCode[] = ['conflict', 'client_outdated', 'too_large', 'bad_schema', 'unauthorized'];
 const saveError = (e: unknown) => {
   const code = (e as { code?: unknown } | null)?.code, message = (e as { message?: unknown } | null)?.message;
@@ -46,7 +48,7 @@ export function haStore(hass: () => Hass): ConfigStore {
         const msg: Record<string, unknown> = { type: 'atom_home/config/set', config: normaliseConfig(rebased ? { ...config, alarms: rebased } : config).config };
         if (revision !== undefined) msg.expected_revision = revision;
         // normaliseConfig keeps rooms.<area>.feed, so this panel always says so; an integration older than 1.2 (no revision) has no client_features and would refuse the key.
-        const features = revision !== undefined ? [...new Set([ROOM_FEED_FEATURE, TARIFF_FEATURE, CARDS_FEATURE, ...(options.clientFeatures ?? [])])] : options.clientFeatures ?? [];
+        const features = revision !== undefined ? [...new Set([ROOM_FEED_FEATURE, TARIFF_FEATURE, CARDS_FEATURE, PAGES_FEATURE, ...(options.clientFeatures ?? [])])] : options.clientFeatures ?? [];
         if (features.length) msg.client_features = features;
         let r: { revision?: number } | null;
         try { r = await hass().callWS<{ saved: boolean; revision?: number }>(msg); } catch (e) { throw saveError(e); }
