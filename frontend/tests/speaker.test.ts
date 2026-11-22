@@ -164,12 +164,12 @@ test('one Mini 2 in two modes: the silent card says which mode the speaker works
   const satDev = deviceOf(live, sat)!, kidsDev = deviceOf(live, kids)!;
   // on the snapshot the speaker is a voice assistant: its Station card is silent
   const station = inst(STATION_MINI2.id, kidsDev, { player: kids, assist: sat });
-  const r = readSpeaker(live, station); assert.equal(r.available, false); assert.equal(r.otherMode, 'assist'); assert.equal(speakerLine(r, t), 'Сейчас голосовой помощник');
+  const r = readSpeaker(live, station); assert.equal(r.available, false); assert.equal(r.otherMode, 'assist'); assert.equal(speakerLine(r, t), 'Режим помощника');
   assert.equal(readSpeaker(live, inst(STATION_MINI2.id, kidsDev, { player: kids })).otherMode, null); assert.equal(speakerLine(readSpeaker(live, inst(STATION_MINI2.id, kidsDev, { player: kids })), t), 'Нет связи');
   // the other way round: the speaker is back to Alice, the voice assistant's card says so
   const back = structuredClone(live); back.states[sat] = { ...back.states[sat], state: 'unavailable' }; back.states[kids] = { ...back.states[kids], state: 'idle' };
   const voice = inst(PULSAR_MINI2.id, satDev, { ...suggestBindings(live, PULSAR_MINI2, satDev), station: kids });
-  const v = readSpeaker(back, voice); assert.equal(v.otherMode, 'station'); assert.equal(speakerLine(v, t), 'Сейчас Станция с Алисой');
+  const v = readSpeaker(back, voice); assert.equal(v.otherMode, 'station'); assert.equal(speakerLine(v, t), 'Режим Алисы');
   assert.equal(readSpeaker(live, voice).otherMode, null, 'the assistant answers: nothing to say');
   // both silent (the speaker is unplugged), or the house offline: «Нет связи»
   const dead = structuredClone(back); dead.states[kids] = { ...dead.states[kids], state: 'unavailable' };
