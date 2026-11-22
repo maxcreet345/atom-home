@@ -118,9 +118,10 @@
   .hm-shell.ah-shell[data-look="glass-clear"][data-theme="dark"]{--ah-tile:#0c1f23;--ah-line:#ffffff66;--ah-muted:#ffffff}
   .hm-shell.ah-shell[data-look="glass-clear"] .ah-tile{box-shadow:inset 0 0 0 1.5px var(--ah-line)}
 }
-.hm-shell.ah-shell[data-look="glass-clear"][data-theme="dark"]{--ah-tile:#0a212657;--ah-bar:#0b1c1f99;--ah-sheet:#16282ba8;--ah-group:#ffffff1a;--wp:#123a40}
-.hm-shell.ah-shell[data-look="glass-clear"]:not([data-theme="dark"]){--ah-tile:#ffffff8c;--ah-bar:#f6f7fab3;--ah-sheet:#f4f5f9b8;--ah-group:#ffffffb3;--wp:#dfe6f2}
-.hm-shell.ah-shell[data-look="glass-clear"] :is(.ah-tile,.hm-card,.ah-status):not(.at-cams-tile){-webkit-backdrop-filter:blur(22px) saturate(1.7);backdrop-filter:blur(22px) saturate(1.7);box-shadow:var(--ah-tile-shadow)}
+.hm-shell.ah-shell[data-look="glass-clear"][data-theme="dark"]{--ah-tile:#0a21267a;--ah-bar:#0b1c1f99;--ah-sheet:#16282ba8;--ah-group:#ffffff1a;--wp:#123a40}
+.hm-shell.ah-shell[data-look="glass-clear"]:not([data-theme="dark"]){--ah-tile:#ffffffa6;--ah-bar:#f6f7fab3;--ah-sheet:#f4f5f9b8;--ah-group:#ffffffb3;--wp:#dfe6f2}
+/* tiles are glass by their body and rim only: a real blur behind two dozen tiles, several of them with a picture that never stops moving, was redrawn all the time and flickered (owner, 23.11.2026) */
+.hm-shell.ah-shell[data-look="glass-clear"] :is(.ah-tile,.hm-card,.ah-status):not(.at-cams-tile){-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:var(--ah-tile-shadow)}
 .hm-shell.ah-shell[data-look="glass-clear"][data-theme="dark"] .ah-wallpaper{background:radial-gradient(55% 45% at 10% 5%,#3fb5a4 0,transparent 65%),radial-gradient(50% 45% at 95% 30%,#5a6fd6 0,transparent 68%),radial-gradient(60% 50% at 60% 100%,#1f8f9a 0,transparent 70%),radial-gradient(40% 35% at 20% 80%,#7a4fb8aa 0,transparent 70%),linear-gradient(165deg,#17494d,#0f2f36 55%,#0a2027);background-size:auto}
 .hm-shell.ah-shell[data-look="glass-clear"]:not([data-theme="dark"]) .ah-wallpaper{background:radial-gradient(55% 45% at 8% 0%,#c9c2ff 0,transparent 65%),radial-gradient(50% 45% at 100% 25%,#a9e3ea 0,transparent 68%),radial-gradient(60% 50% at 55% 100%,#ffd9c7 0,transparent 70%),linear-gradient(165deg,#eaedf7,#dfe6f2);background-size:auto}
 .hm-shell.ah-shell[data-look="glass-clear"].is-narrow .hm-tabbar{background:color-mix(in srgb,var(--ah-bar-solid) 70%,transparent)}

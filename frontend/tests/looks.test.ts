@@ -51,3 +51,10 @@ test('a look repaints neither the alarm card nor the danger status, and leaves a
     for (const m of css.matchAll(/:is\(\.hm-card,\.ah-tile,\.ah-status\)(:not\([^)]*\)[^)]*\))?/g)) assert.ok((m[1] ?? '').includes('.tone-danger'), `${l}: the shared surface rule spares the danger status`);
   }
 });
+
+test('no look blurs what is behind a tile: real blur is for the rail, the tab bar and the sheet only', () => {
+  for (const l of LOOKS.filter(l => l !== 'classic')) {
+    const css = readFileSync(resolve(dir, `${l}.css`), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) if (/\.ah-tile|\.hm-card|\.ah-status/.test(m[1]) && /backdrop-filter:(?!none)/.test(m[2])) assert.fail(`${l}: «${m[1].trim().slice(0, 70)}» blurs behind a tile`);
+  }
+});
