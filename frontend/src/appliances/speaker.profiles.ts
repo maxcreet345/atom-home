@@ -30,14 +30,18 @@ const stationRoles = (): RoleSpec[] => [
   { id: 'plug', labelKey: 'cat.r.spPlug', hintKey: 'cat.r.spPlug.hint', required: false, domains: ['switch'], source: 'prefer', plug: true },
   { id: 'power', labelKey: 'cat.r.spPower', required: false, domains: ['sensor'], deviceClass: ['power'], units: ['W'], source: 'prefer', as: 'metric', plug: true },
 ];
-const station = (id: string, model: string, titleKey: string, terms: string[]): Profile => ({
+/** A Station Mini 2 can be reflashed to «pulsar» and back: one speaker, two HA devices, one of them silent at a time. Each card may be told the
+ * other mode's main entity, so that the silent one says «сейчас работает как…» instead of «Нет связи». Chosen by the installer: never guessed. */
+const OTHER_STATION: RoleSpec = { id: 'station', labelKey: 'cat.r.spStation', hintKey: 'cat.r.spStation.hint', required: false, domains: ['media_player'], exclude: /_media_player$/ };
+const OTHER_ASSIST: RoleSpec = { id: 'assist', labelKey: 'cat.r.spAssist', hintKey: 'cat.r.spAssist.hint', required: false, domains: ['assist_satellite'] };
+const station = (id: string, model: string, titleKey: string, terms: string[], more: RoleSpec[] = []): Profile => ({
   id, version: '1.0.0', category: 'speakers', brand: 'Yandex', titleKey, descKey: `${titleKey}.desc`, models: [model],
   integration: { platform: 'yandex_station', name: 'Yandex.Station (HACS)' }, terms: ['яндекс', 'yandex', 'станция', 'stație', 'station', 'алиса', 'alice', 'колонка', 'boxă', 'speaker', ...terms],
-  renderer: 'appliance', card: 'speaker', kind: 'media', icon: 'speaker', kindKey: 'cat.kind.speaker', anchor: 'player', places: ['home', 'room'], roles: stationRoles(),
+  renderer: 'appliance', card: 'speaker', kind: 'media', icon: 'speaker', kindKey: 'cat.kind.speaker', anchor: 'player', places: ['home', 'room'], roles: [...stationRoles(), ...more],
 });
 export const STATION_MAX = station('yandex.station_max', 'Станция Макс (2020)', 'cat.p.spMax', ['макс', 'max', 'yandexstation_2']);
 export const STATION_LITE = station('yandex.station_lite', 'Станция Лайт (2021)', 'cat.p.spLite', ['лайт', 'lite', 'yandexmicro']);
-export const STATION_MINI2 = station('yandex.station_mini2', 'Станция Мини 2 (2021)', 'cat.p.spMini2', ['мини 2', 'mini 2', 'yandexmini_2']);
+export const STATION_MINI2 = station('yandex.station_mini2', 'Станция Мини 2 (2021)', 'cat.p.spMini2', ['мини 2', 'mini 2', 'yandexmini_2'], [OTHER_ASSIST]);
 /** A Station Mini 2 with the open firmware «pulsar» (ESPHome): Home Assistant's own voice assistant, no Alice. Its model in HA is `satellite`
  * (a generic word: a second firmware calling itself so would be offered too — the installer sees the device's name in the list). */
 export const PULSAR_MINI2: Profile = {
@@ -57,6 +61,7 @@ export const PULSAR_MINI2: Profile = {
     own('visual', 'cat.r.spVisual', ['select'], /_music_visualization$/, { as: 'parameter' }),
     own('nearest', 'cat.r.spNearest', ['switch'], /_nearest_station_answers$/, { as: 'parameter' }),
     own('restart', 'cat.r.spRestart', ['button'], /_restart$/, { as: 'parameter' }),
+    OTHER_STATION,
   ],
 };
 export const SPEAKER_PROFILES: Profile[] = [STATION_MAX, STATION_LITE, STATION_MINI2, PULSAR_MINI2];
@@ -73,6 +78,7 @@ export type Alice = 'idle' | 'listening' | 'speaking' | 'busy' | null;
 export type Assist = 'idle' | 'listening' | 'processing' | 'responding' | null;
 export interface SpeakerRead {
   satellite: boolean; player: string | null; available: boolean; phase: Phase;
+  /** this card's mode is silent and the same speaker answers in its other one: as Alice's Station, or as HA's voice assistant */ otherMode: 'station' | 'assist' | null;
   title: string | null; artist: string | null; cover: string | null; duration: number | null; position: number | null; positionAt: number | null;
   volume: number | null; muted: boolean | null; features: number; shuffle: boolean | null; repeat: 'off' | 'all' | 'one' | null;
   alice: Alice; assist: Assist;
@@ -96,6 +102,7 @@ export function readSpeaker(reg: Registry, inst: Pick<ProfileInstance, 'profileI
   const main = satellite ? st('satellite') : st('player'), p = st('player'), a = p?.attributes ?? {};
   const available = online && !!main && !DEAD.has(main.state);
   const playerUp = !!p && !DEAD.has(p.state) && online;
+  const other = st(satellite ? 'station' : 'assist'), otherMode = online && !available && !!other && !DEAD.has(other.state) ? (satellite ? 'station' as const : 'assist' as const) : null;
   const title = playerUp ? str(a.media_title) : null, artist = playerUp ? str(a.media_artist) : null;
   const ps = p?.state ?? 'unavailable';
   const phase: Phase = !available ? 'offline' : ps === 'off' || ps === 'standby' ? 'off' : ps === 'playing' ? 'playing' : ps === 'paused' && title ? 'paused' : (ps === 'buffering' ? 'playing' : 'silent');
@@ -111,7 +118,7 @@ export function readSpeaker(reg: Registry, inst: Pick<ProfileInstance, 'profileI
   const sel = (role: string) => B[role] && st(role) ? { id: B[role], value: DEAD.has(st(role)!.state) ? null : st(role)!.state, options: opts(st(role)) } : null;
   const rgb = Array.isArray(ringS?.attributes.rgb_color) && (ringS!.attributes.rgb_color as unknown[]).length === 3 ? (ringS!.attributes.rgb_color as number[]).map(Number) as [number, number, number] : null;
   return {
-    satellite, player: B.player ?? null, available, phase, title, artist,
+    satellite, player: B.player ?? null, available, otherMode, phase, title, artist,
     cover: phase === 'playing' || phase === 'paused' ? str(a.entity_picture) : null,
     duration: playerUp ? numOf(a.media_duration) : null, position: playerUp ? numOf(a.media_position) : null,
     positionAt: playerUp && typeof a.media_position_updated_at === 'string' ? (Number.isFinite(Date.parse(a.media_position_updated_at)) ? Date.parse(a.media_position_updated_at) : null) : null,
@@ -173,7 +180,7 @@ export function whenText(at: number, now: number, lang: Lang, t: T, timeZone?: s
 }
 /** «Кино — Группа крови», «Пауза · Группа крови», «Алиса слушает», «Тишина», «Нет связи». */
 export function speakerLine(r: SpeakerRead, t: T): string {
-  if (r.phase === 'offline') return w(t, 'tile.offline');
+  if (r.phase === 'offline') return r.otherMode ? w(t, `tile.as.${r.otherMode}`) : w(t, 'tile.offline');
   if (r.satellite) {
     if (r.hwMute === true || r.mics?.on === false) return w(t, 'tile.micsOff');
     if (r.assist === 'listening') return w(t, 'assist.listening');

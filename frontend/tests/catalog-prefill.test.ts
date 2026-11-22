@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import type { Registry } from '../src/model/registry.ts';
-import { PROFILES, candidates, cardDevice, defaultPlacement, devicesFor, instanceViews, profileById, roomCards, shownInRoom, siblingDevices, stemOf, suggestBindings, suggestion, type Profile, type ProfileInstance } from '../src/model/card-catalog.ts';
+import { PROFILES, anchorRoom, candidates, cardDevice, defaultPlacement, devicesFor, instanceViews, likelyBindings, profileById, roomCards, shownInRoom, siblingDevices, stemOf, suggestBindings, suggestion, type Profile, type ProfileInstance } from '../src/model/card-catalog.ts';
 import { readRoom } from '../src/model/room.ts';
 
 const FIXTURE = new URL('../../private/fixtures/criuleni-registry-live-20261121.json', import.meta.url), have = existsSync(FIXTURE), skip = !have && 'no house fixture';
@@ -66,7 +66,14 @@ test('prefill: the same appliance through a second integration is found by the m
   assert.equal(first('hisense.55u6').airplay, 'media_player.kids_tv_airplay');
   const s = first('samsung.q60t');
   assert.equal(s.smartthings, 'media_player.bedroom_tv_smartthings'); assert.equal(s.channel, 'sensor.bedroom_tv_channel'); assert.equal(s.channelName, 'sensor.bedroom_tv_channel_name');
-  assert.equal(s.pictureMode, undefined, 'SmartThings\' picture mode is not named after the TV here: the installer picks it');
+  // SmartThings' picture mode is not named after the TV here: it is taken because it stands on the HA device of SmartThings' player, already found
+  assert.equal(s.pictureMode, 'select.spalnia_spalnia_televizor_smartthings_samsung_qe50q60t_picture_mode');
+  assert.equal(live.entities.find(e => e.entity_id === s.pictureMode)!.device_id, live.entities.find(e => e.entity_id === s.smartthings)!.device_id);
+  // …a picture mode of another device of the room is not; with SmartThings' player not found, nothing is; two on that device are the installer's choice
+  { const sel = s.pictureMode, r1 = clone(); r1.entities.find(e => e.entity_id === sel)!.device_id = live.entities.find(e => e.entity_id === 'media_player.bedroom_chromecast' || /chromecast/.test(e.entity_id) && e.entity_id.startsWith('media_player.'))?.device_id ?? 'nobody';
+    assert.equal(first('samsung.q60t', r1).pictureMode, undefined, 'another device\'s');
+    const r2 = clone(); copyEntity(r2, s.smartthings, 'media_player.bedroom_tv_cast'); assert.equal(first('samsung.q60t', r2).smartthings, undefined); assert.equal(first('samsung.q60t', r2).pictureMode, undefined, 'no copy found: no device to look on');
+    const r3 = clone(); copyEntity(r3, sel, 'select.spalnia_second_picture_mode'); assert.equal(first('samsung.q60t', r3).pictureMode, undefined, 'two of them'); }
   const dryer = P('samsung.dryer_dv8400'), cloud = first(dryer.id).cloud;
   assert.match(cloud, /smartthings.*_progress$/);
   const dryerDev = devicesFor(live, dryer)[0], cloudDev = live.devices.find(d => d.id === live.entities.find(e => e.entity_id === cloud)!.device_id)!;
@@ -160,4 +167,47 @@ test('prefill: a socket is the appliance\'s only by its whole name — a second 
   assert.equal(first('xiaomi.humidifier2', second).plug, undefined, '«…_humidifier_2_plug» is another humidifier\'s socket');
   const other = clone(); rename(other, 'switch.living_humidifier_plug', 'switch.living_tv_plug');
   assert.equal(first('xiaomi.humidifier2', other).plug, undefined, 'the room\'s word alone names no socket');
+});
+
+// ---- 1.36.2: the leftovers of 1.36.1 ----
+test('prefill: the appliance\'s name is what three in four of its entities share — the dryer\'s socket is found past its one oddly named light', { skip }, () => {
+  assert.equal(stemOf([...Array.from({ length: 9 }, (_, i) => `bath_dryer_x${i}`), 'vannaia_drum_light']), 'bath_dryer');
+  assert.equal(stemOf(['a_b_x', 'a_b_y', 'a_b_z', 'a_c']), 'a_b'); assert.equal(stemOf(['a_b_x', 'a_b_y', 'a_c']), 'a', 'two of three is not enough');
+  assert.equal(stemOf(['bath_dryer_a', 'bath_dryer_b', 'vannaia_c', 'vannaia_d']), '', 'named two ways half and half: no name');
+  const d = first('samsung.dryer_dv8400');
+  assert.equal(d.plugPower, 'sensor.bath_dryer_socket_power'); assert.equal(d.plugEnergy, 'sensor.bath_dryer_socket_energy_total'); assert.equal(d.plugToday, 'sensor.bath_dryer_socket_energy_today');
+  const dev = devicesFor(live, P('samsung.dryer_dv8400'))[0].id; for (const r of ['plugPower', 'plugEnergy', 'plugToday']) assert.notEqual(live.entities.find(e => e.entity_id === d[r])!.device_id, dev);
+  // the washer still gets its own socket, not the dryer's
+  assert.equal(first('lg.washer_f_r7').plugPower, 'sensor.bath_washer_socket_power');
+  // a dryer whose entities are named two ways half and half has no name: nothing is taken
+  const half = clone(); let k = 0; for (const e of half.entities.filter(x => x.device_id === dev && half.states[x.entity_id])) if (k++ % 2) { const to = e.entity_id.replace(/\.[a-z0-9]+_[a-z0-9]+_/, '.vannaia_mashina_'); if (to !== e.entity_id && !half.states[to]) { half.states[to] = { ...half.states[e.entity_id], entity_id: to } as never; delete half.states[e.entity_id]; e.entity_id = to; } }
+  const h = suggestBindings(half, P('samsung.dryer_dv8400'), dev); assert.equal(h.plugPower, undefined);
+});
+test('prefill: a socket called by the appliance\'s name without its last word is offered, never filled — and not when anything else is called so', { skip }, () => {
+  const lite = P('yandex.station_lite'), dev = devicesFor(live, lite)[0].id, b = suggestBindings(live, lite, dev);
+  assert.equal(b.plug, undefined); assert.equal(b.power, undefined);
+  assert.deepEqual(likelyBindings(live, lite, dev, b), { plug: 'switch.office_yandex_plug', power: 'sensor.office_yandex_plug_power' });
+  // taken by hand: no longer offered; nothing is offered for a field that is filled
+  assert.deepEqual(likelyBindings(live, lite, dev, { ...b, plug: 'switch.office_yandex_plug' }), { power: 'sensor.office_yandex_plug_power' });
+  // a second speaker of the room called «office_yandex_…»: the socket is nobody's
+  const two = clone(); for (const e of live.entities.filter(x => /^[a-z_]+\.office_yandex_lite/.test(x.entity_id))) copyEntity(two, e.entity_id, e.entity_id.replace('office_yandex_lite', 'office_yandex_mini'), { device_id: 'second-speaker' });
+  assert.deepEqual(likelyBindings(two, lite, dev, b), {});
+  // two sockets called so: nobody's
+  const twoSockets = clone(); copyEntity(twoSockets, 'switch.office_yandex_plug', 'switch.office_yandex_socket', { device_id: 'another-socket' });
+  assert.deepEqual(likelyBindings(twoSockets, lite, dev, b), {});
+  // the appliance has a socket of its whole name: the shorter name is not asked (Station Max, the humidifier, the washer)
+  for (const id of ['yandex.station_max', 'xiaomi.humidifier2', 'lg.washer_f_r7', 'samsung.dryer_dv8400']) { const d = devicesFor(live, P(id))[0].id; assert.deepEqual(likelyBindings(live, P(id), d, suggestBindings(live, P(id), d)), {}, id); }
+  // the room's word alone names nothing: the humidifier with its socket renamed «living_plug» is offered nothing
+  const room = clone(); for (const e of room.entities.filter(x => /living_humidifier_plug/.test(x.entity_id))) { const to = e.entity_id.replace('living_humidifier_plug', 'living_plug'); room.states[to] = { ...room.states[e.entity_id], entity_id: to } as never; delete room.states[e.entity_id]; e.entity_id = to; }
+  const hd = devicesFor(room, P('xiaomi.humidifier2'))[0].id; assert.deepEqual(likelyBindings(room, P('xiaomi.humidifier2'), hd, suggestBindings(room, P('xiaomi.humidifier2'), hd)), {});
+  // on the house, with every card's first bindings: only the Lite is offered anything
+  for (const p of PROFILES) for (const d of devicesFor(live, p)) { const l = likelyBindings(live, p, d.id, suggestBindings(live, p, d.id)); if (p.id !== lite.id) assert.deepEqual(l, {}, p.id); }
+});
+test('a card with no device stands in the room of its main field: the gas meter in the Kitchen, the dashcam in «Авто»', { skip }, () => {
+  const gas = P('meter.gas_camera'), dash = P('70mai.a810_up04');
+  assert.equal(anchorRoom(live, gas, suggestBindings(live, gas)), 'kukhnia'); assert.equal(anchorRoom(live, dash, suggestBindings(live, dash)), 'avto');
+  assert.deepEqual(defaultPlacement(gas, anchorRoom(live, gas, suggestBindings(live, gas))), ['room']);
+  assert.equal(anchorRoom(live, gas, {}), null, 'no main field yet: no room'); assert.equal(anchorRoom(live, P('hisense.55u6'), { tv: 'media_player.kids_tv' }), null, 'a card with a device follows its device, not this');
+  const noArea = clone(); noArea.devices.find(d => d.id === live.entities.find(e => e.entity_id === 'sensor.kitchen_gas_meter')!.device_id)!.area_id = null;
+  assert.equal(anchorRoom(noArea, gas, suggestBindings(noArea, gas)), null);
 });

@@ -111,6 +111,7 @@ export function SpeakerSheet({ view, registry, host, t, lang, onClose, room, wid
       <small className="at-sp-status" role="status">{status}</small>
       {music && r.title ? <><b className="at-sp-title">{r.title}</b>{r.artist && <span className="at-sp-artist">{r.artist}</span>}</>
         : !host.online ? <><b className="at-sp-title">{t('ui.offline')}</b><span className="at-sp-artist">{w(t, 'houseOffHint')}</span></>
+        : off && r.otherMode ? <><b className="at-sp-title" data-other-mode={r.otherMode}>{w(t, `as.${r.otherMode}`)}</b><span className="at-sp-artist">{w(t, `as.${r.otherMode}.hint`)}</span></>
         : off ? <><b className="at-sp-title">{plugOff ? w(t, 'offlinePlug') : w(t, 'offline')}</b><span className="at-sp-artist">{plugOff ? '' : w(t, 'offlineHint')}</span></>
         : r.satellite ? <b className="at-sp-title">{r.hwMute === true || r.mics?.on === false ? w(t, 'tile.micsOff') : w(t, 'tile.ready')}</b>
         : <><b className="at-sp-title">{w(t, 'silent')}</b><span className="at-sp-artist">{w(t, 'silentHint')}</span></>}

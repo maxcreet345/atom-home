@@ -24,7 +24,7 @@ import { CameraTile } from './camera-tile.tsx';
 import { familyOf } from '../appliances/profiles.ts';
 import { applianceUi } from '../appliances/index.ts';
 import {
-  CATEGORIES, PROFILES, tellModule, untellModule, type ModuleUndo, brandsOf, candidates, candidateValue, defaultPlacement, devicesFor, foundHere, instanceView, moduleDevice, moduleMatch, newInstanceId, ofDevice, profileById, searchProfiles, selfDrawn, suggestBindings, suggestRoom,
+  CATEGORIES, PROFILES, tellModule, untellModule, type ModuleUndo, brandsOf, candidates, candidateValue, anchorRoom, defaultPlacement, devicesFor, likelyBindings, foundHere, instanceView, moduleDevice, moduleMatch, newInstanceId, ofDevice, profileById, searchProfiles, selfDrawn, suggestBindings, suggestRoom,
   type Category, type Place, type Profile, type ProfileInstance, type RoleSpec, type InstanceRoom,
 } from '../model/card-catalog.ts';
 
@@ -85,11 +85,15 @@ function CardForm({ registry, config, rooms, t, lang, host, roomId, save, onClos
   const [bindings, setBindings] = useState<Record<string, string>>(() => editing ? { ...editing.bindings, ...told(editing.deviceId) } : { ...suggestBindings(registry, profile, firstDevice), ...told(firstDevice) });
   const [roomsDraft, setRooms] = useState<InstanceRoom[]>(() => editing?.rooms ? editing.rooms.map(r => ({ ...r, bindings: { ...r.bindings } })) : []);
   const dev = deviceId ? registry.devices.find(d => d.id === deviceId) : undefined;
-  const [name, setName] = useState(editing?.name ?? ''), [room, setRoom] = useState<string>(editing?.roomId ?? roomId ?? dev?.area_id ?? '');
+  const [name, setName] = useState(editing?.name ?? ''), [roomPicked, setRoom] = useState<string>(editing?.roomId ?? roomId ?? dev?.area_id ?? '');
   // where it goes follows the card's room — the chosen device's, the room page it was opened from — until the installer presses a place himself;
   // the room follows the chosen device until he picks one himself. An edit starts from what was saved
   const [placed, setPlaced] = useState<Place[] | null>(editing ? editing.placement : null), [roomTouched, setRoomTouched] = useState(false);
+  // a card with no device to choose (the gas meter, the dashcam) stands where its main field's entity does, until the room is picked by hand
+  const room = roomPicked || (!editing && !roomId && !roomTouched && !deviceId ? anchorRoom(registry, profile, bindings) ?? '' : '');
   const placement = placed ?? defaultPlacement(profile, room || dev?.area_id);
+  // a socket the form is not sure of: offered under its empty field, taken with one press
+  const likely = useMemo(() => editing ? {} : likelyBindings(registry, profile, deviceId, bindings), [registry, profile, deviceId, bindings, editing]);
   const [busy, setBusy] = useState(false), [question, ask] = useState<Question | null>(null), [note, setNote] = useState('');
   const chooseDevice = (id: string) => { setDeviceId(id); setBindings({ ...suggestBindings(registry, profile, id), ...told(id) }); const d = registry.devices.find(x => x.id === id); if (!editing && !roomId && !roomTouched) setRoom(d?.area_id ?? ''); };
   const needDevice = profile.models.length > 0;
@@ -138,7 +142,7 @@ function CardForm({ registry, config, rooms, t, lang, host, roomId, save, onClos
           return <button type="button" role="radio" aria-checked={deviceId === d.id} className={`hm-row at-cards-device ${deviceId === d.id ? 'is-active' : ''}`} data-device={d.id} onClick={() => chooseDevice(d.id)}><span className="hm-row-text"><strong>{d.name}</strong><small>{[d.areaId ? areaName(d.areaId) : t('room.none'), d.model].filter(Boolean).join(' · ')}</small>{taken && <small className="at-cards-miss">{ck(t, 'deviceTaken')}</small>}</span><span className="at-cards-radio" aria-hidden="true" /></button>; })}</div>}
     </section>}
     {(!needDevice || deviceId) && <section className="at-cards-sec" data-part="fields"><h3>{ck(t, 'step.fields')}</h3>
-      {profile.roles.map(r => <Field role={r} value={bindings[r.id] ?? ''} registry={registry} deviceId={deviceId} areaId={room || dev?.area_id || null} areaName={areaName} t={t} lost={view?.lost.includes(r.id) ?? false} onChange={v => setRole(r.id, v)} />)}
+      {profile.roles.map(r => <Field role={r} value={bindings[r.id] ?? ''} registry={registry} deviceId={deviceId} areaId={room || dev?.area_id || null} areaName={areaName} t={t} lost={view?.lost.includes(r.id) ?? false} likely={likely[r.id]} onChange={v => setRole(r.id, v)} />)}
     </section>}
     {(!needDevice || deviceId) && optionFields.length > 0 && <section className="at-cards-sec" data-part="options"><h3>{ck(t, 'step.options')}</h3>
       {optionFields.map(f => <label className="at-field" data-option={f.key}><span>{t(f.labelKey as Key)}{f.required ? '' : ` · ${ck(t, 'optional')}`}</span><input type="text" autocomplete="off" spellcheck={false} required={f.required} aria-required={f.required || undefined} aria-invalid={!optOk(opts[f.key]) || undefined} value={opts[f.key] ?? ''} placeholder={f.placeholder ?? ''} onInput={e => { const v = (e.target as HTMLInputElement).value; setOpts(o => ({ ...o, [f.key]: v })); }} /></label>)}
@@ -167,9 +171,9 @@ function CardForm({ registry, config, rooms, t, lang, host, roomId, save, onClos
 }
 /** One field: what it is for, whether it is needed, the source found and its value now. The list is the field's candidates, its own device first;
  * another device's entity may be chosen on purpose (an external sensor) and says so. */
-function Field({ role, value, registry, deviceId, areaId, areaName, t, lost, onChange }: { role: RoleSpec; value: string; registry: Registry; deviceId?: string; areaId: string | null; areaName: (a: string) => string | null; t: T; lost: boolean; onChange: (v: string) => void }) {
+function Field({ role, value, registry, deviceId, areaId, areaName, t, lost, likely, onChange }: { role: RoleSpec; value: string; registry: Registry; deviceId?: string; areaId: string | null; areaName: (a: string) => string | null; t: T; lost: boolean; /** an entity the form thinks is this field's but is not sure of */ likely?: string; onChange: (v: string) => void }) {
   const list = useMemo(() => candidates(registry, role, { deviceId, areaId }), [registry, role, deviceId, areaId]);
-  const chosen = list.find(c => c.id === value), label = t(role.labelKey as Key);
+  const chosen = list.find(c => c.id === value), label = t(role.labelKey as Key), maybe = !value && likely ? list.find(c => c.id === likely) : undefined;
   const opt = (c: typeof list[number]) => [c.name, c.areaId ? areaName(c.areaId) : null, candidateValue(c)].filter(Boolean).join(' · ');
   return <div className={`at-field at-cards-field ${lost ? 'is-lost' : ''}`} data-role={role.id} data-required={role.required || undefined}>
     <span>{label} {role.required ? <em className="at-cards-req">{ck(t, 'required')}</em> : <em className="at-cards-opt">{ck(t, 'optional')}</em>}</span>
@@ -180,6 +184,7 @@ function Field({ role, value, registry, deviceId, areaId, areaName, t, lost, onC
       {list.map(c => <option value={c.id}>{opt(c)}</option>)}
     </select>
     {lost ? <small className="at-field-err" role="alert">{ck(t, 'lost')}</small> : chosen ? <small className="at-cards-src">{chosen.own ? ck(t, 'srcOwn') : deviceId ? ck(t, 'srcExternal') : ck(t, 'srcFound')} · <code>{chosen.id}</code>{candidateValue(chosen) ? ` · ${candidateValue(chosen)}` : ''}</small> : null}
+    {maybe && <p className="at-cards-likely" data-likely={maybe.id}><span>{ck(t, 'likely', { name: maybe.name })} <code>{maybe.id}</code></span><button type="button" className="hm-pill" data-action="take-likely" onClick={() => onChange(maybe.id)}>{ck(t, 'takeLikely')}</button></p>}
   </div>;
 }
 /** The tile and the sheet on the house's own data, inert: nothing in them can be pressed, and the host they are drawn on refuses every command. */

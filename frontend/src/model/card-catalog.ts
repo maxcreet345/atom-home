@@ -298,14 +298,19 @@ export function suggestion(list: Candidate[], role: RoleSpec): string | undefine
   return undefined;
 }
 const oid = (entityId: string) => entityId.slice(entityId.indexOf('.') + 1);
-/** What the appliance's entities are all called by (`bath_washer` of `sensor.bath_washer_current_status`, `switch.bath_washer_power`…): the longest
- * beginning they share that ends at a `_`; '' when they share none. */
+/** What the appliance's entities are called by (`bath_washer` of `sensor.bath_washer_current_status`, `switch.bath_washer_power`…): the longest
+ * beginning that ends at a `_` and that at least three in four of them share — one entity an integration named its own way (the dryer's drum
+ * light among thirty `bath_dryer_…`) does not hide the name; '' when no beginning is shared by that many (a device named two ways half and half). */
 export function stemOf(objectIds: string[]): string {
-  if (!objectIds.length) return '';
-  let pre = `${objectIds[0]}_`;
-  for (const x of objectIds) { const y = `${x}_`; let i = 0; while (i < pre.length && i < y.length && pre[i] === y[i]) i++; pre = pre.slice(0, i); }
-  return pre.slice(0, Math.max(0, pre.lastIndexOf('_')));
+  const n = objectIds.length; if (!n) return '';
+  const count = new Map<string, number>();
+  for (const x of objectIds) { const w = x.split('_'); for (let i = 1; i <= w.length; i++) { const pre = w.slice(0, i).join('_'); count.set(pre, (count.get(pre) ?? 0) + 1); } }
+  let best = '';
+  for (const [pre, c] of count) if (c * 4 >= n * 3 && pre.length > best.length) best = pre;
+  return best;
 }
+/** Is this entity the socket called after `by` — `<by>_plug…` or `<by>_socket…`, the word right after the whole name? */
+const socketOf = (objectId: string, by: string) => !!by && objectId.startsWith(by) && /^_(plug|socket)(_|$)/.test(objectId.slice(by.length));
 /** The first bindings of a new card on a chosen device: every unambiguous field; nothing else. The main field is settled first, then the
  * required ones, then the rest in their order — and one entity is one field's: what a field took is never suggested for another. */
 export function suggestBindings(reg: Registry, p: Profile, deviceId?: string): Record<string, string> {
@@ -332,18 +337,50 @@ export function suggestBindings(reg: Registry, p: Profile, deviceId?: string): R
     const others = deviceId ? list.filter(c => !c.own && (!r.suffix || c.exact)) : [];
     // a second integration's copy: named after the card's main entity (`media_player.kids_tv` → `media_player.kids_tv_airplay`), or the twin device's
     if (!s && r.sibling) s = one(others.filter(c => (!!main && named(c, oid(main))) || twins.has(devOf(c.id) ?? '')));
+    // …or it stands on the HA device of a copy already found: SmartThings' «picture mode» beside SmartThings' own player, whatever it is called
+    if (!s && r.sibling) { const found = new Set(p.roles.filter(x => x.sibling && out[x.id]).map(x => devOf(out[x.id])).filter((d): d is string => !!d && d !== deviceId)); s = one(others.filter(c => found.has(devOf(c.id) ?? ''))); }
     // the appliance's socket: named after the appliance (`…_washer_socket_power`); a socket called otherwise is the installer's choice.
     // The socket's own settings (`…_plug_led`, `…_plug_auto_off`) are not the socket
     // The name must be whole: `plug` or `socket` comes right after it (`living_humidifier_2_plug` is a second humidifier's), and what the
     // appliance's entities share must be more than the room's word (`living` alone would take any socket of the room)
     if (!s && r.plug) { const bys = [stem.includes('_') ? stem : '', main ? oid(main) : ''].filter(Boolean);
-      s = one(others.filter(c => bys.some(by => /^_(plug|socket)(_|$)/.test(oid(c.id).slice(by.length)) && oid(c.id).startsWith(by)) && !reg.entities.find(e => e.entity_id === c.id)?.entity_category)); }
+      s = one(others.filter(c => bys.some(by => socketOf(oid(c.id), by)) && !reg.entities.find(e => e.entity_id === c.id)?.entity_category)); }
     put(r, s);
   }
   // what the module finds by itself fills the fields still open — only with entities of the chosen appliance (two feeders never mix)
   const m = moduleMatch(reg, p);
   if (m) for (const r of p.roles) { const e = m.entities[r.id]; if (!out[r.id] && e && reg.states[e] && r.domains.includes(domainOf(e)) && ofDevice(reg, p, e, deviceId)) out[r.id] = e; } // the module's own finding may be one entity for two fields (a kettle seen as one switch)
   return out;
+}
+/** What the form offers for a socket field it left empty, for the installer to take with one press — never filled by itself, because the card's
+ * power button would switch it. The socket called after the appliance's name without its last word (`office_yandex_lite` → `office_yandex_plug`):
+ * only when the appliance's own name gave no socket at all, the shorter name is still two words (the room's word alone names nothing), no other
+ * device of the house is called by it (a second speaker `office_yandex_mini` makes it nobody's), and one entity fits the field. */
+export function likelyBindings(reg: Registry, p: Profile, deviceId: string | undefined, bound: Record<string, string>): Record<string, string> {
+  const dev = deviceId ? reg.devices.find(d => d.id === deviceId) : undefined, out: Record<string, string> = {};
+  if (!dev || !p.roles.some(r => r.plug && !bound[r.id])) return out;
+  const devOf = (id: string) => reg.entities.find(e => e.entity_id === id)?.device_id ?? null;
+  const stem = stemOf(reg.entities.filter(e => e.device_id === dev.id && live(reg, e)).map(e => oid(e.entity_id))), main = bound[p.anchor ?? ''];
+  const full = [stem.includes('_') ? stem : '', main ? oid(main) : ''].filter(Boolean);
+  const shorts = [...new Set(full.map(x => x.slice(0, x.lastIndexOf('_'))).filter(x => x.includes('_')))];
+  const taken = new Set(Object.values(bound));
+  // a socket that carries the appliance's whole name exists (two of them, or one already bound): the shorter name is not asked
+  if (reg.entities.some(e => live(reg, e) && e.device_id !== dev.id && full.some(by => socketOf(oid(e.entity_id), by)))) return out;
+  for (const by of shorts) {
+    const sockets = new Set(reg.entities.filter(e => live(reg, e) && socketOf(oid(e.entity_id), by)).map(e => e.device_id ?? ''));
+    if (sockets.size !== 1 || sockets.has('') || sockets.has(dev.id)) continue;
+    const others = reg.entities.some(e => live(reg, e) && e.device_id !== dev.id && !sockets.has(e.device_id ?? '') && oid(e.entity_id).startsWith(`${by}_`));
+    if (others) continue;
+    for (const r of p.roles) { if (!r.plug || bound[r.id] || out[r.id]) continue;
+      const fit = candidates(reg, r, { deviceId, areaId: dev.area_id ?? null }).filter(c => !c.own && (!r.suffix || c.exact) && sockets.has(devOf(c.id) ?? '') && socketOf(oid(c.id), by) && !taken.has(c.id) && !reg.entities.find(e => e.entity_id === c.id)?.entity_category);
+      if (fit.length === 1) { out[r.id] = fit[0].id; taken.add(fit[0].id); } }
+  }
+  return out;
+}
+/** The room of a card that has no device to choose (the gas meter, the dashcam): where its main field's entity stands. */
+export function anchorRoom(reg: Registry, p: Profile, bound: Record<string, string>): string | null {
+  const main = p.renderer === 'appliance' && !p.models.length ? bound[p.anchor ?? ''] : undefined;
+  return main ? areaOf(reg, reg.entities.find(e => e.entity_id === main)) : null;
 }
 /** The room bindings a scheme suggests for one area: the area's own head and its air sensor; the timer and the temperatures by the head's name. */
 export function suggestRoom(reg: Registry, p: Profile, areaId: string): Record<string, string> {

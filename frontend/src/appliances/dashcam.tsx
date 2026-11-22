@@ -1,6 +1,7 @@
 /* The dashcam's sheet (dashcam.profiles.ts), after the 70mai app's car page, in the panel's quiet style: where the car is, its battery, the last
  * alarm, then the camera's link and parking surveillance as the integration reports them. Read-only: the integration has no command the card
- * could send (the monitor-upload switch is changed in the 70mai app, says its README). No map and no map link: the panel has none, and the car's coordinates stay in the house. */
+ * could send (the monitor-upload switch is changed in the 70mai app, says its README). No map and no map link: the panel has none, and the car's coordinates stay in the house — and are
+ * shown to an administrator only (the wall tablet and a guest's phone read «Дома», a zone's name or «Не дома»). */
 import type { ApplianceSheetProps, ApplianceUi } from './types.ts';
 import { readDashcam, alarmText, placeText, voltsText, type DashcamRead } from './dashcam.profiles.ts';
 import { whenText } from './scale.profiles.ts';
@@ -15,13 +16,14 @@ const yesNo = (v: boolean | null, t: T, yes: string, no: string) => v === null ?
 /** a row of the «Связь» card: what it is, then the value */
 const Row = ({ label, value, hint, k }: { label: string; value: string; hint?: string; k: string }) => <div className="ah-row hm-setting at-kt-row at-dc-row" data-row={k}><span className="ah-row-text"><strong>{label}</strong>{hint && <small>{hint}</small>}</span><b className="at-dc-val">{value}</b></div>;
 
-function Where({ d, t, lang }: { d: DashcamRead; t: T; lang: Lang }) {
+/** Where the car is. Its exact coordinates are the owner's: a resident or a guest of the shared panel reads the place by its name only. */
+function Where({ d, t, lang, exact }: { d: DashcamRead; t: T; lang: Lang; exact: boolean }) {
   const p = d.place;
   return <section className="at-dc-hero" aria-label={dk(t, 'where')}>
     <small>{dk(t, 'where')}</small>
     {p ? <>
       <p className="at-dc-place"><Icon name={p.kind === 'home' ? 'home' : 'car'} size={22} /><b>{placeText(p, t)}</b></p>
-      {p.lat !== null && p.lon !== null && <p className="at-dc-coords">{coord(p.lat)}, {coord(p.lon)}{p.accuracy ? ` · ${dk(t, 'accuracy', { m: num(p.accuracy, lang, 0) })}` : ''}</p>}
+      {exact && p.lat !== null && p.lon !== null && <p className="at-dc-coords">{coord(p.lat)}, {coord(p.lon)}{p.accuracy ? ` · ${dk(t, 'accuracy', { m: num(p.accuracy, lang, 0) })}` : ''}</p>}
       {p.at !== null && <p className="at-dc-sub">{dk(t, 'seen', { when: whenText(p.at, t, lang) })}</p>}
     </> : <p className="at-dc-place"><b>{d.available ? t('state.unknown') : dk(t, 'noLink')}</b></p>}
   </section>;
@@ -49,7 +51,7 @@ export function DashcamSheet({ view, registry, host, t, lang, onClose, room, wid
       <div>{room && <small>{room}</small>}<h2>{view.instance.name ?? (view.profile.kindKey ? t(view.profile.kindKey as Key) : view.device.name)}</h2></div>
       <button type="button" className="hm-icon-btn" aria-label={t('ui.closeSheet')} onClick={onClose}><Icon name="close" size={20} /></button></div>
     {offline && <p className="at-dc-warn" role="status">{t('ui.offline')}</p>}
-    <div className="at-kt-cols"><div className="at-kt-col"><Where d={d} t={t} lang={lang} />{battery}</div><div className="at-kt-col">{alarm}{park}{link}</div></div>
+    <div className="at-kt-cols"><div className="at-kt-col"><Where d={d} t={t} lang={lang} exact={host.admin === true} />{battery}</div><div className="at-kt-col">{alarm}{park}{link}</div></div>
   </div>;
 }
 export const ui: ApplianceUi = { id: 'dashcam', Sheet: DashcamSheet };
