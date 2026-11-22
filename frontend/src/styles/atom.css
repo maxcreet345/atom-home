@@ -1112,3 +1112,5 @@
 .hm-shell .at-tab-order-row .hm-icon-btn:first-of-type svg{transform:rotate(90deg)}
 .hm-shell .at-tab-order-row .hm-icon-btn:last-of-type svg{transform:rotate(90deg)}
 .hm-shell .at-tab-order-row .hm-icon-btn:disabled{opacity:.35}
+.hm-shell.is-narrow .at-rooms-arranged .hm-room{padding:10px}
+.hm-shell.is-narrow .at-rooms-arranged .hm-room-top strong{font-size:.875rem;line-height:1.15;white-space:normal;overflow-wrap:anywhere;hyphens:auto}
