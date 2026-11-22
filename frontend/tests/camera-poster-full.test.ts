@@ -27,3 +27,14 @@ test('the common camera sheet has «Во весь экран» on its stage', ()
   assert.match(sheet, /at-camera-stage" ref=\{stageRef\}>\{stage\}<\/div><div className="at-cam-tools"><button type="button" className="at-cam-tool at-cam-full" onClick=\{fullscreen\}>/);
   assert.match(src('styles/atom.css'), /:is\(\.at-cam-stage,\.at-camera-stage\):fullscreen\{background:#000\}/);
 });
+
+test('a closed camera and the air fryer that is off are not «без связи» on the status strip', async () => {
+  const { houseStatus } = await import('../src/model/house-status.ts');
+  const { translator } = await import('../src/i18n/index.ts');
+  const dev = (key: string, kind: string) => ({ key, kind, name: key, roomId: 'r', primary: { id: key.slice(2), available: false, state: 'unavailable', domain: key.slice(2).split('.')[0] }, controls: [], metrics: [], parameters: [], diagnostics: [] }) as never;
+  const base = { online: true, security: null, heating: null, vacuum: null, devices: [dev('e:camera.c700', 'camera'), dev('e:switch.fryer_keep_warm', 'switch')], nameOf: (d: { key: string }) => d.key, roomName: () => 'Комната' };
+  const t = translator('ru');
+  assert.deepEqual(houseStatus(base as never, t).items.map(i => [i.kind, i.count]), [['nolink', 2]]);
+  assert.deepEqual(houseStatus({ ...base, resting: () => true } as never, t).items, []);
+  assert.deepEqual(houseStatus({ ...base, resting: (d: { key: string }) => d.key === 'e:camera.c700' } as never, t).items.map(i => i.kind), ['nolink']);
+});

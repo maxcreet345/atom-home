@@ -27,6 +27,7 @@ export interface StatusInput {
   /** the house's enabled devices */ devices: HomeDevice[];
   /** a device as a person calls it on Home («Детская · люстра», «Камера у входа») */ nameOf: (d: HomeDevice) => string;
   roomName: (id: string) => string;
+  /** silent on purpose, not «без связи» (owner, 23.11.2026): a camera whose lens is closed, an appliance that is on the network only while it is switched on at its body (the air fryer) */ resting?: (d: HomeDevice) => boolean;
   /** the house has these pages (a chip never leads to a hidden one): security, climate, cleaning */ pages?: ReadonlySet<string>;
 }
 /** Kinds of devices a person relies on: a lamp, a socket, the heating, a lock, the valve, a camera, a safety sensor. A thermometer or a phone's
@@ -81,7 +82,7 @@ export function houseStatus(x: StatusInput, t: T): HouseStatus {
   if (heat) { heatIds.add(heat.thermostat); for (const r of heat.rooms) heatIds.add(r.trv);
     const trouble = heatTrouble(heat); if (trouble.length) { const room = trouble.length === 1 && trouble[0].kind === 'room' ? trouble[0].room.name : null; add('heating', trouble.map(tr => tr.kind === 'room' ? tr.room.key : tr.kind).join(','), room ? w(t, 'heatingAt', { room }) : w(t, 'heating'), climate, trouble.length); } }
   // ---- devices a person relies on that do not answer, as one item; the heating's own are told above
-  const silent = x.devices.filter(d => !d.primary.available && CARE_KINDS.has(d.kind) && !heatIds.has(d.primary.id));
+  const silent = x.devices.filter(d => !d.primary.available && CARE_KINDS.has(d.kind) && !heatIds.has(d.primary.id) && !x.resting?.(d));
   if (silent.length) add('nolink', silent.map(d => d.key).join(','), silent.length === 1 ? w(t, 'nolink1', { name: x.nameOf(silent[0]) }) : w(t, 'nolinkN', { n: silent.length }), silent.length === 1 ? { section: 'systems', device: silent[0].key } : attention, silent.length);
   // ---- batteries: the devices', the guarded sensors' «low» flag, the radiator heads'
   const low = new Map<string, string>();
