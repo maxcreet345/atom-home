@@ -2,7 +2,7 @@
 .hm-shell.ah-shell[data-look="material"]:not([data-theme="dark"]){--wp:#fdf8ff;--ah-tile:#f0eaf7;--ah-tile-shadow:none;--ah-bar:#f3edf9;--ah-bar-solid:#f3edf9;--ah-sheet:#f7f2fb;--ah-group:#ebe4f3;--ah-line:#79747e33;--ah-ink:#1d1b20;--ah-muted:#49454f;--ah-glyph:#49454f;--ah-accent:#5b52c7;--ah-accent-ink:#4a41b0;--ah-tint:#e3dfff;--ah-tint-ink:#17124d;--ah-tint-sub:#443c8f;--ah-radius:28px}
 .hm-shell.ah-shell[data-look="material"][data-theme="dark"]{--wp:#141218;--ah-tile:#211f26;--ah-tile-blur:0px;--ah-tile-shadow:none;--ah-bar:#1d1b20;--ah-bar-solid:#1d1b20;--ah-sheet:#1d1b20;--ah-group:#2b2930;--ah-line:#938f9940;--ah-ink:#e6e0e9;--ah-muted:#cac4d0;--ah-glyph:#cac4d0;--ah-accent:#c5c0ff;--ah-accent-ink:#c5c0ff;--ah-tint:#443c8f;--ah-tint-ink:#e3dfff;--ah-tint-sub:#c5c0ff;--ah-radius:28px}
 .hm-shell.ah-shell[data-look="material"] .ah-wallpaper{background:var(--wp)!important;background-size:auto}
-.hm-shell.ah-shell[data-look="material"] :is(.hm-card,.ah-tile,.ah-status):not(.at-cams-tile){box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+.hm-shell.ah-shell[data-look="material"] :is(.hm-card,.ah-tile,.ah-status):not(.at-cams-tile,.tone-danger,.ah-tile-stack .ah-tile){box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
 .hm-shell.ah-shell[data-look="material"] :is(.hm-sidebar,.hm-tabbar){-webkit-backdrop-filter:none;backdrop-filter:none;border:0}
 .hm-shell.ah-shell[data-look="material"] .hm-sheet{border-radius:28px 28px 0 0;box-shadow:0 -4px 24px #00000033}
 .hm-shell.ah-shell[data-look="material"].is-wide .hm-sheet{border-radius:28px}
@@ -10,3 +10,8 @@
 .hm-shell.ah-shell[data-look="material"] :is(.ah-segments,.hm-range-tabs) button.is-active{border-radius:999px;background:var(--ah-tint);color:var(--ah-tint-ink);box-shadow:none}
 .hm-shell.ah-shell[data-look="material"] .hm-head h1{font-weight:500;letter-spacing:0}
 .hm-shell.ah-shell[data-look="material"]:not([data-theme="dark"]) :is(.hm-chips>button:not(.is-active),.hm-icon-btn,.ah-tile-more,.hm-light-more){background:#5b52c71f}
+/* states the look must not repaint: the alarm card keeps its red ring, a tile in a stacked row stays bare */
+.hm-shell.ah-shell[data-look="material"] .hm-sheet.is-alarm{box-shadow:0 0 0 3px var(--ah-red,#ff3b30),0 30px 80px #0008}
+.hm-shell.ah-shell[data-look="material"] .ah-tile-stack .ah-tile.ah-tile{background:none;box-shadow:none;outline:0;-webkit-backdrop-filter:none;backdrop-filter:none}
+/* the dark theme's accent is light: dark words on it */
+.hm-shell.ah-shell[data-look="material"][data-theme="dark"] :is(.at-cam-tool.is-on b,button.at-clock-tile.is-dial.is-on,button.at-light-level.is-on,button.at-temp-preset.is-on){color:#1c1c1e}

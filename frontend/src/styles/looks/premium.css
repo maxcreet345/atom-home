@@ -3,9 +3,14 @@
 .hm-shell.ah-shell[data-look="premium"]:not([data-theme="dark"]){--wp:#f3efe7;--ah-tile:#fffdf9;--ah-tile-shadow:inset 0 0 0 1px #3a2f1a12,0 1px 2px #3a2f1a0f,0 16px 28px -20px #3a2f1a47;--ah-bar:#f7f4eef2;--ah-bar-solid:#f7f4ee;--ah-sheet:#f3efe7;--ah-group:#fffdf9;--ah-line:#3a2f1a1a;--ah-ink:#1d1a15;--ah-muted:#5d564a;--ah-glyph:#6b6253;--ah-accent:#8a6a2f;--ah-accent-ink:#6f5422;--ah-tint:#ecdcb8;--ah-tint-ink:#1d1a15;--ah-tint-sub:#5a4a26;--ah-radius:20px}
 .hm-shell.ah-shell[data-look="premium"][data-theme="dark"] .ah-wallpaper{background:radial-gradient(70% 50% at 50% 0%,#1c1a17 0,transparent 70%),#0a0a0c;background-size:auto}
 .hm-shell.ah-shell[data-look="premium"]:not([data-theme="dark"]) .ah-wallpaper{background:radial-gradient(70% 50% at 50% 0%,#fbf8f2 0,transparent 70%),#f3efe7;background-size:auto}
-.hm-shell.ah-shell[data-look="premium"] :is(.hm-card,.ah-tile,.ah-status):not(.at-cams-tile){box-shadow:var(--ah-tile-shadow);-webkit-backdrop-filter:none;backdrop-filter:none}
+.hm-shell.ah-shell[data-look="premium"] :is(.hm-card,.ah-tile,.ah-status):not(.at-cams-tile,.tone-danger,.ah-tile-stack .ah-tile){box-shadow:var(--ah-tile-shadow);-webkit-backdrop-filter:none;backdrop-filter:none}
 .hm-shell.ah-shell[data-look="premium"] .ah-tile.is-on{background:linear-gradient(180deg,#f3e3bd,#dfc48c);box-shadow:inset 0 1px 0 #fff6,0 14px 28px -14px #c9a45a99}
 .hm-shell.ah-shell[data-look="premium"] :is(.hm-sidebar,.hm-tabbar){-webkit-backdrop-filter:none;backdrop-filter:none}
 .hm-shell.ah-shell[data-look="premium"] .hm-head h1{letter-spacing:-.02em;font-weight:600}
 .hm-shell.ah-shell[data-look="premium"] .hm-sheet{box-shadow:inset 0 0 0 1px var(--ah-line),0 30px 80px -10px #000000b3}
 .hm-shell.ah-shell[data-look="premium"]:not([data-theme="dark"]) :is(.hm-chips>button:not(.is-active),.hm-icon-btn,.ah-tile-more,.hm-light-more){background:#3a2f1a14}
+/* states the look must not repaint: the alarm card keeps its red ring, a tile in a stacked row stays bare */
+.hm-shell.ah-shell[data-look="premium"] .hm-sheet.is-alarm{box-shadow:0 0 0 3px var(--ah-red,#ff3b30),0 30px 80px #0008}
+.hm-shell.ah-shell[data-look="premium"] .ah-tile-stack .ah-tile.ah-tile{background:none;box-shadow:none;outline:0;-webkit-backdrop-filter:none;backdrop-filter:none}
+/* the dark theme's accent is light: dark words on it */
+.hm-shell.ah-shell[data-look="premium"][data-theme="dark"] :is(.at-cam-tool.is-on b,button.at-clock-tile.is-dial.is-on,button.at-light-level.is-on,button.at-temp-preset.is-on){color:#1c1c1e}

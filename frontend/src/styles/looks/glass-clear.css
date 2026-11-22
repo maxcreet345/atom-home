@@ -52,7 +52,7 @@
     linear-gradient(165deg,#eef0f6,#e6eaf1 60%,#e1e6ee);
 }
 .hm-shell.ah-shell[data-look="glass-clear"]{font-variant-numeric:tabular-nums}
-.hm-shell.ah-shell[data-look="glass-clear"] .hm-head h1{font-size:1.75rem;letter-spacing:-.02em;line-height:1.12}
+.hm-shell.ah-shell[data-look="glass-clear"] .hm-head h1{letter-spacing:-.02em}
 .hm-shell.ah-shell[data-look="glass-clear"] .ah-tile.is-on{
   background:linear-gradient(180deg,#e9e6ff,#cdc7f5);
   box-shadow:inset 0 1px 0 #ffffff, inset 0 0 0 1px #ffffff66, 0 1px 1px #0000002e, 0 14px 30px -14px #8f86e699;
@@ -77,7 +77,7 @@
 }
 .hm-shell.ah-shell[data-look="glass-clear"]:not([data-theme="dark"]) .hm-sidebar nav .hm-nav-ind{background:#ffffffd9;box-shadow:var(--lg-edge),0 6px 16px -10px #10182840}
 .hm-shell.ah-shell[data-look="glass-clear"].is-narrow .hm-tabbar{
-  left:10px;right:10px;bottom:calc(8px + env(safe-area-inset-bottom));
+  left:max(10px,var(--ah-safe-l));right:max(10px,var(--ah-safe-r));bottom:calc(8px + env(safe-area-inset-bottom));
   padding:5px 6px;border-top:0;border-radius:28px;
   background:color-mix(in srgb,var(--ah-bar-solid) 94%,transparent);
   -webkit-backdrop-filter:var(--lg-blur-bar);backdrop-filter:var(--lg-blur-bar);
@@ -130,3 +130,17 @@
 .hm-shell.ah-shell[data-look="glass-clear"]:not([data-theme="dark"]){--ah-sheet:#f4f5f9e6}
 .hm-shell.ah-shell[data-look="glass-clear"].is-narrow[data-theme="dark"] .hm-tabbar{background:color-mix(in srgb,var(--ah-bar-solid) 90%,transparent)}
 .hm-shell.ah-shell[data-look="glass-clear"]:not([data-theme="dark"]){--ah-sheet:#f4f5f9}
+/* states the look must not repaint: the alarm card keeps its red ring, a tile in a stacked row stays bare */
+.hm-shell.ah-shell[data-look="glass-clear"] .hm-sheet.is-alarm{box-shadow:0 0 0 3px var(--ah-red,#ff3b30),0 30px 80px #0008}
+.hm-shell.ah-shell[data-look="glass-clear"] .ah-tile-stack .ah-tile.ah-tile{background:none;box-shadow:none;outline:0;-webkit-backdrop-filter:none;backdrop-filter:none}
+/* last, so nothing above undoes them: less transparency and more contrast when the system asks */
+@media (prefers-reduced-transparency:reduce){
+.hm-shell.ah-shell[data-look="glass-clear"][data-theme="dark"]{--ah-tile:#12292d;--ah-bar:#0f1a1c;--ah-sheet:#1c2a2c}
+.hm-shell.ah-shell[data-look="glass-clear"]:not([data-theme="dark"]){--ah-tile:#ffffff;--ah-bar:#f6f6f8;--ah-sheet:#f2f2f7}
+.hm-shell.ah-shell[data-look="glass-clear"] :is(.hm-sidebar,.hm-tabbar,.hm-sheet,.hm-confirm,.ah-tile,.hm-card,.ah-status){-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.hm-shell.ah-shell[data-look="glass-clear"].is-narrow .hm-tabbar{background:var(--ah-bar-solid)}
+}
+@media (prefers-contrast:more){
+.hm-shell.ah-shell[data-look="glass-clear"][data-theme="dark"]{--ah-tile:#0c1f23;--ah-line:#ffffff66;--ah-muted:#ffffff}
+.hm-shell.ah-shell[data-look="glass-clear"] :is(.ah-tile,.hm-card,.ah-status):not(.at-cams-tile,.tone-danger,.ah-tile-stack .ah-tile){box-shadow:inset 0 0 0 1.5px var(--ah-line)}
+}
