@@ -62,3 +62,26 @@ test('an arrangement saved before the page had blocks keeps the blocks first; a 
   const kept = keepB(arrangeB(['ep:total', 'ep:chart'], day, () => ({ w: 8, h: 1 }), 8), day);
   assert.deepEqual(kept.map(r => r[0]), ['ep:chart', 'ep:sessions', 'ep:total']);
 });
+
+// ---- the module cards on pages (the feeder, the kettle, the air fryer, «Воздух») ----
+import { PROFILES, pageable, pageModule, modulesOnPage, selfDrawn as selfDrawnP, PAGE_MODULES } from '../src/model/card-catalog.ts';
+import { readdirSync } from 'node:fs';
+test('a page is offered exactly to the cards that are drawn there', () => {
+  for (const p of PROFILES) {
+    if (p.renderer === 'heatingRooms') { assert.equal(pageable(p), false, p.id); continue; }
+    if (!selfDrawnP(p)) { assert.equal(pageable(p), true, p.id); continue; }
+    assert.equal(pageable(p), pageModule(p), p.id);
+  }
+  for (const id of PAGE_MODULES) assert.ok(PROFILES.some(p => p.module === id), id);
+  // every module with a tile that opens its own sheet (`sheetKey`) is one of them, and only those
+  const dir = resolve(import.meta.dirname, '../src/modules'), withSheet = readdirSync(dir).filter(f => f.endsWith('.tsx') && /\bsheetKey: '/.test(readFileSync(resolve(dir, f), 'utf8')));
+  assert.equal(withSheet.length, PAGE_MODULES.length, withSheet.join(' '));
+});
+test('a module card put on a page stands there once', () => {
+  const feeder = PROFILES.find(p => p.module === 'pet_feeder')!, cam = PROFILES.find(p => p.renderer === 'module' && !pageModule(p))!;
+  const inst = (profileId: string, placement: string[]) => ({ profileId, profileVersion: '1.0.0', bindings: {}, placement }) as never;
+  const all = { a: inst(feeder.id, ['rooms', 'security']), b: inst(feeder.id, ['rooms']), c: inst(cam.id, ['rooms']) };
+  assert.deepEqual(modulesOnPage(all, 'rooms'), [['a', 'pet_feeder']]);
+  assert.deepEqual(modulesOnPage(all, 'security'), [['a', 'pet_feeder']]);
+  assert.deepEqual(modulesOnPage(all, 'energy'), []);
+});

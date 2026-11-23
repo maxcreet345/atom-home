@@ -483,6 +483,18 @@ export function siblingDevices(reg: Registry, inst: ProfileInstance, list: Profi
   return out;
 }
 /** A card the installer put «В комнате» is drawn on that room's page: complete, and not the heating scheme (it has its own block there). */
+/** The cards the panel draws by a module with a tile and a sheet of its own (the feeder, the kettle, the air fryer, «Воздух»): they can also
+ *  stand on a page, drawn there by that very tile (owner, 23.11.2026: «расклад должен распространяться на все карточки»). */
+export const PAGE_MODULES: readonly string[] = ['pet_feeder', 'kettle', 'airfryer', 'air'];
+export const pageModule = (p: Pick<Profile, 'renderer' | 'module'>) => p.renderer === 'module' && !!p.module && PAGE_MODULES.includes(p.module);
+/** May the card stand on a page of the panel: every card that is a tile, and the module cards above. */
+export const pageable = (p: Pick<Profile, 'renderer' | 'module'>) => pageModule(p) || (!selfDrawn(p) && p.renderer !== 'heatingRooms');
+/** The module cards put on a page: `[instance id, module id]`, each module once. */
+export function modulesOnPage(instances: Record<string, ProfileInstance> | undefined, page: PagePlace, list: Profile[] = PROFILES): Array<[string, string]> {
+  const out: Array<[string, string]> = [];
+  for (const [id, inst] of Object.entries(instances ?? {})) { const p = profileById(inst.profileId, list); if (p && pageModule(p) && inst.placement.includes(page) && !out.some(x => x[1] === p.module)) out.push([id, p.module!]); }
+  return out;
+}
 /** The cards put on a page of the panel: complete ones, each once. */
 export const shownOnPage = (views: InstanceView[], page: PagePlace) => views.filter(v => v.instance.placement.includes(page) && !v.incomplete.length && v.profile.renderer !== 'heatingRooms' && !selfDrawn(v.profile));
 export const shownInRoom = (v: InstanceView, roomId: string) => v.instance.placement.includes('room') && !v.incomplete.length && v.profile.renderer !== 'heatingRooms' && v.device.roomId === roomId;

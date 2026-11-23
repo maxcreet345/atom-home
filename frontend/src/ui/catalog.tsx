@@ -23,7 +23,7 @@ import { VacuumTile } from './vacuum.tsx';
 import { CameraTile } from './camera-tile.tsx';
 import { familyOf } from '../appliances/profiles.ts';
 import { applianceUi } from '../appliances/index.ts';
-import {
+import { pageable as canPage,
   CATEGORIES, PROFILES, tellModule, untellModule, type ModuleUndo, brandsOf, candidates, candidateValue, anchorRoom, defaultPlacement, devicesFor, likelyBindings, foundHere, instanceView, moduleDevice, moduleMatch, newInstanceId, ofDevice, profileById, searchProfiles, selfDrawn, suggestBindings, suggestRoom,
   type Category, type Place, type Profile, type ProfileInstance, type RoleSpec, type InstanceRoom, PAGE_PLACES, type PagePlace } from '../model/card-catalog.ts';
 
@@ -93,7 +93,7 @@ function CardForm({ registry, config, rooms, t, lang, host, roomId, page, fromHo
   // a card with no device to choose (the gas meter, the dashcam) stands where its main field's entity does, until the room is picked by hand
   const room = roomPicked || (!editing && !roomId && !roomTouched && !deviceId ? anchorRoom(registry, profile, bindings) ?? '' : '');
   // every card may also stand on a page of the panel; opened from a page, that page is where it goes
-  const pageable = !selfDrawn(profile) && profile.renderer !== 'heatingRooms'; // a card the panel draws itself (the feeder, a camera, the heating scheme) has its own places
+  const pageable = canPage(profile); // a camera, the robot, the heating scheme have their own places only; a module card with a tile (the feeder, the kettle) may stand on a page too
   const places: Place[] = pageable ? [...profile.places, ...PAGE_PLACES] : profile.places;
   const placement = placed ?? (page && pageable ? [page] : fromHome && profile.places.includes('home') ? ['home'] : defaultPlacement(profile, room || dev?.area_id));
   // a socket the form is not sure of: offered under its empty field, taken with one press
@@ -164,7 +164,7 @@ function CardForm({ registry, config, rooms, t, lang, host, roomId, page, fromHo
     {view && missing.length === 0 && <section className="at-cards-sec" data-part="preview"><h3>{ck(t, 'step.preview')}</h3><p className="hm-muted">{ck(t, 'previewHint')}</p>
       <Preview view={view} registry={registry} host={host} t={t} lang={lang} roomName={room ? areaName(room) ?? undefined : undefined} /></section>}
     <section className="at-cards-sec" data-part="place"><h3>{ck(t, 'step.place')}</h3>
-      {self && <p className="hm-muted at-cards-self">{ck(t, 'selfPlaced')}</p>}
+      {self && <p className="hm-muted at-cards-self">{ck(t, 'selfPlaced')}{pageable ? ` ${ck(t, 'selfPages')}` : ''}</p>}
       {!self && <label className="at-field"><span>{ck(t, 'name')}</span><input type="text" maxLength={80} autocomplete="off" value={name} placeholder={view?.device.name ?? ''} onInput={e => setName((e.target as HTMLInputElement).value)} /></label>}
       {profile.renderer !== 'heatingRooms' && !self && <label className="at-field"><span>{ck(t, 'room')}</span><select value={room} onChange={e => { setRoomTouched(true); setRoom((e.target as HTMLSelectElement).value); }}><option value="">{t('room.none')}</option>{roomList.map(r => <option value={r.id}>{r.name}</option>)}</select></label>}
       {places.length > 0 && <div className="hm-chips at-cards-place" role="group" aria-label={ck(t, 'place')}>{places.map(p => <button type="button" role="checkbox" aria-checked={placement.includes(p)} className={placement.includes(p) ? 'is-active' : ''} data-place={p} onClick={() => setPlaced(placement.includes(p) ? placement.filter(x => x !== p) : [...placement, p])}>{ck(t, `place.${p}`)}</button>)}</div>}

@@ -77,8 +77,9 @@ export function LayoutProvider({ host, t, children }: { host: Host; t: T; childr
     const root = rootOf(anchor.current).querySelector(`[data-lay-scope="${CSS.escape(scope)}"]`);
     for (const [key, el] of root ? marked(root) : []) {
       let parent = el.parentElement; if (!parent || !el.isConnected) continue;
+      // a wrapper that is not a box (`display:contents`: the module cards among «Приборы») is not the grid the card stands in
+      while (parent.parentElement && getComputedStyle(parent).display === 'contents') parent = parent.parentElement;
       if (el.previousElementSibling?.hasAttribute(BLOCK)) { // a block: the share of its row it takes now
-        while (parent.parentElement && getComputedStyle(parent).display === 'contents') parent = parent.parentElement;
         const pw = parent.clientWidth || parent.getBoundingClientRect().width, w = el.getBoundingClientRect().width; natural[key] = { w: pw > 0 && w > 0 ? blockWidth(w / pw) : BLOCK_FULL, h: 1 }; continue;
       }
       if (parent.classList.contains('rm-tile-grid')) { natural[key] = { w: 1, h: 1 }; continue; }
