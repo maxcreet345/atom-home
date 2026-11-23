@@ -6,9 +6,10 @@ import { chromium } from '../node_modules/playwright/index.mjs';
 import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
+import { fixturePath } from './fixtures.mjs';
 const root = resolve(import.meta.dirname, '..'), dist = resolve(root, 'dist-preview'), out = resolve(root, process.argv[2] ?? 'evidence/tile-layout'); await mkdir(out, { recursive: true });
-const live = await readFile(resolve(root, '../private/fixtures/criuleni-registry-live-20261118.json'), 'utf8');
-const houseConfig = await readFile(resolve(root, '../../clients/criuleni/atom-home-config-20261118.json'), 'utf8');
+const live = await readFile(fixturePath('criuleni-registry-live-20261118.json'), 'utf8');
+const houseConfig = await readFile(fixturePath('atom-home-config-20261118.json'), 'utf8');
 const server = createServer(async (req, res) => { try { const u = new URL(req.url, 'http://l');
   if (u.pathname === '/') { res.setHeader('content-type', 'text/html'); res.end('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;overflow:hidden;background:#000}#root{height:100%}</style><div id="root"></div><script type="module">import "/atom-preview.js";window.ready=true</script>'); return; }
   if (u.pathname === '/fixture.json') { res.setHeader('content-type', 'application/json'); res.end(live); return; }

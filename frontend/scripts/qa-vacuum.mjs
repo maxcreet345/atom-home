@@ -8,6 +8,8 @@ import { spawn } from 'node:child_process';
 import { mkdir, rm, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { layout, targets } from './card-checks.mjs';
+import { needCards } from './fixtures.mjs';
+needCards('vacuum'); // the private fixtures the preview needs: a clear skip (exit 77) before anything is started, not a server that dies
 const root = resolve(import.meta.dirname, '..'), out = resolve(root, process.argv[2] ?? 'evidence/vacuum'); await rm(out, { recursive: true, force: true }); await mkdir(out, { recursive: true });
 const port = await freePort(), srv = spawn('node', ['scripts/card-preview.mjs', String(port)], { cwd: root, stdio: ['ignore', 'pipe', 'inherit'] });
 await new Promise((ok, no) => { srv.stdout.on('data', d => { if (String(d).includes('ready')) ok(); }); setTimeout(() => no(new Error('preview server did not start')), 15000); });

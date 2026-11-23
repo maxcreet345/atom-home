@@ -5,10 +5,11 @@ import { chromium } from '../node_modules/playwright/index.mjs';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
+import { fixturePath } from './fixtures.mjs';
 // ATOM_BUNDLE: a folder with another build of the live entry (`npx vite build --config vite.live.config.ts --outDir <folder>`), so a working tree can be checked without rewriting the tracked bundle
 const root = resolve(import.meta.dirname, '..'), bundle = process.env.ATOM_BUNDLE ? resolve(process.env.ATOM_BUNDLE) : resolve(root, '../custom_components/atom_home/frontend');
-const fx = JSON.parse(await readFile(resolve(root, '../private/fixtures/criuleni-registry.json'), 'utf8'));
-const config = JSON.parse(await readFile(resolve(root, '../../clients/criuleni/atom-home-config-20261028.json'), 'utf8'));
+const fx = JSON.parse(await readFile(fixturePath('criuleni-registry.json'), 'utf8'));
+const config = JSON.parse(await readFile(fixturePath('atom-home-config-20261028.json'), 'utf8'));
 const types = { '.js': 'text/javascript', '.css': 'text/css', '.webp': 'image/webp', '.json': 'application/json' };
 const server = createServer(async (req, res) => { const p = new URL(req.url, 'http://l').pathname; try { if (p === '/') { res.setHeader('content-type', 'text/html'); res.end('<!doctype html><meta charset="utf-8"><body style="margin:0"><script type="module" src="/atom-home.js"></script>'); return; } if (p === '/fx.json') { res.end(JSON.stringify({ fx, config })); return; } res.setHeader('content-type', types[extname(p)] ?? 'application/octet-stream'); res.end(await readFile(resolve(bundle, '.' + p))); } catch { res.statusCode = 404; res.end(); } });
 await new Promise(r => server.listen(0, '127.0.0.1', r)); const origin = `http://127.0.0.1:${server.address().port}`;

@@ -13,12 +13,12 @@ import { chromium } from '../node_modules/playwright/index.mjs';
 import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
+import { fixturePath } from './fixtures.mjs';
 const root = resolve(import.meta.dirname, '..'), dist = resolve(root, process.env.QA_DIST ?? 'dist-preview'), out = resolve(root, process.argv[2] ?? 'evidence/card-sizes'); await mkdir(out, { recursive: true });
 const only = process.argv[3] ? new RegExp(process.argv[3]) : null;
 const HOUSE = process.env.QA_HOUSE ?? 'criuleni', LANG = process.env.QA_LANG ?? 'ru';
-const fixtureFile = HOUSE === 'okapi' ? '../private/fixtures/okapi-climate-20261109.json' : '../private/fixtures/criuleni-registry-live-20261118.json';
-const live = await readFile(resolve(root, fixtureFile), 'utf8');
-const cfg = HOUSE === 'okapi' ? { schemaVersion: 1, home: { name: 'Atom + Okapi' }, devices: {} } : JSON.parse(await readFile(resolve(root, '../../clients/criuleni/atom-home-config-20261118.json'), 'utf8'));
+const live = await readFile(fixturePath(HOUSE === 'okapi' ? 'okapi-climate-20261109.json' : 'criuleni-registry-live-20261118.json'), 'utf8');
+const cfg = HOUSE === 'okapi' ? { schemaVersion: 1, home: { name: 'Atom + Okapi' }, devices: {} } : JSON.parse(await readFile(fixturePath('atom-home-config-20261118.json'), 'utf8'));
 if (HOUSE === 'extra') {
   cfg.sections = { ...(cfg.sections ?? {}), security: { ...(cfg.sections?.security ?? {}), hidden: true } };
   cfg.buttons = [{ id: 'qa-night', label: 'Ночь', icon: 'moon', service: 'scene.turn_on', target: 'scene.night' }, ...(cfg.buttons ?? [])];

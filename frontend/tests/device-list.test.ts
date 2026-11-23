@@ -17,7 +17,7 @@ import { addFeeder } from '../scripts/feeder-fixture.mjs';
 
 const fixturePath = resolve(import.meta.dirname, '../../private/fixtures/criuleni-registry.json');
 const configPath = resolve(import.meta.dirname, '../../../clients/criuleni/atom-home-config-20261028.json');
-const have = existsSync(fixturePath) && existsSync(configPath);
+const gone = [fixturePath, configPath].filter(p => !existsSync(p)), have = !gone.length, why = `fixture missing: ${gone.map(p => p.split('/').slice(-3).join('/')).join(', ')} (the registry of 28.10: lost 21.11, not rebuildable)`;
 /** The house as the panel sees it: the modules' own entities claimed (the feeder's switches and sensors are its card's, not cards). */
 export function houseDevices(): HomeDevice[] {
   const reg: Registry = addFeeder(JSON.parse(readFileSync(fixturePath, 'utf8'))), { config } = normaliseConfig(JSON.parse(readFileSync(configPath, 'utf8')));
@@ -70,7 +70,7 @@ test('every group the list draws holds only kinds the rule shows, and every kind
   for (const g of LIST_GROUPS) for (const k of g.kinds) assert.ok(OPERATED_KINDS.includes(k) || k === 'switch' || k === 'socket', `${g.id}: ${k}`);
 });
 
-test('this house: lights, heads, the robot, cameras, the TVs and speakers, the valve — and not one sensor', { skip: !have && 'no house fixture' }, () => {
+test('this house: lights, heads, the robot, cameras, the TVs and speakers, the valve — and not one sensor', { skip: !have && why }, () => {
   const all = houseDevices(), reg: Registry = JSON.parse(readFileSync(fixturePath, 'utf8'));
   const shown = listedDevices(all, { deviceName: id => { const d = reg.devices.find(x => x.id === id) as { name?: string | null; name_by_user?: string | null } | undefined; return d ? d.name_by_user ?? d.name ?? null : null; } }), names = shown.map(d => d.name);
   // the owner's appliances and the lamps are all there

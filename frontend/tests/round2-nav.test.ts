@@ -267,7 +267,7 @@ test('modules with a memory: a value change costs no search, a state that appear
   assert.equal(searches, 4); assert.deepEqual(sameAgain, activeSpecs(renamed, cfg));
   find(renamed, { ...cfg }); assert.equal(searches, 5, 'new settings: found anew');
 });
-test('modules with a memory: on the house\'s registry the answer is activeSpecs\' own, and 300 value changes search once', { skip: !fixture }, () => {
+test('modules with a memory: on the house\'s registry the answer is activeSpecs\' own, and 300 value changes search once', { skip: !fixture && 'fixture missing: private/fixtures/criuleni-registry.json (the registry of 28.10 under HA\'s ids of that day: lost 21.11, not rebuildable)' }, () => {
   let searches = 0; const reg = fixture!;
   const find = rememberByShape((r, c) => { searches++; return activeSpecs(r, c); }, list => JSON.stringify(list.map(a => [a.spec.id, a.label, a.entities, a.options])));
   const first = find(reg, ownerConfig); assert.ok(first.length > 0); assert.deepEqual(first, activeSpecs(reg, ownerConfig));

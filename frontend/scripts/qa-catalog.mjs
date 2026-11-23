@@ -5,9 +5,10 @@ import { chromium } from '../node_modules/playwright/index.mjs';
 import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
+import { fixturePath } from './fixtures.mjs';
 const root = resolve(import.meta.dirname, '..'), dist = resolve(root, 'dist-preview'), out = resolve(root, process.argv[2] ?? 'evidence/card-catalog'); await mkdir(out, { recursive: true });
-const live = JSON.parse(await readFile(resolve(root, '../private/fixtures/criuleni-registry-live-20261118.json'), 'utf8'));
-const houseConfig = await readFile(resolve(root, '../../clients/criuleni/atom-home-config-20261118.json'), 'utf8');
+const live = JSON.parse(await readFile(fixturePath('criuleni-registry-live-20261118.json'), 'utf8'));
+const houseConfig = await readFile(fixturePath('atom-home-config-20261118.json'), 'utf8');
 const LIVING = '80babb9d488a0bbd7d08db9a6ab67aa5';
 /** the second purifier of the same model: its own HA device and entities in the bedroom */
 function withSecond(reg) {

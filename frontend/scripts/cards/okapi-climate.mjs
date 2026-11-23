@@ -3,7 +3,11 @@
 // Each scenario has its own clock (`at`): the shot script fixes the browser's time to it.
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-const live = JSON.parse(readFileSync(resolve(import.meta.dirname, '../../../private/fixtures/okapi-climate-20261109.json'), 'utf8'));
+import { findFixture } from '../fixtures.mjs';
+// the capture is another building's and is not in git: without it the module still loads (tests/office-climate.test.ts skips by `missing`), and building a scenario says why it cannot
+export const missing = findFixture('okapi-climate-20261109.json') ? null : 'private/fixtures/okapi-climate-20261109.json';
+const live = missing ? null : JSON.parse(readFileSync(findFixture('okapi-climate-20261109.json'), 'utf8'));
+const need = () => { if (missing) throw new Error(`fixture missing: ${missing}`); };
 const AREA = { shourum: 'showroom_evrinet', servis: 'atom_service' };
 const AC = { shourum: 'konditsioner_shourum', servis: 'konditsioner' };
 const SENSOR = { shourum: 'datchik_temperatury_stol_shourum', servis: 'datchik_temperatury_servis' };
@@ -15,7 +19,7 @@ export const SCENARIOS = {
   lost: { at: '2026-11-09T10:40:00+02:00', mode: 'work', armed: false, cal: ['on', '2026-11-09 08:59:00', '2026-11-09 18:00:00'], z: { shourum: [20.4, 'heating', 'heat', 22, 820], servis: [16.9, 'heating', 'lost', null, null] } },
 };
 function build(sc) {
-  const snap = structuredClone(live), S = snap.states, t = sc.at;
+  need(); const snap = structuredClone(live), S = snap.states, t = sc.at;
   const set = (id, state, attrs) => { const o = S[id] ?? { attributes: {} }; S[id] = { ...o, state, attributes: { ...o.attributes, ...(attrs ?? {}) }, last_changed: t, last_updated: t }; };
   const temps = { work: 20, duty: 15, dayoff: 5 };
   set('input_number.klimat_rabochaia_temperatura', '20'); set('input_number.klimat_dezhurnaia_temperatura', '15'); set('input_number.klimat_dezhurnaia_nerabochego_dnia', '5');
@@ -35,7 +39,7 @@ function build(sc) {
   return snap;
 }
 const config = () => {
-  const off = { enabled: false }, devices = {};
+  need(); const off = { enabled: false }, devices = {};
   for (const d of live.devices) { devices[`d:${d.id}`] = off; for (const k of ['environment', 'energy', 'leak', 'alarm', 'opening', 'motion', 'weather', 'person', 'measurement']) devices[`d:${d.id}:${k}`] = off; }
   for (const e of live.entities) if (/^(climate|fan|switch)\./.test(e.entity_id)) devices[`e:${e.entity_id}`] = off;
   const rooms = Object.fromEntries([...live.areas.map(a => [a.area_id, { hidden: true }]), ['none', { hidden: true }]]);

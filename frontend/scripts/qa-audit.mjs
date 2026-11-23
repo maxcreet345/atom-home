@@ -3,14 +3,15 @@ import { chromium } from '../node_modules/playwright/index.mjs';
 import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
+import { fixturePath } from './fixtures.mjs';
 const root = resolve(import.meta.dirname, '..'), dist = resolve(root, 'dist-preview'), out = resolve(root, process.argv[2] ?? 'evidence/audit-behaviour'); await mkdir(out, { recursive: true });
-const fixture = await readFile(resolve(root, '../private/fixtures/criuleni-registry.json'), 'utf8');
+const fixture = await readFile(fixturePath('criuleni-registry.json'), 'utf8');
 const server = createServer(async (req, res) => { try { const u = new URL(req.url, 'http://l'); if (u.pathname === '/') { res.setHeader('content-type', 'text/html'); res.end('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;overflow:hidden;background:#000}#root{height:100%}</style><div id="root"></div><script type="module">import "/atom-preview.js";window.ready=true</script>'); return; } if (u.pathname === '/fixture.json') { res.setHeader('content-type', 'application/json'); res.end(fixture); return; } const p = resolve(dist, '.' + decodeURIComponent(u.pathname)); res.setHeader('content-type', ({ '.js': 'application/javascript', '.css': 'text/css' })[extname(p)] ?? 'application/octet-stream'); res.end(await readFile(p)); } catch { res.statusCode = 404; res.end(); } });
 await new Promise(r => server.listen(0, '127.0.0.1', r)); const origin = 'http://127.0.0.1:' + server.address().port;
 const has = (page, sel) => page.evaluate(sel => !!document.querySelector(sel), sel);
 const browser = await chromium.launch(); const checks = []; const check = (n, p, d = {}) => checks.push({ n, p, ...d }); const errors = [];
 // Behaviour audit on the Criuleni snapshot + the owner's config (preview host: every command is logged and rejected).
-const ownerConfig = await readFile(resolve(root, '../../clients/criuleni/atom-home-config-20261028.json'), 'utf8');
+const ownerConfig = await readFile(fixturePath('atom-home-config-20261028.json'), 'utf8');
 try {
   for (const [w, h] of [[1070, 764], [402, 874]]) {
     const page = await browser.newPage({ viewport: { width: w, height: h } }); const consoleErrors = []; page.on('pageerror', e => errors.push(`${w}x${h}: ${e.message}`)); page.on('console', m => { if (m.type() === 'error') consoleErrors.push(m.text().slice(0, 160)); });

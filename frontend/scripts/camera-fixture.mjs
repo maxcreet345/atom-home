@@ -3,8 +3,9 @@
 // Frames: private/camera-frames/<stream or entity>.jpg recorded from go2rtc on 09.11.2026 (not committed), served by the preview at /frames/.
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { requireFixture } from './fixtures.mjs';
 const root = resolve(import.meta.dirname, '..');
-const camFx = JSON.parse(readFileSync(resolve(root, '../private/fixtures/criuleni-camera-20261104.json'), 'utf8'));
+const camFx = JSON.parse(readFileSync(requireFixture('criuleni-camera-20261104.json'), 'utf8'));
 export const FRAMES = resolve(root, '../private/camera-frames');
 const st = (state, attributes = {}, lastChanged = '') => ({ state, attributes, last_changed: lastChanged, last_updated: lastChanged });
 const ent = (entity_id, device_id, platform, extra = {}) => ({ entity_id, device_id, area_id: null, name: null, original_name: null, platform, entity_category: null, disabled_by: null, hidden_by: null, icon: null, original_icon: null, device_class: null, ...extra });

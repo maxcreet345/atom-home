@@ -3,7 +3,8 @@
 // strip inside it (no switch of its own), the store's light, the soldering light, the toilet, the showroom and the masters' strip.
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-const live = JSON.parse(readFileSync(resolve(import.meta.dirname, '../../../private/fixtures/okapi-light-20261109.json'), 'utf8'));
+import { requireFixture } from '../fixtures.mjs';
+const live = JSON.parse(readFileSync(requireFixture('okapi-light-20261109.json'), 'utf8'));
 export const AT = '2026-11-09T12:30:00+02:00';
 const SOCKET = 'e:switch.priemka_led_podsvetka_sonoff_1002a13ff6_1', STRIP = 'e:light.kontroller_led_podsvetki_atom_2';
 export const LIGHT_CONFIG = {

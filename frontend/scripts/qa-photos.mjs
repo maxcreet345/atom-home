@@ -13,6 +13,8 @@ import { mkdir, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { PHOTOS } from './photo-fixture.mjs';
+import { needCards, needPreviewServer } from './fixtures.mjs';
+needPreviewServer(); needCards('rooms', 'security', 'kettle', 'airfryer'); // the private fixtures the preview needs: a clear skip (exit 77) before anything is started, not a server that dies
 const root = resolve(import.meta.dirname, '..'), out = resolve(root, process.argv[2] ?? 'evidence/photos'); await rm(out, { recursive: true, force: true }); await mkdir(out, { recursive: true });
 const fails = []; let passed = 0, servers = [], browser = null;
 const check = (name, ok, info) => { if (ok) passed++; else fails.push(`${name}${info === undefined ? '' : ' — ' + JSON.stringify(info).slice(0, 300)}`); };

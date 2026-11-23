@@ -41,7 +41,7 @@ test('clock: timers, nearest, formatting, labels, week, people', () => {
   assert.equal(initials('Galina Lupu'), 'GL'); assert.equal(initials('Андрей'), 'А');
 });
 
-test('clock: module detected on the Criuleni snapshot, claims its helpers', { skip: !cam }, () => {
+test('clock: module detected on the Criuleni snapshot, claims its helpers', { skip: !cam && 'fixture missing: private/fixtures/criuleni-camera-20261104.json (scripts/rebuild-fixtures.mjs)' }, () => {
   assert.equal(clockSpec.detect(cam!), null, 'the camera snapshot has no sun.sun: no clock module, the plain tile stays');
   const withSun = { ...cam!, states: { ...cam!.states, 'sun.sun': row('above_horizon', { next_rising: '2026-11-05T04:52:00+00:00', next_setting: '2026-11-04T14:42:00+00:00' }), 'timer.atom_1': row('idle', { duration: '0:10:00' }), 'input_boolean.timer_done': row('off') } };
   const m2 = clockSpec.detect(withSun)!; assert.ok(m2); assert.equal(m2.entities.sun, 'sun.sun'); assert.equal(m2.entities.timer1, 'timer.atom_1'); assert.equal(m2.entities.done, 'input_boolean.timer_done'); assert.equal(m2.entities.timer2, undefined);

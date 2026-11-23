@@ -8,9 +8,10 @@ import { resolve, extname } from 'node:path';
 import { SKELETON_CSS, skeletonHtml } from '../src/ui/skeleton.js';
 import { addFeeder, feederLog } from './feeder-fixture.mjs';
 import { withPhotos, servePhoto, vacuumFrames, wantsPhotos } from './photo-fixture.mjs';
+import { fixturePath } from './fixtures.mjs';
 const root = resolve(import.meta.dirname, '..'), dist = process.env.QA_DIST ? resolve(process.env.QA_DIST) : resolve(root, 'dist-preview'), port = Number(process.argv[2] ?? 4173); // QA_DIST: another build of the preview
-const house = addFeeder(JSON.parse(await readFile(resolve(root, '../private/fixtures/criuleni-registry.json'), 'utf8'))), fixture = JSON.stringify(house);
-const config = await readFile(resolve(root, '../../clients/criuleni/atom-home-config-20261028.json'), 'utf8');
+const house = addFeeder(JSON.parse(await readFile(fixturePath('criuleni-registry.json'), 'utf8'))), fixture = JSON.stringify(house);
+const config = await readFile(fixturePath('atom-home-config-20261028.json'), 'utf8');
 const photoConfig = JSON.stringify(withPhotos(house, JSON.parse(config))), frames = JSON.stringify(vacuumFrames()); // ?photos=1
 const html = '<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Atom Home — preview</title><style>html,body{margin:0;height:100%;overflow:hidden;background:#000}#root{height:100%;position:relative}' + SKELETON_CSS + '.hm-page *,.hm-page{animation:none!important}</style></head><body><div id="root">' + skeletonHtml() + '</div><script type="module">import "/atom-preview.js"; const q = new URLSearchParams(location.search), [fx, cfg] = await Promise.all([fetch("/fixture.json").then(r => r.json()), fetch("/config.json" + (q.get("photos") === "1" ? "?photos=1" : "")).then(r => r.json())]); const theme = q.get("theme"); if (theme) cfg.home.theme = theme; if (q.get("photos") === "1") window.__frames = ' + frames + '; window.__feederLog = await fetch("/feeder-log.json").then(r => r.json()); await window.mountPreview(document.getElementById("root"), fx, cfg); window.ready = true;</script></body></html>';
 const server = createServer(async (req, res) => {

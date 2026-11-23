@@ -11,7 +11,7 @@ const camPath = resolve(import.meta.dirname, '../../private/fixtures/criuleni-ca
 const cam = existsSync(camPath) ? JSON.parse(readFileSync(camPath, 'utf8')) : null;
 const t = translator('ru'), tx = (k: string, p?: Record<string, string | number>) => t(k as never, p);
 
-test('G4: the doorbell is detected by its ring event, its functions claimed by the card', { skip: !cam }, () => {
+test('G4: the doorbell is detected by its ring event, its functions claimed by the card', { skip: !cam && 'fixture missing: private/fixtures/criuleni-camera-20261104.json (scripts/rebuild-fixtures.mjs)' }, () => {
   const match = doorbellSpec.detect(cam!); assert.ok(match);
   assert.equal(match!.entities.camera, 'camera.entrance_doorbell'); assert.equal(match!.entities.ring, 'event.entrance_doorbell_ring'); assert.equal(match!.entities.motion, 'binary_sensor.entrance_doorbell_motion');
   assert.equal(match!.entities.battery, 'sensor.entrance_doorbell_battery'); assert.equal(match!.entities.chime, 'switch.entrance_doorbell_chime_mute'); assert.equal(match!.entities.identify, 'button.entrance_doorbell_identify');
@@ -27,7 +27,7 @@ test('G4: the doorbell is detected by its ring event, its functions claimed by t
   assert.ok(after.devices.some(d => d.primary.id === 'camera.entrance_doorbell'), 'the camera itself stays a card');
 });
 
-test('G4: tile line — ring in the last minute, motion, low battery, quiet', { skip: !cam }, () => {
+test('G4: tile line — ring in the last minute, motion, low battery, quiet', { skip: !cam && 'fixture missing: private/fixtures/criuleni-camera-20261104.json (scripts/rebuild-fixtures.mjs)' }, () => {
   const e = doorbellSpec.detect(cam!)!.entities, base = cam!.states as Record<string, { state: string; attributes: Record<string, unknown>; last_changed: string; last_updated: string }>;
   const at = (iso: string) => Date.parse(iso);
   const ringIso = base['event.entrance_doorbell_ring'].state, now = at(ringIso) + 30_000;

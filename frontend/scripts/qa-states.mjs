@@ -6,10 +6,11 @@ import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 import { SKELETON_CSS, skeletonHtml } from '../src/ui/skeleton.js';
+import { fixturePath } from './fixtures.mjs';
 const root = resolve(import.meta.dirname, '..'), dist = resolve(root, 'dist-preview');
 const out = resolve(root, process.argv[2] ?? 'evidence/audit-states'); await mkdir(out, { recursive: true });
-const base = JSON.parse(await readFile(resolve(root, '../private/fixtures/criuleni-registry.json'), 'utf8'));
-const ownerConfig = JSON.parse(await readFile(resolve(root, '../../clients/criuleni/atom-home-config-20261028.json'), 'utf8'));
+const base = JSON.parse(await readFile(fixturePath('criuleni-registry.json'), 'utf8'));
+const ownerConfig = JSON.parse(await readFile(fixturePath('atom-home-config-20261028.json'), 'utf8'));
 // variants of the snapshot: one entity of every card kind goes unavailable / unknown
 const pick = (prefix, extra = () => true) => Object.keys(base.states).find(id => id.startsWith(prefix) && extra(id, base.states[id]));
 const kinds = { light: pick('light.', (id, s) => s.state === 'on' || s.state === 'off'), climate: pick('climate.'), camera: pick('camera.'), vacuum: pick('vacuum.'), co2: pick('sensor.', (id, s) => s.attributes.device_class === 'carbon_dioxide'), leak: pick('binary_sensor.', (id, s) => s.attributes.device_class === 'moisture'), power: pick('sensor.', (id, s) => s.attributes.device_class === 'power'), opening: pick('binary_sensor.', (id, s) => ['door', 'window', 'opening'].includes(s.attributes.device_class) && /окн|двер|door|window/i.test(s.attributes.friendly_name ?? '')) };

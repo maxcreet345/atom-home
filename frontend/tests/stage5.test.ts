@@ -31,7 +31,7 @@ test('module options are normalised and merged', () => {
   assert.deepEqual(config.modules.camera_go2rtc, { options: { stream: 'cam_h264', streamHd: 'cam' } });
 });
 
-test('go2rtc camera detected in the Criuleni snapshot; options from config win', { skip: !fixture }, () => {
+test('go2rtc camera detected in the Criuleni snapshot; options from config win', { skip: !fixture && 'fixture missing: private/fixtures/criuleni-registry.json (the registry of 28.10 under HA\'s ids of that day: lost 21.11, not rebuildable)' }, () => {
   const match = cameraGo2rtcSpec.detect(fixture!); assert.ok(match);
   assert.equal(match!.entities.camera, 'camera.a889bffc_go2rtc'); assert.equal(match!.options?.addon, 'a889bffc_go2rtc');
   const cfg = defaultConfig(); cfg.modules.camera_go2rtc = { options: { stream: 'criuleni_c700_h264', streamHd: 'criuleni_c700' } };
@@ -48,7 +48,7 @@ import { translator } from '../src/i18n/index.ts';
 const camPath = resolve(import.meta.dirname, '../../private/fixtures/criuleni-camera-20261104.json');
 const cam = existsSync(camPath) ? JSON.parse(readFileSync(camPath, 'utf8')) : null;
 
-test('C700: functions are matched to roles, claimed by the card and gone from «Systems»', { skip: !cam }, () => {
+test('C700: functions are matched to roles, claimed by the card and gone from «Systems»', { skip: !cam && 'fixture missing: private/fixtures/criuleni-camera-20261104.json (scripts/rebuild-fixtures.mjs)' }, () => {
   const match = cameraGo2rtcSpec.detect(cam!); assert.ok(match);
   assert.equal(match!.entities.camera, undefined, 'no Supervisor-named go2rtc camera in this snapshot: the camera comes from the config');
   assert.equal(match!.entities.power, 'switch.entrance_camera_power'); assert.equal(match!.entities.night, 'select.entrance_camera_night_mode'); assert.equal(match!.entities.indicator, 'light.entrance_camera_indicator');

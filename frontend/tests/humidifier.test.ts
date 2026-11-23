@@ -39,7 +39,7 @@ test('the catalog: one profile in «Увлажнители», found by the model
   for (const t of [ru, ro, en]) for (const k of [P.titleKey, P.descKey, P.kindKey!, ...P.roles.flatMap(r => [r.labelKey, ...(r.hintKey ? [r.hintKey] : [])])]) assert.notEqual(t(k as never), k, k);
 });
 
-test('the house: the humidifier of the Living room, every own field filled, the socket named after it found (1.36.1), the room sensor left to the installer', { skip: !have }, () => {
+test('the house: the humidifier of the Living room, every own field filled, the socket named after it found (1.36.1), the room sensor left to the installer', { skip: !have && 'fixture missing: private/fixtures/criuleni-registry-live-20261121.json (the house snapshot, private)' }, () => {
   const { reg, dev, bindings } = setup();
   assert.equal(devicesFor(reg, P).length, 1); assert.equal(dev.areaId, 'gostinaia');
   assert.deepEqual(bindings, {
@@ -55,7 +55,7 @@ test('the house: the humidifier of the Living room, every own field filled, the 
   assert.equal(v.incomplete.length, 0); assert.equal(v.device.name, 'Увлажнитель воздуха');
 });
 
-test('read: on, holding a humidity, its level, the readings', { skip: !have }, () => {
+test('read: on, holding a humidity, its level, the readings', { skip: !have && 'fixture missing: private/fixtures/criuleni-registry-live-20261121.json (the house snapshot, private)' }, () => {
   const { reg, bindings: b } = setup();
   let h = readHumidifier(alive(reg, b), b);
   assert.equal(h.phase, 'on'); assert.equal(h.current, 52); assert.equal(h.target, 60); assert.equal(h.level, 2); assert.equal(h.min, 40); assert.equal(h.max, 70);
@@ -68,7 +68,7 @@ test('read: on, holding a humidity, its level, the readings', { skip: !have }, (
   h = readHumidifier(alive(reg, b), { ...b, humidity: '' }); assert.equal(h.current, 50);
 });
 
-test('«Нет воды» and «Бак снят»: from their sensors or from the fault, said on the tile before anything else', { skip: !have }, () => {
+test('«Нет воды» and «Бак снят»: from their sensors or from the fault, said on the tile before anything else', { skip: !have && 'fixture missing: private/fixtures/criuleni-registry-live-20261121.json (the house snapshot, private)' }, () => {
   const { reg, bindings: b } = setup();
   let h = readHumidifier(alive(reg, b, { water: 'on' }), b);
   assert.ok(h.noWater && !h.tankOut); assert.equal(humidifierLine(h, ru, 'ru'), 'Нет воды'); assert.equal(humidifierLine(h, ro, 'ro'), 'Fără apă');
@@ -80,7 +80,7 @@ test('«Нет воды» and «Бак снят»: from their sensors or from th
   h = readHumidifier(alive(reg, b, { fault: '0' }), b); assert.equal(h.fault, null);
 });
 
-test('off, no connection, the plug off, the house unreachable: nothing «now» from a silent humidifier', { skip: !have }, () => {
+test('off, no connection, the plug off, the house unreachable: nothing «now» from a silent humidifier', { skip: !have && 'fixture missing: private/fixtures/criuleni-registry-live-20261121.json (the house snapshot, private)' }, () => {
   // first the card without its socket (the form suggests it since 1.36.1; the installer may leave it out)
   const { reg, bindings: { plug: _plug, plugPower: _plugPower, ...b } } = setup(); void _plug; void _plugPower;
   let h = readHumidifier(alive(reg, b, { state: 'off' }), b);

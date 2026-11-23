@@ -9,6 +9,8 @@ import { spawn } from 'node:child_process';
 import { readFile, mkdir, rm } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { layout } from './card-checks.mjs';
+import { needCards } from './fixtures.mjs';
+needCards('header'); // the private fixtures the preview needs: a clear skip (exit 77) before anything is started, not a server that dies
 const root = resolve(import.meta.dirname, '..'), out = resolve(root, process.argv[2] ?? 'evidence/header'); await rm(out, { recursive: true, force: true }); await mkdir(out, { recursive: true });
 const axe = await readFile(resolve(root, 'node_modules/axe-core/axe.min.js'), 'utf8'), port = await freePort(); // Chrome refuses 5060/5061 (SIP)
 const server = spawn(process.execPath, [resolve(root, 'scripts/card-preview.mjs'), String(port)], { stdio: 'pipe' }); await new Promise(r => server.stdout.once('data', r));

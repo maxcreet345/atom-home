@@ -8,15 +8,17 @@ import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 import { addFeeder, feederLog } from './feeder-fixture.mjs';
+import { fixturePath, needCards } from './fixtures.mjs';
+needCards('rooms', 'security'); // the private fixtures the preview needs: a clear skip (exit 77) before anything is started, not a server that dies
 const root = resolve(import.meta.dirname, '..'), dist = process.env.QA_DIST ? resolve(process.env.QA_DIST) : resolve(root, 'dist-preview'); // QA_DIST: another build of the preview (to see the checks fail on an older one)
 const out = resolve(process.argv[2] ?? resolve(root, 'evidence/layout')); await mkdir(out, { recursive: true });
 const only = process.argv[3] ? new RegExp(process.argv[3]) : null;
 const QLANG = process.env.QA_LANG ?? 'ru'; // QA_LANG=en|ro walks the same matrix in another language
 
 // ---- own server: «/» the whole panel (owner's config), «/card?card=&scenario=» one card in a state (scripts/cards/*.mjs) -----------------------------------
-const fixture = JSON.stringify(addFeeder(JSON.parse(await readFile(resolve(root, process.env.QA_FIXTURE ?? '../private/fixtures/criuleni-registry.json'), 'utf8') /* QA_FIXTURE: another snapshot of the house (a fresh one, 18.11) */)));
-const cardBase = JSON.parse(await readFile(resolve(root, '../private/fixtures/criuleni-registry-live-20261028.json'), 'utf8'));
-const configText = await readFile(resolve(root, process.env.QA_CONFIG ?? '../../clients/criuleni/atom-home-config-20261028.json'), 'utf8');
+const fixture = JSON.stringify(addFeeder(JSON.parse(await readFile(process.env.QA_FIXTURE ? resolve(root, process.env.QA_FIXTURE) : fixturePath('criuleni-registry.json'), 'utf8') /* QA_FIXTURE: another snapshot of the house (a fresh one, 18.11) */)));
+const cardBase = JSON.parse(await readFile(fixturePath('criuleni-registry-live-20261028.json'), 'utf8'));
+const configText = await readFile(process.env.QA_CONFIG ? resolve(root, process.env.QA_CONFIG) : fixturePath('atom-home-config-20261028.json'), 'utf8');
 const HEAD = '<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>html,body{margin:0;height:100%;overflow:hidden;background:#000}#root{height:100%;position:relative}</style><div id="root"></div><script type="module">import "/atom-preview.js"; const q = new URLSearchParams(location.search);';
 const PANEL = HEAD + 'const [fx, cfg] = await Promise.all([fetch("/fixture.json").then(r => r.json()), fetch("/config.json").then(r => r.json())]); cfg.home.theme = q.get("theme") ?? "light"; if (q.get("lang")) cfg.home.language = q.get("lang"); window.__feederLog = await fetch("/feeder-log.json").then(r => r.json()); await window.mountPreview(document.getElementById("root"), fx, cfg); window.ready = true;</script>';
 const CARD = HEAD + 'const d = await (await fetch("/__state" + location.search)).json(); localStorage.clear(); d.config.home.theme = q.get("theme") ?? "light"; d.config.home.language = q.get("lang") ?? "ru"; window.__feederLog = d.feederLog; window.__airTasks = d.airTasks; window.__energyMonth = d.energyMonth; window.__energyStats = d.energyStats; window.__energyPrefs = d.energyPrefs; window.__logbook = d.logbook; window.__frames = d.frames; window.__camHistory = d.camHistory; await window.mountPreview(document.getElementById("root"), d.snapshot, d.config); window.ready = true;</script>';

@@ -46,7 +46,7 @@ test('a state that changes the shape of the house (a name, a class, a unit, an e
   assert.deepEqual(find(small, cfg, new Set(['light.lamp'])), discover(small, cfg, new Set(['light.lamp'])), 'a module claimed an entity');
 });
 
-test('the real house: three hundred random state changes, the remembered house always equals a fresh one', { skip: !fixture }, () => {
+test('the real house: three hundred random state changes, the remembered house always equals a fresh one', { skip: !fixture && 'fixture missing: private/fixtures/criuleni-registry.json (the registry of 28.10 under HA\'s ids of that day: lost 21.11, not rebuildable)' }, () => {
   const find = rememberDiscover(); let reg = fixture!; let seed = 20261109; const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
   const ids = Object.keys(reg.states); let same = 0, patched = 0; let prev = find(reg, config);
   assert.deepEqual(prev, discover(reg, config));
@@ -63,7 +63,7 @@ test('the real house: three hundred random state changes, the remembered house a
   assert.deepEqual(prev, discover(reg, config)); assert.ok(same > 0 && patched > 0, JSON.stringify({ same, patched }));
 });
 
-test('the real house: a remembered answer is at least twice cheaper than building it anew', { skip: !fixture }, () => {
+test('the real house: a remembered answer is at least twice cheaper than building it anew', { skip: !fixture && 'fixture missing: private/fixtures/criuleni-registry.json (the registry of 28.10 under HA\'s ids of that day: lost 21.11, not rebuildable)' }, () => {
   const find = rememberDiscover(); let reg = fixture!; find(reg, config);
   const id = Object.keys(reg.states).find(k => k.startsWith('sensor.') && Number.isFinite(Number(reg.states[k].state)))!;
   const step = (n: number) => { reg = withState(reg, id, { ...reg.states[id], state: String(n) }); return reg; };

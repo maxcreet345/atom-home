@@ -19,7 +19,9 @@ import type { Registry } from '../src/model/registry.ts';
 import type { HomeDevice } from '../src/model/discover.ts';
 
 const fx = (f: string) => resolve(import.meta.dirname, '../../private/fixtures', f), configPath = resolve(import.meta.dirname, '../../../clients/criuleni/atom-home-config-20261028.json');
-const have = existsSync(fx('criuleni-rooms-20261109.json')) && existsSync(fx('criuleni-registry-live-20261028.json')) && existsSync(configPath);
+const gone = [fx('criuleni-rooms-20261109.json'), fx('criuleni-registry-live-20261028.json'), configPath].filter(p => !existsSync(p)), have = !gone.length;
+// the registry of 28.10 is lost and is not rebuilt (scripts/rebuild-fixtures.mjs): these tests wait for a capture of the house, not for its stand-in
+const why = `fixture missing: ${gone.map(p => p.split('/').slice(-3).join('/')).join(', ')}`;
 async function house() {
   // @ts-expect-error a plain .mjs scenario of the card preview
   const { card } = await import('../scripts/cards/rooms.mjs');
@@ -39,7 +41,7 @@ async function house() {
 // the settings of these appliances: none of them is ever what a tap opens
 const SETTINGS = /buzzer|keep_warm|shake_reminder|child_lock|no_disturb|wrinkle|_run$/;
 
-test('the five appliances of this house open themselves — their power — never a settings switch', { skip: !have && 'no 09.11 fixture' }, async () => {
+test('the five appliances of this house open themselves — their power — never a settings switch', { skip: !have && why }, async () => {
   const { apps, all, verdicts } = await house(), find = (re: RegExp) => [...apps.values()].find(a => re.test(a.name));
   const want: Array<[RegExp, (a: HomeDevice) => boolean, string]> = [
     [/Увлажнитель воздуха/, a => a.primary.id === 'sensor.living_humidifier_plug_power', 'the humidifier: the power its plug measures'],
@@ -62,7 +64,7 @@ test('the five appliances of this house open themselves — their power — neve
   }
 });
 
-test('a tap on the tile switches the appliance\'s power switch, as 1.26.1 did; one without a power switch opens', { skip: !have && 'no 09.11 fixture' }, async () => {
+test('a tap on the tile switches the appliance\'s power switch, as 1.26.1 did; one without a power switch opens', { skip: !have && why }, async () => {
   const { apps } = await house(), find = (re: RegExp) => [...apps.values()].find(a => re.test(a.name));
   // a tap switches exactly this (the preview's check in qa-nav.mjs sends it and nothing else)
   const switches: Array<[RegExp, string, string]> = [
@@ -86,7 +88,7 @@ test('the big number says the power in the panel\'s own units, as the tile does'
   const silent = { ...power('unavailable'), available: false }; assert.equal(bigReading(silent, ru, 'ru'), stateText(silent, ru, 'ru'), 'a silent meter says so, as everywhere');
 });
 
-test('on the room page the same appliance opens: its card is found by its HA device', { skip: !have && 'no 09.11 fixture' }, async () => {
+test('on the room page the same appliance opens: its card is found by its HA device', { skip: !have && why }, async () => {
   const { apps, reg, home, roomName } = await house();
   for (const a of apps.values()) {
     const m = readRoom(reg, a.roomId, roomName(a.roomId), null, null), th = [...m.things, ...m.air].find(t => t.key === a.haDeviceId);

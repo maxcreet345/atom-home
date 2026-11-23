@@ -22,7 +22,7 @@ test('config keeps only safe photo URLs and well-formed module overrides', () =>
   assert.deepEqual(config.modules.boiler_ebus, { enabled: false, entities: { flow: 'sensor.flow' } }); assert.equal(config.modules['evil key'], undefined);
 });
 
-test('modules: detection, disable and entity override', { skip: !fixture }, () => {
+test('modules: detection, disable and entity override', { skip: !fixture && 'fixture missing: private/fixtures/criuleni-registry.json (the registry of 28.10 under HA\'s ids of that day: lost 21.11, not rebuildable)' }, () => {
   const def = MODULES.find(m => m.id === 'boiler_ebus')!;
   const match = def.detect(fixture!); assert.ok(match, 'Criuleni ebusd boiler detected');
   assert.equal(match!.entities.flow, 'sensor.heating_ebusd_criuleni_bai_flowtemp_temp'); assert.equal(match!.entities.pressure, 'sensor.heating_ebusd_criuleni_bai_waterpressure_press');

@@ -4,11 +4,12 @@ import { chromium } from '../node_modules/playwright/index.mjs';
 import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
+import { fixturePath as fixtureFile } from './fixtures.mjs';
 const root = resolve(import.meta.dirname, '..'), dist = resolve(root, 'dist-preview');
 const out = resolve(process.argv[2] ?? resolve(root, 'evidence/desktop')); await mkdir(out, { recursive: true });
-const fixturePath = resolve(root, process.argv[3] ?? '../private/fixtures/criuleni-registry.json');
+const fixturePath = process.argv[3] ? resolve(root, process.argv[3]) : fixtureFile('criuleni-registry.json');
 const fixture = await readFile(fixturePath, 'utf8');
-const cameraFx = JSON.parse(await readFile(resolve(root, '../private/fixtures/criuleni-camera-20261104.json'), 'utf8'));
+const cameraFx = JSON.parse(await readFile(fixtureFile('criuleni-camera-20261104.json'), 'utf8'));
 // merge the camera snapshot into the big snapshot so the sheet has its functions
 const big = JSON.parse(fixture); const ids = new Set(big.entities.map(e => e.entity_id));
 for (const e of cameraFx.entities) if (!ids.has(e.entity_id)) big.entities.push(e);

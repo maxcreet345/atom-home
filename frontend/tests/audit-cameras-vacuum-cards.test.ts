@@ -132,7 +132,7 @@ function vac(over: Record<string, string>) {
   const states = structuredClone(fx.states); for (const [id, state] of Object.entries(over)) states[id] = { ...(states[id] ?? { attributes: {}, last_changed: iso(NOW), last_updated: iso(NOW) }), state };
   return readVacuum({ areas: [], devices: fx.devices, entities: fx.entities, states })!;
 }
-test('vacuum: a trip to the dock in the middle of a job is still the job', { skip: !fx }, () => {
+test('vacuum: a trip to the dock in the middle of a job is still the job', { skip: !fx && 'fixture missing: private/fixtures/criuleni-vacuum-20261109.json (scripts/rebuild-fixtures.mjs)' }, () => {
   assert.equal(vac({}).phase, 'cleaning');
   const wash = vac({ [`vacuum.${P_}`]: 'docked', [`sensor.${P_}_status`]: 'washing_the_mop' }); assert.equal(wash.phase, 'cleaning', 'washing the mop with the run at 91 %'); assert.equal(wash.progress, 91); assert.equal(wash.status, 'washing_the_mop');
   assert.equal(vac({ [`vacuum.${P_}`]: 'returning', [`sensor.${P_}_status`]: 'going_to_wash_the_mop' }).phase, 'cleaning');
@@ -142,19 +142,19 @@ test('vacuum: a trip to the dock in the middle of a job is still the job', { ski
   assert.equal(vac({ [`vacuum.${P_}`]: 'docked', [`sensor.${P_}_status`]: 'charging', [`binary_sensor.${P_}_cleaning`]: 'off' }).phase, 'docked');
   assert.equal(vac({ [`vacuum.${P_}`]: 'returning', [`sensor.${P_}_status`]: 'returning_home', [`binary_sensor.${P_}_cleaning`]: 'off' }).phase, 'returning');
 });
-test('vacuum: «unknown» is not a lost robot, «unavailable» is', { skip: !fx }, () => {
+test('vacuum: «unknown» is not a lost robot, «unavailable» is', { skip: !fx && 'fixture missing: private/fixtures/criuleni-vacuum-20261109.json (scripts/rebuild-fixtures.mjs)' }, () => {
   const u = vac({ [`vacuum.${P_}`]: 'unknown' }); assert.equal(u.available, true); assert.equal(u.phase, 'cleaning', 'the status sensor says it cleans');
   assert.equal(vac({ [`vacuum.${P_}`]: 'unknown', [`sensor.${P_}_status`]: 'paused' }).phase, 'paused');
   assert.equal(vac({ [`vacuum.${P_}`]: 'unknown', [`sensor.${P_}_status`]: 'returning_home', [`binary_sensor.${P_}_cleaning`]: 'off' }).phase, 'returning');
   assert.equal(vac({ [`vacuum.${P_}`]: 'unknown', [`sensor.${P_}_status`]: 'charging', [`binary_sensor.${P_}_cleaning`]: 'off' }).phase, 'docked');
   const off = vac({ [`vacuum.${P_}`]: 'unavailable' }); assert.equal(off.available, false); assert.equal(off.phase, 'offline');
 });
-test('vacuum: no raw strings — a technical model id and the robot\'s own room word are not shown', { skip: !fx }, () => {
+test('vacuum: no raw strings — a technical model id and the robot\'s own room word are not shown', { skip: !fx && 'fixture missing: private/fixtures/criuleni-vacuum-20261109.json (scripts/rebuild-fixtures.mjs)' }, () => {
   assert.equal(readableModel('roborock.vacuum.s5e'), null); assert.equal(readableModel('yeelink.light.ceilc'), null); assert.equal(readableModel('Saros Z70'), 'Saros Z70'); assert.equal(readableModel('IPC-K2EC'), 'IPC-K2EC'); assert.equal(readableModel(''), null); assert.equal(readableModel(null), null);
   // the rooms are not linked to areas here: the sensor's «кухню» has no name to turn into
   assert.equal(vac({ [`sensor.${P_}_current_room`]: 'кухню' }).currentRoom, null);
 });
-test('vacuum: every status and error the robot can report has a word in ru, en and ro', { skip: !fx }, () => {
+test('vacuum: every status and error the robot can report has a word in ru, en and ro', { skip: !fx && 'fixture missing: private/fixtures/criuleni-vacuum-20261109.json (scripts/rebuild-fixtures.mjs)' }, () => {
   const opts = (id: string) => (fx.states[id].attributes.options as string[]);
   for (const [name, d] of [['ru', ru], ['en', en], ['ro', ro]] as const) {
     for (const s of opts(`sensor.${P_}_status`)) assert.ok((d as Record<string, string>)[`module.vac.st.${s}`], `${name}: status ${s}`);

@@ -10,9 +10,10 @@ import { chromium } from '../node_modules/playwright/index.mjs';
 import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
+import { fixturePath } from './fixtures.mjs';
 const root = resolve(import.meta.dirname, '..'), dist = resolve(root, 'dist-preview'), out = resolve(root, process.argv[2] ?? 'evidence/speaker'); await mkdir(out, { recursive: true });
-const live = JSON.parse(await readFile(resolve(root, '../private/fixtures/criuleni-registry-live-20261121.json'), 'utf8'));
-const baseConfig = JSON.parse(await readFile(resolve(root, '../private/fixtures/criuleni-config-20261121.json'), 'utf8'));
+const live = JSON.parse(await readFile(fixturePath('criuleni-registry-live-20261121.json'), 'utf8'));
+const baseConfig = JSON.parse(await readFile(fixturePath('criuleni-config-20261121.json'), 'utf8'));
 
 // ---- the cards, bound the way the catalog suggests (by model and the integration's suffixes); the sockets as an installer would choose them ----
 const MODELS = { max: 'Станция Макс (2020)', lite: 'Станция Лайт (2021)', mini: 'Станция Мини 2 (2021)', sat: 'satellite' };

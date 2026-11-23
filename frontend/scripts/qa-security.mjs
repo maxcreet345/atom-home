@@ -9,6 +9,8 @@ import { spawn } from 'node:child_process';
 import { readFile, mkdir, rm } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { layout } from './card-checks.mjs';
+import { needCards, cardMissing, skipCheck, exitWith } from './fixtures.mjs';
+needCards('security'); // the private fixtures the preview needs: a clear skip (exit 77) before anything is started, not a server that dies
 /** «Безопасность» is four tabs since 20.11.2026: what a check looks for may be on another tab — open the one that has it (or stay when none does). */
 const reveal = async (page, sel) => { if (!(await page.$('.at-sec-tabs'))) return; for (let i = 0; i < 4; i++) { if (await page.locator(sel).count()) return; await page.locator('.at-sec-tabs button').nth(i).click(); await page.waitForTimeout(200); } };
 
@@ -338,6 +340,7 @@ for (const [w, h, theme, lang] of [[320, 568, 'light', 'ru'], [568, 320, 'dark',
   await reveal(page, '.at-sec-set input[type=date]'); const f = page.locator('.at-sec-set input[type=date]'); await f.scrollIntoViewIfNeeded(); const was = await f.inputValue(); await f.fill(''); await page.keyboard.press('Tab'); await page.waitForTimeout(400); const l = await sent(page);
   check('CODEX-011: «Настройка → Дата возвращения» emptied writes the house\'s «no date», not nothing', was === LATER && l.length === 1 && l[0].c === 'input_datetime.set_datetime' && l[0].data?.datetime === '2099-12-31 00:00:00', { was, l }); check('errors CODEX-011 settings', !errors.length, errors); await ctx.close(); }
 // CODEX-002 / CODEX-010: the office («Атом + Окапи») — its own look (rings, two keys), the house's safety rules
+if (cardMissing('okapi-security')) skipCheck('the office («Атом + Окапи») checks CODEX-002 / CODEX-010', cardMissing('okapi-security')); else { // another building's capture, not rebuildable from the Criuleni snapshot
 async function openOffice({ w = 1070, h = 764, theme = 'light', lang = 'ru', scenario = 'armed', hash = '#security' } = {}) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: w < 1100, timezoneId: 'Europe/Chisinau' }), page = await ctx.newPage(), errors = [];
   page.on('pageerror', e => errors.push(e.message)); page.on('console', m => { if (['error', 'warning'].includes(m.type()) && !noise(m.text())) errors.push(m.text()); });
@@ -392,6 +395,7 @@ for (const st of ['unavailable', 'unknown']) for (const theme of ['light', 'dark
   await page.evaluate(g => window.atomPreview.setStates({ [g]: 'unavailable' }), GLASS); await page.waitForTimeout(250);
   check('CODEX-010 office: an unavailable glass break makes the building amber and names the device', /\bis-warn\b/.test(await page.evaluate(() => document.querySelector('.at-osec-control').className)) && /Не отвечает: Движение в Шоуруме/.test(await page.locator('.at-osec-name small').innerText()), await page.locator('.at-osec-name small').innerText());
   check('errors CODEX-010 glass', !errors.length, errors); await ctx.close(); }
+}
 
 // 14.11.2026: two valves (the kitchen's hot water for the house and the bathroom's): a card each with its device's name and room, each button
 // commands its own valve, opening asks and names which valve, the room filter keeps the room's valve, «Перекрыть воду» shuts every open one
@@ -453,4 +457,4 @@ for (const [w, h] of [[1070, 764], [360, 792], [690, 829]]) { const { page, ctx,
   const more = page.locator('.at-osec-more').first(); if (await more.count()) { const box = page.locator('.at-osec-gsum').filter({ has: more }).first(), before = await box.locator('.at-osec-dev').count(); await more.click(); await page.waitForTimeout(200); const after = await box.locator('.at-osec-dev').count(); check(`tabs ${w}: «Показать все» shows the group's other sensors`, after > before, { before, after }); }
   await page.locator('.at-sec-tabs button').nth(2).click(); await page.waitForTimeout(250); check(`tabs ${w}: «Журнал» holds the log, not the sensors`, !(await page.$('.at-osec-devs')) && !(await page.$('.at-osec-control')), {});
   check(`errors tabs ${w}`, !errors.length, errors); await ctx.close(); }
-stop(fails.length ? 1 : 0);
+stop(exitWith(fails.length));

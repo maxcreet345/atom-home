@@ -6,6 +6,8 @@ import { freePort } from './free-port.mjs';
 import { spawn } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { needPreviewServer } from './fixtures.mjs';
+needPreviewServer(); // the private fixtures the preview needs: a clear skip (exit 77) before anything is started, not a server that dies
 const root = resolve(import.meta.dirname, '..'), out = resolve(process.argv[2] ?? resolve(root, 'evidence/tiles')); await mkdir(out, { recursive: true });
 const port = await freePort(), server = spawn(process.execPath, [resolve(root, 'scripts/preview-server.mjs'), String(port)], { stdio: 'pipe' }); await new Promise(r => server.stdout.once('data', r));
 const origin = `http://127.0.0.1:${port}`, browser = await chromium.launch(), report = { checks: [], errors: [] };

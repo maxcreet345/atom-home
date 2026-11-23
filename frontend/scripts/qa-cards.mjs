@@ -4,14 +4,15 @@ import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 const root = resolve(import.meta.dirname, '..'), dist = resolve(root, 'dist-preview'), out = resolve(root, process.argv[2] ?? 'evidence/cards'); await mkdir(out, { recursive: true });
-const fixture = await readFile(resolve(root, '../private/fixtures/criuleni-registry.json'), 'utf8');
+const fixture = await readFile(fixturePath('criuleni-registry.json'), 'utf8');
 const server = createServer(async (req, res) => { try { const u = new URL(req.url, 'http://l'); if (u.pathname === '/') { res.setHeader('content-type', 'text/html'); res.end('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;overflow:hidden;background:#000}#root{height:100%}</style><div id="root"></div><script type="module">import "/atom-preview.js";window.ready=true</script>'); return; } if (u.pathname === '/fixture.json') { res.setHeader('content-type', 'application/json'); res.end(fixture); return; } const p = resolve(dist, '.' + decodeURIComponent(u.pathname)); res.setHeader('content-type', ({ '.js': 'application/javascript', '.css': 'text/css' })[extname(p)] ?? 'application/octet-stream'); res.end(await readFile(p)); } catch { res.statusCode = 404; res.end(); } });
 await new Promise(r => server.listen(0, '127.0.0.1', r)); const origin = 'http://127.0.0.1:' + server.address().port;
 const browser = await chromium.launch(); const checks = []; const check = (n, p, d = {}) => checks.push({ n, p, ...d }); const errors = [];
 // Card-by-card review: element screenshots of every module/card/sheet type in both themes, then contact sheets.
 import { execSync } from 'node:child_process';
-const ownerConfig = JSON.parse(await readFile(resolve(root, '../../clients/criuleni/atom-home-config-20261028.json'), 'utf8'));
-const traian = await readFile(resolve(root, '../private/fixtures/traian-registry.json'), 'utf8');
+import { fixturePath, findFixture, skipCheck } from './fixtures.mjs';
+const ownerConfig = JSON.parse(await readFile(fixturePath('atom-home-config-20261028.json'), 'utf8'));
+const traian = findFixture('traian-registry.json') ? await readFile(findFixture('traian-registry.json'), 'utf8') : null; // another house's registry: lost, not rebuildable
 const shots = [];
 try {
   for (const theme of ['light', 'dark']) {
@@ -55,6 +56,7 @@ try {
     await page.close();
   }
   // Traian: feeder card + sheet-less module
+  if (!traian) skipCheck('Traian: the feeder card and its compact tile', 'traian-registry.json'); else {
   const page = await browser.newPage({ viewport: { width: 1070, height: 764 }, deviceScaleFactor: 2 }); page.on('pageerror', e => errors.push(`traian: ${e.message}`));
   await page.goto(origin); await page.waitForFunction(() => window.ready);
   await page.evaluate(async fx => { localStorage.clear(); await window.mountPreview(document.getElementById('root'), JSON.parse(fx)); }, traian); await page.waitForSelector('.at-shell'); await page.waitForTimeout(800);
@@ -62,6 +64,7 @@ try {
   const f = resolve(out, 'light-feeder-card.png'); await page.locator('.at-fd-tile').screenshot({ path: f }); shots.push({ name: 'feeder-card', theme: 'light', f });
   await page.evaluate(() => { location.hash = '#home'; }); await page.waitForTimeout(600); const f2 = resolve(out, 'light-feeder-compact.png'); await page.locator('[data-module-card="pet_feeder"]').first().screenshot({ path: f2 }); shots.push({ name: 'feeder-compact', theme: 'light', f: f2 });
   await page.close();
+  }
 } finally { await browser.close(); server.close(); }
 // contact sheets (ImageMagick): tiles / sheets / setup, per theme
 const groups = { tiles: n => !/^sheet|^setup|^ph-|confirm|toast/.test(n), sheets: n => /^sheet|^ph-sheet|confirm|toast/.test(n), setup: n => /^setup/.test(n), phone: n => /^ph-(?!sheet)/.test(n) };

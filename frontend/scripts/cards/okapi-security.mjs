@@ -3,7 +3,8 @@
 // every sensor by state, smoke here too, the service's staff arm and disarm. The exhibit's room carries the label «Atom Home: не показывать».
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-const live = JSON.parse(readFileSync(resolve(import.meta.dirname, '../../../private/fixtures/okapi-security-20261109.json'), 'utf8'));
+import { requireFixture } from '../fixtures.mjs';
+const live = JSON.parse(readFileSync(requireFixture('okapi-security-20261109.json'), 'utf8'));
 export const AT = '2026-11-09T15:30:00+02:00';
 // the devices' names in the panel (Atom Home device overrides), as the old Admin Panel called them
 const NAMES = {

@@ -103,7 +103,7 @@ test('actions are white-listed per kind and respect declared features', () => {
   assert.ok(CONTROL_KINDS.includes('light'));
 });
 
-test('Criuleni registry snapshot (private) discovers rooms and household devices without manual bindings', { skip: !fixture }, () => {
+test('Criuleni registry snapshot (private) discovers rooms and household devices without manual bindings', { skip: !fixture && 'fixture missing: private/fixtures/criuleni-registry.json (the registry of 28.10 under HA\'s ids of that day: lost 21.11, not rebuildable)' }, () => {
   const home = discover(fixture!, defaultConfig('Criuleni'));
   const enabled = home.devices.filter(d => d.enabled);
   const byKind = Object.fromEntries(Object.entries(home.counts).sort());

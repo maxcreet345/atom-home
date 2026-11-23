@@ -80,7 +80,7 @@ test('l24 the room\'s own sensor does not answer while the head is still set to 
 
 // ---- vacuum ----
 const fxPath = resolve(import.meta.dirname, '../../private/fixtures/criuleni-vacuum-20261109.json'), fx = existsSync(fxPath) ? JSON.parse(readFileSync(fxPath, 'utf8')) : null;
-test('f74 readVacuum: what belongs to the robot is found once per registry lists; a new state re-reads values only', { skip: !fx }, () => {
+test('f74 readVacuum: what belongs to the robot is found once per registry lists; a new state re-reads values only', { skip: !fx && 'fixture missing: private/fixtures/criuleni-vacuum-20261109.json (scripts/rebuild-fixtures.mjs)' }, () => {
   const reg = (states: Registry['states'], copy = false): Registry => ({ areas: [], devices: copy ? [...fx.devices] : fx.devices, entities: copy ? [...fx.entities] : fx.entities, states });
   const s1 = structuredClone(fx.states), s2 = structuredClone(fx.states); s2['vacuum.living_robot_vacuum'] = { ...s2['vacuum.living_robot_vacuum'], state: 'docked' }; for (const [id, state] of [['binary_sensor.living_robot_vacuum_cleaning', 'off'], ['sensor.living_robot_vacuum_status', 'charging']]) s2[id] = { ...s2[id], state }; s2['sensor.living_robot_vacuum_battery'] = { ...s2['sensor.living_robot_vacuum_battery'], state: '55' };
   const before = vacuumProbe.structure, a = readVacuum(reg(s1))!, afterFirst = vacuumProbe.structure, b = readVacuum(reg(s2))!;

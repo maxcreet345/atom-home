@@ -8,6 +8,8 @@ import { spawn } from 'node:child_process';
 import { freePort } from './free-port.mjs';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { needCards, needPreviewServer } from './fixtures.mjs';
+needPreviewServer(); needCards('rooms', 'security', 'kettle', 'airfryer'); // the private fixtures the preview needs: a clear skip (exit 77) before anything is started, not a server that dies
 const root = resolve(import.meta.dirname, '..'), out = resolve(process.argv[2] ?? resolve(root, 'evidence/integration')); await mkdir(out, { recursive: true });
 // a port nobody holds (the standing previews, other agents' servers and this script's own two never collide), and a start that cannot hang
 const kids = [];

@@ -5,8 +5,9 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 import { withPhotos, servePhoto, vacuumFrames, wantsPhotos } from './photo-fixture.mjs';
+import { fixturePath } from './fixtures.mjs';
 const root = resolve(import.meta.dirname, '..'), dist = process.env.QA_DIST ? resolve(process.env.QA_DIST) : resolve(root, 'dist-preview'), port = Number(process.argv[2] ?? 4173); // QA_DIST: another build of the preview
-const base = JSON.parse(await readFile(resolve(root, '../private/fixtures/criuleni-registry-live-20261028.json'), 'utf8')), configText = await readFile(resolve(root, '../../clients/criuleni/atom-home-config-20261028.json'), 'utf8');
+const base = JSON.parse(await readFile(fixturePath('criuleni-registry-live-20261028.json'), 'utf8')), configText = await readFile(fixturePath('atom-home-config-20261028.json'), 'utf8');
 const TYPES = { '.jpg': 'image/jpeg', '.js': 'text/javascript', '.css': 'text/css', '.webp': 'image/webp', '.png': 'image/png', '.svg': 'image/svg+xml', '.json': 'application/json' };
 const PAGE = `<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Atom Home preview</title><style>html,body{margin:0;height:100%;overflow:hidden;background:#000}#root{height:100%;position:relative}</style><div id="root"></div><script type="module">
 import "/atom-preview.js";
@@ -21,5 +22,5 @@ const server = createServer(async (req, res) => { const u = new URL(req.url, 'ht
   if (u.pathname.startsWith('/api/camera_proxy/')) { res.setHeader('content-type', 'image/svg+xml'); res.setHeader('cache-control', 'max-age=3600'); res.end('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360"><rect width="640" height="360" fill="#1b2433"/><g fill="none" stroke="#5d6b80" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><rect x="240" y="135" width="120" height="90" rx="14"/><path d="M360 165l44-24v78l-44-24"/></g></svg>'); return; }
   if (await servePhoto(u, res)) return; // /frames/… (recorded camera frames, the robot's renders, the map) and /local/device-photos/…
   const p = resolve(dist, '.' + decodeURIComponent(u.pathname)); if (!p.startsWith(dist)) throw new Error('outside'); res.setHeader('content-type', TYPES[extname(p)] ?? 'application/octet-stream'); res.setHeader('cache-control', 'no-store'); res.end(await readFile(p));
-} catch { res.statusCode = 404; res.end(); } });
+} catch (e) { if (/^fixture missing/.test(e?.message ?? '')) console.error(`SKIP card-preview.mjs: ${e.message}`); res.statusCode = 404; res.end(); } });
 server.listen(port, '127.0.0.1', () => console.log(`card preview ready on http://127.0.0.1:${port}`));

@@ -8,6 +8,8 @@ import { freePort } from './free-port.mjs';
 import { spawn } from 'node:child_process';
 import { mkdir, rm } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { needCards } from './fixtures.mjs';
+needCards('rooms', 'security'); // the private fixtures the preview needs: a clear skip (exit 77) before anything is started, not a server that dies
 const root = resolve(import.meta.dirname, '..'), out = resolve(root, process.argv[2] ?? 'evidence/room'); await rm(out, { recursive: true, force: true }); await mkdir(out, { recursive: true });
 const port = await freePort(), server = spawn(process.execPath, [resolve(root, 'scripts/card-preview.mjs'), String(port)], { stdio: 'pipe' }); await new Promise(r => server.stdout.once('data', r));
 const origin = `http://127.0.0.1:${port}`, browser = await chromium.launch(), fails = []; let passed = 0;

@@ -23,7 +23,7 @@ test('feeder command: one dosed MIOT action, dose limits enforced', () => {
   assert.equal(optionInt('12', 10, 1, 200), 12); assert.equal(optionInt('abc', 10, 1, 200), 10); assert.equal(optionInt('500', 10, 1, 200), 10);
 });
 
-test('feeder detected in the Traian snapshot with its siblings; absent in Criuleni', { skip: !traian || !criuleni }, () => {
+test('feeder detected in the Traian snapshot with its siblings; absent in Criuleni', { skip: (!traian || !criuleni) && 'fixture missing: private/fixtures/traian-registry.json (another house) and criuleni-registry.json (28.10): lost 21.11, not rebuildable' }, () => {
   const m = petFeederSpec.detect(traian!); assert.ok(m);
   assert.equal(m!.label, 'xiaomi.feeder.iv2001');
   const { device, ...roles } = m!.entities; assert.ok(device);

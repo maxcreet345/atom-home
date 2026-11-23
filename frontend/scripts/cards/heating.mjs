@@ -3,7 +3,8 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { card as cams } from './cameras.mjs';
-const live = JSON.parse(readFileSync(resolve(import.meta.dirname, '../../../private/fixtures/criuleni-heating-20261109.json'), 'utf8'));
+import { requireFixture } from '../fixtures.mjs';
+const live = JSON.parse(readFileSync(requireFixture('criuleni-heating-20261109.json'), 'utf8'));
 const OLD = /^(climate\.|.*heating_demirdokum|.*ebusd|sensor\.heating_|input_.*heating|timer\..*heating)/;
 const iso = (now, min) => new Date(now.getTime() - min * 60000).toISOString();
 const boilerOn = { flow_temp: '52.4', flow_temp_target: '60', return_temp: '44.1', dhw_temp: '47.5', dhw_temp_target: '50', pressure: '1.32', flame: 'on', state_code: 'S.04' };

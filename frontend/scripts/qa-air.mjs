@@ -9,8 +9,9 @@ import { resolve, extname } from 'node:path';
 import { addAir, deadSensors, renameAreas } from './air-fixture.mjs';
 import { layout, targets } from './card-checks.mjs';
 import { addFeeder, feederLog } from './feeder-fixture.mjs';
+import { fixturePath, optionalFixture, skipCheck, exitWith } from './fixtures.mjs';
 const root = resolve(import.meta.dirname, '..'), dist = resolve(root, 'dist-preview'), out = resolve(root, process.argv[2] ?? 'evidence/air'); await rm(out, { recursive: true, force: true }); await mkdir(out, { recursive: true });
-const NOW = new Date(2026, 10, 5, 13, 40), base = JSON.parse(await readFile(resolve(root, '../private/fixtures/criuleni-registry-live-20261028.json'), 'utf8')), traian = JSON.parse(await readFile(resolve(root, '../private/fixtures/traian-registry.json'), 'utf8')), config = JSON.parse(renameAreas(await readFile(resolve(root, '../../clients/criuleni/atom-home-config-20261028.json'), 'utf8'))), axe = await readFile(resolve(root, 'node_modules/axe-core/axe.min.js'), 'utf8');
+const NOW = new Date(2026, 10, 5, 13, 40), base = JSON.parse(await readFile(fixturePath('criuleni-registry-live-20261028.json'), 'utf8')), traian = optionalFixture('traian-registry.json'), /* another house's registry: lost, not rebuildable */ config = JSON.parse(renameAreas(await readFile(fixturePath('atom-home-config-20261028.json'), 'utf8'))), axe = await readFile(resolve(root, 'node_modules/axe-core/axe.min.js'), 'utf8');
 const server = createServer(async (req, res) => { const u = new URL(req.url, 'http://l'); try { if (u.pathname === '/') { res.setHeader('content-type', 'text/html; charset=utf-8'); res.end('<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>air</title><style>html,body{margin:0;height:100%;overflow:hidden;background:#000}#root{height:100%;position:relative}</style><div id="root"></div><script type="module">import "/atom-preview.js";window.ready=true</script>'); return; } const p = resolve(dist, '.' + decodeURIComponent(u.pathname)); res.setHeader('content-type', { '.js': 'text/javascript', '.css': 'text/css', '.webp': 'image/webp', '.png': 'image/png', '.svg': 'image/svg+xml' }[extname(p)] ?? 'application/octet-stream'); res.end(await readFile(p)); } catch { res.statusCode = 404; res.end(); } });
 await new Promise(r => server.listen(0, '127.0.0.1', r)); const origin = 'http://127.0.0.1:' + server.address().port;
 const browser = await chromium.launch(), fails = []; let passed = 0;
@@ -354,11 +355,11 @@ for (const lang of ['en', 'ro']) for (const [name, st] of Object.entries({ none:
   await go({ over: THREE }, async page => { await page.waitForTimeout(240); await page.click('.at-air-hero .at-air-do'); await page.waitForTimeout(200); const f = await at(page, '.at-air-hero .at-air-error'); check('a refusal already in sight does not move the sheet', f.top === 0 && f.whole && REFUSED.test(await page.innerText('.at-air-hero .at-air-error')), f); });
 }
 // 9. another house
-{ const { page, ctx, errors } = await open({ fx: traian, hash: '#home' }); check('Traian: no crash', !errors.length, errors); await ctx.close(); }
+if (!traian) skipCheck('Traian: no crash', 'traian-registry.json'); else { const { page, ctx, errors } = await open({ fx: traian, hash: '#home' }); check('Traian: no crash', !errors.length, errors); await ctx.close(); }
 // ---- audit 2026-11-09, round 2: l152 the house's own reason on the button, l191 nothing in the console ----
 for (const [name, err, re] of [['the house\'s reason', { code: 'home_assistant_error', message: 'Fan is locked by the hood' }, /^Дом отклонил команду: Fan is locked by the hood$/], ['a timeout', { code: 'timeout', message: 'Timeout' }, /[а-яё]{4}/i], ['something unknown', { nested: { a: 1 } }, /^Команда не прошла\. Попробуйте ещё раз$/]]) {
   const { page, ctx } = await open({ over: WET }), said = []; page.on('console', m => { if (['warning', 'error'].includes(m.type()) && !/Failed to load resource/.test(m.text())) said.push(m.text()); });
   await page.evaluate(e => window.atomPreview.host.setAirRefuse(e), err); await page.click('.at-air-do'); await page.waitForTimeout(150); const t = (await text(page, '.at-air-hero .at-air-error')).trim();
   check(`round 2 l152, refused with ${name}: said on the button as every other card says it`, re.test(t) && !/Команда не прошла/.test(name === 'something unknown' ? '' : t) && !/object Object/.test(t), t);
   check(`round 2 l191, refused with ${name}: nothing written to the console`, said.length === 0, said); await ctx.close(); }
-await browser.close(); server.close(); report(); process.exit(fails.length ? 1 : 0);
+await browser.close(); server.close(); report(); process.exit(exitWith(fails.length));

@@ -12,11 +12,12 @@ import { chromium } from '../node_modules/playwright/index.mjs';
 import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir, rm } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
+import { fixturePath } from './fixtures.mjs';
 const root = resolve(import.meta.dirname, '..'), dist = resolve(root, 'dist-preview'), out = resolve(root, process.argv[2] ?? 'evidence/laundry');
 await rm(out, { recursive: true, force: true }); await mkdir(out, { recursive: true });
-const live = await readFile(resolve(root, '../private/fixtures/criuleni-registry-live-20261121.json'), 'utf8');
+const live = await readFile(fixturePath('criuleni-registry-live-20261121.json'), 'utf8');
 const axeSrc = await readFile(resolve(root, 'node_modules/axe-core/axe.min.js'), 'utf8');
-const baseConfig = JSON.parse(await readFile(resolve(root, '../private/fixtures/criuleni-config-20261121.json'), 'utf8'));
+const baseConfig = JSON.parse(await readFile(fixturePath('criuleni-config-20261121.json'), 'utf8'));
 const CLOUD = 'sensor.vannaia_vannaia_sushilnaia_mashina_oblako_smartthings_otkliucheno_est_localthings_progress';
 const WASHER_DEV = '3b7ac90207cc36d288dca057d95b9929', DRYER_DEV = '4ad5abb20db718389ace669f8f249df9', CLOUD_DEV = 'dc67341f5fdf6b20dbeb5e129dc6f23d';
 // the cards as the installer adds them («＋ Добавить карточку»: the suggested fields, the plug and the cloud copy picked by hand)

@@ -3,9 +3,9 @@
 // (atom-okapi/ENERGY.md): five Tasmota POW inputs and the scooter store's own relay are the grid, the other meters sit inside their lines.
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-const dir = resolve(import.meta.dirname, '../../../private/fixtures');
-const live = JSON.parse(readFileSync(resolve(dir, 'okapi-energy-20261109.json'), 'utf8'));
-const stats = JSON.parse(readFileSync(resolve(dir, 'okapi-energy-stats-20261109.json'), 'utf8'));
+import { requireFixture } from '../fixtures.mjs';
+const live = JSON.parse(readFileSync(requireFixture('okapi-energy-20261109.json'), 'utf8'));
+const stats = JSON.parse(readFileSync(requireFixture('okapi-energy-stats-20261109.json'), 'utf8'));
 export const AT = '2026-11-09T11:20:00+02:00';
 const POW = ['sensor.tasmota_energy_total', 'sensor.tasmota_energy_total_2', 'sensor.tasmota_energy_total_3', 'sensor.tasmota_energy_total_4', 'sensor.tasmota_energy_total_5'];
 const STORE = 'sensor.basic_1gsp_sonoff_1002b4ae59_energy_year', TARIFF = 'input_number.energiia_tarif';

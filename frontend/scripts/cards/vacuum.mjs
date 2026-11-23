@@ -3,7 +3,8 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { card as heat } from './heating.mjs';
-const live = JSON.parse(readFileSync(resolve(import.meta.dirname, '../../../private/fixtures/criuleni-vacuum-20261109.json'), 'utf8'));
+import { requireFixture } from '../fixtures.mjs';
+const live = JSON.parse(readFileSync(requireFixture('criuleni-vacuum-20261109.json'), 'utf8'));
 const AREAS = { gostinaia: 'Гостиная', koridor_u_spalni: 'Коридор у спальни', spalnia: 'Спальня', prikhozhaia: 'Прихожая', detskaia: 'Детская', koridor_u_vannoi: 'Коридор у ванной', kukhnia: 'Кухня', kompiuternaia: 'Компьютерная', vannaia: 'Ванная' };
 const LINK = { gostinaia: '0_1', koridor_u_spalni: '0_2', spalnia: '0_3', prikhozhaia: '0_4', detskaia: '0_5', koridor_u_vannoi: '0_6', kukhnia: '0_7', kompiuternaia: '0_9', vannaia: '0_10' };
 const MAP = 'image.gostinaia_gostinaia_robot_pylesos_roborock_saros_z70_kvartira', P = 'living_robot_vacuum';

@@ -23,7 +23,9 @@ note() { # name, exit code, failed count
 count() { n=$(grep -cE '^✘|^✖|"p": false' "$1" 2>/dev/null); echo "${n:-0}"; }
 
 if has tsc; then npx tsc --noEmit > "$out/tsc.log" 2>&1; rc=$?; note tsc $rc "$(grep -c 'error TS' "$out/tsc.log")"; fi
-if has test; then npm test > "$out/test.log" 2>&1; rc=$?; n=$(sed -nE 's/^ℹ fail ([0-9]+).*/\1/p' "$out/test.log" | tail -1); note test $rc "${n:-0}"; fi
+if has test; then npm test > "$out/test.log" 2>&1; rc=$?; n=$(sed -nE 's/^ℹ fail ([0-9]+).*/\1/p' "$out/test.log" | tail -1); note test $rc "${n:-0}"
+  # a test that waits for a private fixture has checked nothing: said aloud beside the count of failures (the reasons: grep '# fixture missing' test.log)
+  sk=$(sed -nE 's/^ℹ skipped ([0-9]+).*/\1/p' "$out/test.log" | tail -1); [ "${sk:-0}" -gt 0 ] && say "[test] skipped ${sk} — not run, not passed"; fi
 if has py; then
   : > "$out/py.log"; bad=0; ran=0
   for t in ../tests/components/atom_home/test_*.py; do
@@ -43,6 +45,8 @@ for q in $all_qa; do
   if [ "$q" = qa-live-updates ]; then perl -e 'alarm shift; exec @ARGV' "$limit" node "scripts/$q.mjs" > "$log" 2>&1; rc=$?
   else perl -e 'alarm shift; exec @ARGV' "$limit" node "scripts/$q.mjs" "$out/$q" > "$log" 2>&1; rc=$?; fi
   [ $rc -eq 142 ] && echo "✘ gate: $q did not finish in $limit s" >> "$log"
+  # 77: the script (or a part of it) skipped for a missing private fixture (scripts/fixtures.mjs) — still a failed step, named for what it is
+  [ $rc -eq 77 ] && say "[$q] skipped: $(grep -m1 -E '^SKIP' "$log" | cut -c1-200)"
   note "$q" $rc "$(count "$log")"
 done
 
