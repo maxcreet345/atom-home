@@ -128,7 +128,9 @@ function DevicesTab({ home, config, patch, save, ask, t, lang, photos, friendly,
   const own = home.devices.filter(d => !config.devices[d.key]?.mergeInto), find = q.trim();
   const list = own.filter(d => !find || `${shownName(d, t)} ${d.primary.id} ${roomName(d.roomId)}`.toLowerCase().includes(find.toLowerCase()));
   // the family looks for «кормушка», «весы», «регистратор» here, and those are cards of the panel, not devices of this list (audit 22.11.2026, H-14): the search says so and where they are set up
-  const low = find.toLowerCase(), cardsHit = low.length >= 3 ? PROFILES.filter(p => { const title = t(p.titleKey as Key); return title !== p.titleKey && (title.toLowerCase().includes(low) || p.terms.some(w => w.toLowerCase().includes(low) || (w.length >= 4 && low.includes(w.toLowerCase())))); }).filter((p, i, a) => a.findIndex(x => t(x.titleKey as Key) === t(p.titleKey as Key)) === i).slice(0, 3) : [];
+  // by the card's own word («Кормушка») or a word people call it by; by its maker or model only when no device was found (else «xiaomi» named three cards over the plugs it found)
+  const low = find.toLowerCase(), cardWord = (p: typeof PROFILES[number]) => p.module && t(`module.${p.module}` as Key) !== `module.${p.module}` ? t(`module.${p.module}` as Key) : '';
+  const cardsHit = low.length >= 4 ? PROFILES.filter(p => { const title = t(p.titleKey as Key); return title !== p.titleKey && (cardWord(p).toLowerCase().includes(low) || p.terms.some(w => w.length >= 4 && w.toLowerCase().startsWith(low)) || (list.length === 0 && title.toLowerCase().includes(low))); }).filter((p, i, a) => a.findIndex(x => t(x.titleKey as Key) === t(p.titleKey as Key)) === i).slice(0, 3) : [];
   const byRoom = new Map<string, HomeDevice[]>(); for (const d of list) (byRoom.get(d.roomId) ?? byRoom.set(d.roomId, []).get(d.roomId)!).push(d);
   const rooms = [...home.rooms.map(r => r.id), NO_ROOM].filter((id, i, a) => a.indexOf(id) === i && byRoom.has(id));
   const enabled = home.devices.filter(d => d.enabled).length;

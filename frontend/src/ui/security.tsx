@@ -200,7 +200,7 @@ export function SecurityPanel({ s, registry, config, host, commands, t, lang, no
   // the panel as blocks (owner, 23.11.2026: «Безопасность» is arranged like Home): the tabs stay on top, each part of a tab is a block of the page
   const guardOn = tab === 'guard' || tab === 'all', cls = `at-osec-wrap at-sec-panel ${offline ? 'is-stale' : ''}`;
   const blocks = ([
-    guardOn && { key: 'sec:guard', block: true, span: { w: 3, h: 2 }, label: sk(t, 'tab.guard'), node: <section className={`at-osec-control is-${tone} ${ARMED_ST.includes(st) ? 'is-st-armed' : `is-st-${st}`} ${ringKind(s) === 'alert' ? 'is-alarm' : ''}`}>
+    /* its own key: `sec:guard` of 1.39.0 was the whole panel, and that saved width is not the guard's */ guardOn && { key: 'sec:ctl', block: true, span: { w: 3, h: 2 }, label: sk(t, 'tab.guard'), node: <section className={`at-osec-control is-${tone} ${ARMED_ST.includes(st) ? 'is-st-armed' : `is-st-${st}`} ${ringKind(s) === 'alert' ? 'is-alarm' : ''}`}>
       <Ring kind={ringKind(s)} size={104} progress={total && left !== null ? 1 - left / total : 0} tone={ringTone(s)} />
       <div className="at-osec-name">
         <h2>{config.home.name || sk(t, 'title')}</h2>
