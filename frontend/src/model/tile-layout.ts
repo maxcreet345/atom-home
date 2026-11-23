@@ -117,6 +117,14 @@ export function blockFor(want: number, cols: number): number {
   return best;
 }
 
+/** One step wider (`dir` 1) or narrower (-1): the nearest eighths that draw another number of columns — on twelve columns not every count can be
+ *  drawn, and a step that changed nothing left the buttons pressed in vain (review 23.11.2026). The same width back when there is none. */
+export function blockStep(w: number, cols: number, dir: 1 | -1): number {
+  const cur = blockCols(w, cols);
+  for (let x = w + dir; x >= 1 && x <= BLOCK_FULL; x += dir) if (blockCols(x, cols) !== cur) return x;
+  return w;
+}
+
 /** A device id from its name, unique among the house's: «Планшет кухня» → `planshet-kukhnia`, then `-2`… */
 const LAT: Record<string, string> = { а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z', и: 'i', й: 'i', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'kh', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'sch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'iu', я: 'ia', ă: 'a', â: 'a', î: 'i', ș: 's', ş: 's', ț: 't', ţ: 't' };
 export function profileIdFor(name: string, taken: Iterable<string>): string {

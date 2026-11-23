@@ -42,7 +42,7 @@ test('the panel tells the integration it keeps the look, the tab order and the p
 });
 
 // ---- a page's own blocks (owner, 23.11.2026: «Энергия» and «Безопасность» are arranged like Home) ----
-import { arrange as arrangeB, keep as keepB, blockWidth, blockCols, blockFor, BLOCK_FULL } from '../src/model/tile-layout.ts';
+import { arrange as arrangeB, keep as keepB, blockWidth, blockCols, blockFor, blockStep, BLOCK_FULL } from '../src/model/tile-layout.ts';
 test('a block keeps its share of the row on any number of columns: two that shared a row still share it', () => {
   const rooms = blockWidth(7 / 12), side = blockWidth(5 / 12);
   assert.equal(rooms + side, BLOCK_FULL);
@@ -84,4 +84,11 @@ test('a module card put on a page stands there once', () => {
   assert.deepEqual(modulesOnPage(all, 'rooms'), [['a', 'pet_feeder']]);
   assert.deepEqual(modulesOnPage(all, 'security'), [['a', 'pet_feeder']]);
   assert.deepEqual(modulesOnPage(all, 'energy'), []);
+});
+test('one step wider or narrower always changes the width drawn, on any number of columns', () => {
+  for (let cols = 2; cols <= 20; cols++) for (let w = 1; w <= BLOCK_FULL; w++) {
+    const cur = blockCols(w, cols), up = blockStep(w, cols, 1), down = blockStep(w, cols, -1);
+    if (cur < cols) assert.ok(blockCols(up, cols) > cur, `wider ${w} of ${cols}`); else assert.equal(up, w);
+    if (blockCols(1, cols) < cur) assert.ok(blockCols(down, cols) < cur, `narrower ${w} of ${cols}`); else assert.equal(down, w);
+  }
 });

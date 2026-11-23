@@ -163,8 +163,8 @@ export function EnergyPanel({ chargerOf = null, tariffs = [], host, devices, boi
       {kids.map(k => <span className="at-ep-feed-part" style={`--c:${k.color}`}><i />{t('ep.including', { name: k.name })}<b>{kwh(tot[k.key] ?? 0)}</b><small>≈&nbsp;{money(cost(report, [k.key]))}</small></span>)}
       <Spark values={(report.curve && period === 'day' ? report.curve : report.buckets).filter(b => !b.future).map(b => keys.reduce((a, k) => a + (b.v[k] ?? 0), 0))} />
     </section>; })}</div> },
-    { key: 'ep:rooms', block: true, label: bl('rooms'), node: <Rooms report={report} group={g} groups={groups} setGroup={k => { setGroup(k); setPick(null); }} prefsOk={prefs?.ok !== false} carried={carried} t={t} fmt={fmt} kwh={kwh} money={money} onDevice={onDevice} /> },
-    { key: 'ep:compare', block: true, label: bl('compare'), node: <div className="at-ep-side">
+    { key: 'ep:rooms', block: true, span: { w: 5, h: 1 }, label: bl('rooms'), node: <Rooms report={report} group={g} groups={groups} setGroup={k => { setGroup(k); setPick(null); }} prefsOk={prefs?.ok !== false} carried={carried} t={t} fmt={fmt} kwh={kwh} money={money} onDevice={onDevice} /> },
+    { key: 'ep:compare', block: true, span: { w: 3, h: 1 }, label: bl('compare'), node: <div className="at-ep-side">
       <section className="at-ep-card at-ep-compare"><h3>{t('ep.compare')}</h3>
         {delta !== null && before !== null && <Row label={vs(true)} value={deltaBadge(false)} sub={t('ep.before', { v: kwh(before) })} />}
         {(before === 0 || before === null) && all > 0 && !report.silentSince && <Row label={vs(true)} value="—" sub={t('ep.noPrev')} />}

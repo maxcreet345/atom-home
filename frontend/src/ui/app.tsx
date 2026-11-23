@@ -662,7 +662,9 @@ function PageBlocks({ page, blocks: raw, cards, admin, go, t }: { page: PagePlac
 function EnergyBlocks({ parts, gas, cards, admin, go, t }: { parts: { head: preact.ComponentChildren; blocks: LayItem[]; period?: string; busy?: boolean; bare?: boolean }; gas: JSX.Element | null; cards: LayItem[]; admin?: boolean; go: Nav; t: ReturnType<typeof translator> }) {
   const lay = useLayout(), gasItem: LayItem | null = gas ? { key: 'ep:gas', block: true, label: t('lay.b.gas' as Key), node: gas } : null;
   const items = [...parts.blocks, ...(gasItem ? [gasItem] : []), ...cards], row = pageRow('energy', items.length > 0, admin, lay, go, t);
-  const box = (inner: preact.ComponentChildren) => parts.bare ? <>{inner}</> : <div className="at-ep" data-period={parts.period} aria-busy={parts.busy || undefined}>{parts.head}{inner}</div>;
+  // while the page is being arranged the period stays as it is: another period has other blocks, and the ones away would have no place to be put
+  const editing = lay?.draft?.scope === pageScope('energy');
+  const box = (inner: preact.ComponentChildren) => parts.bare ? <>{inner}</> : <div className="at-ep" data-period={parts.period} aria-busy={parts.busy || undefined}><div className="at-ep-head" inert={editing || undefined}>{parts.head}</div>{inner}</div>;
   return <LayoutGrid scope={pageScope('energy')} className="ah-grid ah-face at-page-arranged at-page-blocks" items={items} tail={row} frame={grid => box(grid)}
     fallback={mark => <>{box(parts.blocks.map(b => <Fragment key={b.key}>{mark(b)}</Fragment>))}{gasItem && mark(gasItem)}{cards.length > 0 && <div className="ah-grid ah-face at-page-cards">{cards.map(mark)}</div>}{row}</>} />;
 }

@@ -11,7 +11,7 @@ import type { Host } from '../runtime/host.ts';
 import type { Key, T } from '../i18n/index.ts';
 import { Icon } from './primitives.tsx';
 import { SlotSizeCtx, sizeClass } from './slot-size.ts';
-import { arrange, keep, moveBy, moveTo, normaliseProfiles, profileIdFor, resize, spanOf, blockCols, blockFor, blockWidth, BLOCK_FULL, MAX_SPAN, type LayoutProfile, type Placed, type Span } from '../model/tile-layout.ts';
+import { arrange, keep, moveBy, moveTo, normaliseProfiles, profileIdFor, resize, spanOf, blockCols, blockFor, blockStep, blockWidth, BLOCK_FULL, MAX_SPAN, type LayoutProfile, type Placed, type Span } from '../model/tile-layout.ts';
 
 const lk = (t: T, k: string, p?: Record<string, string | number>) => t(`lay.${k}` as Key, p);
 const POINTER_KEY = 'atom-home:layout-device';
@@ -240,10 +240,14 @@ function Arranged({ c, scope, items, className, saved, editing, tail }: { c: Ctx
   const minOf0 = (key: string) => byKey.get(key)?.min ?? { w: 1, h: 1 };
   // a block is never narrower than a report can be read at (about 280 px): on a phone that is the whole row
   const blockMin = m ? Math.min(cols, Math.max(1, Math.ceil((280 + m.gap) / (m.cell + m.gap)))) : 1;
-  const wOf = (p: Placed) => isBlock(p.key) ? Math.max(blockMin, blockCols(p.w, cols)) : Math.min(cols, Math.max(p.w, minOf0(p.key).w));
+  // a block the minimum would widen takes the whole row: widened beside its neighbour it would wrap and leave a hole
+  const blockDrawn = (w: number) => { const c = blockCols(w, cols); return c < blockMin ? cols : c; };
+  const wOf = (p: Placed) => isBlock(p.key) ? blockDrawn(p.w) : Math.min(cols, Math.max(p.w, minOf0(p.key).w));
   const hOf = (p: Placed) => isBlock(p.key) ? 1 : Math.max(p.h, minOf0(p.key).h);
   // a block's width is kept in eighths of the row: the size asked for in columns becomes the eighths that draw it
-  const sized = (p: Placed, s: Span) => isBlock(p.key) ? resize(list, p.key, { w: blockFor(Math.max(blockMin, s.w), cols), h: 1 }, BLOCK_FULL) : resize(list, p.key, s, cols, minOf(p.key));
+  // the width as drawn already: nothing is rewritten; one step: the nearest eighths that draw another width; a pull of the corner: the eighths for that width
+  const blockSized = (p: Placed, want: number): number => { const cur = wOf(p), k = Math.max(1, Math.min(cols, Math.round(want))); if (k === cur) return p.w; const w = Math.abs(k - cur) === 1 ? blockStep(p.w, cols, k > cur ? 1 : -1) : blockFor(k, cols); return blockDrawn(w) === cur || (k < cur && blockCols(w, cols) < blockMin) ? p.w : w; };
+  const sized = (p: Placed, s: Span) => isBlock(p.key) ? resize(list, p.key, { w: blockSized(p, s.w), h: 1 }, BLOCK_FULL) : resize(list, p.key, s, cols, minOf(p.key));
   const sizeWord = (p: Placed) => isBlock(p.key) ? lk(t, 'sizeBlock', { w: wOf(p), n: cols }) : lk(t, 'size', { w: wOf(p), h: hOf(p) });
   useEffect(() => { if (!editing) setPicked(null); }, [editing]);
   // FLIP: the cards that make room glide to their new places instead of jumping (none when the device asks for less motion)
@@ -259,7 +263,9 @@ function Arranged({ c, scope, items, className, saved, editing, tail }: { c: Ctx
     }
   });
   const update = (next: Placed[], key?: string) => {
-    if (next === list) return; snapshot(); c.setList(next);
+    if (next === list) return; snapshot();
+    // a card away for a moment (the report is being read again) keeps its drafted place
+    c.setList(draft && draft.some(x => !byKey.has(x.key)) ? keep(next, draft.map(x => [x.key, x.w, x.h] as [string, number, number])).map(([key, w, h]) => ({ key, w, h })) : next);
     if (key) { const i = next.findIndex(x => x.key === key), x = next[i]; if (x) c.say(`${labelOf(key, i)}: ${i + 1} / ${next.length}, ${sizeWord(x)}`); }
   };
   const minOf = (key: string) => byKey.get(key)?.min ?? { w: 1, h: 1 };
@@ -330,8 +336,8 @@ function Arranged({ c, scope, items, className, saved, editing, tail }: { c: Ctx
             <button type="button" aria-label={lk(t, 'moveBack')} disabled={i === 0} onClick={() => update(moveBy(list, p.key, -1), p.key)}><Icon name="back" size={18} /></button>
             <button type="button" aria-label={lk(t, 'moveFwd')} disabled={i === list.length - 1} onClick={() => update(moveBy(list, p.key, 1), p.key)}><Icon name="next" size={18} /></button>
             <span className="at-slot-tools-sep" />
-            <button type="button" aria-label={lk(t, 'narrower')} disabled={wOf(p) <= (block ? blockMin : min.w)} onClick={() => update(sized(p, { w: wOf(p) - 1, h: hOf(p) }), p.key)}>↔−</button>
-            <button type="button" aria-label={lk(t, 'wider')} disabled={wOf(p) >= (block ? cols : Math.min(cols, MAX_SPAN))} onClick={() => update(sized(p, { w: wOf(p) + 1, h: hOf(p) }), p.key)}>↔+</button>
+            <button type="button" aria-label={lk(t, 'narrower')} disabled={block ? blockSized(p, wOf(p) - 1) === p.w : wOf(p) <= min.w} onClick={() => update(sized(p, { w: wOf(p) - 1, h: hOf(p) }), p.key)}>↔−</button>
+            <button type="button" aria-label={lk(t, 'wider')} disabled={block ? blockSized(p, wOf(p) + 1) === p.w : wOf(p) >= Math.min(cols, MAX_SPAN)} onClick={() => update(sized(p, { w: wOf(p) + 1, h: hOf(p) }), p.key)}>↔+</button>
             {!block && <><button type="button" aria-label={lk(t, 'lower')} disabled={hOf(p) <= min.h} onClick={() => update(resize(list, p.key, { w: wOf(p), h: hOf(p) - 1 }, cols, min), p.key)}>↕−</button>
             <button type="button" aria-label={lk(t, 'taller')} disabled={hOf(p) >= MAX_SPAN} onClick={() => update(resize(list, p.key, { w: wOf(p), h: hOf(p) + 1 }, cols, min), p.key)}>↕+</button></>}
           <span className="at-slot-tools-name">{labelOf(p.key, i)} · {sizeWord(p)}</span></div>, host)}
