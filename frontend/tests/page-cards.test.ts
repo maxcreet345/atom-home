@@ -40,3 +40,25 @@ test('the panel tells the integration it keeps the look, the tab order and the p
   assert.match(state, /has_page_settings\(self\.config\) and CLIENT_FEATURE_PAGES not in/);
   for (const p of PAGE_PLACES) assert.ok(konst.includes(`"${p}"`), `const.py knows the page «${p}»`);
 });
+
+// ---- a page's own blocks (owner, 23.11.2026: «Энергия» and «Безопасность» are arranged like Home) ----
+import { arrange as arrangeB, keep as keepB, blockWidth, blockCols, blockFor, BLOCK_FULL } from '../src/model/tile-layout.ts';
+test('a block keeps its share of the row on any number of columns: two that shared a row still share it', () => {
+  const rooms = blockWidth(7 / 12), side = blockWidth(5 / 12);
+  assert.equal(rooms + side, BLOCK_FULL);
+  for (let cols = 1; cols <= 12; cols++) { if (cols === 1) continue; assert.ok(blockCols(rooms, cols) + blockCols(side, cols) <= cols, `cols ${cols}`); }
+  for (let cols = 1; cols <= 12; cols++) assert.equal(blockCols(BLOCK_FULL, cols), cols);
+  assert.equal(blockWidth(1), BLOCK_FULL); assert.equal(blockWidth(0.01), 1);
+});
+test('the width asked for in columns is the width drawn (up to eight columns)', () => {
+  for (let cols = 1; cols <= 8; cols++) for (let k = 1; k <= cols; k++) assert.equal(blockCols(blockFor(k, cols), cols), k, `${k} of ${cols}`);
+});
+test('an arrangement saved before the page had blocks keeps the blocks first; a block away now keeps its place', () => {
+  const saved: Array<[string, number, number]> = [['card:a', 2, 2], ['card:b', 1, 1]];
+  const shown = arrangeB(['ep:total', 'ep:chart', 'ep:gas', 'card:a', 'card:b'], saved, () => ({ w: BLOCK_FULL, h: 1 }), 8);
+  assert.deepEqual(shown.map(x => x.key), ['ep:total', 'ep:chart', 'ep:gas', 'card:a', 'card:b']);
+  // «Месяц» has no «Зарядки»: saving there keeps the block where it stood for «День»
+  const day: Array<[string, number, number]> = [['ep:chart', 8, 1], ['ep:sessions', 8, 1], ['ep:total', 8, 1]];
+  const kept = keepB(arrangeB(['ep:total', 'ep:chart'], day, () => ({ w: 8, h: 1 }), 8), day);
+  assert.deepEqual(kept.map(r => r[0]), ['ep:chart', 'ep:sessions', 'ep:total']);
+});

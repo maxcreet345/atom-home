@@ -22,6 +22,7 @@ import { createCommands, guardHost } from '../runtime/commands.ts';
 import { metricLabel, modelText, held } from './cards.tsx';
 import { Setup } from './setup.tsx';
 import { rememberModules, claimedEntities, type ActiveModule, type TileState, type AutoClose } from '../modules/index.ts';
+import { Fragment } from 'preact';
 import type { JSX } from 'preact';
 import { SaveError, rebaseAlarms, type ConfigStore } from '../runtime/store.ts';
 import { Cascade } from './motion.tsx';
@@ -37,6 +38,7 @@ import { CamerasTile, CamerasPanel, useShown, type CamView } from './cameras.tsx
 import { HeatingTile, HeatingPanel } from './heating.tsx';
 import { climateSensors } from '../model/climate-sensors.ts';
 import { GasCard } from './gas-card.tsx';
+import { gasMeters } from '../model/gas.ts';
 import { readHeating } from '../model/heating.ts';
 import { readSecurity, delayClock } from '../model/security.ts';
 import { SecurityTile, SecurityPanel, type MotionSensor } from './security.tsx';
@@ -494,12 +496,15 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
         {view.section === 'rooms' && !view.room && <RoomsPage rooms={rooms.map(r => { const c = roomClimate(home, registry, r.id); return { key: `room:${r.id}`, label: r.name || t('room.none'), node: <RoomTile room={r} temperature={c.temperature} humidity={c.humidity} co2={c.co2} lightsOn={c.lights.filter(l => isOn(l.primary)).length} onClick={() => go({ section: 'rooms', room: r.id })} t={t} lang={lang} label={r.name || t('room.none')} theme={config.home.theme} /> }; })} cards={pageCards('rooms')} size={`${viewport.width}x${viewport.height}:${bannersH}`} admin={host.admin} go={go} t={t} />}
         {view.section === 'rooms' && view.room && <RoomPage cards={cardViews} appliances={appliances} commands={commands} camViews={camViews} player={player} tileState={tileState} vacPics={vacPics} modules={modules} heating={heating} vacuum={vacuum} host={host} now={now.getTime()} home={home} registry={registry} roomId={view.room} runner={runner} toggle={toggle} go={go} t={t} lang={lang} alarms={clockMod && registry.entities.some(e => e.entity_id.startsWith('media_player.') && e.platform === 'yandex_station' && !e.disabled_by && (e.area_id ?? registry.devices.find(d => d.id === e.device_id)?.area_id) === view.room) ? config.alarms.filter(a => a.room === view.room) : null} />}
         {view.section === 'lights' && <LightsPage cards={pageCards('lights')} devices={enabled.filter(d => d.kind === 'light')} rooms={home.rooms} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} admin={host.admin} />}
-        {view.section === 'security' && officeSec && <OfficeSecurityPanel s={officeSec} host={host} t={t} lang={lang} now={now.getTime()} admin={!!host.admin} title={config.home.name} />}
-        {view.section === 'security' && officeSec && camLink}
-        {view.section === 'security' && security && <SecurityPanel s={security} registry={registry} config={config} host={host} commands={commands} t={t} lang={lang} now={now.getTime()} admin={!!host.admin} motion={secMotion} aside={camLink} />}
+        {/* «Безопасность» as blocks (owner, 23.11.2026): the guard, the cameras' link and the cards put on the page stand in the device's own order */}
+        {view.section === 'security' && (officeSec || security) && <PageBlocks page="security" admin={host.admin} go={go} t={t} cards={pageCards('security')} blocks={[
+          officeSec && { key: 'sec:office', block: true, label: t('lay.b.guard' as Key), node: <OfficeSecurityPanel s={officeSec} host={host} t={t} lang={lang} now={now.getTime()} admin={!!host.admin} title={config.home.name} /> },
+          officeSec && camViews.length > 0 && { key: 'sec:cams', block: true, label: t('lay.b.cams' as Key), node: camLink },
+          security && { key: 'sec:guard', block: true, label: t('lay.b.guard' as Key), node: <SecurityPanel s={security} registry={registry} config={config} host={host} commands={commands} t={t} lang={lang} now={now.getTime()} admin={!!host.admin} motion={secMotion} aside={camLink} /> },
+        ]} />}
         {/* «Безопасность» answers «всё спокойно?» first (critique 19.11.2026): the house's status, only its safety items */}
         {view.section === 'security' && !security && !officeSec && <HouseStatusStrip status={secStatus} go={go} t={t} className="at-sec-verdict" />}
-        {view.section === 'security' && !security && !officeSec && <SecurityDevices devices={secDevices} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} rooms={home.rooms} after={camLink} />}
+        {view.section === 'security' && !security && !officeSec && <PageBlocks page="security" admin={host.admin} go={go} t={t} cards={pageCards('security')} blocks={[{ key: 'sec:devices', block: true, label: t('lay.b.devices' as Key), node: <SecurityDevices devices={secDevices} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} rooms={home.rooms} after={camLink} /> }]} />}
         {(view.section === 'climate' || view.section === 'home') && heatCard && (!heating || heatCard.lost.length > 0) && <LostNote lost={heatCard.lost.length ? heatCard.lost : [heatCard.profile.anchor ?? 'central']} profile={heatCard.profile} t={t} onFix={host.admin ? () => go({ ...viewNow.current, device: `card:${heatCard.id}` }) : undefined} />}
         {view.section === 'climate' && heating && <HeatingPanel h={heating} host={host} t={t} lang={lang} now={now.getTime()} sensors={climateSensors(registry, home.rooms.map(r => r.id))} />}
         {view.section === 'climate' && !heating && office && <OfficeClimatePanel c={office} host={host} t={t} lang={lang} now={now.getTime()} />}
@@ -510,10 +515,8 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
         {/* «Энергия» in two tabs (owner, 09.11.2026): «Обзор» is the panel as it was, «Сейчас» who draws the power now */}
         {view.section === 'energy' && <div className="ah-segments hm-range-tabs rm-energy-tabs" role="group" aria-label={t('section.energy' as Key)}>{(['overview', 'now'] as const).map(k => { const on = (view.filter === 'now') === (k === 'now'); return <button type="button" aria-pressed={on} className={on ? 'is-active' : ''} onClick={() => { if (k === 'now') { if (view.filter !== 'now') energyPlace.current = view.filter; swap({ section: 'energy', filter: 'now' }); } else swap({ section: 'energy', filter: view.filter === 'now' ? energyPlace.current : view.filter }); }}>{t(`room.energyTab.${k}` as Key)}</button>; })}</div>}
         {view.section === 'energy' && view.filter === 'now' && <HouseLoad all={enabled} home={home} registry={registry} heating={heating} vacuum={vacuum} energyDevices={energyDevices} boilers={boilers} grid={grid} t={t} lang={lang} />}
-        {view.section === 'energy' && view.filter !== 'now' && <EnergyPanel chargerOf={config.modules.energy?.options?.chargerOf ?? null} tariffs={config.energy.tariffs} host={host} devices={energyDevices} boilers={boilers} floors={registry.floors ?? []} floorOfArea={id => registry.areas.find(a => a.area_id === id)?.floor_id ?? null} feedOfRoom={id => config.rooms[id]?.feed ?? null} roomFeeds={Object.values(config.rooms).map(r => r.feed).filter((f): f is string => !!f)} roomName={roomName} nameOf={d => meterName(d.name)} onDevice={key => go({ section: 'energy', device: key, filter: view.filter })} place={view.filter} onPlace={place => swap({ section: 'energy', filter: place })} onTariff={host.admin ? () => go({ section: 'setup', filter: 'energy' }) : undefined} t={t} lang={lang} fallback={<EnergyPage devices={energyDevices} go={go} t={t} lang={lang} roomName={roomName} admin={host.admin} boilers={boilers} />} />}
-        {view.section === 'energy' && view.filter !== 'now' && <GasCard registry={registry} host={host} t={t} lang={lang} now={now.getTime()} />}
-        {view.section === 'energy' && view.filter !== 'now' && <PageCards page="energy" cards={pageCards('energy')} admin={host.admin} go={go} t={t} />}
-        {view.section === 'security' && <PageCards page="security" cards={pageCards('security')} admin={host.admin} go={go} t={t} />}
+        {view.section === 'energy' && view.filter !== 'now' && <EnergyPanel chargerOf={config.modules.energy?.options?.chargerOf ?? null} tariffs={config.energy.tariffs} host={host} devices={energyDevices} boilers={boilers} floors={registry.floors ?? []} floorOfArea={id => registry.areas.find(a => a.area_id === id)?.floor_id ?? null} feedOfRoom={id => config.rooms[id]?.feed ?? null} roomFeeds={Object.values(config.rooms).map(r => r.feed).filter((f): f is string => !!f)} roomName={roomName} nameOf={d => meterName(d.name)} onDevice={key => go({ section: 'energy', device: key, filter: view.filter })} place={view.filter} onPlace={place => swap({ section: 'energy', filter: place })} onTariff={host.admin ? () => go({ section: 'setup', filter: 'energy' }) : undefined} t={t} lang={lang} fallback={<EnergyPage devices={energyDevices} go={go} t={t} lang={lang} roomName={roomName} admin={host.admin} boilers={boilers} />}
+          layout={parts => <EnergyBlocks parts={parts} gas={gasMeters(registry).length ? <GasCard registry={registry} host={host} t={t} lang={lang} now={now.getTime()} /> : null} cards={pageCards('energy')} admin={host.admin} go={go} t={t} />} />}
         {view.section === 'camera' && <CamerasPanel views={camViews} player={player} host={host} now={now.getTime()} t={t} lang={lang} wide={wide} onCamera={key => go({ section: 'camera', device: key })} filter={view.filter} onFilter={f => swap({ section: 'camera', filter: f })} />}
         {view.section === 'setup' && <Setup registry={registry} config={config} onChange={applyConfig} admin={host.admin} t={t} lang={lang} storeLabel={store?.label ?? 'memory'} warnings={configWarnings} photos={store?.photos} tab={view.filter} onTab={tab => swap({ section: 'setup', filter: tab })} pending={configPending} sections={SECTIONS.filter(present)} haPrice={haPrice} />}
         {view.section === 'systems' && <SystemsPage resting={resting} cards={pageCards('systems')} status={status} before={<>{modules.filter(m => m.def.placement.includes('systems') && !APPLIANCE_MODULES.includes(m.def.id)).map(m => m.def.sheetKey ? <div className="ah-grid at-module-row"><Guard where={`card:${m.def.id}`} kind="tile" t={t}><m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} compact onOpen={() => go({ section: 'systems', device: m.def.sheetKey })} /></Guard></div> : <Guard where={`card:${m.def.id}`} kind="tile" t={t}><m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} /></Guard>)}</>}
@@ -644,6 +647,20 @@ function PageCards({ page, cards, admin, go, t }: { page: PagePlace; cards: LayI
   if (!cards.length && !row) return null;
   return <LayoutGrid scope={pageScope(page)} className="ah-grid ah-face at-page-cards" items={cards} tail={row}
     fallback={mark => <>{cards.length > 0 && <div className="ah-grid ah-face at-page-cards">{cards.map(mark)}</div>}{row}</>} />;
+}
+/** A page that is blocks of its own (the guard of «Безопасность») and the cards put on it: unarranged it stands as before, the cards under the blocks. */
+function PageBlocks({ page, blocks: raw, cards, admin, go, t }: { page: PagePlace; blocks: Array<LayItem | false | null | undefined>; cards: LayItem[]; admin?: boolean; go: Nav; t: ReturnType<typeof translator> }) {
+  const blocks = raw.filter((b): b is LayItem => !!b), lay = useLayout(), row = pageRow(page, blocks.length + cards.length > 0, admin, lay, go, t);
+  return <LayoutGrid scope={pageScope(page)} className="ah-grid ah-face at-page-arranged at-page-blocks" items={[...blocks, ...cards]} tail={row}
+    fallback={mark => <>{blocks.map(b => <Fragment key={b.key}>{mark(b)}</Fragment>)}{cards.length > 0 && <div className="ah-grid ah-face at-page-cards">{cards.map(mark)}</div>}{row}</>} />;
+}
+/** «Энергия»: the report's blocks (ui/energy-page.tsx gives them with the period switch, which stays on top), the gas meter and the cards put on the page. */
+function EnergyBlocks({ parts, gas, cards, admin, go, t }: { parts: { head: preact.ComponentChildren; blocks: LayItem[]; period?: string; busy?: boolean; bare?: boolean }; gas: JSX.Element | null; cards: LayItem[]; admin?: boolean; go: Nav; t: ReturnType<typeof translator> }) {
+  const lay = useLayout(), gasItem: LayItem | null = gas ? { key: 'ep:gas', block: true, label: t('lay.b.gas' as Key), node: gas } : null;
+  const items = [...parts.blocks, ...(gasItem ? [gasItem] : []), ...cards], row = pageRow('energy', items.length > 0, admin, lay, go, t);
+  const box = (inner: preact.ComponentChildren) => parts.bare ? <>{inner}</> : <div className="at-ep" data-period={parts.period} aria-busy={parts.busy || undefined}>{parts.head}{inner}</div>;
+  return <LayoutGrid scope={pageScope('energy')} className="ah-grid ah-face at-page-arranged at-page-blocks" items={items} tail={row} frame={grid => box(grid)}
+    fallback={mark => <>{box(parts.blocks.map(b => <Fragment key={b.key}>{mark(b)}</Fragment>))}{gasItem && mark(gasItem)}{cards.length > 0 && <div className="ah-grid ah-face at-page-cards">{cards.map(mark)}</div>}{row}</>} />;
 }
 /** The air sensor a catalog thermostat was given to show (`heating.single`): its reading is the room's temperature, the thermostat's own is not. */
 const airOf = (x: HomeDevice): number | null => { if (!x.key.startsWith(INSTANCE_PREFIX)) return null; const m = x.metrics.find(e => e.deviceClass === 'temperature' && e.available); const v = m ? Number(m.state) : NaN; return Number.isFinite(v) ? v : null; };

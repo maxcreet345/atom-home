@@ -1121,3 +1121,13 @@
 /* the size label of a card being arranged: dark words on the dark theme's light accent */
 .hm-shell.ah-shell[data-theme="dark"] .at-slot-size{color:#1c1c1e}
 .hm-shell .at-slot-size{white-space:nowrap}
+/* a page's own blocks in the arrangement (owner, 23.11.2026: «Энергия» and «Безопасность» like Home): a block is as tall as it is and as wide as chosen;
+   it answers to its own width (the report's container rules), and one that draws nothing now takes no place */
+.hm-shell .ah-grid.at-lay>.at-slot.is-block{height:auto;container-type:inline-size}
+.hm-shell .ah-grid.at-lay .at-slot.is-block>:not(.at-slot-veil,.at-slot-size,.at-slot-grip,.at-slot-tools),.hm-shell .ah-grid.at-lay .at-slot.is-block .at-slot-body>*{height:auto;max-height:none;overflow:visible}
+.hm-shell .ah-grid.at-lay>.at-slot.is-block:empty,.hm-shell .ah-grid.at-lay>.at-slot.is-block:has(>.at-slot-body:empty){display:none}
+.hm-shell .at-slot.is-block>.at-slot-grip{bottom:auto;top:50%;transform:translateY(-50%);cursor:ew-resize}
+.hm-shell .at-slot.is-block>.at-slot-size{max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis}
+.hm-shell .at-ep>.at-page-blocks{margin:0}
+.hm-shell .hm-page>.at-lay-scope>.at-ep~.at-gas-list{margin-top:-12px}
+.hm-shell .hm-page>.at-lay-scope>.at-sec-cams{max-width:var(--ah-page-max);margin:16px auto 0}

@@ -11,7 +11,7 @@ import type { Host } from '../runtime/host.ts';
 import type { Key, T } from '../i18n/index.ts';
 import { Icon } from './primitives.tsx';
 import { SlotSizeCtx, sizeClass } from './slot-size.ts';
-import { arrange, keep, moveBy, moveTo, normaliseProfiles, profileIdFor, resize, spanOf, MAX_SPAN, type LayoutProfile, type Placed, type Span } from '../model/tile-layout.ts';
+import { arrange, keep, moveBy, moveTo, normaliseProfiles, profileIdFor, resize, spanOf, blockCols, blockFor, blockWidth, BLOCK_FULL, MAX_SPAN, type LayoutProfile, type Placed, type Span } from '../model/tile-layout.ts';
 
 const lk = (t: T, k: string, p?: Record<string, string | number>) => t(`lay.${k}` as Key, p);
 const POINTER_KEY = 'atom-home:layout-device';
@@ -19,7 +19,8 @@ const readPointer = () => { try { return localStorage.getItem(POINTER_KEY); } ca
 const writePointer = (id: string | null) => { try { if (id) localStorage.setItem(POINTER_KEY, id); else localStorage.removeItem(POINTER_KEY); } catch { /* private mode: asked again next time */ } };
 const reduced = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-export interface LayItem { key: string; node: ComponentChildren; label?: string; /** the card is drawn in a list of rows without a layout (a room's plain devices): it starts as one cell */ unit?: boolean; min?: Span; /** the size it takes when it first appears on an arranged screen (a camera, the heating: two by two) */ span?: Span }
+export interface LayItem { key: string; node: ComponentChildren; label?: string; /** the card is drawn in a list of rows without a layout (a room's plain devices): it starts as one cell */ unit?: boolean; min?: Span; /** the size it takes when it first appears on an arranged screen (a camera, the heating: two by two) */ span?: Span;
+  /** a page's own block (the chart of «Энергия», the guard of «Безопасность»): as tall as it is, its width in eighths of the row (model/tile-layout.ts) */ block?: boolean }
 interface Draft { scope: string; list: Placed[] | null; natural: Record<string, Span> }
 interface Ctx {
   available: boolean; t: T; admin: boolean;
@@ -34,7 +35,7 @@ export const rootOf = (el: Node | null | undefined): Document | ShadowRoot => (e
 export const useLayout = () => useContext(LayoutCtx);
 
 /** A hidden mark before each card (no box, not a grid item): the arrangement starts from the element that follows it — what the screen shows. */
-const MARK = 'data-lay-mark';
+const MARK = 'data-lay-mark', BLOCK = 'data-lay-block';
 function marked(root: ParentNode): Map<string, Element> {
   const out = new Map<string, Element>();
   for (const m of root.querySelectorAll(`[${MARK}]`)) { const el = m.nextElementSibling; if (el && !el.hasAttribute(MARK)) out.set(m.getAttribute(MARK)!, el); }
@@ -42,7 +43,8 @@ function marked(root: ParentNode): Map<string, Element> {
 }
 
 function gridMetrics(grid: Element): { cols: number; cell: number; gap: number } {
-  const cs = getComputedStyle(grid), cols = cs.gridTemplateColumns.split(' ').filter(Boolean);
+  // only the grid's own columns: a card drawn wider than the grid for a moment makes an empty implicit one, which is not a column of the screen
+  const cs = getComputedStyle(grid), cols = cs.gridTemplateColumns.split(' ').filter(c => parseFloat(c) > 0);
   const cell = parseFloat(cols[0]) || 150, gap = parseFloat(cs.columnGap) || 12;
   return { cols: Math.max(1, cols.length), cell, gap };
 }
@@ -74,7 +76,11 @@ export function LayoutProvider({ host, t, children }: { host: Host; t: T; childr
     // an arranged screen starts from its arrangement (no marks there); a screen drawn as before, from what it shows
     const root = rootOf(anchor.current).querySelector(`[data-lay-scope="${CSS.escape(scope)}"]`);
     for (const [key, el] of root ? marked(root) : []) {
-      const parent = el.parentElement; if (!parent || !el.isConnected) continue;
+      let parent = el.parentElement; if (!parent || !el.isConnected) continue;
+      if (el.previousElementSibling?.hasAttribute(BLOCK)) { // a block: the share of its row it takes now
+        while (parent.parentElement && getComputedStyle(parent).display === 'contents') parent = parent.parentElement;
+        const pw = parent.clientWidth || parent.getBoundingClientRect().width, w = el.getBoundingClientRect().width; natural[key] = { w: pw > 0 && w > 0 ? blockWidth(w / pw) : BLOCK_FULL, h: 1 }; continue;
+      }
       if (parent.classList.contains('rm-tile-grid')) { natural[key] = { w: 1, h: 1 }; continue; }
       const g = gridMetrics(parent), r = el.getBoundingClientRect(); natural[key] = spanOf(r, g.cell, g.gap, g.cols);
     }
@@ -200,13 +206,14 @@ export function ArrangeButton({ scope }: { scope: string }) {
 
 const FLIP_MS = 200;
 /** A screen's cards in this device's arrangement. Without one (and not arranging) the screen's own `fallback` is drawn, as before. */
-export function LayoutGrid({ scope, items, className, fallback, tail }: { scope: string; items: LayItem[]; className: string; fallback: (mark: (item: LayItem) => JSX.Element) => ComponentChildren; tail?: ComponentChildren }) {
+export function LayoutGrid({ scope, items, className, fallback, tail, frame }: { scope: string; items: LayItem[]; className: string; fallback: (mark: (item: LayItem) => JSX.Element) => ComponentChildren; tail?: ComponentChildren; /** what stands around the arranged grid (a page's own head and container) */ frame?: (grid: JSX.Element) => JSX.Element }) {
   const c = useLayout();
-  const mark = (it: LayItem) => c?.available ? <><i hidden {...{ [MARK]: it.key }} />{it.node}</> : <>{it.node}</>;
+  const mark = (it: LayItem) => c?.available ? <><i hidden {...{ [MARK]: it.key, ...(it.block ? { [BLOCK]: '' } : {}) }} />{it.node}</> : <>{it.node}</>;
   const saved = c?.profile?.scopes[scope];
   const editing = c?.draft?.scope === scope;
   if (!c || (!saved && !editing)) return <div className="at-lay-scope" data-lay-scope={scope}>{fallback(mark)}</div>;
-  return <Arranged c={c} scope={scope} items={items} className={className} saved={saved} editing={editing} tail={tail} />;
+  const grid = <Arranged c={c} scope={scope} items={items} className={className} saved={saved} editing={editing} tail={tail} />;
+  return frame ? frame(grid) : grid;
 }
 
 function Arranged({ c, scope, items, className, saved, editing, tail }: { c: Ctx; scope: string; items: LayItem[]; className: string; saved: Array<[string, number, number]> | undefined; editing: boolean; tail?: ComponentChildren }) {
@@ -219,7 +226,8 @@ function Arranged({ c, scope, items, className, saved, editing, tail }: { c: Ctx
     const measure = () => { const g = gridMetrics(el); setM(o => o && o.cols === g.cols && Math.abs(o.cell - g.cell) < .5 && o.gap === g.gap ? o : g); };
     measure(); const ro = new ResizeObserver(measure); ro.observe(el); return () => ro.disconnect();
   }, []);
-  const cols = m?.cols ?? 4, natural = (key: string): Span => c.draft?.natural[key] ?? byKey.get(key)?.span ?? { w: 1, h: 1 };
+  const isBlock = (key: string) => !!byKey.get(key)?.block;
+  const cols = m?.cols ?? 4, natural = (key: string): Span => c.draft?.natural[key] ?? byKey.get(key)?.span ?? (isBlock(key) ? { w: BLOCK_FULL, h: 1 } : { w: 1, h: 1 });
   const keys = items.map(i => i.key);
   // the widths as saved (up to MAX_SPAN): a phone on its side draws them narrower, never saves them narrower
   const shown = arrange(keys, saved, natural, MAX_SPAN);
@@ -229,8 +237,13 @@ function Arranged({ c, scope, items, className, saved, editing, tail }: { c: Ctx
   const list = editing && draft ? arrange(keys, draft.map(x => [x.key, x.w, x.h] as [string, number, number]), natural, MAX_SPAN) : shown;
   // drawn within the columns and never below the card's own minimum (a layout saved before the card had one keeps what is saved; only the drawing grows)
   const minOf0 = (key: string) => byKey.get(key)?.min ?? { w: 1, h: 1 };
-  const wOf = (p: Placed) => Math.min(cols, Math.max(p.w, minOf0(p.key).w));
-  const hOf = (p: Placed) => Math.max(p.h, minOf0(p.key).h);
+  // a block is never narrower than a report can be read at (about 280 px): on a phone that is the whole row
+  const blockMin = m ? Math.min(cols, Math.max(1, Math.ceil((280 + m.gap) / (m.cell + m.gap)))) : 1;
+  const wOf = (p: Placed) => isBlock(p.key) ? Math.max(blockMin, blockCols(p.w, cols)) : Math.min(cols, Math.max(p.w, minOf0(p.key).w));
+  const hOf = (p: Placed) => isBlock(p.key) ? 1 : Math.max(p.h, minOf0(p.key).h);
+  // a block's width is kept in eighths of the row: the size asked for in columns becomes the eighths that draw it
+  const sized = (p: Placed, s: Span) => isBlock(p.key) ? resize(list, p.key, { w: blockFor(Math.max(blockMin, s.w), cols), h: 1 }, BLOCK_FULL) : resize(list, p.key, s, cols, minOf(p.key));
+  const sizeWord = (p: Placed) => isBlock(p.key) ? lk(t, 'sizeBlock', { w: wOf(p), n: cols }) : lk(t, 'size', { w: wOf(p), h: hOf(p) });
   useEffect(() => { if (!editing) setPicked(null); }, [editing]);
   // FLIP: the cards that make room glide to their new places instead of jumping (none when the device asks for less motion)
   const before = useRef<Map<string, DOMRect> | null>(null);
@@ -246,7 +259,7 @@ function Arranged({ c, scope, items, className, saved, editing, tail }: { c: Ctx
   });
   const update = (next: Placed[], key?: string) => {
     if (next === list) return; snapshot(); c.setList(next);
-    if (key) { const i = next.findIndex(x => x.key === key), x = next[i]; if (x) c.say(`${labelOf(key, i)}: ${i + 1} / ${next.length}, ${lk(t, 'size', { w: Math.min(x.w, cols), h: x.h })}`); }
+    if (key) { const i = next.findIndex(x => x.key === key), x = next[i]; if (x) c.say(`${labelOf(key, i)}: ${i + 1} / ${next.length}, ${sizeWord(x)}`); }
   };
   const minOf = (key: string) => byKey.get(key)?.min ?? { w: 1, h: 1 };
   // ---- drag to move (a mouse at once; a finger after holding still, so the page still scrolls under a passing thumb) ----
@@ -288,15 +301,15 @@ function Arranged({ c, scope, items, className, saved, editing, tail }: { c: Ctx
   // ---- the corner: pull for the size, in whole cells ----
   const rs = useRef<{ key: string; id: number; x: number; y: number; w: number; h: number } | null>(null);
   const rsDown = (p: Placed) => (e: PointerEvent) => { e.stopPropagation(); if (e.button !== 0) return; rs.current = { key: p.key, id: e.pointerId, x: e.clientX, y: e.clientY, w: wOf(p), h: hOf(p) }; (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); };
-  const rsMove = (e: PointerEvent) => { const r = rs.current; if (!r || r.id !== e.pointerId || !m) return; e.preventDefault(); const step = m.cell + m.gap; update(resize(list, r.key, { w: r.w + (e.clientX - r.x) / step, h: r.h + (e.clientY - r.y) / step }, cols, minOf(r.key))); };
+  const rsMove = (e: PointerEvent) => { const r = rs.current; if (!r || r.id !== e.pointerId || !m) return; e.preventDefault(); const step = m.cell + m.gap, p = list.find(x => x.key === r.key); if (p) update(sized(p, { w: r.w + (e.clientX - r.x) / step, h: r.h + (e.clientY - r.y) / step })); };
   const rsUp = (e: PointerEvent) => { if (rs.current?.id === e.pointerId) rs.current = null; };
   // ---- keys: arrows move, Shift + arrows size; Escape lets go of the card ----
   const keyOf = (p: Placed) => (e: KeyboardEvent) => {
-    const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -cols, ArrowDown: cols }[e.key];
+    const block = isBlock(p.key), step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: block ? -1 : -cols, ArrowDown: block ? 1 : cols }[e.key];
     if (e.key === 'Escape') { setPicked(null); return; }
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPicked(x => x === p.key ? null : p.key); return; }
     if (step === undefined) return; e.preventDefault();
-    if (e.shiftKey) update(resize(list, p.key, { w: wOf(p) + (e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0), h: hOf(p) + (e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0) }, cols, minOf(p.key)), p.key);
+    if (e.shiftKey) update(sized(p, { w: wOf(p) + (e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0), h: hOf(p) + (e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0) }), p.key);
     else update(moveBy(list, p.key, step), p.key);
     requestAnimationFrame(() => grid.current?.querySelector<HTMLElement>(`.at-slot[data-lay="${CSS.escape(p.key)}"] .at-slot-veil`)?.focus());
   };
@@ -304,23 +317,23 @@ function Arranged({ c, scope, items, className, saved, editing, tail }: { c: Ctx
   const style = m ? `--lay-cell:${m.cell}px` : undefined;
   const host = editing ? rootOf(grid.current).querySelector<HTMLElement>('.at-lay-bar .at-lay-tools-host') : null;
   return <div ref={grid} className={`ah-cascade ${className} at-lay ${editing ? 'is-arranging' : ''}`} style={style} data-scope={scope}>
-    {list.map((p, i) => { const it = byKey.get(p.key)!; const sel = picked === p.key; const min = minOf(p.key);
-      return <div key={p.key} className={`at-slot ${sel ? 'is-picked' : ''}`} data-lay={p.key} data-w={wOf(p)} data-h={hOf(p)} data-size={sizeClass(wOf(p), hOf(p))} style={`grid-column:span ${wOf(p)};grid-row:span ${hOf(p)};--h:${hOf(p)}`}>
-        <SlotSizeCtx.Provider value={{ w: wOf(p), h: hOf(p), size: sizeClass(wOf(p), hOf(p)) }}>{editing ? <div className="at-slot-body" inert>{it.node}</div> : it.node}</SlotSizeCtx.Provider>
+    {list.map((p, i) => { const it = byKey.get(p.key)!; const sel = picked === p.key; const min = minOf(p.key), block = !!it.block;
+      return <div key={p.key} className={`at-slot ${block ? 'is-block' : ''} ${sel ? 'is-picked' : ''}`} data-lay={p.key} data-w={wOf(p)} data-h={block ? undefined : hOf(p)} data-size={block ? undefined : sizeClass(wOf(p), hOf(p))} style={block ? (wOf(p) >= cols ? 'grid-column:1/-1' : `grid-column:span ${wOf(p)}`) : `grid-column:span ${wOf(p)};grid-row:span ${hOf(p)};--h:${hOf(p)}`}>
+        {block ? (editing ? <div className="at-slot-body" inert>{it.node}</div> : it.node) : <SlotSizeCtx.Provider value={{ w: wOf(p), h: hOf(p), size: sizeClass(wOf(p), hOf(p)) }}>{editing ? <div className="at-slot-body" inert>{it.node}</div> : it.node}</SlotSizeCtx.Provider>}
         {editing && <>
-          <div className="at-slot-veil" role="button" tabIndex={0} aria-roledescription={lk(t, 'bar')} aria-pressed={sel} aria-label={lk(t, 'cardLabel', { name: labelOf(p.key, i), w: wOf(p), h: hOf(p) })}
+          <div className="at-slot-veil" role="button" tabIndex={0} aria-roledescription={lk(t, 'bar')} aria-pressed={sel} aria-label={block ? `${labelOf(p.key, i)}, ${sizeWord(p)}` : lk(t, 'cardLabel', { name: labelOf(p.key, i), w: wOf(p), h: hOf(p) })}
             onPointerDown={down(p.key)} onPointerMove={move} onPointerUp={up(p.key)} onPointerCancel={up(p.key)} onKeyDown={keyOf(p)} onContextMenu={e => e.preventDefault()} />
-          <span className="at-slot-size" aria-hidden="true">{lk(t, 'size', { w: wOf(p), h: hOf(p) })}</span>
+          <span className="at-slot-size" aria-hidden="true">{block ? labelOf(p.key, i) : lk(t, 'size', { w: wOf(p), h: hOf(p) })}</span>
           <button type="button" className="at-slot-grip" aria-label={lk(t, 'grip')} tabIndex={-1} onPointerDown={rsDown(p)} onPointerMove={rsMove} onPointerUp={rsUp} onPointerCancel={rsUp}><i /></button>
           {sel && host && createPortal(<div className="at-slot-tools" role="group" aria-label={labelOf(p.key, i)}>
             <button type="button" aria-label={lk(t, 'moveBack')} disabled={i === 0} onClick={() => update(moveBy(list, p.key, -1), p.key)}><Icon name="back" size={18} /></button>
             <button type="button" aria-label={lk(t, 'moveFwd')} disabled={i === list.length - 1} onClick={() => update(moveBy(list, p.key, 1), p.key)}><Icon name="next" size={18} /></button>
             <span className="at-slot-tools-sep" />
-            <button type="button" aria-label={lk(t, 'narrower')} disabled={wOf(p) <= min.w} onClick={() => update(resize(list, p.key, { w: wOf(p) - 1, h: hOf(p) }, cols, min), p.key)}>↔−</button>
-            <button type="button" aria-label={lk(t, 'wider')} disabled={wOf(p) >= Math.min(cols, MAX_SPAN)} onClick={() => update(resize(list, p.key, { w: wOf(p) + 1, h: hOf(p) }, cols, min), p.key)}>↔+</button>
-            <button type="button" aria-label={lk(t, 'lower')} disabled={hOf(p) <= min.h} onClick={() => update(resize(list, p.key, { w: wOf(p), h: hOf(p) - 1 }, cols, min), p.key)}>↕−</button>
-            <button type="button" aria-label={lk(t, 'taller')} disabled={hOf(p) >= MAX_SPAN} onClick={() => update(resize(list, p.key, { w: wOf(p), h: hOf(p) + 1 }, cols, min), p.key)}>↕+</button>
-          <span className="at-slot-tools-name">{labelOf(p.key, i)} · {lk(t, 'size', { w: wOf(p), h: hOf(p) })}</span></div>, host)}
+            <button type="button" aria-label={lk(t, 'narrower')} disabled={wOf(p) <= (block ? blockMin : min.w)} onClick={() => update(sized(p, { w: wOf(p) - 1, h: hOf(p) }), p.key)}>↔−</button>
+            <button type="button" aria-label={lk(t, 'wider')} disabled={wOf(p) >= (block ? cols : Math.min(cols, MAX_SPAN))} onClick={() => update(sized(p, { w: wOf(p) + 1, h: hOf(p) }), p.key)}>↔+</button>
+            {!block && <><button type="button" aria-label={lk(t, 'lower')} disabled={hOf(p) <= min.h} onClick={() => update(resize(list, p.key, { w: wOf(p), h: hOf(p) - 1 }, cols, min), p.key)}>↕−</button>
+            <button type="button" aria-label={lk(t, 'taller')} disabled={hOf(p) >= MAX_SPAN} onClick={() => update(resize(list, p.key, { w: wOf(p), h: hOf(p) + 1 }, cols, min), p.key)}>↕+</button></>}
+          <span className="at-slot-tools-name">{labelOf(p.key, i)} · {sizeWord(p)}</span></div>, host)}
         </>}
       </div>; })}
     {tail}

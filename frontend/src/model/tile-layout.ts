@@ -100,6 +100,23 @@ export function spanOf(box: { width: number; height: number }, cell: number, gap
   return { w: Math.min(cols, n(box.width)), h: Math.min(MAX_SPAN, n(box.height)) };
 }
 
+/** A page's own block (the chart of «Энергия», the guard of «Безопасность»): it is as tall as it is, and its width is kept in eighths of the
+ * page's row (8 = the whole row), so the same arrangement reads the same whatever number of columns the screen has now. */
+export const BLOCK_FULL = 8;
+const half = (v: number, up: boolean) => { const f = Math.floor(v), r = v - f; return Math.abs(r - .5) < 1e-6 ? (up ? f + 1 : f) : Math.round(v); };
+/** The eighths a block takes from the share of the row it has on the screen (7 of 12 beside 5 of 12 → 5 and 3: together still one row). */
+export const blockWidth = (share: number): number => Math.max(1, Math.min(BLOCK_FULL, half(share * BLOCK_FULL, share > .5)));
+/** The columns a block of `w` eighths takes on a grid of `cols` (two blocks that shared a row still share it). */
+export const blockCols = (w: number, cols: number): number => { const c = Math.max(1, cols), x = Math.max(1, Math.min(BLOCK_FULL, w)); return Math.max(1, Math.min(c, half(x / BLOCK_FULL * c, x > BLOCK_FULL / 2))); };
+/** The eighths that draw `want` columns on a grid of `cols`: what a pull of the corner or a press of «шире» keeps. */
+export function blockFor(want: number, cols: number): number {
+  const c = Math.max(1, cols), k = Math.max(1, Math.min(c, Math.round(want)));
+  if (k >= c) return BLOCK_FULL;
+  let best = 1, far = Infinity;
+  for (let w = 1; w <= BLOCK_FULL; w++) { const d = Math.abs(blockCols(w, c) - k); if (d < far || (d === far && Math.abs(w / BLOCK_FULL * c - k) < Math.abs(best / BLOCK_FULL * c - k))) { best = w; far = d; } }
+  return best;
+}
+
 /** A device id from its name, unique among the house's: «Планшет кухня» → `planshet-kukhnia`, then `-2`… */
 const LAT: Record<string, string> = { а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z', и: 'i', й: 'i', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'kh', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'sch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'iu', я: 'ia', ă: 'a', â: 'a', î: 'i', ș: 's', ş: 's', ț: 't', ţ: 't' };
 export function profileIdFor(name: string, taken: Iterable<string>): string {

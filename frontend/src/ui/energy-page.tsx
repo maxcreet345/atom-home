@@ -1,5 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
-import type { ComponentChildren } from 'preact';
+import { Fragment } from 'preact';
+import type { ComponentChildren, JSX } from 'preact';
+import type { LayItem } from './layout-grid.tsx';
 import type { Host } from '../runtime/host.ts';
 import type { T, Key } from '../i18n/index.ts';
 import type { HomeDevice } from '../model/discover.ts';
@@ -31,8 +33,11 @@ function useWidth<E extends HTMLElement>() {
   useLayoutEffect(() => { const el = ref.current; if (!el) return; const read = () => setW(el.clientWidth); read(); const ro = new ResizeObserver(read); ro.observe(el); return () => ro.disconnect(); }, []);
   return [ref, w] as const;
 }
-export interface EnergyPanelProps { /** the feed the car's charger is billed with (config modules.energy.options.chargerOf) */ chargerOf?: string | null; /** the panel's own electricity price history (config energy.tariffs); empty: HA's Energy settings' price, then ANRE's figures */ tariffs?: Tariff[]; host: Host; devices: HomeDevice[]; boilers: Set<string>; feedOfRoom: (roomId: string) => string | null; /** the feeds the rooms are assigned to in the config (rooms.<area>.feed) */ roomFeeds: string[]; roomName: (id: string) => string; nameOf: (d: HomeDevice) => string; onDevice: (key: string) => void; t: T; lang: Lang; fallback: ComponentChildren; /** HA's floors: the buildings the feeds are in (Atom + Okapi, 09.11.2026); one or none = no buildings card */ floors?: FloorRow[]; floorOfArea?: (areaId: string | null) => string | null; /** where the panel is, from the address (`#energy?filter=month.2026-10-01`: energy-load.ts placeOf), and how it says where it went; without them it keeps its place itself */ place?: string | null; onPlace?: (place: string | null) => void; /** opens «Настройка → Энергия»; given to an admin only */ onTariff?: () => void }
-export function EnergyPanel({ chargerOf = null, tariffs = [], host, devices, boilers, feedOfRoom, roomFeeds, roomName, nameOf, onDevice, t, lang, fallback, floors = [], floorOfArea = () => null, place, onPlace, onTariff }: EnergyPanelProps) {
+export interface EnergyPanelProps { /** the page's own arrangement of the report's blocks; `head` is the period switch, which stays on top */ layout?: (parts: { head: ComponentChildren; blocks: LayItem[]; period?: string; busy?: boolean; bare?: boolean }) => JSX.Element; /** the feed the car's charger is billed with (config modules.energy.options.chargerOf) */ chargerOf?: string | null; /** the panel's own electricity price history (config energy.tariffs); empty: HA's Energy settings' price, then ANRE's figures */ tariffs?: Tariff[]; host: Host; devices: HomeDevice[]; boilers: Set<string>; feedOfRoom: (roomId: string) => string | null; /** the feeds the rooms are assigned to in the config (rooms.<area>.feed) */ roomFeeds: string[]; roomName: (id: string) => string; nameOf: (d: HomeDevice) => string; onDevice: (key: string) => void; t: T; lang: Lang; fallback: ComponentChildren; /** HA's floors: the buildings the feeds are in (Atom + Okapi, 09.11.2026); one or none = no buildings card */ floors?: FloorRow[]; floorOfArea?: (areaId: string | null) => string | null; /** where the panel is, from the address (`#energy?filter=month.2026-10-01`: energy-load.ts placeOf), and how it says where it went; without them it keeps its place itself */ place?: string | null; onPlace?: (place: string | null) => void; /** opens «Настройка → Энергия»; given to an admin only */ onTariff?: () => void }
+export function EnergyPanel({ chargerOf = null, tariffs = [], host, devices, boilers, feedOfRoom, roomFeeds, roomName, nameOf, onDevice, t, lang, fallback, floors = [], floorOfArea = () => null, place, onPlace, onTariff, layout }: EnergyPanelProps) {
+  // the report as blocks (owner, 23.11.2026: «Энергия» is arranged like Home): the page puts them in the device's own order; without a page, as before
+  const bl = (k: string) => t(`lay.b.${k}` as Key);
+  const frame = (blocks: LayItem[], period?: string, busy?: boolean) => layout ? layout({ head, blocks, period, busy }) : <div className="at-ep" data-period={period} aria-busy={busy || undefined}>{head}{blocks.map(b => <Fragment key={b.key}>{b.node}</Fragment>)}</div>;
   // the place is the period and the day it starts on (audit 09.11.2026): the address keeps it over a reload, and «yesterday» left open across
   // midnight is still that day, so «Раньше» and «Позже» step from it and not from the new today
   const [ownPlace, setOwnPlace] = useState<string | null>(null), [state, setState] = useState<LoadState | null>(null);
@@ -90,7 +95,7 @@ export function EnergyPanel({ chargerOf = null, tariffs = [], host, devices, boi
     if (a && a.isConnected && a.matches('button, a[href], input, select, textarea')) return;
     h.focus({ preventScroll: true }); }, [!host.statistics || !chs.length]);
   useEffect(() => { if (focusHead.current) { focusHead.current = false; h2.current?.focus({ preventScroll: true }); } });
-  if (!host.statistics || !chs.length) return <>{fallback}</>;
+  if (!host.statistics || !chs.length) return layout ? layout({ head: null, bare: true, blocks: [{ key: 'ep:plain', block: true, label: t('section.energy' as Key), node: fallback }] }) : <>{fallback}</>;
   const loc = locales[lang], fmt: Fmt = (v, d) => Number.isFinite(v) ? numFixed(v, lang, d) : DASH; // not a number is «—», never «0»
   const u = (code: string) => unitOf(t, code), kwh = (v: number) => { const x = energyText(v, fmt); return `${x.value}\u00a0${u(x.unit)}`; }, money = (v: number) => t('ep.lei', { v: fmt(v, digitsBelow(v, 100, 2)) }); // by the figure as shown: 99,996 is «100», not «100,00»
   const report = state?.key === key ? state.report : undefined, failed = state?.key === key && state.failed, now = report?.now ?? Date.now();
@@ -104,11 +109,11 @@ export function EnergyPanel({ chargerOf = null, tariffs = [], host, devices, boi
     <div className="at-ep-nav"><button type="button" className="at-ep-step" aria-label={t('ep.prev')} disabled={atFirst} onClick={() => step(-1)}><Icon name="back" size={18} /></button><h2 ref={h2} tabIndex={-1} aria-live="polite">{title(period, shown, now, t, loc, tz)}</h2><button type="button" className="at-ep-step is-next" aria-label={t('ep.next')} disabled={offset >= 0} onClick={() => step(1)}><Icon name="back" size={18} /></button></div>
     {report && state?.stale && <p className="at-ep-stale" role="status">{t('ep.stale')}</p>}
   </div>;
-  if (failed) return <div className="at-ep">{head}<div className="at-ep-card at-ep-fail" role="alert" key={`fail${state!.attempt}`}><p>{t('ep.failed')}<small>{t('ep.attempt', { time: when(state!.at!, loc, { hour: '2-digit', minute: '2-digit', second: '2-digit' }, tz) })}</small></p><button type="button" className="hm-pill" onClick={() => { focusHead.current = true; /* the button goes with the card: the focus to the title, not to the page */ setState(null); setTick(n => n + 1); }}>{t('ep.retry')}</button></div></div>;
-  if (!report) return <div className="at-ep" aria-busy="true">{head}<div className="at-ep-card at-ep-skel is-hero" /><div className="at-ep-card at-ep-skel is-chart"><p className="at-ep-readout is-hint">{t('ep.loading')}</p></div></div>; // the words are on the screen, not only for a screen reader: two blank cards said neither «loading» nor «no data»
+  if (failed) return frame([{ key: 'ep:fail', block: true, label: t('section.energy' as Key), node: <div className="at-ep-card at-ep-fail" role="alert" key={`fail${state!.attempt}`}><p>{t('ep.failed')}<small>{t('ep.attempt', { time: when(state!.at!, loc, { hour: '2-digit', minute: '2-digit', second: '2-digit' }, tz) })}</small></p><button type="button" className="hm-pill" onClick={() => { focusHead.current = true; /* the button goes with the card: the focus to the title, not to the page */ setState(null); setTick(n => n + 1); }}>{t('ep.retry')}</button></div> }]);
+  if (!report) return frame([{ key: 'ep:total', block: true, label: bl('total'), node: <div className="at-ep-card at-ep-skel is-hero" /> }, { key: 'ep:chart', block: true, label: bl('chart'), node: <div className="at-ep-card at-ep-skel is-chart"><p className="at-ep-readout is-hint">{t('ep.loading')}</p></div> }], undefined, true); // the words are on the screen, not only for a screen reader: two blank cards said neither «loading» nor «no data»
   // a period without statistics is empty, not zero: one line instead of 0,0 kWh and 0,00 lei everywhere. Before they began it says since when;
   // after that the meter was silent (a day the SPM was offline), and «there were no meters before» would be untrue
-  if (report.dataFrom === null) return <div className="at-ep" data-period={period}>{head}<section className="at-ep-card at-ep-nostats"><p>{t('ep.noStats')}</p>{first !== null && <small>{report.end <= first ? t('ep.since', { d: dateLong(first, loc, tz) }) : t('ep.gap')}</small>}</section></div>;
+  if (report.dataFrom === null) return frame([{ key: 'ep:nostats', block: true, label: t('section.energy' as Key), node: <section className="at-ep-card at-ep-nostats"><p>{t('ep.noStats')}</p>{first !== null && <small>{report.end <= first ? t('ep.since', { d: dateLong(first, loc, tz) }) : t('ep.gap')}</small>}</section> }], period);
   // a channel silent now for more than 15 minutes: no badge (today stopped at 15:00 read «▼ 25 %» against yesterday up to now)
   const feeds = report.feeds, tot = totals(report), all = sum(tot), before = report.previous ? sum(report.previous) : null, delta = typeof report.silentSince === 'number' ? null : change(all, before), fc = forecast(report), empty = all < 0.005, past = offset < 0;
   // «now» is the tile's figure, by the same function: every channel of the feed, and «нет связи» when one of them is silent
@@ -129,9 +134,8 @@ export function EnergyPanel({ chargerOf = null, tariffs = [], host, devices, boi
   // charger's power, which HA does not write while the SPM is silent: a charge then is missing from the list, which says by how much
   const carriedAt = report.buckets.findIndex(b => b.carried), carried = carriedAt >= 0;
   const charger = feeds.find(f => f.charger), missed = carried && charger && report.sessions ? tot[charger.key] - report.sessions.reduce((a, x) => a + x.kwh, 0) : 0;
-  return <div className="at-ep" data-period={period}>
-    {head}
-    <section className="at-ep-card at-ep-hero" key={`h${key}`}>
+  const blocks: Array<LayItem | false> = [
+    { key: 'ep:total', block: true, label: bl('total'), node: <section className="at-ep-card at-ep-hero" key={`h${key}`}>
       <div className="at-ep-used"><small>{t('ep.used')}</small><span className="at-ep-big"><Tick value={energyText(all, fmt).value} /><i>{u('kWh')}</i></span>
         <span className="at-ep-money">≈&nbsp;{money(cost(report))}</span>{deltaBadge(true)}
       </div>
@@ -141,9 +145,9 @@ export function EnergyPanel({ chargerOf = null, tariffs = [], host, devices, boi
       {carried && <p className="at-ep-note at-ep-carried"><span aria-hidden="true">*&nbsp;</span>{`${bucketName(report, carriedAt, loc)}: ${t('ep.carried')}`}</p>}
       {/* where to write one's own price is a way there, for the one who may open the settings; anyone else reads only where the price is from */}
       <p className="at-ep-note at-ep-tariff" data-tariff={report.tariff.source}><span className="at-ep-tariff-text">{tariffNote(report, t, fmt, loc)}</span>{report.tariff.source === 'anre' && onTariff && <>{' '}<span className="at-ep-tariff-own" style="display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;margin-top:6px"><span>{t('ep.tariff.own')}</span>{' '}<button type="button" className="hm-pill at-ep-more" style="margin-top:0" data-action="tariff" onClick={onTariff}>{`${t('section.settings')} → ${t('setup.energy')}`}</button></span></>}</p>
-    </section>
-    <Buildings floors={floors} feeds={feeds} chs={chs} tot={tot} live={liveOk ? live : null} u={u} floorOfArea={floorOfArea} report={report} t={t} fmt={fmt} kwh={kwh} money={money} />
-    <section className="at-ep-card at-ep-chart">
+    </section> },
+    floors.length >= 2 && { key: 'ep:buildings', block: true, label: t('ep.buildings'), node: <Buildings floors={floors} feeds={feeds} chs={chs} tot={tot} live={liveOk ? live : null} u={u} floorOfArea={floorOfArea} report={report} t={t} fmt={fmt} kwh={kwh} money={money} /> },
+    { key: 'ep:chart', block: true, label: bl('chart'), node: <section className="at-ep-card at-ep-chart">
       <div className="at-ep-legend">{feeds.map(f => <button type="button" aria-pressed={!hidden.includes(f.key)} className={hidden.includes(f.key) ? 'is-off' : ''} onClick={() => toggle(f.key)}><i style={`--c:${f.color}`} /><span className="is-long">{f.name}</span><span className="is-short">{f.short}</span><b>{kwh(tot[f.key])}</b></button>)}</div>
       {empty ? <p className="at-ep-readout is-hint">{t('ep.nodata')}</p> : <>
         {report.dataFrom - report.start > 86400000 && <p className="at-ep-since">{t('ep.since', { d: dateLong(report.dataFrom, loc, tz) })}</p>}
@@ -151,16 +155,16 @@ export function EnergyPanel({ chargerOf = null, tariffs = [], host, devices, boi
         <Readout report={report} pick={pk} hidden={hidden} hint={hintSeen} t={t} loc={loc} kwh={kwh} money={money} fmt={fmt} />
         {period === 'day' && report.curve ? <Curve key={key} report={report} hidden={hidden} pick={pk} setPick={setPick} t={t} fmt={fmt} /> : <Bars key={key} report={report} hidden={hidden} pick={pk} setPick={setPick} t={t} loc={loc} fmt={fmt} />}
       </>}
-    </section>
-    {/* a feed billed with another (the car with apartment 8) is inside its block, not beside it: the block is the bill */}
-    <div className={`at-ep-feeds is-${Math.min(feeds.filter(f => !f.partOf).length, 4)}`}>{feeds.filter(f => !f.partOf).map(f => { const kids = feeds.filter(k => k.partOf === f.key), keys = [f.key, ...kids.map(k => k.key)], v = keys.reduce((a, k) => a + (tot[k] ?? 0), 0); return <section className="at-ep-card at-ep-feed" style={`--c:${f.color}`} key={`${f.key}${key}`}>
+    </section> },
+    // a feed billed with another (the car with apartment 8) is inside its block, not beside it: the block is the bill
+    { key: 'ep:feeds', block: true, label: bl('feeds'), node: <div className={`at-ep-feeds is-${Math.min(feeds.filter(f => !f.partOf).length, 4)}`}>{feeds.filter(f => !f.partOf).map(f => { const kids = feeds.filter(k => k.partOf === f.key), keys = [f.key, ...kids.map(k => k.key)], v = keys.reduce((a, k) => a + (tot[k] ?? 0), 0); return <section className="at-ep-card at-ep-feed" style={`--c:${f.color}`} key={`${f.key}${key}`}>
       <span className="at-ep-feed-head"><i /><span className="at-ep-feed-name">{f.name}</span><small>{all ? t('ep.share', { n: fmt(v / all * 100, 0) }) : ''}</small></span>
       <span className="at-ep-feed-num"><b>{energyText(v, fmt).value}</b>{'\u00a0'}{u('kWh')}</span><span className="at-ep-money">≈&nbsp;{money(cost(report, keys))}</span>
       {kids.map(k => <span className="at-ep-feed-part" style={`--c:${k.color}`}><i />{t('ep.including', { name: k.name })}<b>{kwh(tot[k.key] ?? 0)}</b><small>≈&nbsp;{money(cost(report, [k.key]))}</small></span>)}
       <Spark values={(report.curve && period === 'day' ? report.curve : report.buckets).filter(b => !b.future).map(b => keys.reduce((a, k) => a + (b.v[k] ?? 0), 0))} />
-    </section>; })}</div>
-    <Rooms report={report} group={g} groups={groups} setGroup={k => { setGroup(k); setPick(null); }} prefsOk={prefs?.ok !== false} carried={carried} t={t} fmt={fmt} kwh={kwh} money={money} onDevice={onDevice} />
-    <div className="at-ep-side">
+    </section>; })}</div> },
+    { key: 'ep:rooms', block: true, label: bl('rooms'), node: <Rooms report={report} group={g} groups={groups} setGroup={k => { setGroup(k); setPick(null); }} prefsOk={prefs?.ok !== false} carried={carried} t={t} fmt={fmt} kwh={kwh} money={money} onDevice={onDevice} /> },
+    { key: 'ep:compare', block: true, label: bl('compare'), node: <div className="at-ep-side">
       <section className="at-ep-card at-ep-compare"><h3>{t('ep.compare')}</h3>
         {delta !== null && before !== null && <Row label={vs(true)} value={deltaBadge(false)} sub={t('ep.before', { v: kwh(before) })} />}
         {(before === 0 || before === null) && all > 0 && !report.silentSince && <Row label={vs(true)} value="—" sub={t('ep.noPrev')} />}
@@ -169,9 +173,10 @@ export function EnergyPanel({ chargerOf = null, tariffs = [], host, devices, boi
         {fc && <Row label={t('ep.forecast', { m: when(fc.at, loc, { month: 'long' }, tz) })} value={`≈\u00a0${money(fc.lei)}`} sub={kwh(fc.kwh)} strong />}
       </section>
       {report.network.length > 0 && <section className="at-ep-card at-ep-net"><h3>{t('ep.network')}</h3>{report.network.map(n => <Network n={n} feed={feeds.find(f => f.key === n.feed)!} live={offset === 0} t={t} fmt={fmt} />)}</section>}
-    </div>
-    {report.sessions && <Sessions report={report} sessions={report.sessions} color={charger?.color ?? '#ff9f0a'} missed={missed > 0.3 ? missed : 0} t={t} loc={loc} kwh={kwh} money={money} fmt={fmt} />}
-  </div>;
+    </div> },
+    !!report.sessions && { key: 'ep:sessions', block: true, label: bl('sessions'), node: <Sessions report={report} sessions={report.sessions!} color={charger?.color ?? '#ff9f0a'} missed={missed > 0.3 ? missed : 0} t={t} loc={loc} kwh={kwh} money={money} fmt={fmt} /> },
+  ];
+  return frame(blocks.filter((b): b is LayItem => !!b), period);
 }
 /** What a kWh cost in this period: ANRE's figure (and where to write one's own) until the owner has, HA's Energy settings' price, the owner's price
  * with its day, or the changes inside the period, each with its day (owner, 09.11.2026: a past month at its own price). */
