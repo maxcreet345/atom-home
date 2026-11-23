@@ -1,3 +1,4 @@
+import { PROFILES } from '../model/card-catalog.ts';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { createPortal } from 'preact';
 import { Icon } from './primitives.tsx';
@@ -69,7 +70,7 @@ export function Setup({ registry, config, onChange, admin, t, lang, warnings, ph
   return <div className="at-setup" data-tab={tab} data-told={[pending !== undefined && 'pending', haPrice !== undefined && 'price', sections && 'sections'].filter(Boolean).join(' ') || undefined} onInput={() => { if (note) setNote(''); /* a stale «Сохранено» goes as soon as something new is typed; on the way UP, after the field has kept its text (in the capture phase this redraw reset the field and ate the first keystroke) */ }}>
     <div className="hm-range-tabs at-setup-tabs" role="group" aria-label={t('setup.title')} ref={el => { const on = el?.querySelector<HTMLElement>('.is-active'); if (el && on && (on.offsetLeft < el.scrollLeft || on.offsetLeft + on.offsetWidth > el.scrollLeft + el.clientWidth)) el.scrollLeft = on.offsetLeft - 8; /* a phone: the open tab is never beyond the edge of the bar */ }}>{tabs.map(([id, key]) => <button type="button" key={id} aria-pressed={tab === id} className={tab === id ? 'is-active' : ''} onClick={() => setTab(id)}>{t(key)}</button>)}</div>
     {warnings.length > 0 && <details className="hm-fold"><summary><span>{t('setup.warnings')} ({warnings.length})</span><Icon name="next" size={18} /></summary><div className="hm-fold-body">{warnings.map(w => <p className="hm-muted">{w}</p>)}</div></details>}
-    {tab === 'devices' && <DevicesTab home={home} config={config} patch={patch} save={save} ask={ask} t={t} lang={lang} photos={photos} friendly={friendly} lock={lock} />}
+    {tab === 'devices' && <DevicesTab onModules={() => setTab('modules')} home={home} config={config} patch={patch} save={save} ask={ask} t={t} lang={lang} photos={photos} friendly={friendly} lock={lock} />}
     {tab === 'rooms' && <RoomsTab home={home} config={config} patch={patch} save={save} ask={ask} t={t} photos={photos} lock={lock} />}
     {tab === 'energy' && <EnergyTab config={config} patch={patch} ask={ask} t={t} lang={lang} haPrice={haPrice} lock={lock} />}
     {tab === 'modules' && <ModulesTab registry={registry} config={config} patch={patch} save={save} ask={ask} photos={photos} t={t} lock={lock} />}
@@ -121,11 +122,13 @@ function Toggle({ on, label, onToggle, held, describedBy }: { on: boolean; label
 /** One photo slot per appliance (model/photos.ts): the HA device's own (`d:<id>`) — the one «Модули» and every card of the appliance read — else the card's key. */
 const slotOf = (d: HomeDevice) => d.haDeviceId ? `d:${d.haDeviceId}` : d.key;
 const shownName = (d: HomeDevice, t: T) => ENTITY_ID.test(d.name) ? t(`kind.${d.kind}` as Key) : d.name;
-function DevicesTab({ home, config, patch, save, ask, t, lang, photos, friendly, lock }: { home: Home; config: HouseConfig; patch: Patch; save: Save; ask: AskFn; t: T; lang: Lang; photos?: PhotoStore; friendly: (id: string) => string | undefined; lock?: boolean }) {
+function DevicesTab({ home, config, patch, save, ask, t, lang, photos, friendly, lock, onModules }: { /** to the «Модули» tab: where the panel's own cards are set up */ onModules: () => void; home: Home; config: HouseConfig; patch: Patch; save: Save; ask: AskFn; t: T; lang: Lang; photos?: PhotoStore; friendly: (id: string) => string | undefined; lock?: boolean }) {
   const [q, setQ] = useState(''), [open, setOpen] = useState<string | null>(null);
   const roomName = (id: string) => home.rooms.find(r => r.id === id)?.name || t('room.none');
   const own = home.devices.filter(d => !config.devices[d.key]?.mergeInto), find = q.trim();
   const list = own.filter(d => !find || `${shownName(d, t)} ${d.primary.id} ${roomName(d.roomId)}`.toLowerCase().includes(find.toLowerCase()));
+  // the family looks for «кормушка», «весы», «регистратор» here, and those are cards of the panel, not devices of this list (audit 22.11.2026, H-14): the search says so and where they are set up
+  const low = find.toLowerCase(), cardsHit = low.length >= 3 ? PROFILES.filter(p => { const title = t(p.titleKey as Key); return title !== p.titleKey && (title.toLowerCase().includes(low) || p.terms.some(w => w.toLowerCase().includes(low) || (w.length >= 4 && low.includes(w.toLowerCase())))); }).filter((p, i, a) => a.findIndex(x => t(x.titleKey as Key) === t(p.titleKey as Key)) === i).slice(0, 3) : [];
   const byRoom = new Map<string, HomeDevice[]>(); for (const d of list) (byRoom.get(d.roomId) ?? byRoom.set(d.roomId, []).get(d.roomId)!).push(d);
   const rooms = [...home.rooms.map(r => r.id), NO_ROOM].filter((id, i, a) => a.indexOf(id) === i && byRoom.has(id));
   const enabled = home.devices.filter(d => d.enabled).length;
@@ -134,7 +137,8 @@ function DevicesTab({ home, config, patch, save, ask, t, lang, photos, friendly,
   return <div className="at-setup-devices" inert={lock}>
     {/* while something is searched the counter speaks about the search («найдено 3 из 71»), and a search that finds nothing says so */}
     <div className="hm-toolbar"><label className="at-search-wrap"><span className="at-vh">{t('setup.search.label')}</span><input type="search" className="at-search" aria-label={t('setup.search.label')} placeholder={t('setup.search')} enterkeyhint="search" {...CODE} value={q} onInput={e => setQ((e.target as HTMLInputElement).value)} /></label><span role="status" data-count={find ? 'found' : 'shown'}>{find ? t('setup.foundCount', { n: list.length, total: own.length }) : t('setup.enabledCount', { n: enabled, total: home.devices.length })}</span></div>
-    {find && list.length === 0 && <div className="hm-card at-placeholder" data-empty="search"><Icon name="search" size={40} /><p className="hm-muted">{t('setup.notFound', { q: find })}</p></div>}
+    {cardsHit.length > 0 && <div className="hm-card at-setup-cardhint" role="status">{cardsHit.map(p => <p>{t('setup.cardHint', { name: p.module && t(`module.${p.module}` as Key) !== `module.${p.module}` ? t(`module.${p.module}` as Key) : t(p.titleKey as Key) })} {t(p.module ? 'setup.cardHint.modules' : 'setup.cardHint.sheet')}</p>)}{cardsHit.some(p => p.module) && <button type="button" className="hm-pill" onClick={onModules}>{t('setup.modules')}</button>}</div>}
+    {find && list.length === 0 && cardsHit.length === 0 && <div className="hm-card at-placeholder" data-empty="search"><Icon name="search" size={40} /><p className="hm-muted">{t('setup.notFound', { q: find })}</p></div>}
     {rooms.map(rid => <section className="hm-section" key={rid}><div className="hm-section-head"><h2>{roomName(rid)}</h2></div><div className="hm-rows">
       {byRoom.get(rid)!.map(d => { const o = config.devices[d.key] ?? {}; const isOpen = open === d.key; const name = shownName(d, t); return <div className={`hm-row at-setup-row ${d.enabled ? '' : 'is-off'}`} data-device-key={d.key} key={d.key}>
         <div className="at-setup-main">

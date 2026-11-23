@@ -1131,3 +1131,5 @@
 .hm-shell .at-ep>.at-page-blocks{margin:0}
 .hm-shell .hm-page>.at-lay-scope>.at-ep~.at-gas-list{margin-top:-12px}
 .hm-shell .hm-page>.at-lay-scope>.at-sec-cams{max-width:var(--ah-page-max);margin:16px auto 0}
+.hm-shell .at-setup-cardhint{display:grid;gap:8px;padding:14px 16px;justify-items:start}.hm-shell .at-setup-cardhint p{margin:0;font-size:.9375rem}.hm-shell .at-setup-cardhint .hm-pill{min-height:44px}
+.hm-shell .at-osec>.at-page-blocks,.hm-shell .at-osec>.at-osec-head{grid-area:auto/1/auto/-1!important;margin:0}

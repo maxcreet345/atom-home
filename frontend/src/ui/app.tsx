@@ -23,6 +23,7 @@ import { metricLabel, modelText, held } from './cards.tsx';
 import { Setup } from './setup.tsx';
 import { rememberModules, claimedEntities, type ActiveModule, type TileState, type AutoClose } from '../modules/index.ts';
 import { Fragment } from 'preact';
+import { backLayer } from './back-layer.ts';
 import type { JSX } from 'preact';
 import { SaveError, rebaseAlarms, type ConfigStore } from '../runtime/store.ts';
 import { Cascade } from './motion.tsx';
@@ -76,7 +77,7 @@ import { shellAlarm, announcement, sk } from '../model/security-words.ts';
 import { houseStatus, type HouseStatus } from '../model/house-status.ts';
 import { HouseStatusStrip } from './house-status.tsx';
 import { people } from '../model/people.ts';
-import { instanceViews, selfDrawn, roomCards, shownOnPage, modulesOnPage, isPagePlace, INSTANCE_PREFIX, type InstanceView, type PagePlace } from '../model/card-catalog.ts';
+import { instanceViews, selfDrawn, roomCards, shownOnPage, modulesOnPage, builtinsOnPage, isPagePlace, INSTANCE_PREFIX, type InstanceView, type PagePlace } from '../model/card-catalog.ts';
 import { familyOf } from '../appliances/profiles.ts';
 import { applianceUi } from '../appliances/index.ts';
 import { heatLayoutOf } from '../model/heating-layout.ts';
@@ -186,6 +187,8 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
   useEffect(() => { const pop = () => { landed(navigationWindow);
       // «Back» with a question open closes the question only: the entry the browser has just left is opened again (runtime/route.ts: stayOn)
       if (confirmNow.current) { confirmNow.current = null; setConfirm(null); if (stayOn(navigationWindow, viewNow.current)) return; }
+      // …and with a window open over a sheet (a new timer, the alarm editor), that window only (ui/back-layer.ts)
+      else if (backLayer() && stayOn(navigationWindow, viewNow.current)) return;
       leavePage(); arrival.current = 'back'; setConfirm(null); const hash = navigationWindow.location.hash, v = decode(hash); if (hash.length > 1 && encode(v) !== hash) replaceView(navigationWindow, v); /* «#nonsense» is Home and says so */ setView(v); }; navigationWindow.addEventListener('popstate', pop); navigationWindow.addEventListener('hashchange', pop); return () => { navigationWindow.removeEventListener('popstate', pop); navigationWindow.removeEventListener('hashchange', pop); }; }, [navigationWindow]);
   useEffect(() => { const hash = navigationWindow.location.hash; if (hash.length > 1 && encode(decode(hash)) !== hash) replaceView(navigationWindow, decode(hash)); /* a cold «#nonsense» is Home and says so at once, not after the first tap */ }, [navigationWindow]);
   const full = (next: Partial<View>) => ({ section: viewNow.current.section, room: null, device: null, filter: null, ...next }) as View;
@@ -388,7 +391,18 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
   // a module card put on a page (the feeder, the kettle, the air fryer, «Воздух») is drawn there by its own tile, as on Home; «Устройства» already shows the appliances' cards itself
   const moduleItem = (m: ActiveModule, section: Section, key = `m:${m.def.id}`): LayItem => ({ key, label: (n => n === `module.${m.def.id}` ? m.label : n)(t(`module.${m.def.id}` as Key)), span: m.def.id === 'air' ? { w: 2, h: 1 } : { w: 2, h: 2 }, node: <Guard where={`card:${m.def.id}`} kind="tile" t={t}><m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} compact rooms={home.rooms} onOpen={() => go({ section, device: m.def.sheetKey })} /></Guard> });
   const pageModules = (page: PagePlace): LayItem[] => modulesOnPage(config.profileInstances, page).flatMap(([, id]) => { const m = modules.find(x => x.def.id === id && x.def.sheetKey); return m && !(page === 'systems' && APPLIANCE_MODULES.includes(id)) ? [moduleItem(m, page)] : []; });
-  const pageCards = (page: PagePlace): LayItem[] => [...pageModules(page), ...pageTiles(page)];
+  // the panel's own big cards put on a page: the very tiles of Home (the cameras, the robot, the heating, the boiler, the clock)
+  const pageBuiltins = (page: PagePlace): LayItem[] => builtinsOnPage(config.profileInstances, page).flatMap((k): LayItem[] => {
+    if (k === 'vacuum') return vacuum ? [{ key: 'tile:vacuum', span: { w: 2, h: 2 }, label: t('section.cleaning'), node: <Guard where="tile:vacuum" kind="tile" t={t}><VacuumTile pics={vacPics} v={vacuum} host={host} t={t} lang={lang} onOpen={() => go({ section: 'cleaning' })} /></Guard> }] : [];
+    if (k === 'heating') return heating ? [{ key: 'tile:heating', span: { w: 2, h: 2 }, label: t('section.climate'), node: <Guard where="tile:heating" kind="tile" t={t}><HeatingTile h={heating} host={host} t={t} lang={lang} now={now.getTime()} onOpen={() => go({ section: 'climate' })} /></Guard> }] : [];
+    if (k === 'cameras') { if (!camViews.length) return [];
+      if (camViews.length > 1) return [{ key: 'tile:cameras', span: { w: 2, h: 2 }, label: t('cams.title'), node: <Guard where="tile:cameras" kind="tile" t={t}><CamerasTile views={camViews} scope={`page:${page}`} player={player} host={host} now={now.getTime()} t={t} lang={lang} onPanel={() => go({ section: 'camera' })} onCamera={key => go({ section: page, device: key })} /></Guard> }];
+      const c = camViews[0].device, st = tileState(c); return [{ key: `cam:${c.key}`, span: { w: 2, h: 2 }, label: c.name, node: <Guard where="tile:camera" kind="tile" t={t}><CameraTile device={c} state={st} player={st?.closed ? null : player(c, 'tile')} onOpen={() => go({ section: page, device: c.key })} t={t} lang={lang} large /></Guard> }]; }
+    if (k === 'clock') { const m = modules.find(x => x.def.id === 'clock'); return m ? [{ key: 'tile:clock', label: t('module.clock' as Key), node: <Guard where="tile:clock" kind="tile" t={t}><ClockTile now={now} lang={lang} t={t} registry={registry} entities={m.entities} onOpen={() => go({ section: page, device: 'clock' })} /></Guard> }] : []; }
+    const m = modules.find(x => x.def.id === 'boiler_ebus'); if (!m) return [];
+    return [{ key: 'm:boiler_ebus', span: { w: 2, h: 2 }, label: t('module.boiler_ebus' as Key), node: <div className="ah-tile ah-module"><button type="button" className="ah-tile-hit at-module-hit" aria-label={`${t('ui.open')}: ${t('module.boiler_ebus' as Key)}`} onClick={() => go({ section: 'climate' })} /><div className="at-module-body"><Guard where="card:boiler_ebus" kind="tile" t={t}><m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} compact /></Guard></div></div> }];
+  });
+  const pageCards = (page: PagePlace): LayItem[] => [...pageBuiltins(page), ...pageModules(page), ...pageTiles(page)];
   const pageTiles = (page: PagePlace): LayItem[] => shownOnPage(cardViews, page).filter(v => !(page === 'systems' && listed.some(d => d.key === v.device.key)) && !(page === 'lights' && v.device.kind === 'light') /* the page lists that device itself: one tile, not two */).map(v => { const x = home.devices.find(dv => dv.key === v.device.key) ?? v.device; return { key: `card:${v.id}`, label: x.name, node: <Guard where={`card:${v.id}`} kind="tile" t={t}><AccessoryTile device={x} name={x.name} room={roomName(x.roomId)} pending={runner.busy.has(x.key)} onToggle={canToggle(x) ? () => toggle(x) : undefined} onOpen={() => go({ section: page, device: x.key })} t={t} lang={lang} /></Guard> }; });
   // only the fryer itself rests (the device that carries its status), not the metering plug it stands on: a silent plug is still «без связи»
   const fryerIds = new Set([fryerMod?.entities.status].filter((v): v is string => typeof v === 'string'));
@@ -501,7 +515,9 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
         {view.section === 'rooms' && view.room && <RoomPage cards={cardViews} appliances={appliances} commands={commands} camViews={camViews} player={player} tileState={tileState} vacPics={vacPics} modules={modules} heating={heating} vacuum={vacuum} host={host} now={now.getTime()} home={home} registry={registry} roomId={view.room} runner={runner} toggle={toggle} go={go} t={t} lang={lang} alarms={clockMod && registry.entities.some(e => e.entity_id.startsWith('media_player.') && e.platform === 'yandex_station' && !e.disabled_by && (e.area_id ?? registry.devices.find(d => d.id === e.device_id)?.area_id) === view.room) ? config.alarms.filter(a => a.room === view.room) : null} />}
         {view.section === 'lights' && <LightsPage cards={pageCards('lights')} devices={enabled.filter(d => d.kind === 'light')} rooms={home.rooms} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} admin={host.admin} />}
         {/* «Безопасность» as blocks (owner, 23.11.2026): the guard, the cameras' link and the cards put on the page stand in the device's own order */}
-        {view.section === 'security' && (officeSec || security) && <PageBlocks page="security" admin={host.admin} go={go} t={t} cards={pageCards('security')} blocks={[
+        {view.section === 'security' && security && !officeSec && <SecurityPanel s={security} registry={registry} config={config} host={host} commands={commands} t={t} lang={lang} now={now.getTime()} admin={!!host.admin} motion={secMotion} aside={camViews.length ? camLink : null}
+          layout={parts => <SecurityBlocks parts={parts} cards={pageCards('security')} admin={host.admin} go={go} t={t} />} />}
+        {view.section === 'security' && officeSec && <PageBlocks page="security" admin={host.admin} go={go} t={t} cards={pageCards('security')} blocks={[
           officeSec && { key: 'sec:office', block: true, label: t('lay.b.guard' as Key), node: <OfficeSecurityPanel s={officeSec} host={host} t={t} lang={lang} now={now.getTime()} admin={!!host.admin} title={config.home.name} /> },
           officeSec && camViews.length > 0 && { key: 'sec:cams', block: true, label: t('lay.b.cams' as Key), node: camLink },
           security && { key: 'sec:guard', block: true, label: t('lay.b.guard' as Key), node: <SecurityPanel s={security} registry={registry} config={config} host={host} commands={commands} t={t} lang={lang} now={now.getTime()} admin={!!host.admin} motion={secMotion} aside={camLink} /> },
@@ -657,6 +673,14 @@ function PageBlocks({ page, blocks: raw, cards, admin, go, t }: { page: PagePlac
   const blocks = raw.filter((b): b is LayItem => !!b), lay = useLayout(), row = pageRow(page, blocks.length + cards.length > 0, admin, lay, go, t);
   return <LayoutGrid scope={pageScope(page)} className="ah-grid ah-face at-page-arranged at-page-blocks" items={[...blocks, ...cards]} tail={row}
     fallback={mark => <>{blocks.map(b => <Fragment key={b.key}>{mark(b)}</Fragment>)}{cards.length > 0 && <div className="ah-grid ah-face at-page-cards">{cards.map(mark)}</div>}{row}</>} />;
+}
+/** «Безопасность» of a house with its own alarm: the panel's parts (ui/security.tsx gives them with the tabs, which stay on top) and the cards put on the page. */
+function SecurityBlocks({ parts, cards, admin, go, t }: { parts: { head: JSX.Element; blocks: LayItem[]; cls: string; tab: string }; cards: LayItem[]; admin?: boolean; go: Nav; t: ReturnType<typeof translator> }) {
+  const lay = useLayout(), row = pageRow('security', parts.blocks.length + cards.length > 0, admin, lay, go, t), editing = lay?.draft?.scope === pageScope('security');
+  // while the page is being arranged the tab stays: another tab has other parts
+  const box = (inner: preact.ComponentChildren) => <div className={parts.cls}><div className="at-osec" data-tab={parts.tab}>{editing ? <div className="at-osec-head" inert>{parts.head}</div> : parts.head}{inner}</div></div>;
+  return <LayoutGrid scope={pageScope('security')} className="ah-grid ah-face at-page-arranged at-page-blocks" items={[...parts.blocks, ...cards]} tail={row} frame={grid => box(grid)}
+    fallback={mark => <>{box(parts.blocks.map(b => <Fragment key={b.key}>{mark(b)}</Fragment>))}{cards.length > 0 && <div className="ah-grid ah-face at-page-cards">{cards.map(mark)}</div>}{row}</>} />;
 }
 /** «Энергия»: the report's blocks (ui/energy-page.tsx gives them with the period switch, which stays on top), the gas meter and the cards put on the page. */
 function EnergyBlocks({ parts, gas, cards, admin, go, t }: { parts: { head: preact.ComponentChildren; blocks: LayItem[]; period?: string; busy?: boolean; bare?: boolean }; gas: JSX.Element | null; cards: LayItem[]; admin?: boolean; go: Nav; t: ReturnType<typeof translator> }) {

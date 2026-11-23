@@ -487,8 +487,20 @@ export function siblingDevices(reg: Registry, inst: ProfileInstance, list: Profi
  *  stand on a page, drawn there by that very tile (owner, 23.11.2026: «расклад должен распространяться на все карточки»). */
 export const PAGE_MODULES: readonly string[] = ['pet_feeder', 'kettle', 'airfryer', 'air'];
 export const pageModule = (p: Pick<Profile, 'renderer' | 'module'>) => p.renderer === 'module' && !!p.module && PAGE_MODULES.includes(p.module);
-/** May the card stand on a page of the panel: every card that is a tile, and the module cards above. */
-export const pageable = (p: Pick<Profile, 'renderer' | 'module'>) => pageModule(p) || (!selfDrawn(p) && p.renderer !== 'heatingRooms');
+/** The panel's own big cards of Home (owner, 23.11.2026: «Приступай» — the cameras, the robot, the heating, the boiler, the clock on pages too):
+ *  which of them a card of the catalog stands for. */
+export type BuiltinCard = 'cameras' | 'vacuum' | 'heating' | 'boiler' | 'clock';
+export const builtinCard = (p: Pick<Profile, 'renderer' | 'module' | 'kind'>): BuiltinCard | null =>
+  p.renderer === 'heatingRooms' ? 'heating' : p.renderer === 'native' && p.kind === 'vacuum' ? 'vacuum' : p.renderer !== 'module' || !p.module ? null
+    : p.module.startsWith('camera_') || p.module === 'doorbell' ? 'cameras' : p.module === 'boiler_ebus' ? 'boiler' : p.module === 'clock' ? 'clock' : null;
+/** The big cards put on a page, each once, in the order they were added. */
+export function builtinsOnPage(instances: Record<string, ProfileInstance> | undefined, page: PagePlace, list: Profile[] = PROFILES): BuiltinCard[] {
+  const out: BuiltinCard[] = [];
+  for (const inst of Object.values(instances ?? {})) { const p = profileById(inst.profileId, list), k = p ? builtinCard(p) : null; if (k && inst.placement.includes(page) && !out.includes(k)) out.push(k); }
+  return out;
+}
+/** May the card stand on a page of the panel: every card that is a tile, the module cards above and the panel's own big cards. */
+export const pageable = (p: Pick<Profile, 'renderer' | 'module' | 'kind'>) => pageModule(p) || !!builtinCard(p) || (!selfDrawn(p) && p.renderer !== 'heatingRooms');
 /** The module cards put on a page: `[instance id, module id]`, each module once. */
 export function modulesOnPage(instances: Record<string, ProfileInstance> | undefined, page: PagePlace, list: Profile[] = PROFILES): Array<[string, string]> {
   const out: Array<[string, string]> = [];

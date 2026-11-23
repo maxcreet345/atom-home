@@ -1,3 +1,5 @@
+import { Fragment } from 'preact';
+import type { LayItem } from './layout-grid.tsx';
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { Art, Ask, Bars, Battery, Case, Chevron, Ring, Row, SecurityFeed } from './office-security.tsx';
 import type { Host } from '../runtime/host.ts';
@@ -84,7 +86,7 @@ const groupOf = (d: Dev): SecGroup => d.art === 'door' || d.art === 'window' ? '
 type SecTab = 'guard' | 'sensors' | 'log' | 'settings' | 'all';
 /** `all`: every tab's content on one page — only for the security QA (`window.__secAllTabs`), which checks behaviour across the parts */
 let lastTab: SecTab = typeof window !== 'undefined' && (window as unknown as { __secAllTabs?: boolean }).__secAllTabs ? 'all' : 'guard';
-export function SecurityPanel({ s, registry, config, host, commands, t, lang, now: _now, admin, motion = [], aside = null }: { s: Security; registry: Registry; config: HouseConfig; host: Host; commands: Commands; t: T; lang: Lang; now: number; admin: boolean; motion?: MotionSensor[]; aside?: preact.JSX.Element | null }) {
+export function SecurityPanel({ s, registry, config, host, commands, t, lang, now: _now, admin, motion = [], aside = null, layout }: { /** the page's own arrangement of the panel's parts; `head` is the tabs, which stay on top */ layout?: (parts: { head: preact.JSX.Element; blocks: LayItem[]; cls: string; tab: string }) => preact.JSX.Element; s: Security; registry: Registry; config: HouseConfig; host: Host; commands: Commands; t: T; lang: Lang; now: number; admin: boolean; motion?: MotionSensor[]; aside?: preact.JSX.Element | null }) {
   const tone = secTone(s), list = people(registry, config), homeList = list.filter(p => p.state === 'home'), guests = !!s.guests?.on, st = s.alarm.state;
   const armed = [...ARMED_ST, 'triggered', 'pending', 'arming'].includes(st), offline = !host.online;
   // every command of the panel goes through the shell's runner: nothing while the house is offline, one command per intent (the button waits until
@@ -194,10 +196,11 @@ export function SecurityPanel({ s, registry, config, host, commands, t, lang, no
   const persons = Object.keys(registry.states).filter(id => id.startsWith('person.')).map(id => ({ user: typeof registry.states[id].attributes.user_id === 'string' ? registry.states[id].attributes.user_id as string : null, name: String(registry.states[id].attributes.friendly_name ?? id) }));
   const armedWord = (mode: string | undefined) => mode === 'armed_away' ? sk(t, 'ev.away') : mode === 'armed_vacation' ? sk(t, 'ev.vacation') : sk(t, 'ev.guard');
   const tabs: Array<[SecTab, string]> = [['guard', sk(t, 'tab.guard')], ['sensors', problems ? `${sk(t, 'tab.sensors')} · ${problems}` : sk(t, 'tab.sensors')], ['log', sk(t, 'tab.log')], ['settings', sk(t, 'tab.settings')]];
-  return <div className={`at-osec-wrap at-sec-panel ${offline ? 'is-stale' : ''}`}><div className="at-osec" data-tab={tab}>
-    <div className="ah-segments hm-range-tabs at-sec-tabs" role="group" aria-label={sk(t, 'title')}>{tabs.map(([k, label]) => <button type="button" aria-pressed={tab === k} className={tab === k ? 'is-active' : ''} onClick={() => setTab(k)}>{label}</button>)}</div>
-    {(tab === 'guard' || tab === 'all') && <>
-    <section className={`at-osec-control is-${tone} ${ARMED_ST.includes(st) ? 'is-st-armed' : `is-st-${st}`} ${ringKind(s) === 'alert' ? 'is-alarm' : ''}`}>
+  const head = <div className="ah-segments hm-range-tabs at-sec-tabs" role="group" aria-label={sk(t, 'title')}>{tabs.map(([k, label]) => <button type="button" aria-pressed={tab === k} className={tab === k ? 'is-active' : ''} onClick={() => setTab(k)}>{label}</button>)}</div>;
+  // the panel as blocks (owner, 23.11.2026: «Безопасность» is arranged like Home): the tabs stay on top, each part of a tab is a block of the page
+  const guardOn = tab === 'guard' || tab === 'all', cls = `at-osec-wrap at-sec-panel ${offline ? 'is-stale' : ''}`;
+  const blocks = ([
+    guardOn && { key: 'sec:guard', block: true, span: { w: 3, h: 2 }, label: sk(t, 'tab.guard'), node: <section className={`at-osec-control is-${tone} ${ARMED_ST.includes(st) ? 'is-st-armed' : `is-st-${st}`} ${ringKind(s) === 'alert' ? 'is-alarm' : ''}`}>
       <Ring kind={ringKind(s)} size={104} progress={total && left !== null ? 1 - left / total : 0} tone={ringTone(s)} />
       <div className="at-osec-name">
         <h2>{config.home.name || sk(t, 'title')}</h2>
@@ -232,12 +235,12 @@ export function SecurityPanel({ s, registry, config, host, commands, t, lang, no
         {s.vacation && <button type="button" className={`at-osec-group is-btn ${s.vacation.on ? 'is-on' : ''}`} aria-pressed={s.vacation.on} disabled={offline || st === 'unknown'} aria-disabled={alarmBusy || undefined} aria-busy={waits('vacation') || undefined} onClick={e => { if (!alarmBusy && !offline && st !== 'unknown') question(s.vacation!.on ? 'vacOff' : 'vacOn', e.currentTarget); }}>
           <i className="at-sec-sw" /><b>{sk(t, 'vacation')}</b><small>{s.vacation.on ? (backDay ? sk(t, 'chip.until', { d: backDay }) : sk(t, 'chip.on')) : sk(t, 'chip.off')}</small></button>}
       </div>
-    </section>
-    {aside}
-    {/* the sensors at a glance beside the guard: one line a group, a tap opens «Датчики» */}
-    <div className="at-osec-glance">{groups.map(({ g, list }) => { const valveBad = g === 'water' ? valvesShown.filter(v => v.state === 'closed' || v.state === 'offline').length : 0, bad = list.some(trouble) || valveBad > 0;
-      return <button type="button" className={`at-osec-glance-row ${bad ? 'is-bad' : ''}`} onClick={() => setTab('sensors')}><b>{sk(t, `group.${g}`)}</b><small>{summary(g, list, valveBad)}</small><Chevron /></button>; })}</div></>}
-    {(tab === 'sensors' || tab === 'all') && <section className="at-osec-devs">
+    </section> },
+    guardOn && !!aside && { key: 'sec:cams', block: true, span: { w: 5, h: 1 }, label: t('cams.title'), node: aside },
+    // the sensors at a glance beside the guard: one line a group, a tap opens «Датчики»
+    guardOn && { key: 'sec:glance', block: true, span: { w: 5, h: 1 }, label: sk(t, 'tab.sensors'), node: <div className="at-osec-glance">{groups.map(({ g, list }) => { const valveBad = g === 'water' ? valvesShown.filter(v => v.state === 'closed' || v.state === 'offline').length : 0, bad = list.some(trouble) || valveBad > 0;
+      return <button type="button" className={`at-osec-glance-row ${bad ? 'is-bad' : ''}`} onClick={() => setTab('sensors')}><b>{sk(t, `group.${g}`)}</b><small>{summary(g, list, valveBad)}</small><Chevron /></button>; })}</div> },
+    (tab === 'sensors' || tab === 'all') && { key: 'sec:sensors', block: true, label: sk(t, 'devices'), node: <section className="at-osec-devs">
       <div className="hm-section-head"><h2>{sk(t, 'devices')}</h2><small>{devicesWord(s, t)}</small></div>
       <div className="at-osec-chips" role="group" aria-label={t('ui.rooms')}>{/* a filter of the list below, not tabs: buttons with a pressed one (tabs would owe the arrow keys) */}{[{ id: 'all', name: sk(t, 'allRooms') }, ...rooms.map(r => ({ id: r, name: r }))].map(r => <button type="button" aria-pressed={room === r.id} className={room === r.id ? 'is-on' : ''} onClick={() => setRoom(r.id)}>{r.name}</button>)}</div>
       <div className="at-osec-list">
@@ -250,15 +253,16 @@ export function SecurityPanel({ s, registry, config, host, commands, t, lang, no
             {rest.length > 0 && <button type="button" className="hm-text-btn at-osec-more" aria-expanded={wide} onClick={() => setAll(x => { const n = new Set(x); if (n.has(g)) n.delete(g); else n.add(g); return n; })}>{wide ? sk(t, 'sum.less') : sk(t, 'sum.all', { n: rest.length })}</button>}
           </div>; })}
       </div>
-    </section>}
-    {(tab === 'log' || tab === 'all') && <SecurityFeed alarmId={s.alarm.id} alarmState={st} people={persons} host={host} t={t} lang={lang} armed={armedWord} />}
-    {(tab === 'settings' || tab === 'all') && <div className="at-osec-set">
+    </section> },
+    (tab === 'log' || tab === 'all') && { key: 'sec:log', block: true, label: sk(t, 'tab.log'), node: <SecurityFeed alarmId={s.alarm.id} alarmState={st} people={persons} host={host} t={t} lang={lang} armed={armedWord} /> },
+    (tab === 'settings' || tab === 'all') && { key: 'sec:settings', block: true, label: sk(t, 'tab.settings'), node: <div className="at-osec-set">
       {admin && <SecuritySettings s={s} host={host} t={t} lang={lang} />}
       <details className="at-sec-sec at-sec-how"><summary className="hm-section-head"><h2>{sk(t, 'how')}</h2></summary>
         <ul>{['away', 'guard', 'guests', 'vacation', 'alarm', 'water'].map(k => <li><b>{sk(t, `how.${k}.t`)}</b><span>{sk(t, `how.${k}`)}</span></li>)}</ul>
       </details>
-    </div>}
-  </div></div>;
+    </div> },
+  ] as Array<LayItem | false>).filter((b): b is LayItem => !!b);
+  return layout ? layout({ head, blocks, cls, tab }) : <div className={cls}><div className="at-osec" data-tab={tab}>{head}{blocks.map(b => <Fragment key={b.key}>{b.node}</Fragment>)}</div></div>;
 }
 /** The owner's settings (HA admin only, owner 09.11.2026): the return date of «Отпуск», the valve's exercise (on, time, every N days) and the
  * sockets «Отпуск» turns off. All of it lives in HA (helpers, the label «Отпуск: выключать»), the panel only edits it. */

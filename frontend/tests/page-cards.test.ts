@@ -64,13 +64,14 @@ test('an arrangement saved before the page had blocks keeps the blocks first; a 
 });
 
 // ---- the module cards on pages (the feeder, the kettle, the air fryer, «Воздух») ----
-import { PROFILES, pageable, pageModule, modulesOnPage, selfDrawn as selfDrawnP, PAGE_MODULES } from '../src/model/card-catalog.ts';
+import { PROFILES, pageable, pageModule, modulesOnPage, builtinCard, builtinsOnPage, selfDrawn as selfDrawnP, PAGE_MODULES } from '../src/model/card-catalog.ts';
 import { readdirSync } from 'node:fs';
 test('a page is offered exactly to the cards that are drawn there', () => {
   for (const p of PROFILES) {
-    if (p.renderer === 'heatingRooms') { assert.equal(pageable(p), false, p.id); continue; }
+    if (p.renderer === 'heatingRooms') { assert.equal(builtinCard(p), 'heating', p.id); assert.equal(pageable(p), true, p.id); continue; }
     if (!selfDrawnP(p)) { assert.equal(pageable(p), true, p.id); continue; }
-    assert.equal(pageable(p), pageModule(p), p.id);
+    assert.equal(pageable(p), pageModule(p) || !!builtinCard(p), p.id);
+    assert.ok(!(pageModule(p) && builtinCard(p)), p.id); // one way to draw it, not two
   }
   for (const id of PAGE_MODULES) assert.ok(PROFILES.some(p => p.module === id), id);
   // every module with a tile that opens its own sheet (`sheetKey`) is one of them, and only those
@@ -91,4 +92,13 @@ test('one step wider or narrower always changes the width drawn, on any number o
     if (cur < cols) assert.ok(blockCols(up, cols) > cur, `wider ${w} of ${cols}`); else assert.equal(up, w);
     if (blockCols(1, cols) < cur) assert.ok(blockCols(down, cols) < cur, `narrower ${w} of ${cols}`); else assert.equal(down, w);
   }
+});
+test('the panel\'s own big cards put on a page: each once, whatever number of cameras the house has', () => {
+  const of = (k: string) => PROFILES.filter(p => builtinCard(p) === k).map(p => p.id);
+  for (const k of ['cameras', 'vacuum', 'heating', 'boiler', 'clock']) assert.ok(of(k).length > 0, k);
+  const inst = (profileId: string, placement: string[]) => ({ profileId, profileVersion: '1.0.0', bindings: {}, placement }) as never;
+  const cams = of('cameras'), all = { a: inst(cams[0], ['security']), b: inst(cams[1] ?? cams[0], ['security', 'rooms']), c: inst(of('vacuum')[0], ['rooms']), d: inst(of('heating')[0], ['home']) };
+  assert.deepEqual(builtinsOnPage(all, 'security'), ['cameras']);
+  assert.deepEqual(builtinsOnPage(all, 'rooms'), ['cameras', 'vacuum']);
+  assert.deepEqual(builtinsOnPage(all, 'energy'), []);
 });

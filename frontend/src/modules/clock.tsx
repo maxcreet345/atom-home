@@ -1,3 +1,4 @@
+import { useBackLayer } from '../ui/back-layer.ts';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { createPortal, type ComponentChildren } from 'preact';
 import type { ModuleDef, ModuleEntities } from './types.ts';
@@ -100,6 +101,7 @@ function Win({ title, onBack, children, wide, t, bodyKey, keepOnScrim, nested }:
   // window's own root (activeOf): in Home Assistant the panel is in a shadow root, where `document.activeElement` is always the host element —
   // Tab then never moved and the focus was lost on closing.
   const box = useRef<HTMLDivElement>(null), opener = useRef<HTMLElement | null>(null), back = useRef(onBack); back.current = onBack;
+  useBackLayer(onBack);
   useEffect(() => {
     if (host === undefined) return; const sheet = anchor.current?.closest<HTMLElement>('.hm-sheet') ?? null; opener.current = activeOf(anchor.current);
     // back to the control that opened the window; when that one is gone or cannot take the focus (the room page under the sheet is inert), to the

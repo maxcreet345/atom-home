@@ -20,7 +20,8 @@ const writePointer = (id: string | null) => { try { if (id) localStorage.setItem
 const reduced = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export interface LayItem { key: string; node: ComponentChildren; label?: string; /** the card is drawn in a list of rows without a layout (a room's plain devices): it starts as one cell */ unit?: boolean; min?: Span; /** the size it takes when it first appears on an arranged screen (a camera, the heating: two by two) */ span?: Span;
-  /** a page's own block (the chart of «Энергия», the guard of «Безопасность»): as tall as it is, its width in eighths of the row (model/tile-layout.ts) */ block?: boolean }
+  /** a page's own block (the chart of «Энергия», the guard of «Безопасность»): as tall as it is, its width in eighths of the row (model/tile-layout.ts);
+   *  its `span.h` is the rows it stands beside when it is not the whole row (the guard beside the cameras and the sensors), never a height */ block?: boolean }
 interface Draft { scope: string; list: Placed[] | null; natural: Record<string, Span> }
 interface Ctx {
   available: boolean; t: T; admin: boolean;
@@ -325,7 +326,7 @@ function Arranged({ c, scope, items, className, saved, editing, tail }: { c: Ctx
   const host = editing ? rootOf(grid.current).querySelector<HTMLElement>('.at-lay-bar .at-lay-tools-host') : null;
   return <div ref={grid} className={`ah-cascade ${className} at-lay ${editing ? 'is-arranging' : ''}`} style={style} data-scope={scope}>
     {list.map((p, i) => { const it = byKey.get(p.key)!; const sel = picked === p.key; const min = minOf(p.key), block = !!it.block;
-      return <div key={p.key} className={`at-slot ${block ? 'is-block' : ''} ${sel ? 'is-picked' : ''}`} data-lay={p.key} data-w={wOf(p)} data-h={block ? undefined : hOf(p)} data-size={block ? undefined : sizeClass(wOf(p), hOf(p))} style={block ? (wOf(p) >= cols ? 'grid-column:1/-1' : `grid-column:span ${wOf(p)}`) : `grid-column:span ${wOf(p)};grid-row:span ${hOf(p)};--h:${hOf(p)}`}>
+      return <div key={p.key} className={`at-slot ${block ? 'is-block' : ''} ${sel ? 'is-picked' : ''}`} data-lay={p.key} data-w={wOf(p)} data-h={block ? undefined : hOf(p)} data-size={block ? undefined : sizeClass(wOf(p), hOf(p))} style={block ? (wOf(p) >= cols ? 'grid-column:1/-1' : `grid-column:span ${wOf(p)}${(it.span?.h ?? 1) > 1 ? `;grid-row:span ${it.span!.h}` : ''}`) : `grid-column:span ${wOf(p)};grid-row:span ${hOf(p)};--h:${hOf(p)}`}>
         {block ? (editing ? <div className="at-slot-body" inert>{it.node}</div> : it.node) : <SlotSizeCtx.Provider value={{ w: wOf(p), h: hOf(p), size: sizeClass(wOf(p), hOf(p)) }}>{editing ? <div className="at-slot-body" inert>{it.node}</div> : it.node}</SlotSizeCtx.Provider>}
         {editing && <>
           <div className="at-slot-veil" role="button" tabIndex={0} aria-roledescription={lk(t, 'bar')} aria-pressed={sel} aria-label={block ? `${labelOf(p.key, i)}, ${sizeWord(p)}` : lk(t, 'cardLabel', { name: labelOf(p.key, i), w: wOf(p), h: hOf(p) })}
