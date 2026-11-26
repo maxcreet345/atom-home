@@ -653,6 +653,64 @@ var e = {
 	}
 }, a = {
 	ru: {
+		"helpers.title": "Панели не хватает помощников Home Assistant",
+		"helpers.sub": "Без них не работают: {what}. Создам их сам: {n} шт.|Без них не работают: {what}. Создам его сам: {n} шт.|Без них не работают: {what}. Создам их сам: {n} шт.|Без них не работают: {what}. Создам их сам: {n} шт.",
+		"helpers.what.timers": "таймеры в «Время»",
+		"helpers.what.alarm": "баннер будильника",
+		"helpers.what.sleep": "«Выключить через» у света",
+		"helpers.create": "Создать",
+		"helpers.later": "Позже",
+		"helpers.done": "Помощники созданы",
+		"helpers.partly": "Создано {ok} из {n}. Остальные: {why}",
+		"helpers.busy": "Помощников уже создают на другом экране",
+		"helpers.failed": "Не удалось создать помощников: {why}",
+		"helpers.timersOff": "Таймерам нужны помощники Home Assistant",
+		"helpers.timersOn": "Включить таймеры",
+		"helpers.timersAdmin": "Таймеры включит администратор дома",
+		"helpers.nothing": "Создавать нечего: помощники уже есть в Home Assistant",
+		"helpers.taken": "id {id} занят другим помощником (переименованным): переименуйте или удалите его в Настройки → Помощники",
+		"helpers.timersDisabled": "Таймеры отключены в Home Assistant: включите timer.atom_1…3 в Настройки → Объекты"
+	},
+	en: {
+		"helpers.title": "The panel is missing Home Assistant helpers",
+		"helpers.sub": "Without them these do not work: {what}. I will create them: {n}.|Without it this does not work: {what}. I will create it: {n}.|Without them these do not work: {what}. I will create them: {n}.|Without them these do not work: {what}. I will create them: {n}.",
+		"helpers.what.timers": "timers in «Time»",
+		"helpers.what.alarm": "the alarm banner",
+		"helpers.what.sleep": "«Turn off in» for lights",
+		"helpers.create": "Create",
+		"helpers.later": "Later",
+		"helpers.done": "Helpers created",
+		"helpers.partly": "Created {ok} of {n}. The rest: {why}",
+		"helpers.busy": "Another screen is creating the helpers",
+		"helpers.failed": "The helpers could not be created: {why}",
+		"helpers.timersOff": "Timers need Home Assistant helpers",
+		"helpers.timersOn": "Turn timers on",
+		"helpers.timersAdmin": "The home administrator will turn timers on",
+		"helpers.nothing": "Nothing to create: Home Assistant already has the helpers",
+		"helpers.taken": "the id {id} is taken by another (renamed) helper: rename or delete it in Settings → Helpers",
+		"helpers.timersDisabled": "Timers are disabled in Home Assistant: enable timer.atom_1…3 in Settings → Entities"
+	},
+	ro: {
+		"helpers.title": "Panoului îi lipsesc ajutoare Home Assistant",
+		"helpers.sub": "Fără ele nu funcționează: {what}. Le creez eu: {n}.|Fără el nu funcționează: {what}. Îl creez eu: {n}.|Fără ele nu funcționează: {what}. Le creez eu: {n}.|Fără ele nu funcționează: {what}. Le creez eu: {n}.",
+		"helpers.what.timers": "temporizatoarele din «Ora»",
+		"helpers.what.alarm": "bannerul alarmei",
+		"helpers.what.sleep": "«Stinge peste» la lumini",
+		"helpers.create": "Creează",
+		"helpers.later": "Mai târziu",
+		"helpers.done": "Ajutoarele au fost create",
+		"helpers.partly": "Create {ok} din {n}. Restul: {why}",
+		"helpers.busy": "Ajutoarele se creează pe alt ecran",
+		"helpers.failed": "Ajutoarele nu au putut fi create: {why}",
+		"helpers.timersOff": "Temporizatoarele au nevoie de ajutoare Home Assistant",
+		"helpers.timersOn": "Pornește temporizatoarele",
+		"helpers.timersAdmin": "Temporizatoarele le pornește administratorul casei",
+		"helpers.nothing": "Nu e nimic de creat: Home Assistant are deja ajutoarele",
+		"helpers.taken": "id-ul {id} e ocupat de alt ajutor (redenumit): redenumiți-l sau ștergeți-l în Setări → Ajutoare",
+		"helpers.timersDisabled": "Temporizatoarele sunt dezactivate în Home Assistant: activați timer.atom_1…3 în Setări → Entități"
+	}
+}, o = {
+	ru: {
 		"cat.kind.tv": "Телевизор",
 		"cat.kind.tvbox": "ТВ-приставка",
 		"cat.p.hisense65u8": "Hisense 65U8KQ",
@@ -922,7 +980,7 @@ var e = {
 		"media.mode.cal_day": "Calibrated (day)",
 		"media.mode.cal_night": "Calibrated (night)"
 	}
-}, o = {
+}, s = {
 	ru: {
 		"cat.p.spMax": "Яндекс Станция Макс",
 		"cat.p.spMax.desc": "Что играет и обложка, пауза и треки, громкость, эквалайзер, «Сказать Алисе», ближайший будильник, розетка станции",
@@ -1325,7 +1383,7 @@ var e = {
 		"speaker.eq.morebasshigh": "More bass and treble",
 		"speaker.eq.lesshigh": "Less treble"
 	}
-}, s = {
+}, c = {
 	ru: {
 		"cat.p.lgWasher": "LG — стиральная машина (ThinQ)",
 		"cat.p.lgWasher.desc": "Модель F_R7_Y___W через LG ThinQ: что делает машина, сколько осталось и во сколько закончит, этапы стирки, ошибки словами, старт и остановка с подтверждением, отложенное окончание.",
@@ -1938,7 +1996,7 @@ var e = {
 		"laundry.cycle.ecoCotton": "Eco Cotton",
 		"laundry.cycle.aiDryPlus": "AI Dry+"
 	}
-}, c = {
+}, l = {
 	ru: {
 		"cat.p.humidifier2": "Xiaomi Smart Humidifier 2",
 		"cat.p.humidifier2.desc": "Модель deerma.humidifier.jsq2w через Xiaomi Miot: влажность в комнате, целевая влажность, режимы, «нет воды» и бак, индикатор и звук.",
@@ -2140,7 +2198,7 @@ var e = {
 		"hu.tile.tankOut": "Tank removed",
 		"hu.tile.fault": "Fault"
 	}
-}, l = {
+}, u = {
 	ru: {
 		"cat.p.scale2": "Xiaomi Mi Body Composition Scale 2",
 		"cat.p.scale2.desc": "Весы XMTZC02HM/XMTZC05HM через Xiaomi BLE, люди — через Multi-User Scale Router, состав тела — через Bodymiscale. На плитке только время последнего взвешивания; вес и подробности каждого — по нажатию.",
@@ -2297,7 +2355,7 @@ var e = {
 		"scale.fact.bodyType": "Body type",
 		"scale.fact.score": "Body score"
 	}
-}, u = {
+}, d = {
 	ru: {
 		"cat.p.a810": "70mai Dash Cam A810 + 4G UP04",
 		"cat.p.a810.desc": "Видеорегистратор 70mai с модулем 4G через интеграцию 70mai: где машина, напряжение аккумулятора, последняя тревога, связь и загрузка видео на парковке. Только показывает, команд нет.",
@@ -2442,7 +2500,7 @@ var e = {
 		"dashcam.parkingPhoto": "Parking photo",
 		"dashcam.notExposed": "The integration does not report parking mode or the memory card — see the 70mai app."
 	}
-}, d = {
+}, f = {
 	ru: {
 		"cat.p.nasDxp2800": "UGREEN NASync DXP2800",
 		"cat.p.nasDxp2800.desc": "Сетевое хранилище на два диска и два NVMe через интеграцию UGreen NAS: всё ли в порядке, свободное место томов, здоровье и температура дисков, нагрузка и вентилятор. Перезагрузка и выключение — только администратору и только после вопроса.",
@@ -2761,7 +2819,7 @@ var e = {
 		"nas.kbs": "{v}\xA0KB/s",
 		"nas.mbs": "{v}\xA0MB/s"
 	}
-}, f = {
+}, p = {
 	ru: {
 		"cat.p.gasCamera": "Счётчик газа с камерой",
 		"cat.p.gasCamera.desc": "Счётчик газа, который читает камера: снимок счётчика, показание крупно, когда прочитано, предупреждение, если камера перестала читать; расход за сегодня и за месяц из статистики HA — те же цифры, что на «Энергии».",
@@ -2846,7 +2904,7 @@ var e = {
 		"gasmeter.how": "The camera photographs the meter every 5 minutes, AI reads the digits, impossible readings are dropped.",
 		"gasmeter.howNoCamera": "Use comes from Home Assistant’s statistics, as on «Energy»."
 	}
-}, p = {
+}, m = {
 	"systems.attentionMore": "Every device not answering or sensor that went off · {n}",
 	"ep.unit.bar": "bar",
 	"ep.unit.kg": "kg",
@@ -5383,6 +5441,7 @@ var e = {
 	...l.en,
 	...u.en,
 	...d.en,
-	...f.en
+	...f.en,
+	...p.en
 };
-export { p as en };
+export { m as en };

@@ -26,11 +26,19 @@ export const missingUses = (missing: HelperSpec[]): HelperUse[] => (['timers', '
 export interface CreateResult { busy: boolean; created: string[]; failed: Array<{ entityId: string; error: unknown }> }
 type Ws = <T = unknown>(message: Record<string, unknown>) => Promise<T>;
 const isUnknownCommand = (e: unknown) => !!e && typeof e === 'object' && (e as { code?: unknown }).code === 'unknown_command';
+/** A helper whose name Home Assistant gave another id (`atom_1_2`: the id is taken by a helper renamed since) — removed again, not counted. */
+export class TakenError extends Error { readonly entityId: string; readonly got: string; constructor(entityId: string, got: string) { super(`taken: ${entityId} → ${got}`); this.entityId = entityId; this.got = got; } }
 
 /** Creates what is missing. The integration hands out the list under a two-minute lease (`atom_home/helpers/claim`): the kiosks reload
  *  together and two panels creating the same helper would make a `_2`. An integration not restarted since the update does not know the
- *  command yet: then the panel's own list is created as is (one tap of one administrator). One helper that fails does not stop the rest. */
-export async function createHelpers(ws: Ws, reg: Pick<Registry, 'states' | 'entities'>): Promise<CreateResult> {
+ *  command yet: then the panel's own list is created as is (one tap of one administrator). One helper that fails does not stop the rest.
+ *  The bar and the «Время» sheet share one try: a tap on both while the first runs gets the first one's answer, not a second batch. */
+let running: Promise<CreateResult> | null = null;
+export function createHelpers(ws: Ws, reg: Pick<Registry, 'states' | 'entities'>): Promise<CreateResult> {
+  running ??= createOnce(ws, reg).finally(() => { running = null; });
+  return running;
+}
+async function createOnce(ws: Ws, reg: Pick<Registry, 'states' | 'entities'>): Promise<CreateResult> {
   let list: Array<{ entityId: string; params: Record<string, unknown> }>;
   try {
     const r = await ws<{ create?: Array<{ entity_id: string; params: Record<string, unknown> }>; busy?: boolean }>({ type: 'atom_home/helpers/claim' });
@@ -43,16 +51,21 @@ export async function createHelpers(ws: Ws, reg: Pick<Registry, 'states' | 'enti
   }
   const created: string[] = [], failed: CreateResult['failed'] = [];
   for (const h of list) {
-    const domain = h.entityId.slice(0, h.entityId.indexOf('.'));
-    try { await ws({ type: `${domain}/create`, ...h.params }); created.push(h.entityId); } catch (error) { failed.push({ entityId: h.entityId, error }); }
+    const dot = h.entityId.indexOf('.'), domain = h.entityId.slice(0, dot), objectId = h.entityId.slice(dot + 1);
+    try {
+      const item = await ws<{ id?: unknown } | null>({ type: `${domain}/create`, ...h.params });
+      const got = item && typeof item.id === 'string' ? item.id : objectId;
+      if (got !== objectId) { await ws({ type: `${domain}/delete`, [`${domain}_id`]: got }).catch(() => undefined); throw new TakenError(h.entityId, `${domain}.${got}`); }
+      created.push(h.entityId);
+    } catch (error) { failed.push({ entityId: h.entityId, error }); }
   }
   return { busy: false, created, failed };
 }
 
 /** What the panel says after a try: «созданы», «уже создают на другом экране», or how many of how many and why the rest did not. */
-export function outcomeText(r: CreateResult, t: (k: 'helpers.done' | 'helpers.busy' | 'helpers.partly' | 'helpers.failed', v?: Record<string, string | number>) => string, why: (e: unknown) => string): string {
+export function outcomeText(r: CreateResult, t: (k: 'helpers.done' | 'helpers.busy' | 'helpers.partly' | 'helpers.failed' | 'helpers.nothing' | 'helpers.taken', v?: Record<string, string | number>) => string, why: (e: unknown) => string): string {
   if (r.busy) return t('helpers.busy');
-  if (!r.failed.length) return t('helpers.done');
-  const reason = why(r.failed[0].error);
+  if (!r.failed.length) return r.created.length ? t('helpers.done') : t('helpers.nothing');
+  const e = r.failed[0].error, reason = e instanceof TakenError ? t('helpers.taken', { id: e.entityId }) : why(e);
   return r.created.length ? t('helpers.partly', { ok: r.created.length, n: r.created.length + r.failed.length, why: reason }) : t('helpers.failed', { why: reason });
 }

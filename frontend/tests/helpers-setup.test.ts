@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { HELPERS, missingHelpers, missingUses, createHelpers, outcomeText } from '../src/runtime/helpers-setup.ts';
+import { HELPERS, missingHelpers, missingUses, createHelpers, outcomeText, TakenError } from '../src/runtime/helpers-setup.ts';
 import type { StateRow, EntityRow, Registry } from '../src/model/registry.ts';
 import { activeSpecs } from '../src/modules/catalog.ts';
 import { defaultConfig } from '../src/model/config.ts';
@@ -31,13 +31,34 @@ test('a helper the owner disabled (in the registry, no state) is not offered: cr
   assert.deepEqual(missingHelpers({ states: s, entities: [entity('timer.atom_1', { disabled_by: 'user' })] }), []);
 });
 
-test('the integration hands out the list: each helper is created once with its parameters; a second screen is told it is busy', async () => {
+test('the integration hands out the list: each helper is created once with its parameters; the bar and the sheet tapped together share one try; another screen is told it is busy', async () => {
   const sent: Array<Record<string, unknown>> = []; let claims = 0;
-  const ws = async <T,>(m: Record<string, unknown>): Promise<T> => { sent.push(m); if (m.type === 'atom_home/helpers/claim') return { busy: claims > 0, create: claims++ ? [] : [{ entity_id: 'timer.atom_1', params: { name: 'Atom 1', restore: true } }, { entity_id: 'input_text.atom_timer_labels', params: { name: 'Atom timer labels', max: 255 } }] } as T; return {} as T; };
+  const ws = async <T,>(m: Record<string, unknown>): Promise<T> => { sent.push(m); if (m.type === 'atom_home/helpers/claim') return { busy: claims > 0, create: claims++ ? [] : [{ entity_id: 'timer.atom_1', params: { name: 'Atom 1', restore: true } }, { entity_id: 'input_text.atom_timer_labels', params: { name: 'Atom timer labels', max: 255 } }] } as T; if (m.type === 'timer/create') return { id: 'atom_1', name: 'Atom 1' } as T; return { id: 'atom_timer_labels' } as T; };
   const reg = { states: {}, entities: [] };
   const [a, b] = await Promise.all([createHelpers(ws, reg), createHelpers(ws, reg)]);
-  assert.deepEqual(sent.filter(m => m.type !== 'atom_home/helpers/claim'), [{ type: 'timer/create', name: 'Atom 1', restore: true }, { type: 'input_text/create', name: 'Atom timer labels', max: 255 }]);
-  assert.deepEqual([a.created, a.busy, b.busy], [['timer.atom_1', 'input_text.atom_timer_labels'], false, true]);
+  assert.equal(a, b, 'one try for both taps');
+  assert.deepEqual(sent.map(m => m.type), ['atom_home/helpers/claim', 'timer/create', 'input_text/create']);
+  assert.deepEqual(sent.slice(1), [{ type: 'timer/create', name: 'Atom 1', restore: true }, { type: 'input_text/create', name: 'Atom timer labels', max: 255 }]);
+  assert.deepEqual([a.created, a.busy], [['timer.atom_1', 'input_text.atom_timer_labels'], false]);
+  const later = await createHelpers(ws, reg); // another screen, within the lease
+  assert.equal(later.busy, true);
+});
+
+test('a name whose id is taken (a helper renamed since): Home Assistant makes atom_1_2 — removed again and named as the reason', async () => {
+  const sent: Array<Record<string, unknown>> = [];
+  const ws = async <T,>(m: Record<string, unknown>): Promise<T> => { sent.push(m); if (m.type === 'atom_home/helpers/claim') return { create: [{ entity_id: 'timer.atom_1', params: { name: 'Atom 1' } }] } as T; if (m.type === 'timer/create') return { id: 'atom_1_2' } as T; return {} as T; };
+  const r = await createHelpers(ws, { states: {}, entities: [] });
+  assert.deepEqual(sent.slice(1), [{ type: 'timer/create', name: 'Atom 1' }, { type: 'timer/delete', timer_id: 'atom_1_2' }]);
+  assert.deepEqual(r.created, []);
+  assert.ok(r.failed[0].error instanceof TakenError);
+  const t = (k: string, v?: Record<string, string | number>) => `${k}${v ? JSON.stringify(v) : ''}`;
+  assert.equal(outcomeText(r, t, () => '?'), `helpers.failed${JSON.stringify({ why: `helpers.taken${JSON.stringify({ id: 'timer.atom_1' })}` })}`);
+});
+
+test('nothing to create (the house had them all) is said as such, not «созданы»', async () => {
+  const ws = async <T,>(): Promise<T> => ({ create: [], busy: false }) as T;
+  const r = await createHelpers(ws, { states: all, entities: [] });
+  assert.equal(outcomeText(r, k => k, () => ''), 'helpers.nothing');
 });
 
 test('an integration not restarted since the update: the panel creates its own list; one refusal does not stop the rest', async () => {

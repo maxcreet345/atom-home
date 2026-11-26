@@ -36,8 +36,8 @@ class ToCreate(unittest.TestCase):
         out = check.to_create(lambda _id: None, lambda i: i == "timer.atom_2")
         self.assertNotIn("timer.atom_2", [x["entity_id"] for x in out], "creating it again would make timer.atom_2_2")
 
-    def test_a_short_labels_helper_is_reported(self):
-        self.assertEqual(check.short_helpers(lambda i: State(max=100) if i == check.TIMER_LABELS else None), [check.TIMER_LABELS])
+    def test_the_first_houses_hand_made_labels_helper_is_not_judged_anew(self):
+        self.assertEqual(check.short_helpers(lambda i: State(max=100) if i == check.TIMER_LABELS else None), [], "no new warning after the update")
 
 
 class LeaseTest(unittest.TestCase):
@@ -55,6 +55,8 @@ class TimerDoneTest(unittest.TestCase):
     def setUp(self):
         self.later = []
         self.td = ha_stub.load("timer_done")
+        self.started = []
+        self.td.async_at_started = lambda _hass, action: (self.started.append(action), lambda: None)[1]
         self.td.async_call_later = lambda _hass, seconds, action: (self.later.append((seconds, action)), lambda: self.later.remove((seconds, action)) if (seconds, action) in self.later else None)[1]
         self.states, self.calls, self.listeners = {}, [], {}
         test = self
@@ -110,6 +112,24 @@ class TimerDoneTest(unittest.TestCase):
         self.later[0][1](None)
         ha_stub.run(self._drain())
         self.assertEqual(self.calls, [("input_boolean", "turn_on", check.TIMER_DONE)])
+
+
+    def test_a_flag_left_on_by_a_restart_is_lowered_once_ha_is_up(self):
+        self.states[check.TIMER_DONE] = State("on")
+        w = self.td.TimerDone(self.hass)
+        w.start()
+        self.started[0](None)
+        ha_stub.run(self._drain())
+        self.assertEqual(self.calls, [("input_boolean", "turn_off", check.TIMER_DONE)])
+
+    def test_a_flag_with_a_timer_running_is_left_alone_at_start(self):
+        self.states[check.TIMER_DONE] = State("on")
+        self.states["timer.atom_2"] = State("active")
+        w = self.td.TimerDone(self.hass)
+        w.start()
+        self.started[0](None)
+        ha_stub.run(self._drain())
+        self.assertEqual(self.calls, [])
 
 
 if __name__ == "__main__":

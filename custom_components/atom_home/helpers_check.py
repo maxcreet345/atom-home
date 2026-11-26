@@ -40,7 +40,7 @@ def missing_helpers(get_state: Callable[[str], Any]) -> list[str]:
 def short_helpers(get_state: Callable[[str], Any]) -> list[str]:
     """The text helpers created with a length under 255 (the default is 100): a long value is refused by Home Assistant."""
     short = []
-    for entity_id in (RING_TEXT, SLEEP_MIRROR, TIMER_LABELS):
+    for entity_id in (RING_TEXT, SLEEP_MIRROR):  # the labels' helper is created with 255 now; a hand-made one of the first house is not judged anew
         state = get_state(entity_id)
         limit = (getattr(state, "attributes", None) or {}).get("max") if state is not None else None
         if isinstance(limit, (int, float)) and limit < TEXT_MAX:

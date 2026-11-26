@@ -29,10 +29,11 @@ fixture.entities.push(...['sun.sun', 'weather.forecast_home', 'timer.atom_1', 't
 const config = { schemaVersion: 1, home: { name: 'Мой дом', language: 'ru', theme: 'light' }, modules: { camera_go2rtc: { entities: { camera: 'camera.entrance_camera' }, options: { addon: 'a889bffc_go2rtc', stream: 'entrance_camera_h264' } }, doorbell: { options: { addon: 'a889bffc_go2rtc' } } } };
 fixture.states['input_text.atom_light_sleep'] = row('', { max: 255 }); fixture.entities.push(ent('input_text.atom_light_sleep'));
 const full = JSON.stringify(fixture);
+const off = JSON.parse(full); for (const id of ['timer.atom_1', 'timer.atom_2', 'timer.atom_3']) { delete off.states[id]; off.entities.find(e => e.entity_id === id).disabled_by = 'user'; } const disabled = JSON.stringify(off);
 const GONE = ['timer.atom_1', 'timer.atom_2', 'timer.atom_3', 'input_text.atom_timer_labels', 'input_boolean.timer_done', 'input_boolean.alarm_ringing', 'input_text.alarm_ringing', 'input_text.atom_light_sleep'];
 for (const id of GONE) delete fixture.states[id]; fixture.entities = fixture.entities.filter(e => !GONE.includes(e.entity_id));
 const served = JSON.stringify(fixture);
-const server = createServer(async (req, res) => { try { const u = new URL(req.url, 'http://l'); if (u.pathname === '/') { res.setHeader('content-type', 'text/html'); res.end('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;overflow:hidden;background:#000}#root{height:100%}</style><div id="root"></div><script type="module">import "/atom-preview.js";window.ready=true</script>'); return; } if (u.pathname === '/full.json') { res.setHeader('content-type', 'application/json'); res.end(full); return; } if (u.pathname === '/fixture.json') { res.setHeader('content-type', 'application/json'); res.end(served); return; } const p = resolve(dist, '.' + decodeURIComponent(u.pathname)); res.setHeader('content-type', ({ '.js': 'application/javascript', '.css': 'text/css', '.webp': 'image/webp' })[extname(p)] ?? 'application/octet-stream'); res.end(await readFile(p)); } catch { res.statusCode = 404; res.end(); } });
+const server = createServer(async (req, res) => { try { const u = new URL(req.url, 'http://l'); if (u.pathname === '/') { res.setHeader('content-type', 'text/html'); res.end('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;overflow:hidden;background:#000}#root{height:100%}</style><div id="root"></div><script type="module">import "/atom-preview.js";window.ready=true</script>'); return; } if (u.pathname === '/disabled.json') { res.setHeader('content-type', 'application/json'); res.end(disabled); return; } if (u.pathname === '/full.json') { res.setHeader('content-type', 'application/json'); res.end(full); return; } if (u.pathname === '/fixture.json') { res.setHeader('content-type', 'application/json'); res.end(served); return; } const p = resolve(dist, '.' + decodeURIComponent(u.pathname)); res.setHeader('content-type', ({ '.js': 'application/javascript', '.css': 'text/css', '.webp': 'image/webp' })[extname(p)] ?? 'application/octet-stream'); res.end(await readFile(p)); } catch { res.statusCode = 404; res.end(); } });
 await new Promise(r => server.listen(0, '127.0.0.1', r)); const origin = 'http://127.0.0.1:' + server.address().port;
 const browser = await chromium.launch(); const report = { checks: [], errors: [] };
 const check = (name, ok, extra = '') => { report.checks.push({ name, ok, extra }); console.log(`${ok ? '✔' : '✖'} ${name}${extra ? ' — ' + extra : ''}`); };
@@ -76,6 +77,12 @@ try {
     check(`${label}: a house with all helpers sees no bar`, !(await bar()));
     await page.click('button.ah-clock'); await page.waitForSelector('.at-clock'); await page.waitForTimeout(300);
     check(`${label}: and its «Время» shows the timers with «Новый таймер»`, await page.evaluate(() => !!document.querySelector('.at-clock-timers:not(.is-off) .at-clock-new') && !document.querySelector('.at-clock-timers.is-off')));
+    // the owner switched the timers off: nothing to create (it would make timer.atom_1_2) — no bar, and the sheet says where to switch them on
+    await mount('/disabled.json', true); await page.waitForTimeout(8300);
+    check(`${label}: timers disabled by the owner — no bar`, !(await bar()));
+    await page.click('button.ah-clock'); await page.waitForSelector('.at-clock'); await page.waitForTimeout(300); await shot('sheet-disabled');
+    const ds = await page.evaluate(() => { const c = document.querySelector('.at-clock-timers.is-off'); return c ? { btn: !!c.querySelector('.at-clock-enable'), text: c.querySelector('.at-clock-empty')?.textContent } : null; });
+    check(`${label}: …and the sheet says they are disabled, with no «Включить таймеры»`, !!ds && !ds.btn && /отключены/.test(ds.text ?? ''), JSON.stringify(ds));
     await page.close();
   }
 } finally { await browser.close(); server.close(); }

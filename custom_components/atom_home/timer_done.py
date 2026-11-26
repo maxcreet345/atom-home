@@ -12,6 +12,7 @@ from typing import Any, Callable
 
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.event import async_call_later
+from homeassistant.helpers.start import async_at_started
 
 from .helpers_check import TIMER_DONE, TIMERS
 
@@ -25,15 +26,29 @@ class TimerDone:
         self.hass = hass
         self._unsub: Callable[[], None] | None = None
         self._lower: Callable[[], None] | None = None
+        self._started: Callable[[], None] | None = None
 
     def start(self) -> None:
         self._unsub = self.hass.bus.async_listen(EVENT, self._finished)
+        # the two minutes live in memory: a restart within them would leave the banner on every screen (input_boolean restores «on»)
+        self._started = async_at_started(self.hass, self._stale)
 
     def shutdown(self) -> None:
-        for cancel in (self._unsub, self._lower):
+        for cancel in (self._unsub, self._lower, self._started):
             if cancel:
                 cancel()
-        self._unsub = self._lower = None
+        self._unsub = self._lower = self._started = None
+
+    @callback
+    def _stale(self, _hass: Any = None) -> None:
+        """Once Home Assistant is up: a flag left on with no timer running is from before the restart."""
+        self._started = None
+        state = self.hass.states.get(TIMER_DONE)
+        if state is None or state.state != "on" or self._lower is not None:
+            return
+        if any((s := self.hass.states.get(t)) is not None and s.state == "active" for t in TIMERS):
+            return
+        self.hass.async_create_task(self._call("turn_off"))
 
     @callback
     def _finished(self, event: Any) -> None:

@@ -15,6 +15,9 @@ const ru = {
   'helpers.timersOff': 'Таймерам нужны помощники Home Assistant',
   'helpers.timersOn': 'Включить таймеры',
   'helpers.timersAdmin': 'Таймеры включит администратор дома',
+  'helpers.nothing': 'Создавать нечего: помощники уже есть в Home Assistant',
+  'helpers.taken': 'id {id} занят другим помощником (переименованным): переименуйте или удалите его в Настройки → Помощники',
+  'helpers.timersDisabled': 'Таймеры отключены в Home Assistant: включите timer.atom_1…3 в Настройки → Объекты',
 };
 type K = keyof typeof ru;
 const en: Record<K, string> = {
@@ -32,6 +35,9 @@ const en: Record<K, string> = {
   'helpers.timersOff': 'Timers need Home Assistant helpers',
   'helpers.timersOn': 'Turn timers on',
   'helpers.timersAdmin': 'The home administrator will turn timers on',
+  'helpers.nothing': 'Nothing to create: Home Assistant already has the helpers',
+  'helpers.taken': 'the id {id} is taken by another (renamed) helper: rename or delete it in Settings → Helpers',
+  'helpers.timersDisabled': 'Timers are disabled in Home Assistant: enable timer.atom_1…3 in Settings → Entities',
 };
 const ro: Record<K, string> = {
   'helpers.title': 'Panoului îi lipsesc ajutoare Home Assistant',
@@ -48,5 +54,8 @@ const ro: Record<K, string> = {
   'helpers.timersOff': 'Temporizatoarele au nevoie de ajutoare Home Assistant',
   'helpers.timersOn': 'Pornește temporizatoarele',
   'helpers.timersAdmin': 'Temporizatoarele le pornește administratorul casei',
+  'helpers.nothing': 'Nu e nimic de creat: Home Assistant are deja ajutoarele',
+  'helpers.taken': 'id-ul {id} e ocupat de alt ajutor (redenumit): redenumiți-l sau ștergeți-l în Setări → Ajutoare',
+  'helpers.timersDisabled': 'Temporizatoarele sunt dezactivate în Home Assistant: activați timer.atom_1…3 în Setări → Entități',
 };
 export const wordsHelpers = { ru, en, ro };

@@ -365,7 +365,8 @@ class Manifest(unittest.TestCase):
     def test_the_helpers_load_first(self):
         import json
         manifest = json.loads((ha_stub.SRC / "manifest.json").read_text(encoding="utf-8"))
-        self.assertLessEqual({"input_boolean", "input_text"}, set(manifest.get("after_dependencies", [])))
+        # since 1.41.0 they (and `timer`) are dependencies: loaded first, and their `<domain>/create` exists for the panel's «Создать»
+        self.assertLessEqual({"input_boolean", "input_text", "timer"}, set(manifest.get("dependencies", [])) | set(manifest.get("after_dependencies", [])))
 
 
 if __name__ == "__main__":

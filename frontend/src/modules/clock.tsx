@@ -8,7 +8,7 @@ import { people as peopleOf } from '../model/people.ts';
 import { Icon } from '../ui/primitives.tsx';
 import { Switch } from '../ui/cards.tsx';
 import type { Runner } from '../ui/sheet.tsx';
-import { createHelpers, outcomeText } from '../runtime/helpers-setup.ts';
+import { createHelpers, outcomeText, missingHelpers } from '../runtime/helpers-setup.ts';
 import type { Registry, StateRow } from '../model/registry.ts';
 import { ALARM_FADE, ALARM_REPEAT_EVERY, type Alarm, type HouseConfig } from '../model/config.ts';
 import type { HomeDevice } from '../model/discover.ts';
@@ -239,8 +239,10 @@ export function ClockSheet({ registry, entities, host, t, lang, runner, onClose,
   // (runtime/helpers-setup.ts creates `timer.atom_1…3`, their labels and the «timer done» flag; the clock finds them by itself then).
   const [helpersNote, setHelpersNote] = useState('');
   const enableTimers = () => during('helpers', async () => { try { const r = await createHelpers(host.ws!, registry); setHelpersNote(outcomeText(r, (k, v) => tx(k, v), e => errorText(e, t))); } catch (e) { setHelpersNote(tx('helpers.failed', { why: errorText(e, t) })); } });
-  const noTimersCard = timerIds.length === 0 && <div className="at-clock-card at-clock-timers is-off"><div className="at-clock-card-head"><h3 className="at-h4">{tx('clock.timers')}</h3>{host.admin && host.ws && <button type="button" className="hm-pill is-primary is-small at-clock-enable" disabled={sending.has('helpers')} aria-busy={sending.has('helpers')} onClick={() => void enableTimers()}>{tx('helpers.timersOn')}</button>}</div>
-    <p className="at-clock-empty">{host.admin ? tx('helpers.timersOff') : tx('helpers.timersAdmin')}</p>{helpersNote && <p className="at-clock-empty" role="status">{helpersNote}</p>}</div>;
+  // timers that exist but are switched off by the owner are not created again (that would make timer.atom_1_2): the block says where to switch them on
+  const timersToCreate = timerIds.length === 0 && missingHelpers(registry).some(h => h.use === 'timers');
+  const noTimersCard = timerIds.length === 0 && <div className="at-clock-card at-clock-timers is-off"><div className="at-clock-card-head"><h3 className="at-h4">{tx('clock.timers')}</h3>{host.admin && host.ws && timersToCreate && <button type="button" className="hm-pill is-primary is-small at-clock-enable" disabled={sending.has('helpers')} aria-busy={sending.has('helpers')} onClick={() => void enableTimers()}>{tx('helpers.timersOn')}</button>}</div>
+    <p className="at-clock-empty">{!host.admin ? tx('helpers.timersAdmin') : timersToCreate ? tx('helpers.timersOff') : tx('helpers.timersDisabled')}</p>{helpersNote && <p className="at-clock-empty" role="status">{helpersNote}</p>}</div>;
   const timerWin = <>
       {stations.length > 0 && <div className={`at-clock-stations ${mustPick ? 'is-required' : ''}`}><span className="at-clock-stations-label">{tx('clock.whereRing')}{mustPick && <b> *</b>}</span><div className="at-clock-presets"><button type="button" className={`hm-pill ${station === null ? 'is-primary' : ''}`} aria-pressed={station === null} disabled={starting !== null} onClick={() => setStation(null)}>{tx('clock.noAlice')}</button>{stations.map(st => <button type="button" className={`hm-pill ${station === st.id ? 'is-primary' : ''}`} aria-pressed={station === st.id} disabled={starting !== null} onClick={() => setStation(st.id)}>{roomName(st.area ?? '') || st.name}</button>)}</div>{mustPick && <small>{tx('clock.pickStation')}</small>}</div>}
       {!mustPick && <div className="at-clock-grid">{PRESETS.map(p => <button type="button" className="at-clock-tile" disabled={mustPick || starting !== null} aria-busy={starting === `p${p}`} onClick={() => void start(p * 60, label, `p${p}`)}><b>{starting === `p${p}` ? '…' : p === 60 ? 1 : p}</b><small>{p === 60 ? tx('clock.hour') : tx('clock.min')}</small></button>)}</div>}
