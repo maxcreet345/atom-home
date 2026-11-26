@@ -30,33 +30,43 @@ test('CO₂ and PM2.5 are still searched: the room\'s CO₂ device first, a puri
   const room = (s: ReturnType<typeof house>) => airRooms(reg(s), ROOMS).find(r => r.id === 'gostinaia')!, both = (s: ReturnType<typeof house>): ReturnType<typeof house> => [...s, ['sensor.living_co2_pm25', 'gostinaia:co2', 'pm25', '4'], ['sensor.living_kettle_pm25', 'gostinaia:kettle', 'pm25', '500']];
   assert.equal(room(both(house())).pm25!.entity, 'sensor.living_co2_pm25'); assert.equal(room(pick(both(house()), 'sensor.living_co2_pm25', 'unavailable')).pm25!.entity, 'sensor.living_air_purifier_pm25');
 });
-test('a room\'s temperature and humidity are its area\'s links and nothing else (owner, 06.11.2026)', () => {
+test('a room\'s temperature and humidity: its area\'s link wins (owner, 06.11.2026); no link, the room\'s own sensor (owner, 26.11.2026)', () => {
   const room = (r: Registry, id: string) => airRooms(r, ROOMS).find(x => x.id === id)!, withLink = (id: string, l: Links[string]) => ({ ...LINKS, [id]: l });
   assert.deepEqual([room(reg(house()), 'gostinaia').temperature!.entity, room(reg(house()), 'gostinaia').humidity!.entity], ['sensor.living_co2_temperature', 'sensor.living_co2_humidity']);
   let r = reg(pick(house(), 'sensor.living_co2_temperature', 'unavailable')); assert.deepEqual(room(r, 'gostinaia').temperature, { entity: 'sensor.living_co2_temperature', value: null, unit: null }, 'a silent link has no fallback, though a purifier in the room reads 21');
   r = reg(pick(house(), 'sensor.living_co2_temperature', 'unknown')); assert.equal(room(r, 'gostinaia').temperature!.value, null);
   r = reg(house().filter(x => x[0] !== 'sensor.living_co2_temperature')); assert.equal(room(r, 'gostinaia').temperature!.value, null, 'a link with no state is silent');
-  r = reg(house(), {}, withLink('gostinaia', { temperature: null })); assert.equal(room(r, 'gostinaia').temperature, null, 'no link, no reading, though the room holds three sensors with the class'); assert.equal(room(r, 'gostinaia').humidity, null);
+  r = reg(house(), {}, withLink('gostinaia', { temperature: null })); assert.deepEqual([room(r, 'gostinaia').temperature!.entity, room(r, 'gostinaia').humidity!.entity], ['sensor.living_co2_temperature', 'sensor.living_co2_humidity'], 'no link: the room\'s own sensor, the CO₂ device first — not the purifier, never the humidifier');
+  r = reg(pick(house(), 'sensor.living_co2_temperature', 'unavailable'), {}, withLink('gostinaia', {})); assert.equal(room(r, 'gostinaia').temperature!.entity, 'sensor.living_air_purifier_temperature', 'unlinked, a silent sensor gives way to one that answers');
+  r = reg(house(), {}, withLink('kukhnia', {})); assert.equal(room(r, 'kukhnia').temperature!.entity, 'sensor.kitchen_climate_temperature', 'the kettle and the boiler never speak for the room');
   r = reg(house(), {}, withLink('spalnia', { temperature: 'sensor.kids_co2_temperature', humidity: 'sensor.kitchen_kettle_temperature' })); assert.deepEqual([room(r, 'spalnia').temperature!.value, room(r, 'spalnia').humidity!.value], [22, 95], 'a link to another area, or to what the search would throw out, is used');
   r = reg([...house(), ['sensor.anything', 'detskaia:x', null, '23.5']], {}, withLink('spalnia', { temperature: 'sensor.anything' })); assert.equal(room(r, 'spalnia').temperature!.value, 23.5, 'whatever its class');
   assert.equal(room(reg(house(), {}, { ...LINKS, sklad: { temperature: 'sensor.storage_climate_temperature' } }), 'sklad').temperature!.value, 5, 'the storeroom reads its link too');
-  const first = reg(house(), {}, withLink('spalnia', {})), later = { ...first, areas: reg(house()).areas }; assert.equal(airSummary(first, ROOMS).temperature.total, 5); assert.equal(airSummary(later, ROOMS).temperature.total, 6, 'a link added later is picked up, not served from the last answer');
+  const first = reg(house(), {}, withLink('spalnia', {})), later = { ...first, areas: reg(house(), {}, withLink('spalnia', { temperature: 'sensor.kids_co2_temperature' })).areas }; assert.equal(airSummary(first, ROOMS).rooms.find(x => x.id === 'spalnia')!.temperature!.value, 21); assert.equal(airSummary(later, ROOMS).rooms.find(x => x.id === 'spalnia')!.temperature!.value, 22, 'a link added later is picked up, not served from the last answer');
 });
-test('the mean is of linked sensors: a silent link is missing, an unlinked room is not counted, none linked is no cell', () => {
+test('the mean: a silent sensor is missing, a room with no sensor is not counted, none among the six is no cell', () => {
   const no = (id: string) => ({ ...LINKS, [id]: {} });
   let s = airSummary(reg(pick(house(), 'sensor.bedroom_climate_temperature', 'unavailable')), ROOMS); assert.deepEqual([s.temperature.used, s.temperature.total], [5, 6], 'silent: «5 из 6»'); assert.equal(s.temperature.value, (20 + 22 + 21 + 20 + 20) / 5);
-  s = airSummary(reg(house(), {}, no('spalnia')), ROOMS); assert.deepEqual([s.temperature.used, s.temperature.total], [5, 5], 'no link: not counted at all'); assert.deepEqual([s.humidity.used, s.humidity.total], [5, 5]); assert.equal(s.temperature.value, (20 + 22 + 21 + 20 + 20) / 5);
-  const onlyStore = { sklad: LINKS.sklad }; s = airSummary(reg(house(), {}, onlyStore), ROOMS); assert.deepEqual([s.temperature.total, s.humidity.total, s.temperature.value], [0, 0, null], 'none among the six: the storeroom does not stand in'); assert.deepEqual(s.noData, [], 'and no link is not silence'); assert.equal(s.tone, 'ok');
-  assert.equal(s.rooms.find(r => r.id === 'sklad')!.temperature!.value, 5); assert.equal(s.rooms.find(r => r.id === 'spalnia')!.temperature, null, 'a room of the six stays in the list with nothing to show');
+  s = airSummary(reg(house(), {}, no('spalnia')), ROOMS); assert.deepEqual([s.temperature.used, s.temperature.total], [6, 6], 'no link: the room\'s own sensor counts');
+  s = airSummary(reg(house().filter(x => !x[1].startsWith('spalnia')), {}, no('spalnia')), ROOMS); assert.deepEqual([s.temperature.used, s.temperature.total], [5, 5], 'no sensor at all: not counted'); assert.equal(s.temperature.value, (20 + 22 + 21 + 20 + 20) / 5); assert.equal(s.rooms.some(r => r.id === 'spalnia'), false, 'and not in the list');
+  const onlyStore = { sklad: LINKS.sklad }; s = airSummary(reg(house().filter(x => x[1].startsWith('sklad') || ['carbon_dioxide', 'pm25'].includes(x[2] ?? '')), {}, onlyStore), ROOMS); assert.deepEqual([s.temperature.total, s.humidity.total, s.temperature.value], [0, 0, null], 'none among the six: the storeroom does not stand in'); assert.deepEqual(s.noData, [], 'and no link is not silence'); assert.equal(s.tone, 'ok');
+  assert.equal(s.rooms.find(r => r.id === 'sklad')!.temperature!.value, 5); assert.equal(s.rooms.some(r => r.id === 'spalnia'), false, 'a room with no sensor at all is not in the list (owner, 26.11.2026)');
   s = airSummary(reg(house().map(x => x[1].startsWith('sklad') ? x : x[0].endsWith('_temperature') ? [x[0], x[1], x[2], 'unavailable'] as (typeof x) : x)), ROOMS); assert.deepEqual(s.noData, ['temperature']); assert.equal(s.temperature.total, 6);
-  s = airSummary(reg(house().filter(x => !['carbon_dioxide', 'pm25'].includes(x[2] ?? '') || x[1].startsWith('sklad')), {}, {}), ROOMS); assert.deepEqual([s.co2.total, s.pm25.total, s.temperature.total], [0, 0, 0]); assert.equal(s.tone, 'none', 'nothing to read at all is not good air');
+  s = airSummary(reg(house().filter(x => x[1].startsWith('sklad')), {}, {}), ROOMS); assert.deepEqual([s.co2.total, s.pm25.total, s.temperature.total], [0, 0, 0]); assert.equal(s.tone, 'none', 'nothing to read at all is not good air');
 });
-test('no link, or a silent one: no problem and no button, whatever another sensor in the room says', () => {
+test('a silent link: no problem and no button, whatever another sensor in the room says; no link: the room\'s own sensor speaks', () => {
   const wet: ReturnType<typeof house> = [...pick(house(), 'sensor.bath_climate_humidity', '60'), ['fan.bath_vent', 'vannaia:v', null, 'off'], ['sensor.bath_other_humidity', 'vannaia:o', 'humidity', '90']];
   let r = reg(wet); assert.equal(airSummary(r, ROOMS).problem, null, 'a sensor nobody linked raises nothing'); assert.deepEqual(kinds(r, 'vannaia'), []);
   const moved = { ...LINKS, vannaia: { humidity: 'sensor.bath_other_humidity' } }; r = reg(wet, {}, moved); assert.deepEqual([airSummary(r, ROOMS).problem!.room.id, kinds(r, 'vannaia')[0], airActions(roomOf(r, 'vannaia'), r, NOVEMBER)[0].sensor], ['vannaia', 'dehumidify', 'sensor.bath_other_humidity'], 'linked, it speaks, and the job watches it');
   r = reg(pick(wet, 'sensor.bath_other_humidity', 'unavailable'), {}, moved); assert.equal(airSummary(r, ROOMS).problem, null, 'silent again'); assert.deepEqual(kinds(r, 'vannaia'), []);
-  r = reg(pick(wet, 'sensor.bath_climate_humidity', '90'), {}, { ...LINKS, vannaia: {} }); assert.equal(airSummary(r, ROOMS).problem, null, 'unlinked'); assert.deepEqual(kinds(r, 'vannaia'), []);
+  r = reg(pick(wet, 'sensor.bath_climate_humidity', '90'), {}, { ...LINKS, vannaia: {} }); assert.equal(airSummary(r, ROOMS).problem!.room.id, 'vannaia', 'unlinked: its own sensor'); assert.deepEqual(kinds(r, 'vannaia'), ['dehumidify']);
+});
+test('only rooms with a sensor of the four readings: a vent, a purifier or a humidifier alone is no row (owner, 26.11.2026)', () => {
+  const extra: ReturnType<typeof house> = [['fan.hall_hood', 'koridor:hood', null, 'off'], ['fan.hall_air_purifier', 'koridor:p', null, 'on'], ['humidifier.hall', 'koridor:h', null, 'off']];
+  const rooms = [...ROOMS, { id: 'koridor', name: 'Коридор' }], s = airSummary(reg([...house(), ...extra], {}, { ...LINKS, koridor: {} }), rooms);
+  assert.equal(s.rooms.some(r => r.id === 'koridor'), false);
+  const silent = airSummary(reg([...house(), ...extra, ['sensor.hall_temperature', 'koridor:t', 'temperature', 'unavailable']], {}, { ...LINKS, koridor: {} }), rooms);
+  assert.equal(silent.rooms.find(r => r.id === 'koridor')!.temperature!.value, null, 'a sensor that is not answering keeps its room: the row says so');
 });
 test('averages over six rooms, worst CO₂ and PM with their rooms, the storeroom out of everything', () => {
   const s = airSummary(reg(house()), ROOMS); assert.equal(s.temperature.total, 6); assert.equal(s.temperature.value, (20 + 22 + 21 + 21 + 20 + 20) / 6); assert.equal(s.humidity.value, (60 + 50 + 55 + 56 + 60 + 65) / 6);

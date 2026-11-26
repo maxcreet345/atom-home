@@ -1,4 +1,5 @@
-/* The «Air» card's arithmetic (docs/AIR.md): pure, testable under Node. A room's temperature and humidity are the sensors linked on its HA area and nothing else (owner, 06.11.2026), the source the Rooms screen reads.
+/* The «Air» card's arithmetic (docs/AIR.md): pure, testable under Node. A room's temperature and humidity are the sensors linked on its HA area (owner, 06.11.2026);
+ * an area that links none takes the room's own sensor, found as CO₂ is (owner, 26.11.2026: a second house linked only one room), as the Rooms screen does.
  * CO₂ and PM2.5 are one sensor per room chosen by class and room, so a new one joins by itself; appliances never speak for the room. */
 import type { Registry } from './registry.ts';
 export type Tone = 'ok' | 'warn' | 'bad';
@@ -33,7 +34,7 @@ export const toneOf = (metric: Metric, value: number | null, scale: HumidityScal
 /** Which side of its range a reading is out on, as printed: «Влажно» or «Сухо», «Жарко» or «Холодно». */
 export const isHigh = (metric: Metric, v: number, scale: HumidityScale = 'room') => metric === 'humidity' ? shown(metric, v) >= HUMIDITY[scale].warn : metric === 'temperature' ? shown(metric, v) > 25 : true;
 const toValue = (state: string | undefined) => { if (state === undefined || state === '' ) return null; const v = Number(state); return Number.isFinite(v) ? v : null; };
-/** Rooms of the Air card in dashboard order. Temperature and humidity: the area's link, with no fallback; a link that says nothing is a reading with no value, no link is no reading. The rest is searched and ranked: the CO₂ device of the room first, then pure sensors, then a purifier; appliances are out. */
+/** Rooms of the Air card in dashboard order, only those with a sensor of the four readings. Temperature and humidity: the area's link wins, even silent (a link that says nothing is a reading with no value); no link: the room's own sensor, searched as CO₂ is. The rest is searched and ranked: the CO₂ device of the room first, then pure sensors, then a purifier; appliances are out. */
 export function airRooms(reg: Registry, rooms: Array<{ id: string; name: string }>, opts: AirOptions = AIR_DEFAULTS): AirRoom[] {
   // one walk over the registry per call: this runs on every state change of the house, with some 1700 entities
   type Row = Registry['entities'][number];
@@ -47,7 +48,6 @@ export function airRooms(reg: Registry, rooms: Array<{ id: string; name: string 
     const bucket = roomRows.get(area) ?? { live: [], withDead: [] }; roomRows.set(area, bucket); bucket.withDead.push(e); /* a sensor HA has no state for yet still counts as dead */ if (reg.states[e.entity_id]) bucket.live.push(e);
   }
   const linked = (id: string | null | undefined): Reading | null => { if (!id) return null; const s = reg.states[id]; return { entity: id, value: toValue(s?.state), unit: (s?.attributes.unit_of_measurement as string | undefined) ?? rowById.get(id)?.unit ?? null }; };
-  const present = new Set(rooms.map(r => r.id)), averageKnown = opts.average.some(a => present.has(a));
   return rooms.map(r => {
     const rows = roomRows.get(r.id) ?? { live: [], withDead: [] }, own = rows.live, dc = (id: string, row?: { device_class?: string | null }) => (reg.states[id]?.attributes.device_class as string | undefined) ?? row?.device_class ?? null;
     const co2Devices = new Set(own.filter(e => dc(e.entity_id, e) === 'carbon_dioxide').map(e => e.device_id));
@@ -58,8 +58,10 @@ export function airRooms(reg: Registry, rooms: Array<{ id: string; name: string 
     const windows = own.filter(e => e.entity_id.startsWith('binary_sensor.') && ['window', 'opening'].includes(dc(e.entity_id, e) ?? '')).map(e => e.entity_id);
     const isPurifier = (e: (typeof own)[number]) => PURIFIER.test(e.entity_id) || PURIFIER.test(modelOf(e)), purifier = own.find(e => e.entity_id.startsWith('fan.') && isPurifier(e))?.entity_id ?? null, humidifier = own.find(e => e.entity_id.startsWith('humidifier.'))?.entity_id ?? null;
     const vents = own.filter(e => !e.entity_category && !appliance(e) && !isPurifier(e) && (e.entity_id.startsWith('fan.') || VENT_SWITCH.test(e.entity_id))).map(e => e.entity_id);
-    return { id: r.id, name: r.name, excluded: opts.excluded.includes(r.id), scale: (opts.bath.includes(r.id) ? 'bath' : opts.kitchen.includes(r.id) ? 'kitchen' : 'room') as HumidityScale, allowed: opts.actions[r.id] ?? [], temperature: linked(areaById.get(r.id)?.temperature_entity_id), humidity: linked(areaById.get(r.id)?.humidity_entity_id), co2: pick('co2'), pm25: pick('pm25'), voc: pick('voc'), windows, windowOpen: windows.some(w => reg.states[w]?.state === 'on'), purifier, purifierOn: !!purifier && reg.states[purifier]?.state === 'on', purifierOff: !!purifier && reg.states[purifier]?.state === 'off', humidifier, vents, ventOn: vents.some(v => reg.states[v]?.state === 'on') };
-  }).filter(r => r.excluded ? !!(r.temperature || r.humidity || r.vents.length || r.pm25 || r.voc) : averageKnown ? opts.average.includes(r.id) || !!(r.co2 || r.pm25 || r.purifier || r.humidifier || r.vents.length) : !!(r.temperature || r.humidity || r.co2 || r.pm25 || r.purifier || r.humidifier || r.vents.length));
+    return { id: r.id, name: r.name, excluded: opts.excluded.includes(r.id), scale: (opts.bath.includes(r.id) ? 'bath' : opts.kitchen.includes(r.id) ? 'kitchen' : 'room') as HumidityScale, allowed: opts.actions[r.id] ?? [], temperature: areaById.get(r.id)?.temperature_entity_id ? linked(areaById.get(r.id)!.temperature_entity_id) : pick('temperature'), humidity: areaById.get(r.id)?.humidity_entity_id ? linked(areaById.get(r.id)!.humidity_entity_id) : pick('humidity'), co2: pick('co2'), pm25: pick('pm25'), voc: pick('voc'), windows, windowOpen: windows.some(w => reg.states[w]?.state === 'on'), purifier, purifierOn: !!purifier && reg.states[purifier]?.state === 'on', purifierOff: !!purifier && reg.states[purifier]?.state === 'off', humidifier, vents, ventOn: vents.some(v => reg.states[v]?.state === 'on') };
+  // A room is in the card when it has a sensor of one of the four readings (owner, 26.11.2026): a vent, a purifier or a humidifier alone
+  // made empty rows on a second house. A silent sensor still keeps its room: the row says it is not answering.
+  }).filter(r => !!(r.temperature || r.humidity || r.co2 || r.pm25));
 }
 const mean = (rooms: AirRoom[], key: 'temperature' | 'humidity'): Span => { const all = rooms.filter(r => r[key]), used = all.filter(r => r[key]!.value !== null); return { value: used.length ? used.reduce((s, r) => s + r[key]!.value!, 0) / used.length : null, used: used.length, total: all.length, room: null }; };
 const worst = (rooms: AirRoom[], key: 'co2' | 'pm25'): Span => { const all = rooms.filter(r => r[key]), used = all.filter(r => r[key]!.value !== null), top = used.reduce<AirRoom | null>((m, r) => !m || r[key]!.value! > m[key]!.value! ? r : m, null); return { value: top ? top[key]!.value : null, used: used.length, total: all.length, room: top?.name ?? null }; };
