@@ -85,6 +85,7 @@ import { CardCatalog, AddCardButton, LostNote } from './catalog.tsx';
 import { CameraTile } from './camera-tile.tsx';
 import { LayoutGrid, LayoutProvider, ArrangeButton, useLayout, type LayItem } from './layout-grid.tsx';
 import { SCOPE_HOME, roomScope, pageScope } from '../model/tile-layout.ts';
+import { missingHelpers, missingUses, createHelpers, outcomeText } from '../runtime/helpers-setup.ts';
 /** The menu (1.27.0, owner 11.11.2026: «в левое меню добавь панель Энергия, Безопасность», «Системы … так и назови: Устройства»):
  * Дом · Комнаты · Свет · Устройства · Энергия · Безопасность (+ Настройка for admins). «Климат», «Уборка» and «Камеры» are segments of
  * «Устройства»; the old addresses (#systems, #climate, #cleaning, #camera, #energy, #security, ?filter=) stay what they were. */
@@ -296,6 +297,13 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
   // House-wide notices from modules (a timer that ended): shown on every device, with one beep here if this device allows it.
   const banner = modules.map(m => m.def.banner?.(registry, m.entities, t, host) ?? null).find(Boolean) ?? null;
   const bannerSeen = useRef<string | null>(null);
+  // Helpers of Home Assistant the panel needs and the house lacks (runtime/helpers-setup.ts): a new house has none, an older one may lack some
+  // (26.11.2026). The administrator sees a bar until they exist; «Позже» hides it until the panel is opened again. Not in the first seconds:
+  // while Home Assistant starts, its helpers are not loaded yet and the bar would flash.
+  const [helpersSettled, setHelpersSettled] = useState(false), [helpersLater, setHelpersLater] = useState(false);
+  useEffect(() => { const i = setTimeout(() => setHelpersSettled(true), 8000); return () => clearTimeout(i); }, []);
+  const helpersMissing = useMemo(() => host.admin && host.ws && helpersSettled && host.online && registry.entities.length ? missingHelpers(registry) : [], [host.admin, helpersSettled, host.online, registry.states, registry.entities]);
+  const createMissing = () => commands.run('helpers:create', async () => { const r = await createHelpers(host.ws!, registry); notify(outcomeText(r, (k, v) => t(k, v), e => errorText(e, t)), r.failed.length ? 10000 : 6000); });
   useEffect(() => { const key = banner ? `${banner.id}:${banner.text}:${banner.sub ?? ''}` : null; if (key && key !== bannerSeen.current && banner?.sound) { try { if (JSON.parse(localStorage.getItem('atom-home:clock') ?? '{}').beep !== false) beep(); } catch { beep(); } } bannerSeen.current = key; }, [banner?.id, banner?.text, banner?.sub]);
   // PERF-2 of the audit: nothing is prepared on the first touch — `beep()` builds its audio context when a sound is really due (modules/clock.tsx)
   const clockMod = modules.find(m => m.def.id === 'clock');
@@ -595,6 +603,7 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
         const frame = dev && m && P && !camOpen ? <P key={`${m.def.id}:${dev.key}:take`} entities={m.entities} options={m.options} host={host} t={t} lang={lang} mode="tile" poster={poster} camera={dev.primary.id} paused={false} /> : poster ? <img src={poster} alt="" /> : null;
         return <Takeover key="ring" tone="info" kind="ring" glyph="bell" className="at-door-ring" eyebrow={t('module.doorbell.ringing')} title={t('take.ring')} frame={frame ?? undefined} main={{ label: t('take.video'), icon: 'video', onClick: () => openAlarm(ringBanner.key, ringBanner.seconds) }} second={{ label: t('take.later'), onClick: () => setRingBanner(null) }} />; })()}
       {banner && <NoticeBar key="notice" icon={banner.icon ?? 'clock'} text={banner.text} sub={banner.sub} acts={<>{banner.extra && <button type="button" className="hm-pill" aria-busy={commands.pending('banner:snooze') || undefined} aria-disabled={commands.pending('banner:snooze') || undefined} onClick={() => void commands.run('banner:snooze', () => banner.extra!.run())}>{banner.extra.label}</button>}<button type="button" className="hm-pill is-primary is-main" aria-busy={commands.pending('banner:stop') || undefined} aria-disabled={commands.pending('banner:stop') || undefined} onClick={() => void commands.run('banner:stop', () => banner.stop())}>{t('clock.stop')}</button></>} />}
+      {!helpersLater && helpersMissing.length > 0 && <NoticeBar key="helpers" icon="gear" text={t('helpers.title')} sub={t('helpers.sub', { n: helpersMissing.length, what: missingUses(helpersMissing).map(u => t(`helpers.what.${u}` as Key)).join(', ') })} acts={<><button type="button" className="hm-pill at-helpers-later" onClick={() => setHelpersLater(true)}>{t('helpers.later')}</button><button type="button" className="hm-pill is-primary is-main at-helpers-create" aria-busy={commands.pending('helpers:create') || undefined} aria-disabled={commands.pending('helpers:create') || undefined} onClick={() => { if (!commands.pending('helpers:create')) void createMissing(); }}>{t('helpers.create')}</button></>} />}
     </Banners>
     {/* The shell's two live regions, always in the page so that what appears in them is read out once: the calm one (the house is back),
         and the urgent one — the house is lost, a module's alarm, a ring, a refused command (the toast is its visible part). */}

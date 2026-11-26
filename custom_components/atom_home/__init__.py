@@ -20,7 +20,8 @@ from homeassistant.components.http import HomeAssistantView, StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import Unauthorized
-from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers import entity_registry as er, issue_registry as ir
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.start import async_at_started
 from homeassistant.helpers.storage import Store
 from aiohttp import web
@@ -33,7 +34,10 @@ from .layouts import STORAGE_KEY as LAYOUTS_KEY, STORAGE_VERSION as LAYOUTS_VERS
 from .alarms import AlarmScheduler, normalise_alarms, switched_off
 from .bundle import GzipCache, accepts_gzip, etag_matches, etag_of
 from .config_state import ConfigState, ConfigWriteError
-from .helpers_check import missing_helpers, short_helpers
+import time
+
+from .helpers_check import Lease, missing_helpers, short_helpers, to_create
+from .timer_done import TimerDone
 from .const import (
     DOMAIN, FRONTEND_FILE, MAX_PHOTO_BYTES, PANEL_ICON, PANEL_TITLE, PANEL_URL_PATH, PHOTOS_DIR, PHOTOS_URL, STATIC_URL, STORAGE_KEY, STORAGE_VERSION,
 )
@@ -249,7 +253,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             else:
                 ir.async_delete_issue(hass, DOMAIN, issue)
 
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"air_tasks": air_tasks, "layouts": layouts, "store": store, "state": state, "alarms": scheduler, "light_sleep": sleep, "helpers_unsub": async_at_started(hass, check_helpers)}
+    timer_done = TimerDone(hass)
+    timer_done.start()
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"air_tasks": air_tasks, "layouts": layouts, "store": store, "state": state, "alarms": scheduler, "light_sleep": sleep, "timer_done": timer_done, "check_helpers": check_helpers, "helpers_lease": Lease(time.monotonic), "helpers_unsub": async_at_started(hass, check_helpers)}
     hass.data[DOMAIN]["_version"] = version
 
     photos_dir = Path(hass.config.path(PHOTOS_DIR))
@@ -295,6 +301,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             await air.async_remove()
     if (sleep := bucket.get("light_sleep")):
         sleep.shutdown()
+    if (timer_done := bucket.get("timer_done")):
+        timer_done.shutdown()
     if (unsub := bucket.get("helpers_unsub")):
         unsub()
     for issue in ("missing_helpers", "short_helpers"):  # nothing reads the helpers any more; a reload judges them afresh
@@ -334,7 +342,7 @@ def _register_ws(hass: HomeAssistant) -> None:
     @callback
     def ws_capabilities(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
         """What this backend supports; a panel that gets `unknown_command` here is talking to an older integration."""
-        connection.send_result(msg["id"], {"configRevision": 1, "composition": 1, "assist": 0, "alarms": 1, "lightSleep": 1, "automations": 1, "feederLog": 1, "airTasks": 1, "layouts": 1})
+        connection.send_result(msg["id"], {"configRevision": 1, "composition": 1, "assist": 0, "alarms": 1, "lightSleep": 1, "automations": 1, "feederLog": 1, "airTasks": 1, "layouts": 1, "helpers": 1})
 
     @websocket_api.websocket_command({
         vol.Required("type"): f"{DOMAIN}/config/set",
@@ -395,6 +403,26 @@ def _register_ws(hass: HomeAssistant) -> None:
         if current:  # a panel whose copy of the rest is older keeps its old revision: its next config/set is refused and it reads afresh
             result["revision"] = revision
         connection.send_result(msg["id"], result)
+
+    @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/helpers/claim"})
+    @websocket_api.require_admin
+    @callback
+    def ws_helpers_claim(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+        """The helpers an administrator's panel should create now (helpers_check.py). One panel at a time: another that asks within
+        two minutes gets an empty list. «Исправления» are judged again once the panel has had time to create them."""
+        bucket = _entry_data(hass) or {}
+        lease: Lease | None = bucket.get("helpers_lease")
+        if lease is None:
+            connection.send_error(msg["id"], "not_loaded", "Atom Home is not set up")
+            return
+        registry = er.async_get(hass)
+        missing = to_create(hass.states.get, lambda entity_id: registry.async_get(entity_id) is not None)
+        if not missing or not lease.take():
+            connection.send_result(msg["id"], {"create": []})
+            return
+        if (check := bucket.get("check_helpers")):
+            async_call_later(hass, 60, lambda _now: check())
+        connection.send_result(msg["id"], {"create": missing})
 
     @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/alarm/stop"})
     @websocket_api.async_response
@@ -607,6 +635,7 @@ def _register_ws(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_photo_set)
     websocket_api.async_register_command(hass, ws_photo_delete)
     websocket_api.async_register_command(hass, ws_alarms_set)
+    websocket_api.async_register_command(hass, ws_helpers_claim)
     websocket_api.async_register_command(hass, ws_alarm_stop)
     websocket_api.async_register_command(hass, ws_alarm_snooze)
     websocket_api.async_register_command(hass, ws_alarms_state)

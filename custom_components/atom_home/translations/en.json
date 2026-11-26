@@ -13,7 +13,7 @@
   "issues": {
     "missing_helpers": {
       "title": "Atom Home: helpers are missing",
-      "description": "Home Assistant has no {helpers}. Without `input_boolean.alarm_ringing` and `input_text.alarm_ringing` (length 255) an alarm rings, but the panel shows no banner and no Stop button; without `input_text.atom_light_sleep` (length 255) the light sheet does not show «turns off at…» and the timer cannot be cancelled there. Create them in Settings → Devices & services → Helpers with exactly these entity ids, then restart Home Assistant."
+      "description": "Home Assistant has no {helpers}. Without `input_boolean.alarm_ringing` and `input_text.alarm_ringing` (length 255) an alarm rings, but the panel shows no banner and no Stop button; without `input_text.atom_light_sleep` (length 255) the light sheet does not show «turns off at…» and the timer cannot be cancelled there. Create them in Settings → Devices & services → Helpers with exactly these entity ids, then restart Home Assistant. Easier: open the Atom Home panel as an administrator and press «Create» on the bar at the top — it creates them with these ids."
     },
     "short_helpers": {
       "title": "Atom Home: a text helper is too short",

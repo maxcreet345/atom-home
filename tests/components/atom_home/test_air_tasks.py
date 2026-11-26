@@ -1493,7 +1493,7 @@ class Entry(unittest.TestCase):
         async def executor(f, *a):
             return f(*a)
 
-        self.hass = NS(data={}, async_add_executor_job=executor, config=NS(path=lambda p: "/tmp/atom-test-" + p), http=NS(async_register_static_paths=AsyncMock(), register_view=MagicMock()))
+        self.hass = NS(data={}, async_add_executor_job=executor, config=NS(path=lambda p: "/tmp/atom-test-" + p), http=NS(async_register_static_paths=AsyncMock(), register_view=MagicMock()), bus=NS(async_listen=lambda event, listener: (lambda: None)))
         parts = dict(Store=lambda *_a: store, AirTasks=lambda _h: self.air, AlarmScheduler=lambda _h, _once=None, authorize=None: NS(set_alarms=MagicMock(), start=MagicMock(), async_shutdown=AsyncMock()), LightSleep=lambda _h: NS(async_load=AsyncMock(), shutdown=MagicMock()), ConfigState=MagicMock(), _version=lambda: "1", _register_ws=MagicMock(), normalise_alarms=lambda _x: [])
         patcher = patch.multiple(self.integration, **parts)
         patcher.start()

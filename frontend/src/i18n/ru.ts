@@ -3,6 +3,7 @@ import { wordsClimate } from './words-climate.ts';
 import { wordsSetup } from './words-setup.ts';
 import { wordsCatalog } from './words-catalog.ts';
 import { wordsLayout } from './words-layout.ts';
+import { wordsHelpers } from './words-helpers.ts';
 import { words_media } from './words-media.ts';
 import { words_speaker } from './words-speaker.ts';
 import { words_laundry } from './words-laundry.ts';
@@ -1075,6 +1076,7 @@ export const ru = {
   ...wordsSetup.ru,
   ...wordsCatalog.ru,
   ...wordsLayout.ru,
+  ...wordsHelpers.ru,
   ...words_media.ru,
   ...words_speaker.ru,
   ...words_laundry.ru,

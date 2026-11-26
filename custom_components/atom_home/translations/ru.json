@@ -13,7 +13,7 @@
   "issues": {
     "missing_helpers": {
       "title": "Atom Home: не хватает помощников",
-      "description": "В Home Assistant нет {helpers}. Без `input_boolean.alarm_ringing` и `input_text.alarm_ringing` (длина 255) будильник звонит, но в панели нет баннера и кнопки «Стоп»; без `input_text.atom_light_sleep` (длина 255) лист света не показывает «Выключится в…» и таймер там не отменить. Создайте их в Настройки → Устройства и службы → Помощники ровно с такими id, затем перезапустите Home Assistant."
+      "description": "В Home Assistant нет {helpers}. Без `input_boolean.alarm_ringing` и `input_text.alarm_ringing` (длина 255) будильник звонит, но в панели нет баннера и кнопки «Стоп»; без `input_text.atom_light_sleep` (длина 255) лист света не показывает «Выключится в…» и таймер там не отменить. Создайте их в Настройки → Устройства и службы → Помощники ровно с такими id, затем перезапустите Home Assistant. Проще: откройте панель Atom Home под администратором и нажмите «Создать» на плашке сверху — она создаст их с этими id."
     },
     "short_helpers": {
       "title": "Atom Home: текстовый помощник слишком короткий",

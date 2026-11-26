@@ -13,7 +13,7 @@
   "issues": {
     "missing_helpers": {
       "title": "Atom Home: lipsesc entități ajutătoare",
-      "description": "Home Assistant nu are {helpers}. Fără `input_boolean.alarm_ringing` și `input_text.alarm_ringing` (lungime 255) alarma sună, dar panoul nu arată bannerul și butonul «Stop»; fără `input_text.atom_light_sleep` (lungime 255) fișa luminii nu arată «Se stinge la…» și temporizatorul nu poate fi anulat acolo. Creați-le în Setări → Dispozitive și servicii → Ajutoare exact cu aceste id-uri, apoi reporniți Home Assistant."
+      "description": "Home Assistant nu are {helpers}. Fără `input_boolean.alarm_ringing` și `input_text.alarm_ringing` (lungime 255) alarma sună, dar panoul nu arată bannerul și butonul «Stop»; fără `input_text.atom_light_sleep` (lungime 255) fișa luminii nu arată «Se stinge la…» și temporizatorul nu poate fi anulat acolo. Creați-le în Setări → Dispozitive și servicii → Ajutoare exact cu aceste id-uri, apoi reporniți Home Assistant. Mai simplu: deschideți panoul Atom Home ca administrator și apăsați «Creează» pe bara de sus — le creează cu aceste id-uri."
     },
     "short_helpers": {
       "title": "Atom Home: o entitate text este prea scurtă",

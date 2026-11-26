@@ -8,6 +8,7 @@ import { people as peopleOf } from '../model/people.ts';
 import { Icon } from '../ui/primitives.tsx';
 import { Switch } from '../ui/cards.tsx';
 import type { Runner } from '../ui/sheet.tsx';
+import { createHelpers, outcomeText } from '../runtime/helpers-setup.ts';
 import type { Registry, StateRow } from '../model/registry.ts';
 import { ALARM_FADE, ALARM_REPEAT_EVERY, type Alarm, type HouseConfig } from '../model/config.ts';
 import type { HomeDevice } from '../model/discover.ts';
@@ -234,6 +235,12 @@ export function ClockSheet({ registry, entities, host, t, lang, runner, onClose,
   const timersCard = timerIds.length > 0 && <div className="at-clock-card at-clock-timers"><div className="at-clock-card-head"><h3 className="at-h4">{tx('clock.timers')}</h3>{running.length < timerIds.length && <button type="button" className="hm-pill is-primary is-small at-clock-new" onClick={() => setWin('timer')}>+ {tx('clock.newTimer')}</button>}</div>
     {running.length ? running.map(timerRow) : <p className="at-clock-empty">{tx('clock.noTimers')}</p>}
   </div>;
+  // No timers in this house (a new house had none, 26.11.2026): the block stays and says so; an administrator turns them on with one tap
+  // (runtime/helpers-setup.ts creates `timer.atom_1…3`, their labels and the «timer done» flag; the clock finds them by itself then).
+  const [helpersNote, setHelpersNote] = useState('');
+  const enableTimers = () => during('helpers', async () => { try { const r = await createHelpers(host.ws!, registry); setHelpersNote(outcomeText(r, (k, v) => tx(k, v), e => errorText(e, t))); } catch (e) { setHelpersNote(tx('helpers.failed', { why: errorText(e, t) })); } });
+  const noTimersCard = timerIds.length === 0 && <div className="at-clock-card at-clock-timers is-off"><div className="at-clock-card-head"><h3 className="at-h4">{tx('clock.timers')}</h3>{host.admin && host.ws && <button type="button" className="hm-pill is-primary is-small at-clock-enable" disabled={sending.has('helpers')} aria-busy={sending.has('helpers')} onClick={() => void enableTimers()}>{tx('helpers.timersOn')}</button>}</div>
+    <p className="at-clock-empty">{host.admin ? tx('helpers.timersOff') : tx('helpers.timersAdmin')}</p>{helpersNote && <p className="at-clock-empty" role="status">{helpersNote}</p>}</div>;
   const timerWin = <>
       {stations.length > 0 && <div className={`at-clock-stations ${mustPick ? 'is-required' : ''}`}><span className="at-clock-stations-label">{tx('clock.whereRing')}{mustPick && <b> *</b>}</span><div className="at-clock-presets"><button type="button" className={`hm-pill ${station === null ? 'is-primary' : ''}`} aria-pressed={station === null} disabled={starting !== null} onClick={() => setStation(null)}>{tx('clock.noAlice')}</button>{stations.map(st => <button type="button" className={`hm-pill ${station === st.id ? 'is-primary' : ''}`} aria-pressed={station === st.id} disabled={starting !== null} onClick={() => setStation(st.id)}>{roomName(st.area ?? '') || st.name}</button>)}</div>{mustPick && <small>{tx('clock.pickStation')}</small>}</div>}
       {!mustPick && <div className="at-clock-grid">{PRESETS.map(p => <button type="button" className="at-clock-tile" disabled={mustPick || starting !== null} aria-busy={starting === `p${p}`} onClick={() => void start(p * 60, label, `p${p}`)}><b>{starting === `p${p}` ? '…' : p === 60 ? 1 : p}</b><small>{p === 60 ? tx('clock.hour') : tx('clock.min')}</small></button>)}</div>}
@@ -318,7 +325,7 @@ export function ClockSheet({ registry, entities, host, t, lang, runner, onClose,
     </div>
   </>;
   // a refusal is said where the person is looking: in the window when one is open (on a phone it covers the sheet whole), else in the sheet
-  const cards = <>{timersCard}{alarmsCard}{people}{alarmBlock}{note && !win && <p className="at-feeder-note at-cam-note" role="status">{note}</p>}</>;
+  const cards = <>{timersCard}{noTimersCard}{alarmsCard}{people}{alarmBlock}{note && !win && <p className="at-feeder-note at-cam-note" role="status">{note}</p>}</>;
   const winNote = note ? <p className="at-feeder-note at-alarm-note" role="alert">{note}</p> : null;
   // One window element for every screen: switching list → editor swaps only the body, so the scrim and the card never re-animate.
   const screen = win === 'timer' ? { title: tx('clock.newTimer'), back: () => setWin(null), wide: true, body: <>{timerWin}{winNote}</>, key: 'timer', keep: false }
