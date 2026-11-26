@@ -303,6 +303,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         sleep.shutdown()
     if (timer_done := bucket.get("timer_done")):
         timer_done.shutdown()
+    if (recheck := bucket.get("helpers_recheck")):
+        recheck()
     if (unsub := bucket.get("helpers_unsub")):
         unsub()
     for issue in ("missing_helpers", "short_helpers"):  # nothing reads the helpers any more; a reload judges them afresh
@@ -417,12 +419,17 @@ def _register_ws(hass: HomeAssistant) -> None:
             return
         registry = er.async_get(hass)
         missing = to_create(hass.states.get, lambda entity_id: registry.async_get(entity_id) is not None)
-        if not missing or not lease.take():
-            connection.send_result(msg["id"], {"create": []})
+        if not missing:
+            connection.send_result(msg["id"], {"create": [], "busy": False})
             return
-        if (check := bucket.get("check_helpers")):
-            async_call_later(hass, 60, lambda _now: check())
-        connection.send_result(msg["id"], {"create": missing})
+        if not lease.take(id(connection)):
+            connection.send_result(msg["id"], {"create": [], "busy": True})
+            return
+        if (check := bucket.get("check_helpers")):  # a @callback: run in the loop, where the issue registry may be written
+            if (cancel := bucket.pop("helpers_recheck", None)):
+                cancel()
+            bucket["helpers_recheck"] = async_call_later(hass, 60, check)
+        connection.send_result(msg["id"], {"create": missing, "busy": False})
 
     @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/alarm/stop"})
     @websocket_api.async_response

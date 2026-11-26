@@ -60,14 +60,16 @@ def to_create(get_state: Callable[[str], Any], registered: Callable[[str], bool]
 
 
 class Lease:
-    """One claim at a time: the kiosks reload together after an update, and two panels creating the same helper make a `_2`."""
+    """One claimant at a time: the kiosks reload together after an update, and two panels creating the same helper make a `_2`.
+    The holder may claim again (a helper that failed is tried once more at once); another one waits out the two minutes."""
 
     def __init__(self, now: Callable[[], float]) -> None:
         self._now = now
         self._until = 0.0
+        self._holder: object = None
 
-    def take(self) -> bool:
-        if self._now() < self._until:
+    def take(self, holder: object) -> bool:
+        if self._now() < self._until and holder != self._holder:
             return False
-        self._until = self._now() + LEASE_SECONDS
+        self._until, self._holder = self._now() + LEASE_SECONDS, holder
         return True

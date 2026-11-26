@@ -44,10 +44,11 @@ class LeaseTest(unittest.TestCase):
     def test_one_panel_at_a_time(self):
         now = [0.0]
         lease = check.Lease(lambda: now[0])
-        self.assertTrue(lease.take())
-        self.assertFalse(lease.take(), "a second kiosk that reloads at the same moment gets nothing to create")
+        self.assertTrue(lease.take("tablet"))
+        self.assertFalse(lease.take("phone"), "a second kiosk that reloads at the same moment gets nothing to create")
+        self.assertTrue(lease.take("tablet"), "the screen that holds it may try a failed helper again at once")
         now[0] += check.LEASE_SECONDS
-        self.assertTrue(lease.take(), "after two minutes a panel may try again")
+        self.assertTrue(lease.take("phone"), "after two minutes another panel may try")
 
 
 class TimerDoneTest(unittest.TestCase):

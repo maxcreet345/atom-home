@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { HELPERS, missingHelpers, missingUses, createHelpers, outcomeText } from '../src/runtime/helpers-setup.ts';
-import type { StateRow, EntityRow } from '../src/model/registry.ts';
+import type { StateRow, EntityRow, Registry } from '../src/model/registry.ts';
+import { activeSpecs } from '../src/modules/catalog.ts';
+import { defaultConfig } from '../src/model/config.ts';
 
 // 26.11.2026: a new house had no `timer.atom_1…3` and the «Время» sheet showed no timers at all. The panel now offers an administrator
 // a bar until the helpers exist, on any house, and creates them through Home Assistant's own `<domain>/create`.
@@ -31,7 +33,7 @@ test('a helper the owner disabled (in the registry, no state) is not offered: cr
 
 test('the integration hands out the list: each helper is created once with its parameters; a second screen is told it is busy', async () => {
   const sent: Array<Record<string, unknown>> = []; let claims = 0;
-  const ws = async <T,>(m: Record<string, unknown>): Promise<T> => { sent.push(m); if (m.type === 'atom_home/helpers/claim') return { create: claims++ ? [] : [{ entity_id: 'timer.atom_1', params: { name: 'Atom 1', restore: true } }, { entity_id: 'input_text.atom_timer_labels', params: { name: 'Atom timer labels', max: 255 } }] } as T; return {} as T; };
+  const ws = async <T,>(m: Record<string, unknown>): Promise<T> => { sent.push(m); if (m.type === 'atom_home/helpers/claim') return { busy: claims > 0, create: claims++ ? [] : [{ entity_id: 'timer.atom_1', params: { name: 'Atom 1', restore: true } }, { entity_id: 'input_text.atom_timer_labels', params: { name: 'Atom timer labels', max: 255 } }] } as T; return {} as T; };
   const reg = { states: {}, entities: [] };
   const [a, b] = await Promise.all([createHelpers(ws, reg), createHelpers(ws, reg)]);
   assert.deepEqual(sent.filter(m => m.type !== 'atom_home/helpers/claim'), [{ type: 'timer/create', name: 'Atom 1', restore: true }, { type: 'input_text/create', name: 'Atom timer labels', max: 255 }]);
@@ -52,4 +54,15 @@ test('an integration not restarted since the update: the panel creates its own l
 test('a refused claim (not an administrator, the house away) is the caller\'s error, not a silent «done»', async () => {
   const ws = async <T,>(): Promise<T> => { throw { code: 'unauthorized', message: 'Unauthorized' }; };
   await assert.rejects(createHelpers(ws, { states: {}, entities: [] }));
+});
+
+test('the timers appear on the open panel as soon as Home Assistant has them: no reload (modules are found anew on every change; modules/index.ts keeps the array only while the entities are the same)', () => {
+  const config = defaultConfig();
+  const before: Registry = { areas: [], devices: [], entities: [entity('sun.sun')], states: { 'sun.sun': row('above_horizon') } };
+  const clockOf = (r: Registry) => activeSpecs(r, config).find(m => m.spec.id === 'clock');
+  assert.equal(clockOf(before)?.entities.timer1, undefined);
+  const created = HELPERS.filter(h => h.use === 'timers').map(h => h.entityId);
+  const after: Registry = { ...before, entities: [...before.entities, ...created.map(id => entity(id))], states: { ...before.states, ...Object.fromEntries(created.map(id => [id, row('idle')])) } };
+  const m = clockOf(after)!;
+  assert.deepEqual([m.entities.timer1, m.entities.timer2, m.entities.timer3, m.entities.labels, m.entities.done], created);
 });

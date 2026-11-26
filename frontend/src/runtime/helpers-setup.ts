@@ -33,9 +33,10 @@ const isUnknownCommand = (e: unknown) => !!e && typeof e === 'object' && (e as {
 export async function createHelpers(ws: Ws, reg: Pick<Registry, 'states' | 'entities'>): Promise<CreateResult> {
   let list: Array<{ entityId: string; params: Record<string, unknown> }>;
   try {
-    const r = await ws<{ create?: Array<{ entity_id: string; params: Record<string, unknown> }> }>({ type: 'atom_home/helpers/claim' });
+    const r = await ws<{ create?: Array<{ entity_id: string; params: Record<string, unknown> }>; busy?: boolean }>({ type: 'atom_home/helpers/claim' });
     list = (r?.create ?? []).map(x => ({ entityId: x.entity_id, params: x.params }));
-    if (!list.length) return { busy: missingHelpers(reg).length > 0, created: [], failed: [] };
+    // nothing to do: another screen holds the lease («уже создают»), or the house already has them all (the screen catches up in a moment)
+    if (!list.length) return { busy: r?.busy ?? missingHelpers(reg).length > 0, created: [], failed: [] };
   } catch (e) {
     if (!isUnknownCommand(e)) throw e;
     list = missingHelpers(reg).map(h => ({ entityId: h.entityId, params: h.params }));
