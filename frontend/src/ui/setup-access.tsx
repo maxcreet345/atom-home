@@ -48,7 +48,7 @@ export function AccessTab({ registry, config, save, ask, t, host, onViewAs, lock
     ask({ text: t('access.wizard.text' as Key), yes: t('access.wizard.yes' as Key), run: () => { void edit(a => starterAccess(config.access ? a : undefined, users)); } });
   };
   return <div className="at-setup-access" inert={lock}>
-    <div className="hm-card at-access-honest" role="note"><Icon name="info" size={20} /><div><p>{t('access.honest' as Key)}</p><p className="hm-muted">{t('access.kiosk' as Key)}</p></div></div>
+    <div className="hm-card at-access-honest" role="note"><Icon name="shield" size={20} /><div><p>{t('access.honest' as Key)}</p><p className="hm-muted">{t('access.kiosk' as Key)}</p></div></div>
     <section className="hm-section"><div className="hm-rows">
       <div className="hm-setting at-setting-row" data-access="enabled"><span><strong>{t('access.enabled' as Key)}</strong><small className="hm-muted">{access.enabled ? t('access.enabled.on' as Key) : t('access.enabled.off' as Key)}</small></span><Switch on={access.enabled} held={!access.enabled && !users} label={t('access.enabled' as Key)} onToggle={turn} /></div>
       <div className="hm-setting at-setting-row" data-access="new-users"><span>{t('access.newUsers' as Key)}</span><select aria-label={t('access.newUsers' as Key)} value={access.newUsers} onChange={e => { const v = (e.target as HTMLSelectElement).value as AccessConfig['newUsers']; void edit(a => ({ ...a, newUsers: v })); }}><option value="none">{t('access.newUsers.none' as Key)}</option><option value="default">{t('access.newUsers.default' as Key)}</option></select></div>

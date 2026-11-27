@@ -93,7 +93,8 @@ export function AccessGate({ Panel, ...p }: AppProps & { Panel: ComponentType<Ap
   const onNarrowChange = useMemo(() => (next: HouseConfig) => { const h = house.current; onConfigChange?.({ ...h, alarms: mergeAlarms(h.alarms, next.alarms, listedNow.current) }); }, [onConfigChange]);
   const deviceFilter = useMemo(() => scope ? (d: Pick<HomeDevice, 'key' | 'roomId' | 'kind' | 'haDeviceId'>) => deviceShown(d, scope, idx, real.devices) : undefined, [scopeKey, idx, real.devices]);
   const exitTo = useRef<string | null>(null);
-  const startViewAs = (u: AccessUser) => { exitTo.current = location.hash || '#setup?filter=access'; setViewAs(u); };
+  // the person's own panel opens on Home (the settings are not theirs); «Выйти» comes back to where it was asked from
+  const startViewAs = (u: AccessUser) => { exitTo.current = location.hash || '#setup?filter=access'; setViewAs(u); location.hash = '#home'; };
   const stopViewAs = () => { setViewAs(null); const back = exitTo.current; exitTo.current = null; if (back) location.hash = back; };
   const pick = (b: string) => { setChosen(b); if (!viewAs) write(BUILDING_KEY, b); };
   const nameOf = (b: string) => b === ALL_BUILDINGS ? t('access.allBuildings' as Key) : b === NO_BUILDING ? t('access.noBuilding' as Key) : registry.floors?.find(f => f.floor_id === b)?.name ?? b;

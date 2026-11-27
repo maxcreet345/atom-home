@@ -1,4 +1,5 @@
 import type { ComponentChildren } from 'preact';
+import { mayControl } from '../runtime/actions.ts';
 import { useContext, useRef } from 'preact/hooks';
 /* The room page (owner's choice of 09.11.2026, variant «Пульт»; docs/ROOM.md): a hero with what the room reads and one sentence about it,
  * one-tap actions, a card per real device in that device's own words, the room's radiator and who draws the power. */
@@ -99,14 +100,14 @@ function Tile({ th, p }: { th: Thing; p: P }) {
     {opens && <button type="button" className="rm-tile-open" aria-label={`${th.name}: ${x.status}. ${rk(p.t, 'more')}`} onClick={opens} />}
     <div className="rm-tile-head"><span className="rm-tile-ic"><ProductPhoto src={shot}><Icon name={GLYPH[th.kind]} size={22} /></ProductPhoto></span><span className="rm-tile-name"><strong>{th.name}</strong><small>{x.status}</small></span></div>
     {x.facts.length > 0 && <ul className="rm-facts">{x.facts.slice(0, 3).map(f => <li className={f.tone === 'warn' ? 'is-warn' : ''}>{f.tone === 'warn' && <Icon name="warning" size={12} />}{f.text}</li>)}</ul>}
-    {x.action && <button type="button" className={`rm-tile-act${size && power ? ' is-power' : ''}`} aria-label={size ? `${th.name}: ${x.action.label}` : undefined} disabled={!th.available} aria-disabled={waits || offline || undefined} aria-busy={waits || undefined} onClick={() => { if (!waits) x.action!.run(); }}>{size ? <><Icon name="power" size={22} /><span className="rm-tile-act-tx">{x.action.label}</span></> : x.action.label}</button>}
+    {x.action && (!th.main || mayControl(th.main, p.deviceOf(th.main)?.kind)) && <button type="button" className={`rm-tile-act${size && power ? ' is-power' : ''}`} aria-label={size ? `${th.name}: ${x.action.label}` : undefined} disabled={!th.available} aria-disabled={waits || offline || undefined} aria-busy={waits || undefined} onClick={() => { if (!waits) x.action!.run(); }}>{size ? <><Icon name="power" size={22} /><span className="rm-tile-act-tx">{x.action.label}</span></> : x.action.label}</button>}
   </article>;
 }
 
 /* ---------- one-tap actions, the radiator, the power ---------- */
 function Quick({ m, p }: { m: RoomModel; p: P }) {
   // a lamp stays in the row when it does not answer (ST-01): it is the room's light, and «Нет связи» is its news — the room's only lamp has no other card
-  const picks = [...m.things.filter(t => t.kind === 'light'), ...m.air, ...m.things.filter(t => ['kettle', 'tv', 'fountain'].includes(t.kind))].filter(t => t.main && (t.available || t.kind === 'light') && !GUARDED.test(t.name) && p.deviceOf(t.main)).slice(0, 4);
+  const picks = [...m.things.filter(t => t.kind === 'light'), ...m.air, ...m.things.filter(t => ['kettle', 'tv', 'fountain'].includes(t.kind))].filter(t => t.main && (t.available || t.kind === 'light') && !GUARDED.test(t.name) && p.deviceOf(t.main) && mayControl(t.main, p.deviceOf(t.main)!.kind) /* a building shown «только просмотр» offers no one-tap action (model/access.ts) */).slice(0, 4);
   const clean = p.vacuum && m.vacuum?.linked ? p.vacuum : null, offline = !p.host.online;
   const phase = useRef(clean?.phase); phase.current = clean?.phase;
   // ST-02: the room's only lamp has no card below (RoomView) — a long press (500 ms) or the context menu (a right click, the keyboard's menu key or

@@ -1139,13 +1139,13 @@
 .hm-shell.is-wide .at-access-bar{order:0;flex:0 1 auto}
 .hm-shell .at-access-as{display:flex;align-items:center;gap:8px;min-height:44px;padding:4px 4px 4px 14px;border-radius:999px;background:var(--ah-tint);color:var(--ah-tint-ink);font-size:.875rem;font-weight:600;max-width:100%}
 .hm-shell .at-access-as>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hm-shell .at-access-as .hm-pill{min-height:36px;padding:0 14px;background:var(--ah-group);color:var(--ah-ink);flex:none}
+.hm-shell .at-access-as .hm-pill,.at-access-calm .at-access-as .hm-pill{min-height:36px;padding:0 14px;background:#ffffffcc;color:var(--ah-tint-ink);flex:none}
 .hm-shell .at-access-switch{position:relative;display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 6px 0 12px;border-radius:999px;background:var(--ah-tile);color:var(--ah-ink);max-width:100%}
 .hm-shell .at-access-switch select{appearance:none;-webkit-appearance:none;border:0;background:transparent;color:inherit;font:inherit;font-size:.9375rem;font-weight:600;min-height:44px;padding:0 22px 0 0;max-width:260px;text-overflow:ellipsis;cursor:pointer;background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);background-position:calc(100% - 10px) 52%,calc(100% - 5px) 52%;background-size:5px 5px;background-repeat:no-repeat}
 .hm-shell .at-access-switch select:focus-visible{outline:3px solid var(--ah-accent);outline-offset:2px;border-radius:8px}
 .at-access-calm{display:flex;flex-direction:column;height:100%;min-height:100%;background:var(--ah-bg,#f2f2f7)}
-.at-access-calm .at-access-as{margin:12px auto 0}
-.at-access-calm-main{flex:1;display:grid;place-items:center;padding:24px 16px}
+.at-access-calm .at-access-as{position:relative;z-index:1;margin:12px auto 0}
+.at-access-calm-main{position:relative;z-index:1;flex:1;display:grid;place-items:center;padding:24px 16px}
 .at-access-calm-card{display:grid;justify-items:center;gap:10px;max-width:420px;padding:32px 24px;text-align:center}
 .at-access-calm-card h1{font-size:1.375rem;font-weight:700;line-height:1.2;text-wrap:balance}
 .at-access-calm-card svg{color:var(--ah-muted)}
