@@ -70,7 +70,8 @@ export function LightBody({ device, runner, t, lang, host, sleepAt }: Common & {
   useEffect(() => { if (draft === null) return; const id = setTimeout(() => setDraft(null), 2500); return () => clearTimeout(id); }, [draft]);
   // a relay that powers a strip (Atom + Okapi, 09.11.2026: «LED Шоурума» is the S60TPF socket, the Gledopto strip inside it): the big bulb is the
   // power, the strip below has its colour, brightness and scenes but no switch of its own
-  if (!isDimmable(a)) return <><RelayHero device={device} runner={runner} t={t} lang={lang} offline={offline} admin={host?.admin === true} />{ambient && <StripRows device={device} strip={ambient} powered={on && avail} runner={runner} turn={turn} t={t} lang={lang} offline={offline} />}<SleepRow entityId={e.id} on={on && avail} host={host} sleepAt={sleepAt ?? null} t={t} /></>;
+  // a relay lamp, its strip and «Выключить через» on a screen that may not switch it: drawn read-only (docs/ACCESS.md); otherwise the very same markup
+  if (!isDimmable(a)) { const relay = <><RelayHero device={device} runner={runner} t={t} lang={lang} offline={offline} admin={host?.admin === true} />{ambient && <StripRows device={device} strip={ambient} powered={on && avail} runner={runner} turn={turn} t={t} lang={lang} offline={offline} />}<SleepRow entityId={e.id} on={on && avail} host={host} sleepAt={sleepAt ?? null} t={t} /></>, ro = readOnlyClass(e.id, device.kind); return ro ? <div className={ro} style="display:contents">{relay}</div> : relay; }
   const pct = draft ?? live, shownOn = on || draft !== null;
   const send = useThrottled(v => void runner.run(device, act(e.id, 'brightness', { transition: 0.3 }), v));
   const k = kelvinOf(a), range = kelvinRange(a), temp = hasColorTemp(a);
@@ -160,9 +161,9 @@ function SleepRow({ entityId, on, host, sleepAt: mirrored, t }: { entityId: stri
 /** A relay lamp: the big bulb with its bloom, when it was switched, one power row. */
 function RelayHero({ device, runner, t, lang, offline, admin }: Common & { /** the model («Zigbee smart switch (no neutral)») is the installer's (critique 19.11.2026) */ admin?: boolean }) {
   const e = device.primary, on = isOn(e), avail = e.available, busy = runner.busy.has(device.key), at = since(e.lastChanged, lang), known = avail && e.state !== 'unknown';
-  return <div className={readOnlyClass(e.id, device.kind)} style="display:contents">
+  return <>
     <div className={`ah-hero at-relay-hero ${on && avail ? 'is-on' : ''}`}><span className={`ah-hero-glyph at-relay-glyph ${on && avail ? 'is-on' : ''}`}><Icon name="light" size={44} /></span>
       <div className="ah-hero-main"><b>{!avail ? t('state.unavailable') : !known ? t('state.unknown') : t(on ? 'state.on' : 'state.off')}</b><small>{[known && at ? t('light.since', { time: at }) : null, admin ? readableModel(device.model) ?? t('light.relay') : null].filter(Boolean).join(' · ')}</small></div></div>
     <button type="button" className={`ah-power ${on ? 'is-on' : ''}`} {...held(busy, offline)} disabled={!avail} onClick={() => { if (!busy) void runner.run(device, act(e.id, 'toggle', undefined, 'toggle', 'toggle'), !on); }}><span className="ah-power-icon"><Icon name="power" size={22} /></span><strong>{on ? t('ui.turnOff') : t('ui.turnOn')}</strong></button>
-  </div>;
+  </>;
 }

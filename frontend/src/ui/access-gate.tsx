@@ -12,9 +12,9 @@ import { SaveError, type ConfigStore } from '../runtime/store.ts';
 import { setHouseZone, houseDate } from '../runtime/zone.ts';
 import { setControlPolicy, noteRefused } from '../runtime/actions.ts';
 import { translator, type Key } from '../i18n/index.ts';
-import { activeModules, MODULES } from '../modules/index.ts';
+import { activeModules, rememberModules, MODULES } from '../modules/index.ts';
 import type { HomeDevice } from '../model/discover.ts';
-import { resolveAccess, switchChoices, pickBuilding, scopeOf, rememberScope, controlPolicy, scopeConfig, hiddenModules, deviceShown, areaIndex, mergeAlarms, callTargets, scopeMode, modeAllows, buildingsOf, roomRole, ALL_BUILDINGS, NO_BUILDING, type AccessUser, type Scope } from '../model/access.ts';
+import { broadOk, resolveAccess, switchChoices, pickBuilding, scopeOf, rememberScope, controlPolicy, scopeConfig, hiddenModules, deviceShown, areaIndex, mergeAlarms, callTargets, scopeMode, modeAllows, buildingsOf, roomRole, ALL_BUILDINGS, NO_BUILDING, type AccessUser, type Scope } from '../model/access.ts';
 import { readLayoutPointer, LAYOUT_POINTER_EVENT } from './layout-grid.tsx';
 import { Icon } from './primitives.tsx';
 import type { AppProps } from './app.tsx';
@@ -50,14 +50,15 @@ export function AccessGate({ Panel, ...p }: AppProps & { Panel: ComponentType<Ap
   const access = resolveAccess(real.access, viewer, dayKey(houseDate()), floorIds);
   // only the signed-in person's own view is remembered, never a «view as»
   useEffect(() => { if (viewAs || configPending) return; write(NARROWED_KEY, access.kind === 'open' ? null : '1'); }, [access.kind, viewAs, configPending]);
-  const choices = access.kind === 'some' ? switchChoices(access, registry.floors) : [];
+  const choices = access.kind === 'some' ? switchChoices(access, registry.floors, registry.areas) : [];
   const shown = pickBuilding(choices, chosen);
   const scope: Scope | null = access.kind === 'some' && real.access ? scopeOf(real.access, access, shown) : null;
   const scopeKey = scope ? JSON.stringify(scope) : '';
   const idx = useMemo(() => areaIndex(registry.areas), [registry.areas]);
   const remember = useMemo(() => rememberScope(), []);
   // the entities a module hidden here draws inside its own card: without the module they would come back as tiles of their own
-  const drop = useMemo(() => { if (!scope) return new Set<string>(); const all = activeModules(registry, real), hidden = new Set(hiddenModules(scope, MODULES.map(m => m.id))); return new Set(all.filter(m => hidden.has(m.def.id)).flatMap(m => m.def.claims?.(m.entities) ?? [])); }, [scopeKey, registry.entities, real.modules]);
+  const findModules = useMemo(() => rememberModules(), []), moduleShape = scope ? findModules(registry, real) : null;
+  const drop = useMemo(() => { /* keyed on the modules found, not only the entities: a module that becomes active later has its entities dropped too */ if (!scope) return new Set<string>(); const all = activeModules(registry, real), hidden = new Set(hiddenModules(scope, MODULES.map(m => m.id))); return new Set(all.filter(m => hidden.has(m.def.id)).flatMap(m => m.def.claims?.(m.entities) ?? [])); }, [scopeKey, registry.entities, real.modules, moduleShape]);
   const scoped = scope ? remember(registry, scope, real.devices, drop) : registry;
   const may = useMemo(() => scope ? controlPolicy(registry, scope, real.devices) : null, [scopeKey, registry.entities, registry.devices, registry.areas, real.devices]);
   // set during the draw, before any card asks (runtime/actions.ts actionsFor): one policy for the whole panel, as the house's zone is
@@ -72,7 +73,7 @@ export function AccessGate({ Panel, ...p }: AppProps & { Panel: ComponentType<Ap
   const host = useMemo<Host>(() => {
     const target = bare;
     const call = async (domain: string, service: string, data: Record<string, unknown>) => {
-      const m = mayNow.current, sc = scopeNow.current; if (m && sc) { const ids = callTargets(data); if (ids.length ? ids.some(id => !m(id)) : !modeAllows(scopeMode(sc), null)) throw denied(); }
+      const m = mayNow.current, sc = scopeNow.current; if (m && sc) { const ids = callTargets(data); if (!broadOk(data, sc, idxNow.current) || (ids.length ? ids.some(id => !m(id)) : !modeAllows(scopeMode(sc), null))) throw denied(); }
       return target.call(domain, service, data);
     };
     // the raw socket: what writes is held to the same policy (a lamp's «Выключить через» by its lamp; the registry's labels and anything else
@@ -98,7 +99,7 @@ export function AccessGate({ Panel, ...p }: AppProps & { Panel: ComponentType<Ap
   }, [bare]);
   const narrowStore = useMemo<ConfigStore | undefined>(() => store && {
     label: store.label, photos: store.photos,
-    async load() { const r = await store.load(); house.current = r.config; const sc = scopeNow.current, m = mayNow.current; return sc && m ? { ...r, config: { ...scopeConfig(r.config, sc, idxNow.current, MODULES.map(x => x.id), m), setupTabs: r.config.setupTabs } } : r; },
+    async load() { const r = await store.load(); house.current = r.config; changeNow.current?.(r.config); /* the shell holds the fresh house too: a later draw must not put the old alarms of other buildings back (code review) */ const sc = scopeNow.current, m = mayNow.current; return sc && m ? { ...r, config: { ...scopeConfig(r.config, sc, idxNow.current, MODULES.map(x => x.id), m), setupTabs: r.config.setupTabs } } : r; },
     // the narrowed settings are never written over the house's: on this screen only alarms are saved
     async save() { throw new SaveError('unauthorized'); },
     async saveAlarms(visible) {
@@ -109,6 +110,7 @@ export function AccessGate({ Panel, ...p }: AppProps & { Panel: ComponentType<Ap
     },
   }, [store]);
   const listedNow = useRef(listed); listedNow.current = listed;
+  const changeNow = useRef(onConfigChange); changeNow.current = onConfigChange;
   const onNarrowChange = useMemo(() => (next: HouseConfig) => { const h = house.current; onConfigChange?.({ ...h, alarms: mergeAlarms(h.alarms, next.alarms, listedNow.current) }); }, [onConfigChange]);
   const deviceFilter = useMemo(() => scope ? (d: Pick<HomeDevice, 'key' | 'roomId' | 'kind' | 'haDeviceId'>) => deviceShown(d, scope, idx, real.devices) : undefined, [scopeKey, idx, real.devices]);
   const exitTo = useRef<string | null>(null);

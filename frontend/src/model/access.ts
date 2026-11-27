@@ -114,8 +114,10 @@ export function resolveAccess(access: AccessConfig | undefined, viewer: Viewer, 
   return mine;
 }
 /** The buildings the switcher offers (in the house's order; the areas without a building last), and «Все здания» when there are several. */
-export function switchChoices(access: Extract<Access, { kind: 'some' }>, floors: readonly FloorRow[] | undefined): string[] {
-  const own = [...buildingsOf(floors).map(f => f.floor_id), NO_BUILDING].filter(f => Object.hasOwn(access.buildings, f));
+export function switchChoices(access: Extract<Access, { kind: 'some' }>, floors: readonly FloorRow[] | undefined, areas?: readonly Pick<AreaRow, 'floor_id'>[]): string[] {
+  // «Без здания» only where some area has no floor: otherwise it would be an empty choice
+  const loose = !areas || areas.some(a => !a.floor_id);
+  const own = [...buildingsOf(floors).map(f => f.floor_id), ...(loose ? [NO_BUILDING] : [])].filter(f => Object.hasOwn(access.buildings, f));
   return own.length > 1 ? [...own, ALL_BUILDINGS] : own;
 }
 /** The building shown: the one chosen last on this screen if it is still allowed, else the first one. */
@@ -245,9 +247,22 @@ export function controlPolicy(reg: Pick<Registry, 'entities' | 'devices' | 'area
     return modeAllows(mode, kind ?? domainOf(id));
   };
 }
-/** The entity ids a service call names (`entity_id` as a string or a list). */
-export const callTargets = (data: Record<string, unknown> | undefined): string[] => { const v = data?.entity_id ?? (data?.target as Record<string, unknown> | undefined)?.entity_id; return typeof v === 'string' ? [v] : Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []; };
+/** The entity ids a service call names (`entity_id` as a string — comma-separated too — or a list, in the data or its `target`). */
+export const callTargets = (data: Record<string, unknown> | undefined): string[] => { const list = (v: unknown): string[] => typeof v === 'string' ? v.split(',').map(x => x.trim()).filter(Boolean) : Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').flatMap(x => list(x)) : []; return [...list(data?.entity_id), ...list((data?.target as Record<string, unknown> | undefined)?.entity_id)]; };
 
+/** A call aimed wider than entities (`area_id`, `floor_id`, `device_id`, `label_id`, `entity_id: all`): an area or a floor only where this
+ * screen shows it with a role that presses anything; a device, a label or «all» never on a narrowed screen (they may reach any building). */
+export function broadOk(data: Record<string, unknown> | undefined, scope: Scope, idx: ReadonlyMap<string, string>): boolean {
+  const spots = [data, data?.target as Record<string, unknown> | undefined].filter((x): x is Record<string, unknown> => !!x && typeof x === 'object');
+  const ids = (v: unknown): string[] => typeof v === 'string' ? v.split(',').map(x => x.trim()).filter(Boolean) : Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  const full = (b: string | undefined) => !!b && Object.hasOwn(scope.buildings, b) && scope.roles[scope.buildings[b]]?.mode === 'full';
+  for (const o of spots) {
+    if (callTargets({ entity_id: o.entity_id }).some(x => x === 'all' || x === 'none')) return false;
+    if (ids(o.device_id).length || ids(o.label_id).length) return false;
+    if (!ids(o.floor_id).every(full) || !ids(o.area_id).every(a => full(idx.get(a)))) return false;
+  }
+  return true;
+}
 /** The settings as this screen draws them: the pages and cards the roles do not show are hidden, the owner's buttons that may not be pressed
  * here are gone, the alarms of other buildings' rooms are not listed. Never saved (ui/access-gate.tsx gives the panel a store that refuses it). */
 export function scopeConfig(config: HouseConfig, scope: Scope, areaToBuilding: ReadonlyMap<string, string>, moduleIds: readonly string[], may: (entityId: string, kind?: string | null) => boolean): HouseConfig {
@@ -261,6 +276,7 @@ export function scopeConfig(config: HouseConfig, scope: Scope, areaToBuilding: R
 }
 function buttonShown(b: CustomButton, scope: Scope, idx: ReadonlyMap<string, string>, may: (entityId: string, kind?: string | null) => boolean): boolean {
   if (b.roomId && roomRole(scope, idx, b.roomId) === undefined) return false;
+  if (!broadOk(b.target, scope, idx) || !broadOk(b.data, scope, idx)) return false;
   const targets = [...callTargets(b.target), ...callTargets(b.data)];
   if (targets.length) return targets.every(id => may(id));
   // a script or a scene names no entity: only a role that may press anything presses it

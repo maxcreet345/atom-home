@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normaliseAccess, normaliseRoles, resolveAccess, switchChoices, pickBuilding, scopeOf, scopeRegistry, rememberScope, deviceShown, controlPolicy, modeAllows, scopeConfig, hiddenSections, hiddenModules, mergeAlarms, accessUsers, starterAccess, copyRole, withoutRole, areaIndex, defaultAccess, NO_BUILDING, ALL_BUILDINGS, type AccessConfig } from '../src/model/access.ts';
+import { broadOk, callTargets, normaliseAccess, normaliseRoles, resolveAccess, switchChoices, pickBuilding, scopeOf, scopeRegistry, rememberScope, deviceShown, controlPolicy, modeAllows, scopeConfig, hiddenSections, hiddenModules, mergeAlarms, accessUsers, starterAccess, copyRole, withoutRole, areaIndex, defaultAccess, NO_BUILDING, ALL_BUILDINGS, type AccessConfig } from '../src/model/access.ts';
 import { defaultConfig, normaliseConfig, type HouseConfig, type Alarm } from '../src/model/config.ts';
 import { discover } from '../src/model/discover.ts';
 import type { Registry } from '../src/model/registry.ts';
@@ -215,4 +215,21 @@ test('users of Home Assistant, the starting point, copying and removing a role',
   assert.equal(c.id, 'staff_2'); assert.deepEqual(c.roles.staff_2.sections, defaultAccess().roles.staff.sections);
   const w = withoutRole(access({ members: { u1: { buildings: { contabilitate: 'guest', office: 'staff' } }, u2: { all: true, role: 'guest' } }, profiles: { p1: { building: 'office', role: 'guest' } }, defaultRole: 'guest' }), 'guest');
   assert.deepEqual(w.members, { u1: { buildings: { office: 'staff' } }, u2: {} }); assert.deepEqual(w.profiles, {}); assert.equal(w.roles.guest, undefined); assert.equal(w.defaultRole, undefined);
+});
+test('a button aimed wider than its entities, or at several in one string, is held to every building it may reach', () => {
+  const a = access({ members: { u: { buildings: { contabilitate: 'manager', office: 'guest' } } } }), sc = scopeFor(a, 'u'), idx = areaIndex(reg.areas);
+  assert.deepEqual(callTargets({ entity_id: 'light.buh, light.office' }), ['light.buh', 'light.office']);
+  assert.ok(!controlPolicy(reg, sc, {})('light.office'));
+  const cfg = (target: Record<string, unknown>) => ({ ...defaultConfig(), buttons: [{ id: 'b', label: 'x', service: 'light.turn_off', target, confirm: false }] });
+  const shown = (target: Record<string, unknown>) => scopeConfig(cfg(target), sc, idx, [], controlPolicy(reg, sc, {})).buttons.length === 1;
+  assert.equal(shown({ entity_id: 'light.buh, light.office' }), false, 'a comma list with the guest\'s lamp');
+  assert.equal(shown({ entity_id: 'all' }), false);
+  assert.equal(shown({ floor_id: 'office' }), false, 'a floor shown only to look at');
+  assert.equal(shown({ floor_id: 'servis_i_shourum' }), false, 'a floor not shown at all');
+  assert.equal(shown({ area_id: 'kabinet' }), true, 'an area of a building with «Управляющий»');
+  assert.equal(shown({ device_id: 'lamp2' }), false); assert.equal(shown({ label_id: 'x' }), false);
+  assert.ok(broadOk({ target: { area_id: ['kabinet'] } }, sc, idx)); assert.ok(!broadOk({ target: { area_id: 'dmlink' } }, sc, idx));
+  const all = some(resolveAccess(access({ members: { u: { all: true, role: 'staff' } } }), { id: 'u', admin: false }, TODAY, FLOORS));
+  assert.ok(switchChoices(all, reg.floors, reg.areas).includes(NO_BUILDING), 'the yard has no floor: «Без здания» is a choice');
+  assert.ok(!switchChoices(all, reg.floors, reg.areas.filter(x => x.floor_id)).includes(NO_BUILDING), 'every area has a floor: no empty choice');
 });
