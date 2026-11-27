@@ -33,6 +33,8 @@ export interface AccessConfig {
 }
 /** The areas without a floor («Двор»): no building of their own; only a person with «Все здания» sees them. */
 export const NO_BUILDING = '_none';
+/** The room id of «Без комнаты» (model/discover.ts NO_ROOM; not imported, to keep this file free of the house model). */
+const NO_ROOM_ID = 'none';
 /** The switcher's «Все здания» choice. */
 export const ALL_BUILDINGS = '*';
 
@@ -154,28 +156,35 @@ export function roomRole(scope: Scope, areaToBuilding: ReadonlyMap<string, strin
 export const areaIndex = (areas: readonly AreaRow[]) => new Map(areas.map(a => [a.area_id, areaBuilding(a)]));
 
 /** The registry as this screen may see it. Kept: the areas of the buildings shown and their floors; an entity whose room is one of them
- * (less the cameras and alarm panels of a role without them, what a device's «Кому видно» keeps from the role, and `drop` — the entities a
- * module hidden here draws inside its own card, which must not come back as tiles); an entity of no room and no device (the house's helpers,
- * people, the sun, the house's own meters) stays, so the clock, the weather and the greeting keep working. A device whose room is not shown,
- * and a device with no room (only the administrator sees «Без комнаты»), go with their entities and states. */
+ * (less the cameras and alarm panels of a role without them — with their whole device —, a device whose «Кому видно» keeps it from the role,
+ * and `drop` — the entities a module hidden here draws inside its own card, which must not come back as tiles); an entity of no room (the
+ * house's helpers, people, the weather, the house's own meters, Alarmo) stays for the readings of the whole house, its cards are left out by
+ * `deviceShown`. A device whose room is in another building goes with its entities and states. */
 export function scopeRegistry(reg: Registry, scope: Scope, devicesCfg: HouseConfig['devices'], drop: ReadonlySet<string> = new Set()): Registry {
   const shape = scopeShape(reg, scope, devicesCfg, drop);
   return { ...reg, ...shape.rows, states: scopeStates(reg.states, shape.dropped) };
 }
 interface Shape { rows: Pick<Registry, 'areas' | 'devices' | 'entities' | 'floors'>; dropped: ReadonlySet<string> }
 function scopeShape(reg: Registry, scope: Scope, devicesCfg: HouseConfig['devices'], drop: ReadonlySet<string>): Shape {
-  const idx = areaIndex(reg.areas), devById = new Map(reg.devices.map(d => [d.id, d])), mods = (role: string) => scope.roles[role]?.modules ?? [];
+  const idx = areaIndex(reg.areas), devById = new Map(reg.devices.map(d => [d.id, d])), mods = (role: string | undefined) => role ? scope.roles[role]?.modules ?? [] : [...scopeModules(scope)];
+  // a camera or an alarm panel a role does not show goes with its whole device: its motion switch, its privacy mode, its sensors would
+  // otherwise come back as cards of their own (model/discover.ts builds the device anew from what is left)
+  const roleOf = (e: EntityRow) => { const dev = e.device_id ? devById.get(e.device_id) : undefined, area = entityArea(e, dev, devicesCfg); return area && idx.has(area) ? roomRole(scope, idx, area) : undefined; };
+  const unshown = (e: EntityRow) => { const dom = domainOf(e.entity_id), m = mods(roleOf(e)); return (dom === 'camera' && !m.includes('cameras')) || (dom === 'alarm_control_panel' && !m.includes('security')); };
+  const goneDevices = new Set(reg.entities.filter(e => e.device_id && unshown(e)).map(e => e.device_id!));
   const dropped = new Set<string>(), keptDevices = new Set<string>();
   const entities = reg.entities.filter(e => {
     const dev = e.device_id ? devById.get(e.device_id) : undefined, area = entityArea(e, dev, devicesCfg);
     let ok: boolean;
-    if (drop.has(e.entity_id)) ok = false;
-    // no room and no device, or a «service» of the house (the weather): the house's own; a device of no room, or a room id that is no area: not shown
-    else if (!area || !idx.has(area)) ok = !area && (!e.device_id || dev?.entry_type === 'service');
+    if (drop.has(e.entity_id) || (e.device_id && goneDevices.has(e.device_id))) ok = false;
+    // what has no room is the house's own: the helpers, the people, the weather, the house's meters, Alarmo (its device has no room in a real
+    // house) — kept for the house's readings, less a camera or an alarm panel no role shown shows. Its CARDS («Без комнаты») are the
+    // administrator's: deviceShown leaves them out. A room id that is no area of the house (a room gone): not shown.
+    else if (!area || area === NO_ROOM_ID || !idx.has(area)) ok = (!area || area === NO_ROOM_ID) && !unshown(e);
     else {
-      const role = roomRole(scope, idx, area), dom = domainOf(e.entity_id);
-      ok = role !== undefined && !(dom === 'camera' && !mods(role).includes('cameras')) && !(dom === 'alarm_control_panel' && !mods(role).includes('security'))
-        && seenBy(devicesCfg[`e:${e.entity_id}`], role) && (!e.device_id || seenBy(devicesCfg[`d:${e.device_id}`], role));
+      // «Кому видно» of a whole device (`d:`) takes it out here; that of one card (`e:`) is the card's (deviceShown), so the device is not reshaped
+      const role = roomRole(scope, idx, area);
+      ok = role !== undefined && !unshown(e) && (!e.device_id || seenBy(devicesCfg[`d:${e.device_id}`], role)) && (!!e.device_id || seenBy(devicesCfg[`e:${e.entity_id}`], role));
     }
     if (!ok) dropped.add(e.entity_id); else if (e.device_id) keptDevices.add(e.device_id);
     return ok;

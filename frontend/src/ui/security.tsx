@@ -1,4 +1,5 @@
 import { Fragment } from 'preact';
+import { readOnlyClass } from '../runtime/actions.ts';
 import type { LayItem } from './layout-grid.tsx';
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { Art, Ask, Bars, Battery, Case, Chevron, Ring, Row, SecurityFeed } from './office-security.tsx';
@@ -198,7 +199,7 @@ export function SecurityPanel({ s, registry, config, host, commands, t, lang, no
   const tabs: Array<[SecTab, string]> = [['guard', sk(t, 'tab.guard')], ['sensors', problems ? `${sk(t, 'tab.sensors')} · ${problems}` : sk(t, 'tab.sensors')], ['log', sk(t, 'tab.log')], ['settings', sk(t, 'tab.settings')]];
   const head = <div className="ah-segments hm-range-tabs at-sec-tabs" role="group" aria-label={sk(t, 'title')}>{tabs.map(([k, label]) => <button type="button" aria-pressed={tab === k} className={tab === k ? 'is-active' : ''} onClick={() => setTab(k)}>{label}</button>)}</div>;
   // the panel as blocks (owner, 23.11.2026: «Безопасность» is arranged like Home): the tabs stay on top, each part of a tab is a block of the page
-  const guardOn = tab === 'guard' || tab === 'all', cls = `at-osec-wrap at-sec-panel ${offline ? 'is-stale' : ''}`;
+  const guardOn = tab === 'guard' || tab === 'all', cls = `at-osec-wrap at-sec-panel ${offline ? 'is-stale' : ''} ${readOnlyClass(s.alarm.id, 'alarm_panel')}`;
   const blocks = ([
     /* its own key: `sec:guard` of 1.39.0 was the whole panel, and that saved width is not the guard's */ guardOn && { key: 'sec:ctl', block: true, span: { w: 3, h: 2 }, label: sk(t, 'tab.guard'), node: <section className={`at-osec-control is-${tone} ${ARMED_ST.includes(st) ? 'is-st-armed' : `is-st-${st}`} ${ringKind(s) === 'alert' ? 'is-alarm' : ''}`}>
       <Ring kind={ringKind(s)} size={104} progress={total && left !== null ? 1 - left / total : 0} tone={ringTone(s)} />

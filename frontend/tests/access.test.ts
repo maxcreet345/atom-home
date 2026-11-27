@@ -75,10 +75,11 @@ test('role × building × device: the registry keeps only the rooms of the build
   assert.ok(ids.includes('light.buh') && ids.includes('climate.buh') && ids.includes('sensor.power_buh'));
   assert.ok(!ids.includes('light.showroom') && !ids.includes('light.office') && !ids.includes('light.yard'), 'other buildings and the yard are gone');
   assert.ok(!ids.includes('camera.buh'), '«Сотрудник» has no cameras');
-  assert.ok(!ids.includes('switch.loose'), 'a device of no room: only the administrator sees it');
+  assert.ok(ids.includes('switch.loose'), 'a device of no room stays for the house\'s readings…');
+  assert.equal(discover(r, defaultConfig()).devices.filter(d => d.primary.id === 'switch.loose' && deviceShown(d, scopeFor(a, 'u1'), areaIndex(reg.areas), {})).length, 0, '…but its card is the administrator\'s («Без комнаты»)');
   assert.ok(ids.includes('weather.home') && ids.includes('person.ararat') && ids.includes('input_boolean.atom_alarm_ringing'), 'the house\'s own stays (weather, people, helpers)');
   assert.equal(r.states['light.showroom'], undefined); assert.ok(r.states['light.buh']);
-  assert.deepEqual(r.devices.map(d => d.id).sort(), ['ac2', 'lamp2', 'met']);
+  assert.deepEqual(r.devices.map(d => d.id).sort(), ['ac2', 'lamp2', 'loose', 'met']);
   // the house model built on it: only the accountants' room and its devices
   const home = discover(r, defaultConfig());
   assert.deepEqual(home.rooms.filter(x => x.id !== 'none').map(x => x.id), ['kabinet']);
@@ -101,6 +102,23 @@ test('«Кому видно»: only the roles named see the device; the owner\'s
   assert.equal(deviceShown({ key: 'd:met', roomId: 'none', kind: 'weather', haDeviceId: 'met' }, sc, idx, {}), true);
   assert.equal(deviceShown({ key: 'e:light.office', roomId: 'dmlink', kind: 'light', haDeviceId: 'lamp3' }, sc, idx, {}), false);
   assert.deepEqual(normaliseRoles(['staff', 'staff', 3, 'bad key!']), ['staff']); assert.equal(normaliseRoles(undefined), undefined);
+});
+test('hiding a card or a camera never reshapes its device into other cards', () => {
+  const r2: Registry = { ...reg, devices: [...reg.devices, { id: 'plug', name: 'Розетка с ваттметром', area_id: 'kabinet' }, { id: 'cam9', name: 'Камера 2', area_id: 'kabinet' }, { id: 'alarmo_dev', name: 'Alarmo', area_id: null }],
+    entities: [...reg.entities, ent('switch.plug', 'plug'), ent('sensor.plug_power', 'plug'), ent('camera.cam9', 'cam9'), ent('switch.cam9_privacy', 'cam9'), ent('binary_sensor.cam9_motion', 'cam9'), ent('alarm_control_panel.alarmo', 'alarmo_dev')],
+    states: { ...reg.states, 'switch.plug': st('on', { device_class: 'outlet' }), 'sensor.plug_power': st('35', { device_class: 'power', unit_of_measurement: 'W' }), 'camera.cam9': st('idle'), 'switch.cam9_privacy': st('off'), 'binary_sensor.cam9_motion': st('off', { device_class: 'motion' }), 'alarm_control_panel.alarmo': st('disarmed') } };
+  const a = access({ members: { u1: { buildings: { contabilitate: 'staff' } }, u4: { buildings: { contabilitate: 'guard' } } } }), idx = areaIndex(r2.areas);
+  const cfg: HouseConfig['devices'] = { 'e:switch.plug': { roles: ['manager'] } };
+  const cards = (user: string) => { const sc = scopeFor(a, user), r = scopeRegistry(r2, sc, cfg); return discover(r, { ...defaultConfig(), devices: cfg }).devices.filter(d => deviceShown(d, sc, idx, cfg)); };
+  const staff = cards('u1'), guard = cards('u4');
+  assert.equal(staff.filter(d => d.haDeviceId === 'plug').length, 0, 'the metering socket hidden by its card key: its power sensor does not come back as a card');
+  assert.equal(staff.filter(d => d.haDeviceId === 'cam9').length, 0, 'no camera for «Сотрудник»: nor its privacy switch, nor its motion sensor');
+  assert.ok(!scopeRegistry(r2, scopeFor(a, 'u1'), cfg).entities.some(e => e.entity_id === 'alarm_control_panel.alarmo'), 'Alarmo (its device has no room, as in a real house) is not shown to a role without «Охрана»');
+  assert.ok(scopeRegistry(r2, scopeFor(a, 'u4'), cfg).entities.some(e => e.entity_id === 'alarm_control_panel.alarmo'), '…and is to «Охрана»');
+  assert.ok(guard.some(d => d.haDeviceId === 'cam9' && d.kind === 'camera'), '«Охрана» sees the camera');
+  assert.equal(guard.filter(d => d.haDeviceId === 'plug').length, 0, 'the socket is the manager\'s only');
+  const boss = scopeFor(access({ members: { u2: { buildings: { contabilitate: 'manager' } } } }), 'u2');
+  assert.ok(discover(scopeRegistry(r2, boss, cfg), { ...defaultConfig(), devices: cfg }).devices.some(d => d.key === 'e:switch.plug' && deviceShown(d, boss, idx, cfg)));
 });
 test('one building of several on the screen; the switcher\'s «Все здания» shows them all', () => {
   const a = access({ members: { u1: { buildings: { contabilitate: 'staff', office: 'guest' } } } });

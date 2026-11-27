@@ -10,7 +10,7 @@ import { dayKey } from '../model/config.ts';
 import type { Host } from '../runtime/host.ts';
 import { SaveError, type ConfigStore } from '../runtime/store.ts';
 import { setHouseZone, houseDate } from '../runtime/zone.ts';
-import { setControlPolicy } from '../runtime/actions.ts';
+import { setControlPolicy, noteRefused } from '../runtime/actions.ts';
 import { translator, type Key } from '../i18n/index.ts';
 import { activeModules, MODULES } from '../modules/index.ts';
 import type { HomeDevice } from '../model/discover.ts';
@@ -33,7 +33,9 @@ function useProfile(): string | null {
   useEffect(() => { const on = () => setP(readLayoutPointer()); addEventListener(LAYOUT_POINTER_EVENT, on); addEventListener('storage', on); return () => { removeEventListener(LAYOUT_POINTER_EVENT, on); removeEventListener('storage', on); }; }, []);
   return p;
 }
-const denied = () => Object.assign(new Error('access_view_only'), { code: 'access_view_only' });
+/** Raw socket commands that change something (the rest only read). */
+const WRITES = /^(call_service|execute_script|config\/[a-z_]+\/(update|create|delete|remove)|atom_home\/(light\/sleep|air\/(start|stop)|feeder\/(?!log)[a-z_/]+))$/;
+const denied = () => { noteRefused(); return Object.assign(new Error('access_view_only'), { code: 'access_view_only' }); };
 
 export function AccessGate({ Panel, ...p }: AppProps & { Panel: ComponentType<AppProps & PanelExtras> }) {
   const { registry, config: real, host: bare, store, onConfigChange, configPending = false } = p;
@@ -43,7 +45,8 @@ export function AccessGate({ Panel, ...p }: AppProps & { Panel: ComponentType<Ap
   const [chosen, setChosen] = useState<string | null>(() => read(BUILDING_KEY));
   const t = useMemo(() => translator(real.home.language), [real.home.language]);
   const floorIds = useMemo(() => buildingsOf(registry.floors).map(f => f.floor_id), [registry.floors]);
-  const viewer = viewAs ? { id: viewAs.id, admin: viewAs.admin, profile } : { id: bare.userId ?? null, admin: bare.admin, profile };
+  // «view as» shows the person's own panel: this screen's binding (a tablet's building) is this screen's, not theirs
+  const viewer = viewAs ? { id: viewAs.id, admin: viewAs.admin, profile: null } : { id: bare.userId ?? null, admin: bare.admin, profile };
   const access = resolveAccess(real.access, viewer, dayKey(houseDate()), floorIds);
   // only the signed-in person's own view is remembered, never a «view as»
   useEffect(() => { if (viewAs || configPending) return; write(NARROWED_KEY, access.kind === 'open' ? null : '1'); }, [access.kind, viewAs, configPending]);
@@ -66,17 +69,33 @@ export function AccessGate({ Panel, ...p }: AppProps & { Panel: ComponentType<Ap
   const house = useRef(real); house.current = real;
   const idxNow = useRef(idx); idxNow.current = idx;
   const mayNow = useRef(may), scopeNow = useRef(scope), viewNow = useRef(viewAs); mayNow.current = may; scopeNow.current = scope; viewNow.current = viewAs;
-  const host = useMemo<Host>(() => new Proxy(bare, { get(target, prop) {
-    const v = viewNow.current;
-    if (prop === 'admin') return v ? v.admin : target.admin;
-    if (prop === 'userId') return v ? v.id : target.userId;
-    if (prop === 'call') return async (domain: string, service: string, data: Record<string, unknown>) => {
+  const host = useMemo<Host>(() => {
+    const target = bare;
+    const call = async (domain: string, service: string, data: Record<string, unknown>) => {
       const m = mayNow.current, sc = scopeNow.current; if (m && sc) { const ids = callTargets(data); if (ids.length ? ids.some(id => !m(id)) : !modeAllows(scopeMode(sc), null)) throw denied(); }
       return target.call(domain, service, data);
     };
-    if ((prop === 'airStart' || prop === 'airStop') && target[prop]) return async (x: unknown) => { const sc = scopeNow.current; if (sc && !modeAllows(scopeMode(sc), null)) throw denied(); return (target[prop] as (a: unknown) => Promise<void>)(x); };
-    return Reflect.get(target, prop, target);
-  } }) as Host, [bare]);
+    // the raw socket: what writes is held to the same policy (a lamp's «Выключить через» by its lamp; the registry's labels and anything else
+    // only where a role may press anything); reads (history, statistics, logbook, streams) and the alarm's «Стоп» / «Отложить» go through
+    const ws = target.ws && (async <T,>(msg: Record<string, unknown>): Promise<T> => {
+      const m = mayNow.current, sc = scopeNow.current, type = String(msg.type ?? '');
+      if (m && sc && WRITES.test(type)) { const id = typeof msg.entity_id === 'string' ? msg.entity_id : null; if (id ? !m(id) : !modeAllows(scopeMode(sc), null)) throw denied(); }
+      return target.ws!<T>(msg);
+    });
+    const full = <A,>(f: ((a: A) => Promise<void>) | undefined) => f && (async (a: A) => { const sc = scopeNow.current; if (sc && !modeAllows(scopeMode(sc), null)) throw denied(); return f(a); });
+    const airStart = full(target.airStart), airStop = full(target.airStop);
+    // one function each for the panel's life: effects keyed on the host's methods must not restart on every draw
+    return new Proxy(target, { get(t, prop) {
+      const v = viewNow.current;
+      if (prop === 'admin') return v ? v.admin : t.admin;
+      if (prop === 'userId') return v ? v.id : t.userId;
+      if (prop === 'call') return call;
+      if (prop === 'ws') return ws;
+      if (prop === 'airStart') return airStart;
+      if (prop === 'airStop') return airStop;
+      return Reflect.get(t, prop, t);
+    } }) as Host;
+  }, [bare]);
   const narrowStore = useMemo<ConfigStore | undefined>(() => store && {
     label: store.label, photos: store.photos,
     async load() { const r = await store.load(); house.current = r.config; const sc = scopeNow.current, m = mayNow.current; return sc && m ? { ...r, config: { ...scopeConfig(r.config, sc, idxNow.current, MODULES.map(x => x.id), m), setupTabs: r.config.setupTabs } } : r; },

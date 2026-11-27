@@ -1,4 +1,5 @@
 import type { ComponentChildren } from 'preact';
+import { readOnlyClass } from '../runtime/actions.ts';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Host } from '../runtime/host.ts';
 import type { Key, T } from '../i18n/index.ts';
@@ -107,7 +108,7 @@ export function OfficeSecurityPanel({ s, host, t, lang, now, admin, title }: { s
   const [room, setRoom] = useState<string>('all'), [open, setOpen] = useState<string | null>(null);
   const items = s.rooms.filter(r => room === 'all' || r.id === room).flatMap(r => r.items.map(i => ({ i, room: r.name, guarded: !!r.zone })));
   // the container is the wrapper: a grid cannot query its own width (the tablet layout fell into one cell)
-  return <div className="at-osec-wrap"><div className="at-osec">
+  return <div className={`at-osec-wrap ${readOnlyClass(s.alarm.id, 'alarm_panel')}`}><div className="at-osec">
       <section className={`at-osec-control is-${tone} is-st-${st}`}>
         <Ring kind={ringOf(s)} size={104} progress={total && left !== null ? 1 - left / total : 0} tone={ringTone(s)} />
         <div className="at-osec-name">

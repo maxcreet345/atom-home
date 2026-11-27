@@ -6,7 +6,7 @@ import { normaliseConfig } from '../model/config.ts';
 import { rememberDiscover, roomClimate, NO_ROOM, type Home, type HomeDevice, type Room, type EntityRef } from '../model/discover.ts';
 import { SECTIONS, type Section, type Kind } from '../model/kinds.ts';
 import type { Host, AutomationRow } from '../runtime/host.ts';
-import { actionsFor, serviceCall, customAction, buttonDoes, mayControl, type Action } from '../runtime/actions.ts';
+import { actionsFor, serviceCall, customAction, buttonDoes, mayControl, noteRefused, type Action } from '../runtime/actions.ts';
 import { translator, hasDictionary, type Key } from '../i18n/index.ts';
 import { RoomTile, AccessoryTile, ThermostatTile, ClockTile as PlainClockTile, SceneTile, ValueTile, Section as Block, artOf } from './cards.tsx';
 import { ClockTile, ClockSheet, beep } from '../modules/clock.tsx';
@@ -238,7 +238,7 @@ function AtomPanel({ registry, config: initialConfig, host: bareHost, viewport: 
   const runner: Runner = {
     busy,
     async run(device, action, value) {
-      if (!mayControl(action.entityId, device.kind)) { notify(t('access.viewOnly' as Key)); return false; } // this screen's role does not press it (model/access.ts)
+      if (!mayControl(action.entityId, device.kind)) { noteRefused(); notify(t('access.viewOnly' as Key)); return false; } // this screen's role does not press it (model/access.ts)
       if (action.confirm && !(confirm && confirm.device === device && confirm.action === action)) { if (!hostNow.current.online) { notify(t('ui.offline')); return false; } /* nothing to ask about: the answer could not be carried out */ confirmOpener.current = activeIn(mainRef.current); /* now: once the question is drawn everything under it is inert and has lost the focus */ setConfirm({ device, action, value }); return false; }
       if (action.kind !== 'number' && commands.pending(device.key)) { // ST-3: a double tap sends one command; sliders keep streaming
         // «Выполнить» in the question is not a double tap: another command of the same device is still on its way (the key is the device's),
@@ -851,10 +851,11 @@ function RoomsPage({ rooms, cards, size, admin, go, t }: { rooms: LayItem[]; car
 }
 /** The Lights section: lamps grouped by room (room title, tiles named without the room), «N on» and «all off» on top. */
 function LightsPage({ devices, rooms, runner, toggle, go, t, lang, roomName, admin, cards }: Common & { /** the cards put on this page */ cards: LayItem[]; devices: HomeDevice[]; rooms: Room[]; toggle: (d: HomeDevice) => void; roomName: (id: string) => string }) {
-  const on = devices.filter(d => isOn(d.primary)), lay = useLayout(), row = pageRow('lights', devices.length + cards.length > 0, admin, lay, go, t);
+  // «Выключить весь свет» switches off only the lamps this screen may switch (docs/ACCESS.md); none — no button
+  const on = devices.filter(d => isOn(d.primary)), onFree = on.filter(d => mayControl(d.primary.id, d.kind)), lay = useLayout(), row = pageRow('lights', devices.length + cards.length > 0, admin, lay, go, t);
   if (!devices.length) return <><Empty go={go} t={t} admin={admin} /><PageCards page="lights" cards={cards} admin={admin} go={go} t={t} /></>;
   const order = [...rooms.map(r => r.id), NO_ROOM], groups = [...new Set(devices.map(d => d.roomId))].sort((a, b) => (order.indexOf(a) + 1 || 999) - (order.indexOf(b) + 1 || 999));
-  return <div className="hm-light-page"><div className="hm-toolbar at-lights-bar"><span>{on.length ? t('overview.lights.on', { n: on.length }) : devices.every(d => !d.primary.available || ['unknown', 'unavailable'].includes(d.primary.state)) ? t('state.unavailable') /* not one lamp answers: that is not «Всё выключено» */ : t('overview.lights.off')}</span>{on.length > 0 && <button type="button" className="hm-pill" onClick={() => void runner.run(on[0], { id: 'all_off', label: t('ui.lightsOff'), kind: 'button', domain: 'homeassistant', service: 'turn_off', entityId: on.map(d => d.primary.id).join(','), confirm: true, risk: 'normal' })}>{t('ui.lightsOff')}</button>}</div>
+  return <div className="hm-light-page"><div className="hm-toolbar at-lights-bar"><span>{on.length ? t('overview.lights.on', { n: on.length }) : devices.every(d => !d.primary.available || ['unknown', 'unavailable'].includes(d.primary.state)) ? t('state.unavailable') /* not one lamp answers: that is not «Всё выключено» */ : t('overview.lights.off')}</span>{onFree.length > 0 && <button type="button" className="hm-pill" onClick={() => void runner.run(onFree[0], { id: 'all_off', label: t('ui.lightsOff'), kind: 'button', domain: 'homeassistant', service: 'turn_off', entityId: onFree.map(d => d.primary.id).join(','), confirm: true, risk: 'normal' })}>{t('ui.lightsOff')}</button>}</div>
     {/* «Расставить»: every lamp is a card of the page — arranged, they stand in one grid, each saying its room; not arranged, room by room as before */}
     <LayoutGrid scope={pageScope('lights')} className="ah-grid ah-face at-page-arranged" tail={row}
       items={[...order.flatMap(roomId => { const room = roomName(roomId); return tileItems({ devices: devices.filter(d => d.roomId === roomId), section: 'lights', runner, toggle, go, t, lang, nameOf: d => { const n = canToggle(d) ? plainLamp(inRoomName(d, room), room, t) : d.name; return n === room || n.includes(room) ? n : `${n} · ${room}`; }, roomOf: () => room }); }), ...tileItems({ devices: devices.filter(d => !order.includes(d.roomId)), section: 'lights', runner, toggle, go, t, lang }), ...cards]}

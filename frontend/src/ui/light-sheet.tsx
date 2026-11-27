@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { readOnlyClass } from '../runtime/actions.ts';
 import type { HomeDevice, EntityRef } from '../model/discover.ts';
 import type { Runner } from './sheet.tsx';
 import type { Host } from '../runtime/host.ts';
@@ -76,7 +77,7 @@ export function LightBody({ device, runner, t, lang, host, sleepAt }: Common & {
   const effects = Array.isArray(a.effect_list) ? a.effect_list.filter((x): x is string => typeof x === 'string') : [], effect = typeof a.effect === 'string' ? a.effect : null;
   const state = silent && !shownOn ? silent : !avail ? t('state.unavailable') : shownOn ? [`${pct} %`, temp && k !== null ? `${num(k, lang, 0)}\u00a0K` : null, effect ? effectLabel(effect, t) : null].filter(Boolean).join(' · ') : t('state.off');
   const level = (v: number) => <button type="button" className={`at-light-level ${shownOn && Math.abs(pct - v) <= 2 ? 'is-on' : ''}`} aria-pressed={shownOn && Math.abs(pct - v) <= 2} {...held(false, offline)} disabled={!avail} onClick={() => { setDraft(v); send(v, true); }}>{v === 1 ? <>{t('light.level.night')}<small>1 %</small></> : `${v} %`}</button>;
-  return <div className="at-light-body" data-on={shownOn ? '1' : '0'}>
+  return <div className={`at-light-body ${readOnlyClass(e.id, device.kind)}`} data-on={shownOn ? '1' : '0'}>
     <div className="at-light-hero">
       <VSlider pct={pct} on={shownOn} kelvin={k} disabled={!avail} offline={offline} label={t('action.brightness')} offText={silent ?? t('state.off')} onChange={v => { setDraft(v); send(v); }} onCommit={v => { setDraft(v); send(v, true); }} />
       <div className="at-light-side">
@@ -159,9 +160,9 @@ function SleepRow({ entityId, on, host, sleepAt: mirrored, t }: { entityId: stri
 /** A relay lamp: the big bulb with its bloom, when it was switched, one power row. */
 function RelayHero({ device, runner, t, lang, offline, admin }: Common & { /** the model («Zigbee smart switch (no neutral)») is the installer's (critique 19.11.2026) */ admin?: boolean }) {
   const e = device.primary, on = isOn(e), avail = e.available, busy = runner.busy.has(device.key), at = since(e.lastChanged, lang), known = avail && e.state !== 'unknown';
-  return <>
+  return <div className={readOnlyClass(e.id, device.kind)} style="display:contents">
     <div className={`ah-hero at-relay-hero ${on && avail ? 'is-on' : ''}`}><span className={`ah-hero-glyph at-relay-glyph ${on && avail ? 'is-on' : ''}`}><Icon name="light" size={44} /></span>
       <div className="ah-hero-main"><b>{!avail ? t('state.unavailable') : !known ? t('state.unknown') : t(on ? 'state.on' : 'state.off')}</b><small>{[known && at ? t('light.since', { time: at }) : null, admin ? readableModel(device.model) ?? t('light.relay') : null].filter(Boolean).join(' · ')}</small></div></div>
     <button type="button" className={`ah-power ${on ? 'is-on' : ''}`} {...held(busy, offline)} disabled={!avail} onClick={() => { if (!busy) void runner.run(device, act(e.id, 'toggle', undefined, 'toggle', 'toggle'), !on); }}><span className="ah-power-icon"><Icon name="power" size={22} /></span><strong>{on ? t('ui.turnOff') : t('ui.turnOn')}</strong></button>
-  </>;
+  </div>;
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { readOnlyClass } from '../runtime/actions.ts';
 import type { Host } from '../runtime/host.ts';
 import type { Key, T } from '../i18n/index.ts';
 import { errorText, type Lang } from './format.ts';
@@ -155,7 +156,7 @@ export function VacuumTile({ v, host, t, lang, onOpen, pics }: { v: Vacuum; host
   const progress = v.phase === 'cleaning' || v.phase === 'paused' ? v.progress ?? 0 : 0, can = v.available && host.online !== false;
   const live = useRef(v); live.current = v; const phase = () => live.current.phase, [ask, setAsk] = useState<Question | null>(null);
   const go = () => ui.run('main', () => run(v, act, main.key), undefined, phase); const tileErr = ui.err('main', 'dock');
-  return <div className={`ah-tile hm-card at-vac-tile vz-${tone}`}>
+  return <div className={`ah-tile hm-card at-vac-tile vz-${tone} ${readOnlyClass(v.entity, 'vacuum')}`}>
     {ask && <Ask q={ask} t={t} onClose={() => setAsk(null)} />}
     <button type="button" className="at-vac-open" aria-label={`${tk(t, 'title')}: ${say}${first ? `. ${alertText(first, t, v)}` : ''}. ${tk(t, 'open')}`} onClick={onOpen} />
     <div className="at-vac-tile-head"><strong>{tk(t, 'title')}</strong>{/* a refused command takes the place of the sentence (critique 19.11.2026): the tile keeps its height and the grid around it stays put */}{tileErr ? <small className="is-err">{tileErr}</small> : <><small>{say}</small>{first && <em className={`at-vac-alert is-${first.tone}`}>{alertText(first, t, v)}</em>}</>}<p className="at-vh" role="alert">{tileErr ?? ''}</p></div>
@@ -290,7 +291,7 @@ export function VacuumPanel({ v, host, t, lang, onSettings, pics }: { v: Vacuum;
   const modeName = v.cleaningMode?.value ? word(t, `mode.${v.cleaningMode.value}`, v.cleaningMode.value) : null;
   const mapUrl = useTrimmedMap(mapSrc), [mapBroken, setMapBroken] = useState<string | null>(null), modeHead = useRef<HTMLDivElement>(null), [ask, setAsk] = useState<Question | null>(null);
   const go = () => ui.run('main', () => run(v, act, main.key, chosen, repeat), undefined, phase);
-  return <div className={`at-vac-panel ${stale ? 'is-stale' : ''}`}>
+  return <div className={`at-vac-panel ${stale ? 'is-stale' : ''} ${readOnlyClass(v.entity, 'vacuum')}`}>
     {ask && <Ask q={ask} t={t} onClose={() => setAsk(null)} />}
     <section className={`at-vac-hero vz-${tone}`} aria-label={tk(t, 'title')}>
       <div className="at-vac-hero-top">
@@ -386,7 +387,7 @@ export function VacuumSettings({ v, host, t, lang, onBack }: { v: Vacuum; host: 
   useEffect(() => { setVol(null); }, [v.volume?.value]);
   const lastMin = v.last.begin && v.last.end && v.last.end > v.last.begin ? (v.last.end - v.last.begin) / 60000 : null;
   const emptyLive = !!v.emptyMode && reachable(v.emptyMode.id), volLive = !!v.volume && reachable(v.volume.id);
-  return <div className="at-vac-panel is-settings">
+  return <div className={`at-vac-panel is-settings ${readOnlyClass(v.entity, 'vacuum')}`}>
     <div className="at-vac-set-head"><button type="button" ref={backBtn} className="hm-back" onClick={() => { backFromSettings = true; onBack(); }}><Icon name="back" size={20} />{tk(t, 'title')}</button><h2>{tk(t, 'settings')}</h2><small>{v.model ?? v.name}</small></div>
     <section className="at-vac-sec"><div className="hm-section-head"><h2>{tk(t, 'history')}</h2></div>
       <div className="at-vac-hist">

@@ -1,4 +1,5 @@
 import { useBackLayer } from '../ui/back-layer.ts';
+import { readOnlyClass } from '../runtime/actions.ts';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { createPortal, type ComponentChildren } from 'preact';
 import type { ModuleDef, ModuleEntities } from './types.ts';
@@ -232,7 +233,7 @@ export function ClockSheet({ registry, entities, host, t, lang, runner, onClose,
       <div className="at-clock-tt"><strong>{text || tx('clock.timer')}</strong><small>{fmtDuration(x.durationMs, tx('clock.min'), tx('clock.s'))}{labelStation(labels[x.id]) ? ` · ${tx('clock.withAlice')}` : ''}{x.state === 'paused' ? ` · ${tx('clock.paused')}` : ''}</small></div>
       <button type="button" className="at-clock-ctl" aria-label={x.state === 'paused' ? tx('clock.resume') : tx('clock.pause')} disabled={sending.has(`pause:${x.id}`) || sending.has(`cancel:${x.id}`)} aria-busy={sending.has(`pause:${x.id}`)} onClick={() => void during(`pause:${x.id}`, () => call('timer', x.state === 'paused' ? 'start' : 'pause', { entity_id: x.id }))}><Icon name={x.state === 'paused' ? 'play' : 'pause'} size={18} /></button>
       <button type="button" className="at-clock-ctl is-stop" aria-label={tx('clock.cancel')} disabled={sending.has(`cancel:${x.id}`) || sending.has(`pause:${x.id}`)} aria-busy={sending.has(`cancel:${x.id}`)} onClick={() => void cancelTimer(x)}><Icon name="close" size={18} /></button></div>; };
-  const timersCard = timerIds.length > 0 && <div className="at-clock-card at-clock-timers"><div className="at-clock-card-head"><h3 className="at-h4">{tx('clock.timers')}</h3>{running.length < timerIds.length && <button type="button" className="hm-pill is-primary is-small at-clock-new" onClick={() => setWin('timer')}>+ {tx('clock.newTimer')}</button>}</div>
+  const timersCard = timerIds.length > 0 && <div className={`at-clock-card at-clock-timers ${readOnlyClass(timerIds[0], 'timer')}`}><div className="at-clock-card-head"><h3 className="at-h4">{tx('clock.timers')}</h3>{running.length < timerIds.length && <button type="button" className="hm-pill is-primary is-small at-clock-new" onClick={() => setWin('timer')}>+ {tx('clock.newTimer')}</button>}</div>
     {running.length ? running.map(timerRow) : <p className="at-clock-empty">{tx('clock.noTimers')}</p>}
   </div>;
   // No timers in this house (a new house had none, 26.11.2026): the block stays and says so; an administrator turns them on with one tap

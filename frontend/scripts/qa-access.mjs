@@ -33,6 +33,24 @@ const roomsShown = async page => { await go(page, '#rooms'); return text(page); 
 const lightsShown = async page => { await go(page, '#lights'); const t = await text(page); return lightNames.filter(n => t.includes(n)); };
 /** the controls a page draws: switches, tiles that switch on a tap (aria-pressed), sliders */
 const switches = page => page.evaluate(() => [...document.querySelectorAll('.hm-main [role=switch], .hm-main [aria-pressed], .hm-main input[type=range]')].filter(e => !e.closest('.hm-toolbar') /* a filter of the list («Внимание»), not a device */).length);
+/** Opens every card of the page and presses every enabled button inside each sheet (not its «×»): on a screen that only looks, no press may
+ * be refused with «только просмотр» — a refusal means a control was drawn that should not have been. */
+const stats = { sheets: 0, pressed: 0 };
+async function pressAll(page, label) {
+  // the panel counts every press it refuses for the role (runtime/actions.ts noteRefused): a new one means a drawn control was refused
+  let seen = await page.evaluate(() => window.__atomAccessRefused ?? 0);
+  const said = async () => { const n = await page.evaluate(() => window.__atomAccessRefused ?? 0), was = seen; seen = n; return n > was; };
+  for (const b of await page.$$('.hm-main .ah-tile-hit, .hm-main .rm-tile-open, .hm-main .at-light-row-hit, .hm-main .hm-light-hit, .hm-main .at-heat-open, .hm-main .at-vac-open')) {
+    await b.click({ force: true }).catch(() => undefined); await page.waitForTimeout(200);
+    if (await said()) { check(`${label}: a tile was a control`, false); }
+    const inSheet = await page.$$('.hm-sheet button:not(.hm-sheet-close):not([aria-label*="Закрыть"]):not([disabled]), .hm-sheet [role=switch], .hm-sheet input[type=range]');
+    if (inSheet.length || await page.$('.hm-sheet')) stats.sheets++;
+    for (const x of inSheet) { if (!(await x.isVisible().catch(() => false))) continue; stats.pressed++; await x.click({ force: true, timeout: 1000 }).catch(() => undefined); await page.waitForTimeout(120); if (await said()) { check(`${label}: a sheet drew a control that is refused`, false, await x.evaluate(e => e.outerHTML.slice(0, 160))); break; } }
+    await page.keyboard.press('Escape'); await page.waitForTimeout(80); await page.keyboard.press('Escape'); await page.waitForTimeout(80);
+  }
+  // the page's own buttons too (a panel with its own controls)
+  for (const x of await page.$$('.hm-main .hm-page button:not([disabled])')) { if (!(await x.isVisible().catch(() => false))) continue; stats.pressed++; await x.click({ force: true, timeout: 1000 }).catch(() => undefined); await page.waitForTimeout(100); if (await said()) { check(`${label}: the page drew a control that is refused`, false, await x.evaluate(e => e.outerHTML.slice(0, 160))); break; } await page.keyboard.press('Escape'); }
+}
 try {
   // 1. the administrator sees everything, has «Доступ» in the settings, and cannot be locked out
   for (const [theme, w, h] of [['light', 1070, 764], ['dark', 1070, 764], ['light', 360, 792], ['dark', 360, 792]]) {
@@ -108,15 +126,41 @@ try {
     await page.evaluate(() => { window.atomPreview.host.log.length = 0; });
     for (const hash of ['#home', '#lights', '#systems', '#climate', '#rooms?room=contabilitate', '#rooms?room=ceo']) {
       await go(page, hash); check(`guest in «Бухгалтерия»: ${hash} draws no control`, await switches(page) === 0, await page.evaluate(() => [...document.querySelectorAll('.hm-main [role=switch], .hm-main [aria-pressed], .hm-main input[type=range]')].map(e => e.outerHTML.slice(0, 160) + ' IN ' + e.parentElement?.className).join(' | ')));
-      for (const b of await page.$$('.hm-main .ah-tile-hit, .hm-main .rm-tile-open, .hm-main .at-light-row-hit')) { await b.click({ force: true }).catch(() => undefined); await page.waitForTimeout(200);
-        const inSheet = await page.evaluate(() => [...document.querySelectorAll('.hm-sheet [role=switch], .hm-sheet input[type=range], .hm-sheet .hm-stepper button')].length);
-        if (inSheet) check(`guest in «Бухгалтерия»: a sheet on ${hash} draws no control`, false, String(inSheet));
-        await page.keyboard.press('Escape'); await page.waitForTimeout(100); }
+      await pressAll(page, `guest in «Бухгалтерия» ${hash}`);
     }
     const sent = await page.evaluate(() => window.atomPreview.host.log.filter(x => x.domain !== 'ws' || !/^(history|logbook|energy|recorder)|\/state$|\/get$|^config\/auth\/list$/.test(x.service)));
+    check(`guest in «Бухгалтерия»: the walk really pressed things (${stats.sheets} sheets opened, ${stats.pressed} buttons pressed)`, stats.sheets >= 4 && stats.pressed >= 10, JSON.stringify(stats));
     check('guest in «Бухгалтерия»: nothing was sent to the house', sent.length === 0, JSON.stringify(sent));
     await go(page, '#rooms?room=contabilitate'); await page.screenshot({ path: `${out}/guest-room-light-1070.png` });
     await close(); }
+  // 3c. the alarm panel (Alarmo, no room): «Сотрудник» does not see it at all; a role with «Охрана» but «только просмотр» sees it with no button
+  { const { page, close } = await open('u_faur');
+    await go(page, '#security'); const t = await text(page);
+    check('faur («Сотрудник», no «Охрана»): no alarm panel, no «Безопасность»', !(await page.$('.at-sec-panel, .at-osec-wrap')) && !(await page.$('.at-sec-tile')), t.slice(0, 200));
+    await close(); }
+  { const watch = { ...ACCESS, roles: { ...ACCESS.roles, watch: { name: 'Наблюдатель', sections: ['security'], modules: ['security'], mode: 'view' } }, members: { u_faur: { buildings: { contabilitate: 'watch' } } } };
+    const { page, close } = await open('u_faur', { access: watch });
+    await page.evaluate(() => { window.atomPreview.host.log.length = 0; });
+    await go(page, '#security');
+    const panel = await page.evaluate(() => { const p = document.querySelector('.at-sec-panel, .at-osec-wrap'); return p ? { readonly: p.classList.contains('is-readonly'), shown: [...p.querySelectorAll('button, [role=switch], input, select')].filter(e => e.getClientRects().length && !/-open|-hit/.test(e.className)).length } : null; });
+    check('a watcher (view + «Охрана»): the alarm panel is there, read-only, no button drawn', !!panel && panel.readonly && panel.shown === 0, JSON.stringify(panel));
+    await pressAll(page, 'watcher #security');
+    const sent = await page.evaluate(() => window.atomPreview.host.log.filter(x => x.domain !== 'ws' || !/^(history|logbook|energy|recorder)|\/state$|\/get$|^config\/auth\/list$/.test(x.service)));
+    check('a watcher: nothing was sent to the house', sent.length === 0, JSON.stringify(sent));
+    await page.screenshot({ path: `${out}/watcher-security-light-1070.png` });
+    await close(); }
+  // 3d. a bound tablet: vasile has nothing of his own, but on «Планшет бухгалтерия» he sees that building with the tablet's role
+  { const bound = { ...ACCESS, profiles: { 'planshet-buh': { building: 'contabilitate', role: 'tablet' } } };
+    const ctx = await browser.newContext({ viewport: { width: 1070, height: 764 } }), page = await ctx.newPage();
+    page.on('pageerror', e => report.errors.push(`tablet: ${e.message}`));
+    await page.goto(origin + '/#home'); await page.waitForFunction(() => window.ready);
+    await page.evaluate(async ([cfg, users]) => { localStorage.setItem('atom-home:layout-device', 'planshet-buh'); localStorage.setItem('atom-home:preview-layouts', JSON.stringify({ profiles: { 'planshet-buh': { name: 'Планшет бухгалтерия', scopes: {}, rev: 1, updated: 0 } } })); window.__userId = 'u_vasile'; window.__authUsers = users; window.__beforeDraw = h => h.setAdmin(false); window.fx = await (await fetch('/fixture.json')).json(); await window.mountPreview(document.getElementById('root'), window.fx, cfg); }, [config('light', bound), USERS]);
+    await page.waitForSelector('.at-shell'); await page.waitForTimeout(500);
+    check('bound tablet: vasile sees «Бухгалтерия» there, by the tablet\'s role', JSON.stringify(await lightsShown(page)) === JSON.stringify(['Свет бухгалтерии', 'Свет главбуха']));
+    await go(page, '#lights'); check('bound tablet («Планшет»): its lights can be switched', await switches(page) > 0);
+    await go(page, '#climate'); await page.waitForTimeout(200);
+    await page.screenshot({ path: `${out}/tablet-bound-light-1070.png` });
+    await ctx.close(); }
   // 4. vasile: nothing assigned — the calm screen, nothing of the house
   for (const [theme, w, h] of [['light', 1070, 764], ['dark', 360, 792], ['light', 360, 792], ['dark', 1070, 764]]) {
     const { page, close } = await open('u_vasile', { theme, w, h });

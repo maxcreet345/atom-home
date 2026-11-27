@@ -67,7 +67,7 @@ export function checkImport(raw: string): { ok: true; config: HouseConfig; warni
   if (!raw.trim()) return { ok: false, problem: 'empty' };
   if (raw.length > 512 * 1024) return { ok: false, problem: 'too_large' };
   let v: unknown; try { v = JSON.parse(raw); } catch { return { ok: false, problem: 'not_json' }; }
-  const maps = ['rooms', 'devices', 'entities', 'modules', 'sections', 'energy', 'profileInstances'], lists = ['buttons', 'alarms'];
+  const maps = ['rooms', 'devices', 'entities', 'modules', 'sections', 'energy', 'profileInstances', 'access'], lists = ['buttons', 'alarms'];
   if (!plainObject(v) || v.schemaVersion !== 1 || !plainObject(v.home) || typeof v.home.name !== 'string' || maps.some(k => v[k] !== undefined && !plainObject(v[k])) || lists.some(k => v[k] !== undefined && !Array.isArray(v[k]))) return { ok: false, problem: 'not_config' };
   return { ok: true, ...normaliseConfig(v) };
 }

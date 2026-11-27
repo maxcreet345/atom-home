@@ -42,6 +42,11 @@ let controlPolicy: ((entityId: string, kind?: string | null) => boolean) | null 
 export function setControlPolicy(p: ((entityId: string, kind?: string | null) => boolean) | null): void { controlPolicy = p; }
 /** Whether this entity may be commanded on this screen (`kind`: the card's kind when known — a socket is the `switch` domain). */
 export const mayControl = (entityId: string, kind?: string | null): boolean => !controlPolicy || controlPolicy(entityId, kind);
+/** A panel that draws its own controls (the alarm, the heating, the office climate, the robot, the timers) and stands for an entity this screen
+ * may not command gets `is-readonly`: its buttons, switches and fields are not drawn (styles/atom.css), its readings stay. */
+/** Counts the presses this screen refused for its role (the preview's QA reads it: a refusal means a control was drawn that should not be). */
+export function noteRefused(): void { const g = globalThis as { __atomAccessRefused?: number }; g.__atomAccessRefused = (g.__atomAccessRefused ?? 0) + 1; }
+export const readOnlyClass = (entityId: string | null | undefined, kind?: string | null): string => entityId && !mayControl(entityId, kind) ? 'is-readonly' : '';
 /** White-listed actions for the device's primary entity: only standard HA services that match the entity's declared features. */
 export function actionsFor(device: HomeDevice): Action[] {
   if (!mayControl(device.primary.id, device.kind)) return [];

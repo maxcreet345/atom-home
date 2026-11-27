@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { readOnlyClass } from '../runtime/actions.ts';
 import { ClimateSensorsBlock } from './climate-sensors.tsx';
 import type { ClimateSensors } from '../model/climate-sensors.ts';
 import type { Host } from '../runtime/host.ts';
@@ -177,7 +178,7 @@ export function HeatingTile({ h, host, t, lang, onOpen, now }: { h: Heating; hos
     {mini === 'w' && <Err text={ui.err('house')} />}
     {mini === 't' && <ul className="at-heat-mini-rooms">{h.rooms.map(r => <MiniRoom r={r} t={t} lang={lang} now={now} />)}</ul>}
   </div>;
-  return <div className={`ah-tile hm-card at-heat-tile hz-${tone}`} data-mode={h.mode}>
+  return <div className={`ah-tile hm-card at-heat-tile hz-${tone} ${readOnlyClass(h.thermostat, 'climate')}`} data-mode={h.mode}>
     {open}
     <span className="at-heat-tile-buddy"><Radiator tone={tone} /></span>
     <div className="at-heat-tile-head"><strong>{tk(t, 'title')}</strong><small>{sentence(h, t, lang)}</small><Err text={ui.err('house', 'mode', 'power')} /></div>
@@ -200,7 +201,7 @@ function RoomCard({ r, h, act, t, lang, now, ui, offline }: { r: HeatRoom; h: He
   const own = h.mode === 'auto' && r.override, gap = r.current !== null && st.shown !== null ? st.shown - r.current : null;
   const fill = r.current === null || st.shown === null ? 0 : Math.max(4, Math.min(100, 100 - Math.max(0, st.shown - r.current) / 3 * 100));
   const openWins = r.windows.filter(w => w.open), deaf = r.windows.filter(w => !w.known);
-  return <article className={`at-heat-room is-${r.action}`} aria-label={r.name} data-room={r.key} tabIndex={-1}>
+  return <article className={`at-heat-room is-${r.action} ${readOnlyClass(r.trv || h.thermostat, 'climate')}`} aria-label={r.name} data-room={r.key} tabIndex={-1}>
     <header><strong>{r.name}</strong><span className={`at-heat-badge is-${r.action}`}>{r.action === 'heating' && <i className="at-heat-badge-wave" aria-hidden="true" />}{roomWord(r, t, now)}</span></header>
     <div className="at-heat-room-nums">
       <div className="at-heat-now"><b>{r.action === 'offline' ? '—' : <>{nowT(r.current, lang)}<i>°</i></>}</b><small>{r.sensor === 'head' ? tk(t, 'atHead') : r.sensor === 'lost' ? tk(t, 'lastKnown') : tk(t, 'inRoom')}</small></div>
@@ -288,7 +289,7 @@ export function HeatingPanel({ h, host, t, lang, now, sensors }: { h: Heating; h
   const wins = h.rooms.flatMap(r => r.windows), openN = wins.filter(w => w.open).length, deafN = wins.filter(w => !w.known).length;
   // opened from a tile that reported a problem: the room with the problem comes into view and takes the focus
   useEffect(() => { const key = focusRoom; focusRoom = null; if (!key) return; const el = root.current?.querySelector<HTMLElement>(`[data-room="${key}"]`); if (!el) return; const raf = requestAnimationFrame(() => { el.scrollIntoView({ block: 'center' }); el.focus({ preventScroll: true }); }); return () => cancelAnimationFrame(raf); }, []);
-  return <div className={`at-heat-panel ${offline ? 'is-stale' : ''}`} ref={root}>
+  return <div className={`at-heat-panel ${offline ? 'is-stale' : ''} ${readOnlyClass(h.thermostat, 'climate')}`} ref={root}>
     <section className={`at-heat-hero hz-${tone}`} aria-label={tk(t, 'title')}>
       <div className="at-heat-hero-text"><h2>{tk(t, 'title')}</h2>{out && <small>{out}</small>}<p className="at-heat-hero-say">{sentence(h, t, lang)}</p>{offline && <p className="at-heat-stale">{tk(t, 'stale')}</p>}<Err text={ui.err('house', 'mode', 'power')} /></div>
       <span className="at-heat-hero-buddy"><Radiator tone={tone} /></span>

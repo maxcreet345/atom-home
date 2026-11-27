@@ -72,6 +72,9 @@ const ru = {
   'access.who': 'Кому видно',
   'access.who.all': 'Всем, у кого есть комната',
   'access.who.roles': 'Только ролям…',
+  'access.import.off': 'Разделение по зданиям будет выключено: все увидят все здания.',
+  'access.import.on': 'Разделение по зданиям будет включено, как в файле.',
+  'access.reset.kept': 'Разделение по зданиям останется как есть.',
 };
 const en: typeof ru = {
   'setup.access': 'Access',
@@ -144,6 +147,9 @@ const en: typeof ru = {
   'access.who': 'Who sees it',
   'access.who.all': 'Everyone who has the room',
   'access.who.roles': 'Only roles…',
+  'access.import.off': 'The split by building will be switched off: everyone will see every building.',
+  'access.import.on': 'The split by building will be switched on, as in the file.',
+  'access.reset.kept': 'The split by building stays as it is.',
 };
 const ro: typeof ru = {
   'setup.access': 'Acces',
@@ -216,5 +222,8 @@ const ro: typeof ru = {
   'access.who': 'Cui e vizibil',
   'access.who.all': 'Tuturor celor care au camera',
   'access.who.roles': 'Doar rolurilor…',
+  'access.import.off': 'Împărțirea pe clădiri va fi oprită: toți vor vedea toate clădirile.',
+  'access.import.on': 'Împărțirea pe clădiri va fi pornită, ca în fișier.',
+  'access.reset.kept': 'Împărțirea pe clădiri rămâne cum este.',
 };
 export const wordsAccess = { ru, en, ro };

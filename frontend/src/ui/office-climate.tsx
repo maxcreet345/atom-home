@@ -1,4 +1,5 @@
 import type { Host } from '../runtime/host.ts';
+import { readOnlyClass } from '../runtime/actions.ts';
 import type { Key, T } from '../i18n/index.ts';
 import type { Lang } from './format.ts';
 import { Icon } from './primitives.tsx';
@@ -84,7 +85,7 @@ export function OfficeClimateTile({ c, host, t, lang, onOpen, now }: { c: Office
     <span className="at-heat-mini-set"><BigTarget c={c} t={t} lang={lang} admin={admin} /></span>
     {mini === 't' && <ul className="at-heat-mini-rooms">{c.zones.map(z => <li className={`at-heat-mini-room is-${z.action}`}><span aria-hidden="true">{z.name}</span><b aria-hidden="true">{z.action === 'offline' ? '—' : <>{nowT(z.current, lang)}<i>°</i></>}</b><span className="at-vh">{`${z.name}: ${nowT(z.current, lang)}°, ${zoneWord(z, t)}`}</span></li>)}</ul>}
   </div>;
-  return <div className={`ah-tile hm-card at-heat-tile at-oc-tile hz-${tone}`} data-mode={c.mode}>
+  return <div className={`ah-tile hm-card at-heat-tile at-oc-tile hz-${tone} ${readOnlyClass(c.helpers.work)}`} data-mode={c.mode}>
     {open}
     <span className="at-heat-tile-buddy"><AcBuddy tone={tone} /></span>
     <div className="at-heat-tile-head"><strong>{tk(t, 'title')}</strong><small>{sentence(c, t)}</small></div>
@@ -146,7 +147,7 @@ export function OfficeClimatePanel({ c, host, t, lang, now }: { c: OfficeClimate
   const tone = officeTone(c), ui = useAct(t), heating = officeHeating(c), admin = host.admin;
   const out = c.outdoor.temp !== null ? tk(t, 'outside', { v: setT(Math.round(c.outdoor.temp) || 0, lang).replace('-', '−') }) : '';
   const power = c.zones.reduce((a, z) => a + (z.ac.power ?? 0), 0);
-  return <div className="at-heat-panel at-oc-panel">
+  return <div className={`at-heat-panel at-oc-panel ${readOnlyClass(c.helpers.work)}`}>
     <section className={`at-heat-hero hz-${tone}`} aria-label={tk(t, 'title')}>
       <div className="at-heat-hero-text"><h2>{tk(t, 'title')}</h2>{out && <small>{out}</small>}<p className="at-heat-hero-say">{sentence(c, t)}</p></div>
       <span className="at-heat-hero-buddy"><AcBuddy tone={tone} /></span>

@@ -1167,3 +1167,6 @@
 .hm-shell .at-access-grants .at-access-all{grid-column:1/-1}
 .hm-shell .at-access-tablet{flex-wrap:wrap}
 .hm-shell .at-access-whosees{grid-column:1/-1}
+/* a panel with its own controls standing for what this screen may not command (runtime/actions.ts readOnlyClass, docs/ACCESS.md): the readings
+   stay, the buttons, switches and fields are not drawn — only what opens the panel */
+.hm-shell .is-readonly :is(button,[role=switch],input,select,textarea):not([class*="-open"]):not([class*="-hit"]):not([data-keep]){display:none!important}

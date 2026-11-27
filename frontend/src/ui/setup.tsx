@@ -344,6 +344,11 @@ function ButtonsTab({ config, patch, save, ask, t, registry, lock }: { config: H
     </section>
   </div>;
 }
+/** What an import does to the split by building, said in its question: switched off, it opens every building to everyone (docs/ACCESS.md). */
+function accessChange(was: HouseConfig, will: HouseConfig, t: T): string {
+  const a = !!was.access?.enabled, b = !!will.access?.enabled;
+  return a && !b ? ' ' + t('access.import.off' as Key) : !a && b ? ' ' + t('access.import.on' as Key) : '';
+}
 function HomeTab({ config, fresh, patch, ask, onImport, t, lock, onReorder }: { /** the tab order is about to change: the open tab is named in the address first, so it stays open */ onReorder?: () => void; config: HouseConfig; /** the settings as they are at the moment of the answer */ fresh: () => HouseConfig; patch: Patch; ask: AskFn; /** saves the whole settings and answers whether the house has them */ onImport: (cfg: HouseConfig) => Promise<boolean>; t: T; lock?: boolean }) {
   const [text, setText] = useState(''), [err, setErr] = useState(''), errId = useId();
   // ST-03: the pasted text stays until the house has it — a refused import leaves it, byte for byte, to send again; a success clears only the
@@ -362,7 +367,7 @@ function HomeTab({ config, fresh, patch, ask, onImport, t, lock, onReorder }: { 
     // a price dated after the house's today is what the tariff editor itself refuses: a pasted text does not bring it in either, and it is counted among the skipped
     const kept = normaliseTariffs(r.config.energy.tariffs, dayKey(houseDate())), future = r.config.energy.tariffs.length - kept.length, next = future ? { ...r.config, energy: { tariffs: kept } } : r.config, dropped = r.warnings.length + future;
     setErr(''); const was = configCounts(config), will = configCounts(next), sent = version.current;
-    ask({ text: `${t('setup.import.ask', { r0: was.rooms, r1: will.rooms, d0: was.devices, d1: will.devices, b0: was.buttons, b1: will.buttons, a0: was.alarms, a1: will.alarms, t0: was.tariffs, t1: will.tariffs })}${dropped ? ' ' + t('setup.import.dropped', { n: dropped }) : ''}`, yes: t('setup.import.yes'), run: () => send(next, sent) });
+    ask({ text: `${t('setup.import.ask', { r0: was.rooms, r1: will.rooms, d0: was.devices, d1: will.devices, b0: was.buttons, b1: will.buttons, a0: was.alarms, a1: will.alarms, t0: was.tariffs, t1: will.tariffs })}${dropped ? ' ' + t('setup.import.dropped', { n: dropped }) : ''}${accessChange(config, next, t)}`, yes: t('setup.import.yes'), run: () => send(next, sent) });
   };
   const logo = (v: string) => { const url = v.trim(); if (url && !/^(data:image\/(png|jpeg|webp);base64,|\/local\/|https?:\/\/)/.test(url)) return t('setup.err.logo'); patch(c => { c.home.logo = url || null; }); };
   return <div className="at-setup-home" inert={lock}>
@@ -379,7 +384,7 @@ function HomeTab({ config, fresh, patch, ask, onImport, t, lock, onReorder }: { 
         <button type="button" className="hm-icon-btn" aria-label={`${t('setup.tabDown')}: ${t(`setup.${id}` as Key)}`} aria-disabled={i === order.length - 1 || undefined} onClick={() => { if (i === order.length - 1) return; onReorder?.(); patch(c => { const o = setupTabOrder(c.setupTabs), at = o.indexOf(id); if (at >= 0 && at < o.length - 1) { [o[at + 1], o[at]] = [o[at], o[at + 1]]; c.setupTabs = o; } }); }}><Icon name="next" size={18} /></button></div>))(setupTabOrder(config.setupTabs))}
     </details>
     <h3 className="at-setup-h">{t('setup.group.copy')}</h3>
-    <div className="hm-chips"><button type="button" data-action="export" aria-disabled={sending || undefined} onClick={() => { if (busy.current) return; version.current++; setText(exportConfig(config)); setErr(''); }}>{t('setup.export')}</button><button type="button" data-action="import" ref={importer} onClick={doImport} disabled={!text.trim()} aria-disabled={sending || undefined} aria-busy={sending || undefined}>{t('setup.import')}</button><button type="button" data-action="reset" aria-disabled={sending || undefined} onClick={() => { if (!busy.current) ask({ text: t('setup.reset.ask'), yes: t('setup.reset.yes'), run: () => send(normaliseConfig({ schemaVersion: 1, home: fresh().home }).config) }); }}>{t('setup.reset')}</button></div>
+    <div className="hm-chips"><button type="button" data-action="export" aria-disabled={sending || undefined} onClick={() => { if (busy.current) return; version.current++; setText(exportConfig(config)); setErr(''); }}>{t('setup.export')}</button><button type="button" data-action="import" ref={importer} onClick={doImport} disabled={!text.trim()} aria-disabled={sending || undefined} aria-busy={sending || undefined}>{t('setup.import')}</button><button type="button" data-action="reset" aria-disabled={sending || undefined} onClick={() => { if (!busy.current) ask({ text: `${t('setup.reset.ask')}${fresh().access?.enabled ? ' ' + t('access.reset.kept' as Key) : ''}`, yes: t('setup.reset.yes'), run: () => { const f = fresh(); send(normaliseConfig({ schemaVersion: 1, home: f.home, ...(f.access ? { access: f.access } : {}) }).config); } }); /* the split by building stays: a reset of the look must not open every building to everyone (docs/ACCESS.md) */ }}>{t('setup.reset')}</button></div>
     {err && <p className="hm-badge tone-danger at-setup-err" role="alert" id={errId}>{err}</p>}
     <label className="at-field"><span>{t('setup.json')}</span><textarea ref={json} className="at-json" rows={12} value={text} onInput={e => { version.current++; setText((e.target as HTMLTextAreaElement).value); if (err) setErr(''); }} aria-invalid={err ? true : undefined} aria-describedby={err ? errId : undefined} {...CODE} /></label>
   </div>;

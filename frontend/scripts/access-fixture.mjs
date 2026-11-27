@@ -19,6 +19,8 @@ export function accessHouse() {
   add('sensor.showroom_temperature', 'Температура шоурума', 'showroom_evrinet', '19.8', { device_class: 'temperature', unit_of_measurement: '°C', state_class: 'measurement' }, 'TH');
   // a socket that belongs to no room: only the administrator sees it
   add('switch.loose', 'Розетка без комнаты', null, 'on', { device_class: 'outlet' });
+  // Alarmo's panel has no room, as in the office: only a role with «Охрана» sees it
+  fx.entities.push({ ...ent('alarm_control_panel.alarmo'), platform: 'alarmo' }); fx.states['alarm_control_panel.alarmo'] = row('disarmed', { friendly_name: 'Охрана', code_arm_required: false, supported_features: 63 });
   fx.entities.push(ent('person.ararat')); fx.states['person.ararat'] = row('home', { friendly_name: 'Арарат' });
   fx.entities.push(ent('sun.sun')); fx.states['sun.sun'] = row('below_horizon', { friendly_name: 'Sun' });
   return fx;
