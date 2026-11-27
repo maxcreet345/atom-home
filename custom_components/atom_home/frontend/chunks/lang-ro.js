@@ -27,6 +27,223 @@ var e = {
 	ro: { "setup.alwaysAsks": "Această acțiune cere mereu confirmare" }
 }, r = {
 	ru: {
+		"setup.access": "Доступ",
+		"access.viewOnly": "Здесь только просмотр — команда не отправлена",
+		"access.none.title": "Доступ ещё не назначен",
+		"access.none.text": "Обратитесь к администратору: он выберет, какие здания вам видны.",
+		"access.expired.title": "Срок доступа закончился",
+		"access.pending": "Загружаю настройки доступа…",
+		"access.viewingAs": "Вы смотрите как {name}",
+		"access.exit": "Выйти",
+		"access.building": "Здание",
+		"access.allBuildings": "Все здания",
+		"access.noBuilding": "Без здания",
+		"access.role.manager": "Управляющий",
+		"access.role.staff": "Сотрудник",
+		"access.role.guard": "Охрана",
+		"access.role.tablet": "Планшет",
+		"access.role.guest": "Гость",
+		"access.mode.full": "Всё",
+		"access.mode.lights": "Только свет и розетки",
+		"access.mode.view": "Только просмотр",
+		"access.module.cameras": "Камеры",
+		"access.module.security": "Охрана",
+		"access.module.energy": "Энергия",
+		"access.module.clock": "Часы и будильники",
+		"access.module.climate": "Климат и отопление",
+		"access.honest": "Это разделение интерфейса Atom Home; приложение HA, история и журнал по-прежнему показывают всё.",
+		"access.kiosk": "Чтобы сотрудники не уходили в старые дашборды, скройте их и боковое меню Home Assistant через kiosk-mode.js.",
+		"access.enabled": "Разделение по зданиям",
+		"access.enabled.off": "Выключено: все видят всё, как раньше.",
+		"access.enabled.on": "Включено: каждый видит только свои здания. Администраторы видят всё.",
+		"access.wizard.text": "Стартовый вариант: всем текущим пользователям, кроме администраторов, — роль «Сотрудник» во всех зданиях. Никто не потеряет панель внезапно; потом поправите по людям.",
+		"access.wizard.yes": "Включить",
+		"access.disable.ask": "Выключить разделение? Все снова увидят все здания.",
+		"access.disable.yes": "Выключить",
+		"access.newUsers": "Новые пользователи видят",
+		"access.newUsers.none": "Ничего",
+		"access.newUsers.default": "Здание по умолчанию",
+		"access.defaultBuilding": "Здание по умолчанию",
+		"access.defaultRole": "Роль по умолчанию",
+		"access.buildings": "Здания",
+		"access.buildings.hint": "Здания — это этажи Home Assistant, комнаты — их зоны. Они меняются в Home Assistant: Настройки → Зоны.",
+		"access.noFloors": "В Home Assistant нет этажей: весь дом — одно здание. Заведите этажи, чтобы разделить доступ.",
+		"access.unassigned.hint": "Эти зоны не привязаны к этажу. Их видят только люди с «Все здания». Привяжите этаж в Home Assistant.",
+		"access.areas": "{n} зон|{n} зона|{n} зоны|{n} зон",
+		"access.roles": "Роли",
+		"access.role.name": "Название",
+		"access.role.sections": "Разделы",
+		"access.role.modules": "Карточки",
+		"access.role.mode": "Управление",
+		"access.role.copy": "Копировать",
+		"access.role.delete": "Удалить",
+		"access.role.deleteAsk": "Удалить роль «{name}»? У людей и планшетов с ней пропадёт доступ к этим зданиям.",
+		"access.role.copyName": "{name} (копия)",
+		"access.people": "Люди",
+		"access.people.loading": "Загружаю пользователей Home Assistant…",
+		"access.people.fail": "Не удалось получить список пользователей Home Assistant.",
+		"access.noAccess": "Нет доступа",
+		"access.roleIn": "Роль в здании «{building}»: {name}",
+		"access.until": "Доступ до",
+		"access.viewAs": "Посмотреть глазами",
+		"access.admin": "Администратор — видит всё",
+		"access.localOnly": "только локальный вход",
+		"access.inactive": "отключён",
+		"access.expiredOn": "доступ закончился",
+		"access.tablets": "Планшеты",
+		"access.tablets.hint": "Названные экраны дома (раскладки). Здание и роль экрана главнее роли того, кто на нём вошёл.",
+		"access.tablets.none": "Пока ни один экран не назван: это делается кнопкой «Упорядочить» на главной.",
+		"access.tablet.free": "По пользователю",
+		"access.who": "Кому видно",
+		"access.who.all": "Всем, у кого есть комната",
+		"access.who.roles": "Только ролям…"
+	},
+	en: {
+		"setup.access": "Access",
+		"access.viewOnly": "View only here — nothing was sent",
+		"access.none.title": "No access assigned yet",
+		"access.none.text": "Ask the administrator to choose which buildings you can see.",
+		"access.expired.title": "Your access has ended",
+		"access.pending": "Loading the access settings…",
+		"access.viewingAs": "You are viewing as {name}",
+		"access.exit": "Exit",
+		"access.building": "Building",
+		"access.allBuildings": "All buildings",
+		"access.noBuilding": "No building",
+		"access.role.manager": "Manager",
+		"access.role.staff": "Staff",
+		"access.role.guard": "Security",
+		"access.role.tablet": "Tablet",
+		"access.role.guest": "Guest",
+		"access.mode.full": "Everything",
+		"access.mode.lights": "Lights and sockets only",
+		"access.mode.view": "View only",
+		"access.module.cameras": "Cameras",
+		"access.module.security": "Security",
+		"access.module.energy": "Energy",
+		"access.module.clock": "Clock and alarms",
+		"access.module.climate": "Climate and heating",
+		"access.honest": "This splits the Atom Home interface only; the HA app, history and logbook still show everything.",
+		"access.kiosk": "To keep staff out of the old dashboards, hide them and the Home Assistant sidebar with kiosk-mode.js.",
+		"access.enabled": "Split by building",
+		"access.enabled.off": "Off: everyone sees everything, as before.",
+		"access.enabled.on": "On: everyone sees only their buildings. Administrators see everything.",
+		"access.wizard.text": "Starting point: every current user except administrators gets «Staff» in every building, so nobody loses the panel at once; adjust person by person later.",
+		"access.wizard.yes": "Switch on",
+		"access.disable.ask": "Switch the split off? Everyone will see every building again.",
+		"access.disable.yes": "Switch off",
+		"access.newUsers": "New users see",
+		"access.newUsers.none": "Nothing",
+		"access.newUsers.default": "The default building",
+		"access.defaultBuilding": "Default building",
+		"access.defaultRole": "Default role",
+		"access.buildings": "Buildings",
+		"access.buildings.hint": "Buildings are Home Assistant floors, rooms are their areas. Change them in Home Assistant: Settings → Areas.",
+		"access.noFloors": "Home Assistant has no floors: the whole house is one building. Add floors to split the access.",
+		"access.unassigned.hint": "These areas have no floor. Only people with «All buildings» see them. Assign a floor in Home Assistant.",
+		"access.areas": "{n} areas|{n} area|{n} areas|{n} areas",
+		"access.roles": "Roles",
+		"access.role.name": "Name",
+		"access.role.sections": "Pages",
+		"access.role.modules": "Cards",
+		"access.role.mode": "Control",
+		"access.role.copy": "Copy",
+		"access.role.delete": "Delete",
+		"access.role.deleteAsk": "Delete the role «{name}»? People and tablets with it lose those buildings.",
+		"access.role.copyName": "{name} (copy)",
+		"access.people": "People",
+		"access.people.loading": "Loading Home Assistant users…",
+		"access.people.fail": "Could not read the Home Assistant users.",
+		"access.noAccess": "No access",
+		"access.roleIn": "Role in «{building}»: {name}",
+		"access.until": "Access until",
+		"access.viewAs": "View as",
+		"access.admin": "Administrator — sees everything",
+		"access.localOnly": "local sign-in only",
+		"access.inactive": "disabled",
+		"access.expiredOn": "access ended",
+		"access.tablets": "Tablets",
+		"access.tablets.hint": "The named screens of the house (layouts). A screen's building and role win over the role of whoever is signed in on it.",
+		"access.tablets.none": "No screen is named yet: name one with «Arrange» on the main page.",
+		"access.tablet.free": "By the user",
+		"access.who": "Who sees it",
+		"access.who.all": "Everyone who has the room",
+		"access.who.roles": "Only roles…"
+	},
+	ro: {
+		"setup.access": "Acces",
+		"access.viewOnly": "Aici doar vizualizare — comanda nu a fost trimisă",
+		"access.none.title": "Accesul nu este încă atribuit",
+		"access.none.text": "Adresați-vă administratorului: el alege ce clădiri vedeți.",
+		"access.expired.title": "Accesul a expirat",
+		"access.pending": "Se încarcă setările de acces…",
+		"access.viewingAs": "Vedeți ca {name}",
+		"access.exit": "Ieșire",
+		"access.building": "Clădire",
+		"access.allBuildings": "Toate clădirile",
+		"access.noBuilding": "Fără clădire",
+		"access.role.manager": "Administrator clădire",
+		"access.role.staff": "Angajat",
+		"access.role.guard": "Pază",
+		"access.role.tablet": "Tabletă",
+		"access.role.guest": "Oaspete",
+		"access.mode.full": "Tot",
+		"access.mode.lights": "Doar lumini și prize",
+		"access.mode.view": "Doar vizualizare",
+		"access.module.cameras": "Camere",
+		"access.module.security": "Pază",
+		"access.module.energy": "Energie",
+		"access.module.clock": "Ceas și alarme",
+		"access.module.climate": "Climă și încălzire",
+		"access.honest": "Aceasta împarte doar interfața Atom Home; aplicația HA, istoricul și jurnalul arată în continuare tot.",
+		"access.kiosk": "Ca angajații să nu intre în tablourile vechi, ascundeți-le, la fel și meniul lateral Home Assistant, cu kiosk-mode.js.",
+		"access.enabled": "Împărțire pe clădiri",
+		"access.enabled.off": "Oprit: toți văd tot, ca înainte.",
+		"access.enabled.on": "Pornit: fiecare vede doar clădirile sale. Administratorii văd tot.",
+		"access.wizard.text": "Varianta de start: tuturor utilizatorilor actuali, în afară de administratori, rolul «Angajat» în toate clădirile. Nimeni nu pierde panoul brusc; ajustați apoi pe persoane.",
+		"access.wizard.yes": "Pornește",
+		"access.disable.ask": "Opriți împărțirea? Toți vor vedea din nou toate clădirile.",
+		"access.disable.yes": "Oprește",
+		"access.newUsers": "Utilizatorii noi văd",
+		"access.newUsers.none": "Nimic",
+		"access.newUsers.default": "Clădirea implicită",
+		"access.defaultBuilding": "Clădirea implicită",
+		"access.defaultRole": "Rolul implicit",
+		"access.buildings": "Clădiri",
+		"access.buildings.hint": "Clădirile sunt etajele Home Assistant, camerele — zonele lor. Se schimbă în Home Assistant: Setări → Zone.",
+		"access.noFloors": "Home Assistant nu are etaje: toată casa e o singură clădire. Adăugați etaje pentru a împărți accesul.",
+		"access.unassigned.hint": "Aceste zone nu au etaj. Le văd doar cei cu «Toate clădirile». Atribuiți un etaj în Home Assistant.",
+		"access.areas": "{n} zone|{n} zonă|{n} zone|{n} de zone",
+		"access.roles": "Roluri",
+		"access.role.name": "Denumire",
+		"access.role.sections": "Secțiuni",
+		"access.role.modules": "Carduri",
+		"access.role.mode": "Control",
+		"access.role.copy": "Copiază",
+		"access.role.delete": "Șterge",
+		"access.role.deleteAsk": "Ștergeți rolul «{name}»? Persoanele și tabletele cu el pierd accesul la acele clădiri.",
+		"access.role.copyName": "{name} (copie)",
+		"access.people": "Persoane",
+		"access.people.loading": "Se încarcă utilizatorii Home Assistant…",
+		"access.people.fail": "Lista utilizatorilor Home Assistant nu a putut fi citită.",
+		"access.noAccess": "Fără acces",
+		"access.roleIn": "Rol în «{building}»: {name}",
+		"access.until": "Acces până la",
+		"access.viewAs": "Vezi ca el",
+		"access.admin": "Administrator — vede tot",
+		"access.localOnly": "doar autentificare locală",
+		"access.inactive": "dezactivat",
+		"access.expiredOn": "accesul a expirat",
+		"access.tablets": "Tablete",
+		"access.tablets.hint": "Ecranele numite ale casei (aranjamente). Clădirea și rolul ecranului au prioritate față de rolul celui autentificat pe el.",
+		"access.tablets.none": "Încă niciun ecran nu are nume: se face cu «Aranjează» pe pagina principală.",
+		"access.tablet.free": "După utilizator",
+		"access.who": "Cui e vizibil",
+		"access.who.all": "Tuturor celor care au camera",
+		"access.who.roles": "Doar rolurilor…"
+	}
+}, i = {
+	ru: {
 		"cat.add": "Добавить карточку",
 		"mode.favorite": "Избранный",
 		"cat.kind.purifier": "Очиститель воздуха",
@@ -494,7 +711,7 @@ var e = {
 		"cat.moduleOtherDevice": "Deocamdată acest card lucrează cu un singur aparat de acest model — cel găsit primul. Alegeți-l pe acela.",
 		"cat.optBad": "Doar litere latine, cifre, „_”, „.” și „-”, până la 64 de caractere: {list}."
 	}
-}, i = {
+}, a = {
 	ru: {
 		"lay.arrange": "Расставить",
 		"lay.arrangeHint": "Порядок и размер карточек на этом устройстве",
@@ -651,7 +868,7 @@ var e = {
 		"lay.this": "acest dispozitiv",
 		"lay.notOwner": "Aranjarea „{name}” o poate schimba doar cine a creat-o sau un administrator."
 	}
-}, a = {
+}, o = {
 	ru: {
 		"helpers.title": "Панели не хватает помощников Home Assistant",
 		"helpers.sub": "Без них не работают: {what}. Создам их сам: {n} шт.|Без них не работают: {what}. Создам его сам: {n} шт.|Без них не работают: {what}. Создам их сам: {n} шт.|Без них не работают: {what}. Создам их сам: {n} шт.",
@@ -709,7 +926,7 @@ var e = {
 		"helpers.taken": "id-ul {id} e ocupat de alt ajutor (redenumit): redenumiți-l sau ștergeți-l în Setări → Ajutoare",
 		"helpers.timersDisabled": "Temporizatoarele sunt dezactivate în Home Assistant: activați timer.atom_1…3 în Setări → Entități"
 	}
-}, o = {
+}, s = {
 	ru: {
 		"cat.kind.tv": "Телевизор",
 		"cat.kind.tvbox": "ТВ-приставка",
@@ -980,7 +1197,7 @@ var e = {
 		"media.mode.cal_day": "Calibrated (day)",
 		"media.mode.cal_night": "Calibrated (night)"
 	}
-}, s = {
+}, c = {
 	ru: {
 		"cat.p.spMax": "Яндекс Станция Макс",
 		"cat.p.spMax.desc": "Что играет и обложка, пауза и треки, громкость, эквалайзер, «Сказать Алисе», ближайший будильник, розетка станции",
@@ -1383,7 +1600,7 @@ var e = {
 		"speaker.eq.morebasshigh": "More bass and treble",
 		"speaker.eq.lesshigh": "Less treble"
 	}
-}, c = {
+}, l = {
 	ru: {
 		"cat.p.lgWasher": "LG — стиральная машина (ThinQ)",
 		"cat.p.lgWasher.desc": "Модель F_R7_Y___W через LG ThinQ: что делает машина, сколько осталось и во сколько закончит, этапы стирки, ошибки словами, старт и остановка с подтверждением, отложенное окончание.",
@@ -1996,7 +2213,7 @@ var e = {
 		"laundry.cycle.ecoCotton": "Eco Cotton",
 		"laundry.cycle.aiDryPlus": "AI Dry+"
 	}
-}, l = {
+}, u = {
 	ru: {
 		"cat.p.humidifier2": "Xiaomi Smart Humidifier 2",
 		"cat.p.humidifier2.desc": "Модель deerma.humidifier.jsq2w через Xiaomi Miot: влажность в комнате, целевая влажность, режимы, «нет воды» и бак, индикатор и звук.",
@@ -2198,7 +2415,7 @@ var e = {
 		"hu.tile.tankOut": "Tank removed",
 		"hu.tile.fault": "Fault"
 	}
-}, u = {
+}, d = {
 	ru: {
 		"cat.p.scale2": "Xiaomi Mi Body Composition Scale 2",
 		"cat.p.scale2.desc": "Весы XMTZC02HM/XMTZC05HM через Xiaomi BLE, люди — через Multi-User Scale Router, состав тела — через Bodymiscale. На плитке только время последнего взвешивания; вес и подробности каждого — по нажатию.",
@@ -2355,7 +2572,7 @@ var e = {
 		"scale.fact.bodyType": "Body type",
 		"scale.fact.score": "Body score"
 	}
-}, d = {
+}, f = {
 	ru: {
 		"cat.p.a810": "70mai Dash Cam A810 + 4G UP04",
 		"cat.p.a810.desc": "Видеорегистратор 70mai с модулем 4G через интеграцию 70mai: где машина, напряжение аккумулятора, последняя тревога, связь и загрузка видео на парковке. Только показывает, команд нет.",
@@ -2500,7 +2717,7 @@ var e = {
 		"dashcam.parkingPhoto": "Parking photo",
 		"dashcam.notExposed": "The integration does not report parking mode or the memory card — see the 70mai app."
 	}
-}, f = {
+}, p = {
 	ru: {
 		"cat.p.nasDxp2800": "UGREEN NASync DXP2800",
 		"cat.p.nasDxp2800.desc": "Сетевое хранилище на два диска и два NVMe через интеграцию UGreen NAS: всё ли в порядке, свободное место томов, здоровье и температура дисков, нагрузка и вентилятор. Перезагрузка и выключение — только администратору и только после вопроса.",
@@ -2819,7 +3036,7 @@ var e = {
 		"nas.kbs": "{v}\xA0KB/s",
 		"nas.mbs": "{v}\xA0MB/s"
 	}
-}, p = {
+}, m = {
 	ru: {
 		"cat.p.gasCamera": "Счётчик газа с камерой",
 		"cat.p.gasCamera.desc": "Счётчик газа, который читает камера: снимок счётчика, показание крупно, когда прочитано, предупреждение, если камера перестала читать; расход за сегодня и за месяц из статистики HA — те же цифры, что на «Энергии».",
@@ -2904,7 +3121,7 @@ var e = {
 		"gasmeter.how": "The camera photographs the meter every 5 minutes, AI reads the digits, impossible readings are dropped.",
 		"gasmeter.howNoCamera": "Use comes from Home Assistant’s statistics, as on «Energy»."
 	}
-}, m = {
+}, h = {
 	"systems.attentionMore": "Toate dispozitivele fără conexiune și senzorii declanșați · {n}",
 	"ep.unit.bar": "bar",
 	"ep.unit.kg": "kg",
@@ -5442,6 +5659,7 @@ var e = {
 	...u.ro,
 	...d.ro,
 	...f.ro,
-	...p.ro
+	...p.ro,
+	...m.ro
 };
-export { m as ro };
+export { h as ro };

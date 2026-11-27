@@ -80,11 +80,13 @@ custom_components/atom_home   интеграция HA (этап 3): панель
 { schemaVersion: 1,
   home: { name, logo?, language: 'ru'|'ro'|'en', theme: 'light'|'dark' },
   rooms: { [areaId]: { name?, photo?, hidden?, order? } },
-  devices: { [deviceKey]: { enabled, name?, roomId?, icon?, kind?, mergeInto?, order? } },
+  devices: { [deviceKey]: { enabled, name?, roomId?, icon?, kind?, mergeInto?, order?, roles? } },
   entities: { [entityId]: { hidden?, name? } },
   buttons: [ { id, label, icon?, roomId?, service: 'domain.service', target?, data?, confirm } ],
-  sections: { [screen]: { hidden? } } }
+  sections: { [screen]: { hidden? } },
+  access?: { enabled, newUsers, roles, members, profiles } }   // кто какое здание видит, только в интерфейсе: ACCESS.md
 ```
+Разделение по зданиям (1.43.0) — обёртка над всей панелью (`ui/access-gate.tsx` вокруг `AtomApp`): при выключенном разделении и для администратора панель получает ровно то, что получала; иначе — суженные реестр, настройки, host и хранилище (`model/access.ts`, [ACCESS.md](ACCESS.md)).
 Без конфигурации панель показывает все бытовые устройства во всех зонах — это и есть «первая установка», после которой владелец убирает лишнее.
 
 ## Сравнение с панелями Criuleni/Traian
