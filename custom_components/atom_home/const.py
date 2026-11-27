@@ -23,5 +23,7 @@ CLIENT_FEATURE_CARDS = "card_catalog_v1"
 CLIENT_FEATURE_PAGES = "page_cards_v1"
 # A panel that keeps `access` (who sees which building, 27.11.2026) and a device's `roles` («кому видно») declares this; 1.42.0 and older drop them on save.
 CLIENT_FEATURE_ACCESS = "access_v1"
+# A panel that keeps rooms.<area>.air (a room's place in «Воздух»: its kind, whether it counts, its vent's buttons) declares this; 1.43.0 and older drop it on save.
+CLIENT_FEATURE_ROOM_AIR = "room_air_v1"
 PAGE_PLACES = ("rooms", "lights", "systems", "energy", "security")
 WIZARD_DEVICE_FIELDS = ("type", "composition", "layout", "module")

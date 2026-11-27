@@ -8,7 +8,9 @@ import type { Registry } from './model/registry.ts';
 import { createLoader } from './runtime/loader.ts';
 import { hasDictionary, loadDictionary } from './i18n/index.ts';
 import { Guard, reportError, setErrorReporter } from './ui/guard.tsx';
-import { errorReporter, markReloadForUpdate, mayReloadAfterCrash, mayReloadForUpdate, newerVersion, whenIdle } from './runtime/self-heal.ts';
+import { setRefusalReporter } from './runtime/report.ts';
+import { panelLogSend } from './runtime/panel-log.ts';
+import { errorReporter, REFUSAL_MAX, markReloadForUpdate, mayReloadAfterCrash, mayReloadForUpdate, newerVersion, whenIdle } from './runtime/self-heal.ts';
 import { nextViewport } from './ui/panel-size.ts';
 import base from './styles/base.css?inline';
 import home from './styles/apple.css?inline';
@@ -118,7 +120,10 @@ export class AtomHomePanel extends HTMLElement {
   private start() {
     if (this.started || !this.mount || !this._hass) return;
     this.started = true;
-    setErrorReporter(errorReporter(message => this._hass!.callWS({ type: 'call_service', domain: 'system_log', service: 'write', service_data: { message, level: 'error', logger: 'custom_components.atom_home.panel' } }))); // callWS: a refused or offline report never pops up Home Assistant's own toast on a wall tablet
+    // callWS: a refused or offline report never pops up Home Assistant's own toast on a wall tablet
+    const ws = () => (<T,>(m: Record<string, unknown>) => this._hass!.callWS<T>(m));
+    setErrorReporter(errorReporter(panelLogSend(ws, PANEL_VERSION, 'error')));
+    setRefusalReporter(errorReporter(panelLogSend(ws, PANEL_VERSION, 'warning'), REFUSAL_MAX, 'info'));
     // errors outside a draw (a timer, a promise of a card) are written down too; only the panel's own, not Home Assistant's
     const ours = (stack: unknown) => typeof stack === 'string' && stack.includes('/atom_home/');
     const onError = (e: ErrorEvent) => { if (ours(e.filename) || ours((e.error as Error | undefined)?.stack)) reportError(e.error ?? e.message, 'window'); };

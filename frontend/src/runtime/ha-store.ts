@@ -1,6 +1,7 @@
 import { SaveError, type ConfigStore, type SaveErrorCode } from './store.ts';
 import { normaliseAlarms, normaliseConfig, type Alarm, type HouseConfig } from '../model/config.ts';
 import type { Hass } from './host.ts';
+import { reportRefusal, isRefusal } from './report.ts';
 /** Declared on every config/set: the server refuses a panel without it once a room has a feed (custom_components/atom_home/const.py). */
 export const ROOM_FEED_FEATURE = 'room_feed_v1';
 /** Declared the same way once a tariff history is stored (energy.tariffs): a 1.24.0 panel would drop it on save. */
@@ -11,6 +12,8 @@ export const CARDS_FEATURE = 'card_catalog_v1';
 export const PAGES_FEATURE = 'page_cards_v1';
 /** keeps `access` (who sees which building) and a device's `roles` («кому видно», docs/ACCESS.md): a 1.42.0 panel would drop them on save */
 export const ACCESS_FEATURE = 'access_v1';
+/** keeps `rooms.<area>.air` (a room's place in «Воздух»): an older panel would drop it on save */
+export const ROOM_AIR_FEATURE = 'room_air_v1';
 const CODES: SaveErrorCode[] = ['conflict', 'client_outdated', 'too_large', 'bad_schema', 'unauthorized'];
 const saveError = (e: unknown) => {
   const code = (e as { code?: unknown } | null)?.code, message = (e as { message?: unknown } | null)?.message;
@@ -50,10 +53,10 @@ export function haStore(hass: () => Hass): ConfigStore {
         const msg: Record<string, unknown> = { type: 'atom_home/config/set', config: normaliseConfig(rebased ? { ...config, alarms: rebased } : config).config };
         if (revision !== undefined) msg.expected_revision = revision;
         // normaliseConfig keeps rooms.<area>.feed, so this panel always says so; an integration older than 1.2 (no revision) has no client_features and would refuse the key.
-        const features = revision !== undefined ? [...new Set([ROOM_FEED_FEATURE, TARIFF_FEATURE, CARDS_FEATURE, PAGES_FEATURE, ACCESS_FEATURE, ...(options.clientFeatures ?? [])])] : options.clientFeatures ?? [];
+        const features = revision !== undefined ? [...new Set([ROOM_FEED_FEATURE, TARIFF_FEATURE, CARDS_FEATURE, PAGES_FEATURE, ACCESS_FEATURE, ROOM_AIR_FEATURE, ...(options.clientFeatures ?? [])])] : options.clientFeatures ?? [];
         if (features.length) msg.client_features = features;
         let r: { revision?: number } | null;
-        try { r = await hass().callWS<{ saved: boolean; revision?: number }>(msg); } catch (e) { throw saveError(e); }
+        try { r = await hass().callWS<{ saved: boolean; revision?: number }>(msg); } catch (e) { if (isRefusal(e)) reportRefusal(e, 'save:config'); throw saveError(e); }
         if (typeof r?.revision === 'number') revision = r.revision;
         return rebased ? { revision, alarms: rebased } : { revision };
       };
@@ -67,7 +70,7 @@ export function haStore(hass: () => Hass): ConfigStore {
         const msg: Record<string, unknown> = { type: 'atom_home/alarms/set', alarms: normaliseAlarms(alarms) };
         if (revision !== undefined) msg.expected_revision = revision;
         let r: { alarms?: unknown; revision?: number };
-        try { r = await hass().callWS<{ saved: boolean; revision?: number; alarms?: unknown }>(msg); } catch (e) { throw saveError(e); }
+        try { r = await hass().callWS<{ saved: boolean; revision?: number; alarms?: unknown }>(msg); } catch (e) { if (isRefusal(e)) reportRefusal(e, 'save:alarms'); throw saveError(e); }
         if (typeof r?.revision === 'number') revision = r.revision;
         const held = normaliseAlarms(r.alarms); houseAlarms = held; alarmsGen++;
         return { alarms: held, revision };

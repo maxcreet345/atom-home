@@ -937,6 +937,55 @@ var e = {
 	}
 }, s = {
 	ru: {
+		"setup.air.scale": "Воздух: тип",
+		"setup.air.scale.room": "Комната",
+		"setup.air.scale.kitchen": "Кухня",
+		"setup.air.scale.bath": "Ванная",
+		"setup.air.count": "Воздух: учёт",
+		"setup.air.count.mean": "В среднем по дому",
+		"setup.air.count.aside": "Только показывать",
+		"setup.air.count.off": "Не учитывать",
+		"setup.air.actions": "Воздух: кнопки вытяжки",
+		"setup.air.actions.none": "Нет",
+		"setup.air.actions.dehumidify": "Убрать влагу",
+		"setup.air.actions.purify": "Очистить воздух",
+		"setup.air.actions.both": "Убрать влагу и очистить",
+		"setup.air.hint": "Кухня и ванная — свои пороги влажности. «Только показывать»: комната видна, но не входит в среднее. «Не учитывать»: видна, но не влияет ни на что."
+	},
+	en: {
+		"setup.air.scale": "Air: kind",
+		"setup.air.scale.room": "Room",
+		"setup.air.scale.kitchen": "Kitchen",
+		"setup.air.scale.bath": "Bathroom",
+		"setup.air.count": "Air: counts",
+		"setup.air.count.mean": "In the house average",
+		"setup.air.count.aside": "Show only",
+		"setup.air.count.off": "Do not count",
+		"setup.air.actions": "Air: vent buttons",
+		"setup.air.actions.none": "None",
+		"setup.air.actions.dehumidify": "Remove humidity",
+		"setup.air.actions.purify": "Clean the air",
+		"setup.air.actions.both": "Remove humidity and clean",
+		"setup.air.hint": "A kitchen and a bathroom have their own humidity limits. «Show only»: the room is shown but not in the average. «Do not count»: shown, but affects nothing."
+	},
+	ro: {
+		"setup.air.scale": "Aer: tip",
+		"setup.air.scale.room": "Cameră",
+		"setup.air.scale.kitchen": "Bucătărie",
+		"setup.air.scale.bath": "Baie",
+		"setup.air.count": "Aer: se ia în calcul",
+		"setup.air.count.mean": "În media casei",
+		"setup.air.count.aside": "Doar se afișează",
+		"setup.air.count.off": "Nu se ia în calcul",
+		"setup.air.actions": "Aer: butoanele hotei",
+		"setup.air.actions.none": "Niciunul",
+		"setup.air.actions.dehumidify": "Elimină umezeala",
+		"setup.air.actions.purify": "Curăță aerul",
+		"setup.air.actions.both": "Elimină umezeala și curăță",
+		"setup.air.hint": "Bucătăria și baia au praguri proprii de umiditate. «Doar se afișează»: camera se vede, dar nu intră în medie. «Nu se ia în calcul»: se vede, dar nu influențează nimic."
+	}
+}, c = {
+	ru: {
 		"cat.kind.tv": "Телевизор",
 		"cat.kind.tvbox": "ТВ-приставка",
 		"cat.p.hisense65u8": "Hisense 65U8KQ",
@@ -1206,7 +1255,7 @@ var e = {
 		"media.mode.cal_day": "Calibrated (day)",
 		"media.mode.cal_night": "Calibrated (night)"
 	}
-}, c = {
+}, l = {
 	ru: {
 		"cat.p.spMax": "Яндекс Станция Макс",
 		"cat.p.spMax.desc": "Что играет и обложка, пауза и треки, громкость, эквалайзер, «Сказать Алисе», ближайший будильник, розетка станции",
@@ -1609,7 +1658,7 @@ var e = {
 		"speaker.eq.morebasshigh": "More bass and treble",
 		"speaker.eq.lesshigh": "Less treble"
 	}
-}, l = {
+}, u = {
 	ru: {
 		"cat.p.lgWasher": "LG — стиральная машина (ThinQ)",
 		"cat.p.lgWasher.desc": "Модель F_R7_Y___W через LG ThinQ: что делает машина, сколько осталось и во сколько закончит, этапы стирки, ошибки словами, старт и остановка с подтверждением, отложенное окончание.",
@@ -2222,7 +2271,7 @@ var e = {
 		"laundry.cycle.ecoCotton": "Eco Cotton",
 		"laundry.cycle.aiDryPlus": "AI Dry+"
 	}
-}, u = {
+}, d = {
 	ru: {
 		"cat.p.humidifier2": "Xiaomi Smart Humidifier 2",
 		"cat.p.humidifier2.desc": "Модель deerma.humidifier.jsq2w через Xiaomi Miot: влажность в комнате, целевая влажность, режимы, «нет воды» и бак, индикатор и звук.",
@@ -2424,7 +2473,7 @@ var e = {
 		"hu.tile.tankOut": "Tank removed",
 		"hu.tile.fault": "Fault"
 	}
-}, d = {
+}, f = {
 	ru: {
 		"cat.p.scale2": "Xiaomi Mi Body Composition Scale 2",
 		"cat.p.scale2.desc": "Весы XMTZC02HM/XMTZC05HM через Xiaomi BLE, люди — через Multi-User Scale Router, состав тела — через Bodymiscale. На плитке только время последнего взвешивания; вес и подробности каждого — по нажатию.",
@@ -2581,7 +2630,7 @@ var e = {
 		"scale.fact.bodyType": "Body type",
 		"scale.fact.score": "Body score"
 	}
-}, f = {
+}, p = {
 	ru: {
 		"cat.p.a810": "70mai Dash Cam A810 + 4G UP04",
 		"cat.p.a810.desc": "Видеорегистратор 70mai с модулем 4G через интеграцию 70mai: где машина, напряжение аккумулятора, последняя тревога, связь и загрузка видео на парковке. Только показывает, команд нет.",
@@ -2726,7 +2775,7 @@ var e = {
 		"dashcam.parkingPhoto": "Parking photo",
 		"dashcam.notExposed": "The integration does not report parking mode or the memory card — see the 70mai app."
 	}
-}, p = {
+}, m = {
 	ru: {
 		"cat.p.nasDxp2800": "UGREEN NASync DXP2800",
 		"cat.p.nasDxp2800.desc": "Сетевое хранилище на два диска и два NVMe через интеграцию UGreen NAS: всё ли в порядке, свободное место томов, здоровье и температура дисков, нагрузка и вентилятор. Перезагрузка и выключение — только администратору и только после вопроса.",
@@ -3045,7 +3094,7 @@ var e = {
 		"nas.kbs": "{v}\xA0KB/s",
 		"nas.mbs": "{v}\xA0MB/s"
 	}
-}, m = {
+}, h = {
 	ru: {
 		"cat.p.gasCamera": "Счётчик газа с камерой",
 		"cat.p.gasCamera.desc": "Счётчик газа, который читает камера: снимок счётчика, показание крупно, когда прочитано, предупреждение, если камера перестала читать; расход за сегодня и за месяц из статистики HA — те же цифры, что на «Энергии».",
@@ -3130,7 +3179,7 @@ var e = {
 		"gasmeter.how": "The camera photographs the meter every 5 minutes, AI reads the digits, impossible readings are dropped.",
 		"gasmeter.howNoCamera": "Use comes from Home Assistant’s statistics, as on «Energy»."
 	}
-}, h = {
+}, g = {
 	"systems.attentionMore": "Toate dispozitivele fără conexiune și senzorii declanșați · {n}",
 	"ep.unit.bar": "bar",
 	"ep.unit.kg": "kg",
@@ -5669,6 +5718,7 @@ var e = {
 	...d.ro,
 	...f.ro,
 	...p.ro,
-	...m.ro
+	...m.ro,
+	...h.ro
 };
-export { h as ro };
+export { g as ro };

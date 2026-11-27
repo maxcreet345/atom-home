@@ -36,7 +36,7 @@ test('the settings tabs: a saved order is made whole, the panel\'s own order is 
 test('the panel tells the integration it keeps the look, the tab order and the page places — and the integration asks for exactly that', () => {
   const store = readFileSync(resolve(root, 'frontend/src/runtime/ha-store.ts'), 'utf8'), konst = readFileSync(resolve(root, 'custom_components/atom_home/const.py'), 'utf8'), state = readFileSync(resolve(root, 'custom_components/atom_home/config_state.py'), 'utf8');
   const name = /CLIENT_FEATURE_PAGES = "([a-z0-9_]+)"/.exec(konst)![1];
-  assert.ok(store.includes(`PAGES_FEATURE = '${name}'`)); assert.ok(store.includes('CARDS_FEATURE, PAGES_FEATURE, ACCESS_FEATURE, ...'));
+  assert.ok(store.includes(`PAGES_FEATURE = '${name}'`)); assert.ok(store.includes('CARDS_FEATURE, PAGES_FEATURE, ACCESS_FEATURE, ROOM_AIR_FEATURE, ...'));
   assert.match(state, /has_page_settings\(self\.config\) and CLIENT_FEATURE_PAGES not in/);
   for (const p of PAGE_PLACES) assert.ok(konst.includes(`"${p}"`), `const.py knows the page «${p}»`);
 });

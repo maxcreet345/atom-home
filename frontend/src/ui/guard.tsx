@@ -4,11 +4,9 @@ import type { T } from '../i18n/index.ts';
 /** C-1 of the audit of 17.11.2026: one exception in a card used to take the whole Preact tree down, and a wall tablet stayed blank
  *  until someone reloaded it by hand. A guard keeps the failure where it happened and says so in the panel's words. */
 
-type Report = (error: unknown, where: string) => void;
-let reporter: Report = (error, where) => { console.error(`[atom-home] ${where}:`, error); };
-/** live-main sets this: the console plus, at most a few times a session, Home Assistant's own log. */
-export function setErrorReporter(report: Report) { reporter = report; }
-export function reportError(error: unknown, where: string) { try { reporter(error, where); } catch { /* reporting must never throw */ } }
+import { reportError } from '../runtime/report.ts';
+/** live-main sets the reporter (runtime/report.ts): the console plus, at most a few times a session, the integration's log. */
+export { reportError, setErrorReporter } from '../runtime/report.ts';
 
 interface GuardProps {
   /** where it failed, for the log: «page:climate», «sheet:light.kitchen», «tile:clock» */

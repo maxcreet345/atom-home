@@ -1,3 +1,4 @@
+import type { RoomAir } from './air.ts';
 import type { Registry, EntityRow, DeviceRow, StateRow } from './registry.ts';
 import { domainOf, isNumeric } from './registry.ts';
 import { type Kind, CONTROL_KINDS, KIND_PRIORITY, entityKind, entityCategory, sectionOfKind, type Section } from './kinds.ts';
@@ -8,7 +9,7 @@ export interface EntityRef {
   id: string; domain: string; deviceClass: string | null; name: string; kind: Kind | null;
   state: string; attributes: Record<string, unknown>; unit: string | null; available: boolean; lastChanged: string;
 }
-export interface Room { id: string; name: string; hidden: boolean; photo: string | null; order: number; areaTemperature: string | null; areaHumidity: string | null }
+export interface Room { id: string; name: string; hidden: boolean; photo: string | null; order: number; areaTemperature: string | null; areaHumidity: string | null; /** what the owner set for «Воздух» (model/air.ts resolves the rest) */ air?: Partial<RoomAir> }
 export interface HomeDevice {
   key: string; kind: Kind; name: string; roomId: string; icon: string | null; photo: string | null; art: string | null; favorite: boolean; order: number; enabled: boolean; available: boolean;
   primary: EntityRef; controls: EntityRef[]; metrics: EntityRef[]; parameters: EntityRef[]; diagnostics: EntityRef[];
@@ -139,7 +140,7 @@ export function discover(reg: Registry, config: HouseConfig, claimed: ReadonlySe
   }
   cards.sort((a, b) => a.order - b.order || KIND_PRIORITY.indexOf(a.kind) - KIND_PRIORITY.indexOf(b.kind) || a.name.localeCompare(b.name, 'ru'));
   const usedRooms = new Set(cards.filter(c => c.enabled).map(c => c.roomId));
-  const rooms: Room[] = reg.areas.map((a, i) => { const o = config.rooms[a.area_id] ?? {}; return { id: a.area_id, name: o.name ?? a.name, hidden: o.hidden === true, photo: o.photo ?? a.picture ?? null, order: o.order ?? i, areaTemperature: a.temperature_entity_id ?? null, areaHumidity: a.humidity_entity_id ?? null }; });
+  const rooms: Room[] = reg.areas.map((a, i) => { const o = config.rooms[a.area_id] ?? {}; return { id: a.area_id, name: o.name ?? a.name, hidden: o.hidden === true, photo: o.photo ?? a.picture ?? null, order: o.order ?? i, ...(o.air ? { air: o.air } : {}), areaTemperature: a.temperature_entity_id ?? null, areaHumidity: a.humidity_entity_id ?? null }; });
   if (usedRooms.has(NO_ROOM)) { const o = config.rooms[NO_ROOM] ?? {}; rooms.push({ id: NO_ROOM, name: o.name ?? '', hidden: o.hidden === true, photo: o.photo ?? null, order: o.order ?? 999, areaTemperature: null, areaHumidity: null }); }
   rooms.sort((a, b) => a.order - b.order);
   const counts: Record<string, number> = {};

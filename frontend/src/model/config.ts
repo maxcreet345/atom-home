@@ -1,3 +1,4 @@
+import { cleanRoomAir, type RoomAir } from './air.ts';
 import type { Section } from './kinds.ts';
 import type { Kind } from './kinds.ts';
 import { normaliseInstances, type ProfileInstance } from './card-catalog.ts';
@@ -18,7 +19,7 @@ export const LOOKS = ['classic', 'glass', 'glass-clear', 'soft', 'premium', 'aur
 export type Look = typeof LOOKS[number];
 export function isLook(v: unknown): v is Look { return typeof v === 'string' && (LOOKS as readonly string[]).includes(v); }
 
-export interface RoomOverride { name?: string; photo?: string | null; hidden?: boolean; order?: number; /** the house feed (an SPM channel key) the room hangs on: the Energy panel splits the rooms by apartment with it */ feed?: string }
+export interface RoomOverride { name?: string; photo?: string | null; hidden?: boolean; order?: number; /** the house feed (an SPM channel key) the room hangs on: the Energy panel splits the rooms by apartment with it */ feed?: string; /** the room's place in «Воздух» (model/air.ts, owner 27.11.2026) */ air?: Partial<RoomAir> }
 export interface DeviceOverride { enabled?: boolean; name?: string; roomId?: string; icon?: string; kind?: Kind; mergeInto?: string; order?: number; photo?: string | null; /** stock illustration: a DeviceArtType, 'none', or unset = guessed */ art?: string; /** pinned to the Home face */ favorite?: boolean; /** «Кому видно» (docs/ACCESS.md): only these roles see it; absent — everyone who has its room */ roles?: string[] }
 export interface ModuleOverride { enabled?: boolean; entities?: Record<string, string>; options?: Record<string, string> }
 export interface EntityOverride { hidden?: boolean; name?: string }
@@ -75,7 +76,7 @@ export function normaliseConfig(input: unknown): { config: HouseConfig; warnings
   const num = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? v : undefined;
   const bool = (v: unknown) => typeof v === 'boolean' ? v : undefined;
   const photo = (v: unknown) => typeof v === 'string' && /^(\/atom_home_photos\/[a-z0-9]{12,32}\.(jpg|png|webp)|\/local\/[\w./-]+|https?:\/\/[^\s"']+|data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+)$/.test(v) && v.length <= 1_200_000 ? v : v === null ? null : undefined;
-  out.rooms = map(input.rooms, v => ({ name: str(v.name), photo: photo(v.photo), hidden: bool(v.hidden), order: num(v.order), feed: typeof v.feed === 'string' && SAFE_KEY.test(v.feed) ? v.feed : undefined })) as HouseConfig['rooms'];
+  out.rooms = map(input.rooms, v => ({ name: str(v.name), photo: photo(v.photo), hidden: bool(v.hidden), order: num(v.order), feed: typeof v.feed === 'string' && SAFE_KEY.test(v.feed) ? v.feed : undefined, air: cleanRoomAir(v.air) })) as HouseConfig['rooms'];
   out.devices = map(input.devices, v => ({ enabled: bool(v.enabled), name: str(v.name), roomId: str(v.roomId), icon: str(v.icon, 40), kind: str(v.kind, 20), art: str(v.art, 20), favorite: bool(v.favorite), mergeInto: str(v.mergeInto, 160), order: num(v.order), photo: photo(v.photo), roles: normaliseRoles(v.roles) })) as HouseConfig['devices'];
   out.modules = map(input.modules, v => ({ enabled: bool(v.enabled), entities: plain(v.entities) ? Object.fromEntries(Object.entries(v.entities).filter(([k, e]) => /^\w{1,32}$/.test(k) && typeof e === 'string' && /^[a-z_]+\.[a-z0-9_]+$/.test(e))) : undefined, options: plain(v.options) ? Object.fromEntries(Object.entries(v.options).filter(([k, e]) => /^\w{1,32}$/.test(k) && typeof e === 'string' && /^[\w.\-]{1,64}$/.test(e))) : undefined })) as HouseConfig['modules'];
   out.entities = map(input.entities, v => ({ hidden: bool(v.hidden), name: str(v.name) })) as HouseConfig['entities'];

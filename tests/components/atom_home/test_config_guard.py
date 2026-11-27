@@ -118,7 +118,7 @@ class CardCatalogGuard(unittest.TestCase):
     def test_feature_name_is_what_the_panel_sends(self):
         ha_store = (pathlib.Path(__file__).parents[3] / "frontend/src/runtime/ha-store.ts").read_text(encoding="utf-8")
         self.assertIn(f"CARDS_FEATURE = '{const.CLIENT_FEATURE_CARDS}'", ha_store)
-        self.assertIn("CARDS_FEATURE, PAGES_FEATURE, ACCESS_FEATURE, ...", ha_store, "the panel always declares it")
+        self.assertIn("CARDS_FEATURE, PAGES_FEATURE, ACCESS_FEATURE, ROOM_AIR_FEATURE, ...", ha_store, "the panel always declares it")
 
     def test_cards_are_detected(self):
         self.assertFalse(cs.has_profile_instances(None))
@@ -285,6 +285,30 @@ class AccessGuard(unittest.TestCase):
         run(s.write_alarms(lambda a: [{"id": "a1", "time": "07:00"}], 3))
         self.assertEqual(s.config["access"], self.ACCESS["access"])
 
+class RoomAir(unittest.TestCase):
+    """A room's place in «Воздух» (rooms.<area>.air, 27.11.2026): a panel before room_air_v1 would save it away."""
+    AIR = {**BASE, "rooms": {"kitchen": {"name": "Kitchen", "air": {"scale": "kitchen", "count": "mean", "actions": ["dehumidify"]}}}}
+    DROPPED = {**BASE, "rooms": {"kitchen": {"name": "Kitchen"}}}
+
+    def test_detected(self):
+        self.assertFalse(cs.has_room_air(None))
+        self.assertFalse(cs.has_room_air(BASE))
+        self.assertFalse(cs.has_room_air(self.DROPPED))
+        self.assertTrue(cs.has_room_air(self.AIR))
+
+    def test_an_old_panel_cannot_wipe_them_and_a_new_one_can(self):
+        save = Saved(); s = cs.ConfigState(self.AIR, 4, save)
+        for features in (None, [], [const.CLIENT_FEATURE_ROOM_FEED, const.CLIENT_FEATURE_PAGES]):
+            with self.assertRaises(cs.ConfigWriteError) as e:
+                run(s.write(self.DROPPED, 4, features))
+            self.assertEqual(e.exception.code, "client_outdated")
+        self.assertEqual(save.calls, [])
+        self.assertEqual(run(s.write(self.DROPPED, 4, [const.CLIENT_FEATURE_ROOM_AIR])), 5, "a new panel may clear them on purpose")
+
+    def test_the_panel_declares_it(self):
+        ha_store = (pathlib.Path(__file__).parents[3] / "frontend/src/runtime/ha-store.ts").read_text(encoding="utf-8")
+        self.assertIn(f"ROOM_AIR_FEATURE = '{const.CLIENT_FEATURE_ROOM_AIR}'", ha_store)
+        self.assertIn("ROOM_AIR_FEATURE, ...", ha_store, "and sends it on every save")
 
 if __name__ == "__main__":
     result = unittest.main(exit=False).result

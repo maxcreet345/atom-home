@@ -5,6 +5,7 @@ import { wordsAccess } from './words-access.ts';
 import { wordsCatalog } from './words-catalog.ts';
 import { wordsLayout } from './words-layout.ts';
 import { wordsHelpers } from './words-helpers.ts';
+import { wordsRoomAir } from './words-room-air.ts';
 import { words_media } from './words-media.ts';
 import { words_speaker } from './words-speaker.ts';
 import { words_laundry } from './words-laundry.ts';
@@ -1079,6 +1080,7 @@ export const en: Dictionary = {
   ...wordsCatalog.en,
   ...wordsLayout.en,
   ...wordsHelpers.en,
+  ...wordsRoomAir.en,
   ...words_media.en,
   ...words_speaker.en,
   ...words_laundry.en,

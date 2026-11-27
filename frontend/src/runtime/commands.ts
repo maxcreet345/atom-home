@@ -1,3 +1,4 @@
+import { reportRefusal, isRefusal } from './report.ts';
 import type { Host } from './host.ts';
 
 /** A command the panel itself did not send: the house is unreachable. `errorText` turns it into «Нет связи с домом». */
@@ -49,16 +50,18 @@ export function createCommands(deps: CommandDeps): Commands {
     const t0 = Date.now(), look = () => { let ok = false; try { ok = until(); } catch { ok = true; } if (ok || Date.now() - t0 >= ms) done(); else setTimeout(look, 100); };
     look();
   });
-  const refuse = (e: unknown, o: RunOptions) => { let text: string; try { text = deps.text(e); } catch { text = ''; } try { if (o.onError) o.onError(text, e); else if (text) deps.notify(text); } catch { /* telling about a refusal must not throw one more */ } };
+  // refusals go to the house's log once each (runtime/report.ts): a call that failed inside a `run` is told by the call, not again by the run
+  const told = new WeakSet<object>(), tell = (e: unknown, where: string) => { if (!isRefusal(e)) return; if (e && typeof e === 'object') { if (told.has(e)) return; told.add(e); } reportRefusal(e, where); };
+  const refuse = (e: unknown, o: RunOptions, key = '') => { tell(e, `command:${key}`); let text: string; try { text = deps.text(e); } catch { text = ''; } try { if (o.onError) o.onError(text, e); else if (text) deps.notify(text); } catch { /* telling about a refusal must not throw one more */ } };
   return {
     get busy() { return busy; },
     pending: key => counts.has(key),
     async run(key, work, o = {}) {
       if (!o.stream && counts.has(key)) return false;
-      if (!deps.host().online) { refuse(new CommandError('offline'), o); return false; }
+      if (!deps.host().online) { refuse(new CommandError('offline'), o, key); return false; }
       hold(key);
       try { await work(); if (o.until && !o.stream) await settle(o.until, o.untilMs ?? 4000); return true; }
-      catch (e) { refuse(e, o); return false; }
+      catch (e) { refuse(e, o, key); return false; }
       finally { release(key); }
     },
     call(domain, service, data) {
@@ -71,6 +74,7 @@ export function createCommands(deps: CommandDeps): Commands {
       last.set(target, sig);
       let p: Promise<void>;
       try { p = Promise.resolve(host.call(domain, service, data)).then(() => undefined); } catch (e) { p = Promise.reject(e); }
+      p.catch(e => tell(e, `call:${domain}.${service}${typeof data.entity_id === 'string' ? ` ${data.entity_id}` : ''}`));
       const tracked = p.finally(() => { if (inflight.get(sig) === tracked) { inflight.delete(sig); if (last.get(target) === sig) last.delete(target); } });
       inflight.set(sig, tracked);
       return tracked;

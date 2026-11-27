@@ -87,6 +87,7 @@ import { CameraTile } from './camera-tile.tsx';
 import { LayoutGrid, LayoutProvider, ArrangeButton, useLayout, type LayItem } from './layout-grid.tsx';
 import { SCOPE_HOME, roomScope, pageScope } from '../model/tile-layout.ts';
 import { missingHelpers, missingUses, createHelpers, outcomeText } from '../runtime/helpers-setup.ts';
+import { reportRefusal } from '../runtime/report.ts';
 /** The menu (1.27.0, owner 11.11.2026: «в левое меню добавь панель Энергия, Безопасность», «Системы … так и назови: Устройства»):
  * Дом · Комнаты · Свет · Устройства · Энергия · Безопасность (+ Настройка for admins). «Климат», «Уборка» and «Камеры» are segments of
  * «Устройства»; the old addresses (#systems, #climate, #cleaning, #camera, #energy, #security, ?filter=) stay what they were. */
@@ -112,7 +113,7 @@ export function AtomApp(props: AppProps) { return <AccessGate {...props} Panel={
 function AtomPanel({ registry, config: initialConfig, host: bareHost, viewport: outer, navigationWindow = window, store, configWarnings = [], onConfigChange, configPending = false, restartNeeded = false, deviceFilter, accessBar, onViewAs }: AppProps & PanelExtras) {
   setHouseZone(bareHost.timeZone); // the clock, the sun, «next alarm» and the energy month are the house's, whatever zone this browser is in (runtime/zone.ts)
   // The one command runner of the panel (runtime/commands.ts): the cards get a host whose `call` goes through it, the tiles and sheets get `runner`.
-  const [busy, setBusy] = useState<ReadonlySet<string>>(new Set()), say = useRef<(text: string) => void>(() => undefined), words = useRef(translator(initialConfig.home.language)), hostNow = useRef(bareHost); hostNow.current = bareHost;
+  const [busy, setBusy] = useState<ReadonlySet<string>>(new Set()), say = useRef<(text: string, ms?: number, again?: () => void, sticky?: boolean) => void>(() => undefined), words = useRef(translator(initialConfig.home.language)), hostNow = useRef(bareHost); hostNow.current = bareHost;
   const commands = useMemo(() => createCommands({ host: () => hostNow.current, text: e => errorText(e, words.current), notify: text => say.current(text), changed: setBusy }), []);
   const host = useMemo(() => guardHost(bareHost, commands), [bareHost, commands]);
   const [config, setConfig] = useState(initialConfig);
@@ -126,7 +127,7 @@ function AtomPanel({ registry, config: initialConfig, host: bareHost, viewport: 
   const saveSeq = useRef(0), failedSeq = useRef(0);
   const applyConfig = async (next: HouseConfig) => {
     // the house's settings have not been read yet (`configPending`): what the panel shows is the factory set, and saving it would wipe the real one
-    if (configPending) { const e = new SaveError('not_loaded'); notify(errorText(e, translator(config.home.language))); throw e; }
+    if (configPending) { const e = new SaveError('not_loaded'); reportRefusal(e, 'save:config (settings not read yet)'); notify(errorText(e, translator(config.home.language))); throw e; }
     const seq = ++saveSeq.current;
     if (store) unsaved.current.add(next);
     setConfig(next); onConfigChange?.(next);
@@ -139,7 +140,7 @@ function AtomPanel({ registry, config: initialConfig, host: bareHost, viewport: 
       if (seq !== saveSeq.current) throw e; // a newer save is on its way and will settle the panel
       failedSeq.current = seq;
       setConfig(confirmed.current); onConfigChange?.(confirmed.current);
-      notify(translator(confirmed.current.home.language)(`save.error.${code}` as Key), 6000);
+      notify(translator(confirmed.current.home.language)(`save.error.${code}` as Key), 6000, undefined, true); // stays until closed: a change that did not stay must not pass unseen (27.11.2026)
       throw e;
     }
   };
@@ -185,7 +186,7 @@ function AtomPanel({ registry, config: initialConfig, host: bareHost, viewport: 
   const player = (dev: HomeDevice, mode: 'tile' | 'stage') => { const behind = mode === 'tile' && !!view.device; if (behind && home.devices.find(d => d.key === view.device)?.kind === 'camera') return null; /* one stream at a time: a camera sheet's stage replaces the tile players; behind any other sheet they only pause, so closing it does not reconnect every stream */ const m = modFor(dev); const P = m?.def.Player; const poster = typeof dev.primary.attributes.entity_picture === 'string' ? dev.primary.attributes.entity_picture : null; return m && P ? <P key={`${m.def.id}:${dev.key}:${mode}`} entities={m.entities} options={m.options} host={host} t={t} lang={lang} mode={mode} poster={poster} camera={dev.primary.id} paused={behind} /> : null; };
   /** What the camera's module says about it for the tile (closed lens, second line). */
   const tileState = (dev: HomeDevice): TileState | null => { const m = modFor(dev); return m?.def.tileState ? m.def.tileState(registry, m.entities, t, lang) : null; };
-  const [toast, setToast] = useState<{ id: number; text: string; /** it says «Нет связи с домом» */ offline: boolean; /** «Повторить»: the same command once more (critique 19.11.2026) */ again?: () => void } | null>(null), [confirm, setConfirm] = useState<{ device: HomeDevice; action: Action; value?: unknown } | null>(null);
+  const [toast, setToast] = useState<{ id: number; text: string; /** it says «Нет связи с домом» */ offline: boolean; /** «Повторить»: the same command once more (critique 19.11.2026) */ again?: () => void; /** stays until closed: a refused save */ sticky?: boolean } | null>(null), [confirm, setConfirm] = useState<{ device: HomeDevice; action: Action; value?: unknown } | null>(null);
   // Navigation (runtime/route.ts). A new page opens at its top; «Back» brings the place and the control it was left from. Whatever leaves a page also closes the question asked over it.
   const viewNow = useRef(view); viewNow.current = view;
   const arrival = useRef<'new' | 'back' | null>(null), places = useRef(new Map<string, { top: number; mark: FocusMark | null }>());
@@ -213,10 +214,13 @@ function AtomPanel({ registry, config: initialConfig, host: bareHost, viewport: 
   const offlineSaid = useRef(0); // the last message that said «Нет связи с домом»: the live region reads the connection line again for it instead of reading two lines
   // the control a person pressed last (or holds the focus): a message never lies over it — it is said at the top instead (`rectsMeet`, 1.26.1)
   const lastPress = useRef<{ el: Element; at: number } | null>(null), toastNear = useRef<Element | null>(null), toastEl = useRef<HTMLDivElement>(null), [toastTop, setToastTop] = useState(false);
-  const notify = (text: string, ms = 6000, again?: () => void) => { const life = toastLife(text, ms), offline = text === words.current('ui.offline'); toastMs.current = life; const id = ++toastSeq.current; if (offline) offlineSaid.current = id;
+  // a refused save stays until it is closed (27.11.2026: a look that did not stay left only a message that faded in six seconds); an ordinary message
+  // does not push it away: it waits and is shown once the refusal is closed (the newest one); another refusal or «Нет связи с домом» replaces it
+  const toastSticky = useRef(false), toastWaiting = useRef<{ text: string; ms: number; again?: () => void } | null>(null);
+  const notify = (text: string, ms = 6000, again?: () => void, sticky = false) => { const life = toastLife(text, ms), offline = text === words.current('ui.offline'); if (toastSticky.current && !sticky && !offline) { toastWaiting.current = { text, ms, again }; return; } toastSticky.current = sticky && !offline; toastMs.current = life; const id = ++toastSeq.current; if (offline) offlineSaid.current = id;
     const root = shellRef.current?.getRootNode() as Document | ShadowRoot | undefined, active = root?.activeElement ?? null, pressed = lastPress.current && Date.now() - lastPress.current.at < 10000 ? lastPress.current.el : null;
-    toastNear.current = pressed ?? (active && shellRef.current?.contains(active) ? active : null); setToast({ id, text, offline, again: offline ? undefined : again }); holdToast(life); };
-  const dropToast = () => { holdToast(null); setToast(null); };
+    toastNear.current = pressed ?? (active && shellRef.current?.contains(active) ? active : null); setToast({ id, text, offline, again: offline ? undefined : again, sticky: toastSticky.current }); holdToast(toastSticky.current ? null : life); };
+  const dropToast = () => { const was = toastSticky.current, next = toastWaiting.current; toastSticky.current = false; toastWaiting.current = null; holdToast(null); setToast(null); if (was && next) setTimeout(() => say.current(next.text, next.ms, next.again), 0); };
   useLayoutEffect(() => { const el = toastEl.current, near = toastNear.current; if (!toast || !el || !near?.isConnected) { setToastTop(false); return; }
     const c = near.closest('button,a,input,select,textarea,[role=button],[role=switch]') ?? near; setToastTop(rectsMeet(el.getBoundingClientRect(), c.getBoundingClientRect())); }, [toast?.id]);
   say.current = notify;
@@ -620,7 +624,7 @@ function AtomPanel({ registry, config: initialConfig, host: bareHost, viewport: 
       {!host.online && <span className="at-vh" key={`offline:${offlineSaid.current}`}>{t('ui.offline')}</span>}
       {banner && <span className="at-vh" key={`banner:${banner.id}:${banner.text}`}>{banner.text}</span>}
       {ringBanner && <span className="at-vh" key="ring">{t('module.doorbell.ringing')}</span>}
-      {toast && <div className={`hm-toast ${toastTop ? 'is-top' : ''}`} ref={toastEl} key={toast.id} tabIndex={toast.offline && !host.online ? -1 : 0} aria-hidden={toast.offline && !host.online ? 'true' : undefined /* the connection line above says it, read again for this message; what is hidden from a reader is not a Tab stop either */} onClick={dropToast} onPointerEnter={() => holdToast(null)} onPointerLeave={() => holdToast(Math.min(3000, toastMs.current))} onFocus={e => { toastFrom.current = e.relatedTarget as HTMLElement | null; holdToast(null); }} onBlur={() => holdToast(Math.min(3000, toastMs.current))} onKeyDown={e => { if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Escape') return; e.preventDefault(); e.stopPropagation(); dropToast(); giveBack(toastFrom.current); }}><Icon name="warning" size={18} /><span>{toast.text}</span>{toast.again && <button type="button" className="hm-toast-again" onClick={e => { e.stopPropagation(); const again = toast.again; dropToast(); again?.(); }} onKeyDown={e => e.stopPropagation()}>{t('ui.again')}</button>}</div>}
+      {toast && <div className={`hm-toast ${toastTop ? 'is-top' : ''} ${toast.sticky ? 'is-sticky' : ''}`} ref={toastEl} key={toast.id} tabIndex={toast.offline && !host.online ? -1 : 0} aria-hidden={toast.offline && !host.online ? 'true' : undefined /* the connection line above says it, read again for this message; what is hidden from a reader is not a Tab stop either */} onClick={dropToast} onPointerEnter={() => holdToast(null)} onPointerLeave={() => { if (!toastSticky.current) holdToast(Math.min(3000, toastMs.current)); }} onFocus={e => { toastFrom.current = e.relatedTarget as HTMLElement | null; holdToast(null); }} onBlur={() => { if (!toastSticky.current) holdToast(Math.min(3000, toastMs.current)); }} onKeyDown={e => { if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Escape') return; e.preventDefault(); e.stopPropagation(); dropToast(); giveBack(toastFrom.current); }}><Icon name="warning" size={18} /><span>{toast.text}</span>{toast.again && <button type="button" className="hm-toast-again" onClick={e => { e.stopPropagation(); const again = toast.again; dropToast(); again?.(); }} onKeyDown={e => e.stopPropagation()}>{t('ui.again')}</button>}{toast.sticky && <span className="hm-toast-close" aria-hidden="true"><Icon name="close" size={16} /></span>}</div>}
     </div>
   </LayoutProvider></div></PhotoOf.Provider>;
 }
@@ -805,12 +809,12 @@ function RoomPage({ home, registry, roomId, runner, toggle, go, t, lang, alarms,
     }
     return null;
   };
-  return <RoomView extra={extra} addCard={host.admin || lay?.available ? <>{host.admin && <AddCardButton t={t} onClick={() => go({ section: 'rooms', room: roomId, device: 'add-card' })} />}<ArrangeButton scope={roomScope(roomId)} /></> : undefined} ownCard={ownCard} reg={registry} roomId={roomId} roomName={home.rooms.find(r => r.id === roomId)?.name ?? ''} heating={heating} vacuum={vacuum} host={host} t={t} lang={lang} now={now} alarms={alarms}
+  return <RoomView houseRooms={home.rooms} extra={extra} addCard={host.admin || lay?.available ? <>{host.admin && <AddCardButton t={t} onClick={() => go({ section: 'rooms', room: roomId, device: 'add-card' })} />}<ArrangeButton scope={roomScope(roomId)} /></> : undefined} ownCard={ownCard} reg={registry} roomId={roomId} roomName={home.rooms.find(r => r.id === roomId)?.name ?? ''} heating={heating} vacuum={vacuum} host={host} t={t} lang={lang} now={now} alarms={alarms}
     deviceOf={byMain} toggle={toggle} commands={commands} act={(d, id) => { const a = actionsFor(d).find(x => x.id === id); if (a) void runner.run(d, a); }} hidden={th => { const ds = home.devices.filter(d => th.ids.includes(d.primary.id)); return ds.length > 0 && ds.every(d => !d.enabled); }} open={d => go({ section: 'rooms', room: roomId, device: d.key })} busy={d => runner.busy.has(d.key)} onHeating={() => go({ section: 'climate' })} onAlarms={() => go({ section: 'rooms', room: roomId, device: 'clock' })} sheetOf={sheetOf} openSheet={key => go({ section: 'rooms', room: roomId, device: key })} applianceOf={key => appliances.get(key)} />;
 }
 /** The whole house's consumers now, room by room, plus the car's charger from the mains (HA's Energy → «Сейчас»): the busiest on top. */
 function HouseLoad({ all, home, registry, heating, vacuum, energyDevices, boilers, grid, t, lang }: { all: HomeDevice[]; home: Home; registry: Registry; heating: ReturnType<typeof readHeating>; vacuum: ReturnType<typeof readVacuum>; energyDevices: HomeDevice[]; boilers: Set<string>; grid: ReadonlySet<string>; t: ReturnType<typeof translator>; lang: 'ru' | 'ro' | 'en' }) {
-  const rows = home.rooms.filter(r => !r.hidden).flatMap(r => { const m = readRoom(registry, r.id, r.name, heating, vacuum), all = [...m.things, ...m.air]; return m.consumers.map(c => ({ key: c.key, name: c.name, sub: r.name, watts: c.power, icon: GLYPH[all.find(x => x.key === c.key)?.kind ?? 'other'] })); });
+  const rows = home.rooms.filter(r => !r.hidden).flatMap(r => { const m = readRoom(registry, r.id, r.name, heating, vacuum, undefined, home.rooms), all = [...m.things, ...m.air]; return m.consumers.map(c => ({ key: c.key, name: c.name, sub: r.name, watts: c.power, icon: GLYPH[all.find(x => x.key === c.key)?.kind ?? 'other'] })); });
   for (const ch of channels(energyDevices, boilers, grid).filter(c => c.charger)) { const w = Number(ch.power.state); if (Number.isFinite(w)) rows.push({ key: ch.key, name: ch.name, sub: home.rooms.find(r => r.id === ch.areaId)?.name ?? '', watts: w, icon: 'car' }); }
   // One «сейчас» for the house (audit 2026-11-09: the tile and «Обзор» said 290 W, this list 168 W): what the mains feed draws beyond the
   // consumers that have a meter of their own is one more row, so the total here is the feed's — the figure of the tile.

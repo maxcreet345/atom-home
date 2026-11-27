@@ -31,7 +31,7 @@ if has py; then
   for t in ../tests/components/atom_home/test_*.py; do
     echo "== $t" >> "$out/py.log"; python3 "$t" > "$out/py.one" 2>&1; rc=$?; cat "$out/py.one" >> "$out/py.log"
     # a file that needs the Home Assistant test harness (another Python) does not run here: written down, not counted
-    if [ $rc -ne 0 ] && grep -q "No module named 'pytest_homeassistant_custom_component'\|No module named 'homeassistant'" "$out/py.one"; then echo "   skipped: needs the HA test harness" >> "$out/py.log"; continue; fi
+    if [ $rc -ne 0 ] && grep -q "No module named 'pytest_homeassistant_custom_component'\|No module named 'homeassistant'\|No module named 'pytest'" "$out/py.one"; then echo "   skipped: needs the HA test harness" >> "$out/py.log"; continue; fi
     ran=$((ran + 1)); [ $rc -ne 0 ] && bad=$((bad + 1))
   done; rm -f "$out/py.one"; [ $ran -eq 0 ] && bad=1; echo "   ran $ran files" >> "$out/py.log"; note py $bad $bad
 fi

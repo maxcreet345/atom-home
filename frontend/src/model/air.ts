@@ -13,7 +13,60 @@ export interface Span { value: number | null; used: number; total: number; room:
 export interface AirProblem { metric: Metric; tone: Tone; room: AirRoom; high: boolean; value: number }
 export interface AirSummary { rooms: AirRoom[]; temperature: Span; humidity: Span; co2: Span; pm25: Span; problem: AirProblem | null; /** readings that have sensors and not one of them answers */ noData: Metric[]; tone: AirTone }
 export interface AirOptions { average: string[]; excluded: string[]; bath: string[]; kitchen: string[]; /** what can be done in which room, by its vent; any other room gets numbers and words only (owner, 05.11.2026) */ actions: Record<string, AirActionKind[]> }
-export const AIR_DEFAULTS: AirOptions = { average: ['gostinaia', 'detskaia', 'spalnia', 'kompiuternaia', 'kukhnia', 'vannaia'], excluded: ['sklad'], bath: ['vannaia'], kitchen: ['kukhnia', 'sklad'], actions: { kukhnia: ['dehumidify', 'purify'], sklad: ['dehumidify', 'purify'], vannaia: ['dehumidify'], kompiuternaia: ['dehumidify'] } };
+/** How the first house was set up before the settings existed (owner, 05–06.11.2026). Kept for that house only, until its settings are
+ *  written into its own config (then this goes): see `houseRoomAir`. */
+const CRIULENI_AIR: AirOptions = { average: ['gostinaia', 'detskaia', 'spalnia', 'kompiuternaia', 'kukhnia', 'vannaia'], excluded: ['sklad'], bath: ['vannaia'], kitchen: ['kukhnia', 'sklad'], actions: { kukhnia: ['dehumidify', 'purify'], sklad: ['dehumidify', 'purify'], vannaia: ['dehumidify'], kompiuternaia: ['dehumidify'] } };
+/** The first house is recognised by all five of its rooms at once: one of these ids alone is an ordinary word (a second house has a «spalnia»
+ *  that is its showroom, and the card took its mean from it, 27.11.2026). */
+const CRIULENI_ROOMS = ['gostinaia', 'kukhnia', 'vannaia', 'sklad', 'kompiuternaia'];
+/** A room's place in «Воздух», as the owner sets it in «Настройка → Комнаты» (owner, 27.11.2026): its humidity limits, whether it counts in
+ *  the house's mean (or only shows, or not at all), and what its vent may be asked to do. */
+export type AirCount = 'mean' | 'aside' | 'off';
+export interface RoomAir { scale: HumidityScale; count: AirCount; actions: AirActionKind[] }
+export const AIR_ACTIONS: AirActionKind[] = ['dehumidify', 'purify'];
+const KITCHEN_NAME = /кухн|kitchen|bucătări|bucatari/i, BATH_NAME = /ванн|санузел|санузл|bath|baie|toilet|туалет|\bwc\b/i;
+/** A room nobody has set: its kind from its name; a kitchen's vent may dry and clean the air, a bathroom's dry it (as on the first house). */
+export function autoRoomAir(name: string): RoomAir {
+  const scale: HumidityScale = KITCHEN_NAME.test(name) ? 'kitchen' : BATH_NAME.test(name) ? 'bath' : 'room';
+  return { scale, count: 'mean', actions: scale === 'kitchen' ? ['dehumidify', 'purify'] : scale === 'bath' ? ['dehumidify'] : [] };
+}
+function criuleniRoomAir(id: string): RoomAir {
+  const o = CRIULENI_AIR;
+  return { scale: o.kitchen.includes(id) ? 'kitchen' : o.bath.includes(id) ? 'bath' : 'room', count: o.excluded.includes(id) ? 'off' : o.average.includes(id) ? 'mean' : 'aside', actions: [...(o.actions[id] ?? [])] };
+}
+const isScale = (v: unknown): v is HumidityScale => v === 'room' || v === 'kitchen' || v === 'bath';
+const isCount = (v: unknown): v is AirCount => v === 'mean' || v === 'aside' || v === 'off';
+/** What one stored setting holds that is valid; anything else is left to the default. */
+export function cleanRoomAir(v: unknown): Partial<RoomAir> | undefined {
+  if (!v || typeof v !== 'object') return undefined;
+  const o = v as Record<string, unknown>, out: Partial<RoomAir> = {};
+  if (isScale(o.scale)) out.scale = o.scale;
+  if (isCount(o.count)) out.count = o.count;
+  if (Array.isArray(o.actions)) out.actions = AIR_ACTIONS.filter(a => (o.actions as unknown[]).includes(a));
+  return Object.keys(out).length ? out : undefined;
+}
+export type AirRoomRef = { id: string; name: string; air?: Partial<RoomAir> };
+/** Every room's place in «Воздух»: what the owner set wins; a room left unset takes its name's kind — or, on the first house while nothing at all
+ *  is set there, how it was before the settings. */
+export function houseRoomAir(rooms: AirRoomRef[]): Map<string, RoomAir> {
+  const anySet = rooms.some(r => r.air), ids = new Set(rooms.map(r => r.id)), first = !anySet && CRIULENI_ROOMS.every(id => ids.has(id));
+  return new Map(rooms.map(r => [r.id, { ...(first ? criuleniRoomAir(r.id) : autoRoomAir(r.name)), ...(r.air ?? {}) }]));
+}
+/** The card's options from the rooms' places. The mean is of the rooms that count in it — of all counted rooms when none only shows. */
+export function airOptionsOf(rooms: AirRoomRef[]): AirOptions {
+  const air = houseRoomAir(rooms), list = [...air.entries()], aside = list.some(([, a]) => a.count === 'aside');
+  // every room set aside: no mean at all (an id no room has), not the mean of the rooms that were meant only to show
+  const mean = list.filter(([, a]) => a.count === 'mean').map(([id]) => id);
+  return { average: aside ? (mean.length ? mean : [NO_MEAN]) : [], excluded: list.filter(([, a]) => a.count === 'off').map(([id]) => id), bath: list.filter(([, a]) => a.scale === 'bath').map(([id]) => id), kitchen: list.filter(([, a]) => a.scale === 'kitchen').map(([id]) => id), actions: Object.fromEntries(list.filter(([, a]) => a.actions.length).map(([id, a]) => [id, a.actions])) };
+}
+const NO_MEAN = '\u0000no-mean';
+const optionsCache = new Map<string, AirOptions>();
+/** The same object for the same rooms: airSummary's memory compares the options by identity. */
+export function optionsFor(rooms: AirRoomRef[]): AirOptions {
+  const key = JSON.stringify(rooms.map(r => [r.id, r.name, r.air ?? null]));
+  let o = optionsCache.get(key); if (!o) { if (optionsCache.size > 20) optionsCache.clear(); o = airOptionsOf(rooms); optionsCache.set(key, o); }
+  return o;
+}
 const CLASS: Record<string, keyof Pick<AirRoom, 'temperature' | 'humidity' | 'co2' | 'pm25' | 'voc'>> = { temperature: 'temperature', humidity: 'humidity', carbon_dioxide: 'co2', pm25: 'pm25', volatile_organic_compounds: 'voc', volatile_organic_compounds_parts: 'voc', aqi: 'voc' };
 /** A relay that drives a vent says so as a whole word: «prevent» on a feeder or a dryer is not a vent (found on the live house, 05.11.2026), nor are a hood's light or a relay's child lock. The server has the same rule. */
 export const VENT_SWITCH = /^switch\.(?!(?:.*_)?(?:lights?|lamps?|led|lock|indicator|mode|backlight|svet|podsvetka|lampa|blokirovka|zamok|rezhim|indikator)(?:_|$))(?:[a-z0-9]+_)*(?:vent|ventilation|exhaust|hood|vytiazh[a-z]*|ventiliatsiia|ventiliator|ventilator|extractor|fan$)(?:_[a-z0-9]+)*$/;
@@ -35,7 +88,7 @@ export const toneOf = (metric: Metric, value: number | null, scale: HumidityScal
 export const isHigh = (metric: Metric, v: number, scale: HumidityScale = 'room') => metric === 'humidity' ? shown(metric, v) >= HUMIDITY[scale].warn : metric === 'temperature' ? shown(metric, v) > 25 : true;
 const toValue = (state: string | undefined) => { if (state === undefined || state === '' ) return null; const v = Number(state); return Number.isFinite(v) ? v : null; };
 /** Rooms of the Air card in dashboard order, only those with a sensor of the four readings. Temperature and humidity: the area's link wins, even silent (a link that says nothing is a reading with no value); no link: the room's own sensor, searched as CO₂ is. The rest is searched and ranked: the CO₂ device of the room first, then pure sensors, then a purifier; appliances are out. */
-export function airRooms(reg: Registry, rooms: Array<{ id: string; name: string }>, opts: AirOptions = AIR_DEFAULTS): AirRoom[] {
+export function airRooms(reg: Registry, rooms: AirRoomRef[], opts: AirOptions = optionsFor(rooms)): AirRoom[] {
   // one walk over the registry per call: this runs on every state change of the house, with some 1700 entities
   type Row = Registry['entities'][number];
   const deviceById = new Map(reg.devices.map(d => [d.id, d])), areaById = new Map(reg.areas.map(a => [a.area_id, a])), rowById = new Map<string, Row>(), domainsOf = new Map<string, Set<string>>(), roomRows = new Map<string, { live: Row[]; withDead: Row[] }>(), NONE = new Set<string>();
@@ -67,10 +120,10 @@ const mean = (rooms: AirRoom[], key: 'temperature' | 'humidity'): Span => { cons
 const worst = (rooms: AirRoom[], key: 'co2' | 'pm25'): Span => { const all = rooms.filter(r => r[key]), used = all.filter(r => r[key]!.value !== null), top = used.reduce<AirRoom | null>((m, r) => !m || r[key]!.value! > m[key]!.value! ? r : m, null); return { value: top ? top[key]!.value : null, used: used.length, total: all.length, room: top?.name ?? null }; };
 /** The tile's numbers and its one sentence. The excluded room never counts. Priority: a red reading before a yellow one (owner, 06.11.2026), then CO₂, PM2.5, humidity, temperature, then the furthest past its limit. */
 let lastSummary: { states: Registry['states']; entities: Registry['entities']; devices: Registry['devices']; areas: Registry['areas']; rooms: string; opts: AirOptions; value: AirSummary } | null = null;
-export function airSummary(reg: Registry, rooms: Array<{ id: string; name: string }>, opts: AirOptions = AIR_DEFAULTS): AirSummary {
-  const roomsKey = rooms.map(r => `${r.id}=${r.name}`).join('|'); // the tile and the open sheet ask in the same draw
+export function airSummary(reg: Registry, rooms: AirRoomRef[], opts: AirOptions = optionsFor(rooms)): AirSummary {
+  const roomsKey = rooms.map(r => `${r.id}=${r.name}`).join('|'); // the tile and the open sheet ask in the same draw; the options carry the rooms' settings, compared by identity below
   if (lastSummary && lastSummary.states === reg.states && lastSummary.entities === reg.entities && lastSummary.devices === reg.devices && lastSummary.areas === reg.areas && lastSummary.rooms === roomsKey && lastSummary.opts === opts) return lastSummary.value;
-  const list = airRooms(reg, rooms, opts), counted = list.filter(r => !r.excluded), six = rooms.some(r => opts.average.includes(r.id)) ? counted.filter(r => opts.average.includes(r.id)) : counted; // a CO₂ sensor in the hall shows in the rooms, it does not move the house's mean
+  const list = airRooms(reg, rooms, opts), counted = list.filter(r => !r.excluded), six = opts.average.length ? counted.filter(r => opts.average.includes(r.id)) : counted; // a CO₂ sensor in the hall shows in the rooms, it does not move the house's mean
   const problems: AirProblem[] = []; for (const metric of ['co2', 'pm25', 'humidity', 'temperature'] as Metric[]) for (const room of counted) { const v = room[metric]?.value ?? null; const tone = toneOf(metric, v, room.scale); if (v !== null && tone !== 'ok') problems.push({ metric, tone, room, value: v, high: isHigh(metric, v, room.scale) }); }
   const order: Metric[] = ['co2', 'pm25', 'humidity', 'temperature'], spread = (p: AirProblem) => p.metric === 'humidity' ? (p.high ? p.value - HUMIDITY[p.room.scale].warn : (HUMIDITY[p.room.scale].low ?? 0) - p.value) : p.metric === 'temperature' ? Math.abs(p.value - 22) : p.value;
   problems.sort((a, b) => (a.tone === b.tone ? 0 : a.tone === 'bad' ? -1 : 1) || order.indexOf(a.metric) - order.indexOf(b.metric) || spread(b) - spread(a));

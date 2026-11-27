@@ -1,3 +1,4 @@
+import type { AirRoomRef } from '../model/air.ts';
 import type { ComponentChildren } from 'preact';
 import { mayControl } from '../runtime/actions.ts';
 import { useContext, useRef } from 'preact/hooks';
@@ -24,7 +25,7 @@ import { LayoutGrid, type LayItem } from './layout-grid.tsx';
 import { roomScope } from '../model/tile-layout.ts';
 import { useSlotSize } from './slot-size.ts';
 
-export interface RoomProps { reg: Registry; roomId: string; roomName: string; heating: Heating | null; vacuum: Vacuum | null; host: Host; t: T; lang: Lang; now: number; alarms: Alarm[] | null;
+export interface RoomProps { reg: Registry; roomId: string; roomName: string; /** the house's rooms, for the room's kind in «Воздух» */ houseRooms?: AirRoomRef[]; heating: Heating | null; vacuum: Vacuum | null; host: Host; t: T; lang: Lang; now: number; alarms: Alarm[] | null;
   deviceOf: (entity: string) => HomeDevice | undefined; toggle: (d: HomeDevice) => void; open: (d: HomeDevice) => void; busy: (d: HomeDevice) => boolean; onHeating: () => void; onAlarms: () => void;
   /** the shell's command runner, and a device's own action by id through the sheet's runner (a valve's «open» / «close», with its question) */ commands: Commands; act: (d: HomeDevice, actionId: string) => void;
   /** a device the owner switched off in «Настройка» («Показывать»): it has no card here either */ hidden?: (th: Thing) => boolean;
@@ -137,7 +138,7 @@ function Alarms({ p }: { p: P }) {
 }
 
 export function RoomView(p: RoomProps) {
-  const m = readRoom(p.reg, p.roomId, p.roomName, p.heating, p.vacuum, p.now);
+  const m = readRoom(p.reg, p.roomId, p.roomName, p.heating, p.vacuum, p.now, p.houseRooms);
   // one lamp lives in the one-tap row; several get their own cards
   const tiles = [...m.things.filter(t => t.kind !== 'light' || m.things.filter(x => x.kind === 'light').length > 1), ...m.air].filter(th => !p.hidden?.(th));
   // a device that already has its own card (kettle, feeder, robot, camera) is drawn by it, the same as on Home; the rest get the room's card

@@ -56,17 +56,26 @@ export function whenIdle(run: () => void, idleMs = UPDATE_IDLE_MS, target: Pick<
   return stop;
 }
 
-/** At most this many reports a page goes to Home Assistant's log, so a fault in a loop does not flood it. */
+/** At most this many reports a page goes to Home Assistant's log, so a fault in a loop does not flood it. Refusals (a save, a command the
+ *  house turned down) have a budget of their own: five refused taps on a wall tablet must not silence a later crash. */
 const REPORT_MAX = 5;
-export function errorReporter(send: (message: string) => Promise<unknown>) {
+export const REFUSAL_MAX = 20;
+/** One line for anything thrown: an Error by its name, the house's refusal ({ code, message }) by both. */
+export function errorText(error: unknown): string {
+  if (error instanceof Error) { const code = (error as { code?: unknown }).code; return `${error.name}${typeof code === 'string' ? ` (${code})` : ''}: ${error.message}`; }
+  if (error && typeof error === 'object') { const { code, message } = error as { code?: unknown; message?: unknown }; if (code !== undefined || message !== undefined) return [code, message].filter(x => x !== undefined && x !== '').map(String).join(': '); }
+  return String(error);
+}
+/** `max` reports a page; a refusal is not a fault of the panel (the person was told, the house's log has it), so its console line is `info`. */
+export function errorReporter(send: (message: string, where: string, text: string) => Promise<unknown>, max = REPORT_MAX, level: 'error' | 'info' = 'error') {
   let sent = 0; const seen = new Set<string>();
   return (error: unknown, where: string) => {
-    console.error(`[atom-home] ${where}:`, error);
-    const text = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    console[level](`[atom-home] ${level === 'info' ? 'refused ' : ''}${where}:`, error);
+    const text = errorText(error);
     const key = `${where}|${text}`;
-    if (seen.has(key) || sent >= REPORT_MAX) return;
+    if (seen.has(key) || sent >= max) return;
     seen.add(key); sent++;
     const stack = error instanceof Error && error.stack ? `\n${error.stack.split('\n').slice(0, 6).join('\n')}` : '';
-    void send(`Atom Home panel (${where}): ${text}${stack}`.slice(0, 2000)).catch(() => undefined);
+    void send(`Atom Home panel (${where}): ${text}${stack}`.slice(0, 2000), where, `${text}${stack}`.slice(0, 1500)).catch(() => undefined);
   };
 }

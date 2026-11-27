@@ -2,7 +2,7 @@
  * Pure: reads the registry and the live states, never writes. HA devices, not entities: a kettle is one card, not its eleven switches;
  * a plug or a meter that powers a device of the room gives that device its watts instead of a card of its own. */
 import type { Registry, EntityRow } from './registry.ts';
-import { airRooms, toneOf, type Tone, type HumidityScale } from './air.ts';
+import { airRooms, toneOf, type Tone, type HumidityScale, optionsFor, type AirRoomRef } from './air.ts';
 import type { Heating, HeatRoom } from './heating.ts';
 import type { Vacuum } from './vacuum.ts';
 
@@ -60,11 +60,11 @@ export const kindOf = (name: string, ids: string[], model: string): ThingKind =>
 };
 const MAIN: Partial<Record<ThingKind, RegExp>> = { valve: /^valve\./, kettle: /^switch\..*kettle_power$/, fountain: /^switch\..*_pump$/, light: /^light\.(?!.*_ambient)/, tv: /^media_player\./, speaker: /^media_player\./, player: /^media_player\./, purifier: /^fan\./, humidifier: /^humidifier\./, vent: /^(fan|switch)\./, fridge: /^switch\./, socket: /^switch\./, washer: /^switch\..*socket$/, dryer: /^switch\..*socket$/, boiler: /^switch\./ };
 
-export function readRoom(reg: Registry, roomId: string, roomName: string, heating: Heating | null, vacuum: Vacuum | null, now = Date.now()): RoomModel {
+export function readRoom(reg: Registry, roomId: string, roomName: string, heating: Heating | null, vacuum: Vacuum | null, now = Date.now(), /** the house's rooms: a room's kind (kitchen, bathroom) is the house's setting (model/air.ts) */ houseRooms?: AirRoomRef[]): RoomModel {
   const devById = new Map(reg.devices.map(d => [d.id, d]));
   const rows = reg.entities.filter(e => !e.disabled_by && !e.hidden_by && !e.entity_category && (e.area_id ?? (e.device_id ? devById.get(e.device_id)?.area_id : null)) === roomId && reg.states[e.entity_id] && !/_lyrics$/.test(e.entity_id)); // a speaker's lyrics «camera» is not a camera
   // readings: the Air card's own choice of sensor per room (docs/AIR.md), so the strip and «Воздух» never disagree
-  const air = airRooms(reg, [{ id: roomId, name: roomName }])[0];
+  const air = airRooms(reg, [{ id: roomId, name: roomName }], houseRooms ? optionsFor(houseRooms) : undefined)[0];
   const num = (m: Metric, r: { entity: string; value: number | null } | null): Num | null => r ? { id: r.entity, value: r.value, tone: r.value === null ? 'ok' : toneOf(m, r.value, air?.scale ?? 'room') } : null;
   const bin = (test: (e: EntityRow, dc: string | null) => boolean): Binary | null => { const list = rows.filter(e => e.entity_id.startsWith('binary_sensor.') && test(e, dcOf(reg, e))); if (!list.length) return null; const st = list.map(e => reg.states[e.entity_id]); const on = list.filter(e => reg.states[e.entity_id].state === 'on').map(e => e.entity_id); const since = Math.max(...st.map(s => Date.parse(s.last_changed) || 0));
     const waiting = list.filter(e => reg.states[e.entity_id].state === 'unknown' && dcOf(reg, e) === 'moisture').map(e => e.entity_id), silent = list.filter(e => !['on', 'off'].includes(reg.states[e.entity_id].state) && !waiting.includes(e.entity_id)).map(e => e.entity_id);

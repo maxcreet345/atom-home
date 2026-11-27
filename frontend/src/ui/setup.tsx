@@ -4,6 +4,7 @@ import { createPortal } from 'preact';
 import { Icon } from './primitives.tsx';
 import type { Registry } from '../model/registry.ts';
 import { discover, NO_ROOM, type Home, type HomeDevice } from '../model/discover.ts';
+import { airRooms, houseRoomAir, AIR_ACTIONS, type RoomAir, type AirActionKind } from '../model/air.ts';
 import { SECTIONS, type Kind } from '../model/kinds.ts';
 import { LOOKS, isLook, SETUP_TABS, setupTabOrder, dayKey, normaliseConfig, normaliseTariffs, offeredSections, tariffDayProblem, tariffDeleteEffect, tariffPrice, withNewTariff, type HouseConfig, type CustomButton, type Tariff } from '../model/config.ts';
 import { languages, type T, type Key } from '../i18n/index.ts';
@@ -75,7 +76,7 @@ export function Setup({ registry, config, onChange, admin, t, lang, warnings, ph
     <div className="hm-range-tabs at-setup-tabs" role="group" aria-label={t('setup.title')} ref={el => { const on = el?.querySelector<HTMLElement>('.is-active'); if (el && on && (on.offsetLeft < el.scrollLeft || on.offsetLeft + on.offsetWidth > el.scrollLeft + el.clientWidth)) el.scrollLeft = on.offsetLeft - 8; /* a phone: the open tab is never beyond the edge of the bar */ }}>{tabs.map(([id, key]) => <button type="button" key={id} aria-pressed={tab === id} className={tab === id ? 'is-active' : ''} onClick={() => setTab(id)}>{t(key)}</button>)}</div>
     {warnings.length > 0 && <details className="hm-fold"><summary><span>{t('setup.warnings')} ({warnings.length})</span><Icon name="next" size={18} /></summary><div className="hm-fold-body">{warnings.map(w => <p className="hm-muted">{w}</p>)}</div></details>}
     {tab === 'devices' && <DevicesTab onModules={() => setTab('modules')} home={home} config={config} patch={patch} save={save} ask={ask} t={t} lang={lang} photos={photos} friendly={friendly} lock={lock} />}
-    {tab === 'rooms' && <RoomsTab home={home} config={config} patch={patch} save={save} ask={ask} t={t} photos={photos} lock={lock} />}
+    {tab === 'rooms' && <RoomsTab registry={registry} home={home} config={config} patch={patch} save={save} ask={ask} t={t} photos={photos} lock={lock} />}
     {tab === 'energy' && <EnergyTab config={config} patch={patch} ask={ask} t={t} lang={lang} haPrice={haPrice} lock={lock} />}
     {tab === 'modules' && <ModulesTab registry={registry} config={config} patch={patch} save={save} ask={ask} photos={photos} t={t} lock={lock} />}
     {/* «Погода» is no page of the panel (its tile lives on the main screen), so it is not offered as a section; nor is a section this house
@@ -170,18 +171,33 @@ function DevicesTab({ home, config, patch, save, ask, t, lang, photos, friendly,
     {Object.keys(config.entities).filter(id => config.entities[id].hidden).length > 0 && <details className="hm-fold"><summary><span>{t('setup.hidden')}: {t('setup.entities')} ({Object.keys(config.entities).filter(id => config.entities[id].hidden).length})</span><Icon name="next" size={18} /></summary><div className="hm-fold-body">{Object.keys(config.entities).filter(id => config.entities[id].hidden).map(id => { const name = hiddenName(id); return <div className="hm-setting" data-hidden-entity={id} key={id}><span>{name ?? t('setup.entity')}<small className="at-setup-id">{id}</small></span><button type="button" className="hm-pill" aria-label={`${t('setup.show')}: ${name ?? id}`} onClick={() => patch(c => { delete c.entities[id]; })}>{t('setup.show')}</button></div>; })}</div></details>}
   </div>;
 }
-function RoomsTab({ home, config, patch, save, ask, t, photos, lock }: { home: Home; config: HouseConfig; patch: Patch; save: Save; ask: AskFn; t: T; photos?: PhotoStore; lock?: boolean }) {
+function RoomsTab({ registry, home, config, patch, save, ask, t, photos, lock }: { registry: Registry; home: Home; config: HouseConfig; patch: Patch; save: Save; ask: AskFn; t: T; photos?: PhotoStore; lock?: boolean }) {
   const rooms = [...home.rooms, ...(home.rooms.some(r => r.id === NO_ROOM) ? [] : [{ id: NO_ROOM, name: '', hidden: false, photo: null, order: 999, areaTemperature: null, areaHumidity: null }])];
   // the house feed each room hangs on (an SPM channel, the charger aside): the Energy panel splits the rooms by apartment with it
   const all = useMemo(() => channels(home.devices, new Set()), [home.devices]), feeds = all.filter(c => !c.charger), charger = all.find(c => c.charger), chargerOf = config.modules.energy?.options?.chargerOf ?? '';
   // owner, 09.11.2026: the car charges from apartment 8's input and Premier Energy bills them together; the wiring is nowhere in HA, so it is said here
   const chargerRow = charger && feeds.length > 0 && <div className="hm-row at-setup-row" data-setting="charger-of"><div className="at-setup-form"><label className="at-field"><span>{t('setup.chargerOf', { name: charger.name })}</span><select value={chargerOf} onChange={e => patch(c => { const v = (e.target as HTMLSelectElement).value, m = c.modules.energy ?? {}; const options = { ...(m.options ?? {}) }; if (v) options.chargerOf = v; else delete options.chargerOf; c.modules.energy = { ...m, options }; })}><option value="">{t('setup.chargerOf.none')}</option>{feeds.map(f => <option value={f.key}>{f.name}</option>)}</select></label></div></div>;
+  // a room's place in «Воздух» (owner, 27.11.2026): shown for the rooms the card shows (or with a setting already). The first change writes every
+  // room's current place, so a house that ran on the defaults (the first house's own, or the names' kinds) keeps the others as they were.
+  const air = houseRoomAir(home.rooms), sensed = useMemo(() => new Set(airRooms(registry, home.rooms).map(r => r.id)), [registry, home.rooms]); // the rooms «Воздух» shows
+  const setAir = (id: string, change: Partial<RoomAir>) => patch(c => {
+    const now = houseRoomAir(home.rooms.map(r => ({ id: r.id, name: r.name, air: c.rooms[r.id]?.air })));
+    if (!home.rooms.some(r => c.rooms[r.id]?.air)) for (const r of home.rooms) if (r.id !== NO_ROOM) c.rooms[r.id] = { ...(c.rooms[r.id] ?? {}), air: { ...now.get(r.id)! } };
+    c.rooms[id] = { ...(c.rooms[id] ?? {}), air: { ...now.get(id)!, ...(c.rooms[id]?.air ?? {}), ...change } };
+  });
+  const actionsValue = (a: AirActionKind[]) => a.length === 2 ? 'both' : a[0] ?? 'none';
+  const airFields = (id: string, rn: string) => { const a = air.get(id); if (!a || id === NO_ROOM || (!sensed.has(id) && !config.rooms[id]?.air)) return null; return <>
+    <label className="at-field"><span>{t('setup.air.scale')}</span><select data-field="air-scale" aria-label={`${t('setup.air.scale')}: ${rn}`} value={a.scale} onChange={e => setAir(id, { scale: (e.target as HTMLSelectElement).value as RoomAir['scale'] })}>{(['room', 'kitchen', 'bath'] as const).map(v => <option value={v}>{t(`setup.air.scale.${v}`)}</option>)}</select></label>
+    <label className="at-field"><span>{t('setup.air.count')}</span><select data-field="air-count" aria-label={`${t('setup.air.count')}: ${rn}`} value={a.count} onChange={e => setAir(id, { count: (e.target as HTMLSelectElement).value as RoomAir['count'] })}>{(['mean', 'aside', 'off'] as const).map(v => <option value={v}>{t(`setup.air.count.${v}`)}</option>)}</select></label>
+    <label className="at-field"><span>{t('setup.air.actions')}</span><select data-field="air-actions" aria-label={`${t('setup.air.actions')}: ${rn}`} value={actionsValue(a.actions)} onChange={e => { const v = (e.target as HTMLSelectElement).value; setAir(id, { actions: v === 'both' ? [...AIR_ACTIONS] : v === 'none' ? [] : [v as AirActionKind] }); }}>{(['none', 'dehumidify', 'purify', 'both'] as const).map(v => <option value={v}>{t(`setup.air.actions.${v}`)}</option>)}</select></label>
+  </>; };
   // eight rows of the same four fields: each field is named with its room («Название: Кухня»), or a screen reader hears «Название» eight times
-  return <div className="hm-rows" inert={lock}>{chargerRow}{rooms.map(r => { const o = config.rooms[r.id] ?? {}, rn = r.name || t('room.none'); const count = home.devices.filter(d => d.enabled && d.roomId === r.id).length; return <div className="hm-row at-setup-row" data-room-id={r.id} key={r.id}>
+  return <div className="hm-rows" inert={lock}>{sensed.size > 0 && <div className="hm-card at-setup-cardhint" data-setting="air-hint"><p>{t('setup.air.hint')}</p></div>}{chargerRow}{rooms.map(r => { const o = config.rooms[r.id] ?? {}, rn = r.name || t('room.none'); const count = home.devices.filter(d => d.enabled && d.roomId === r.id).length; return <div className="hm-row at-setup-row" data-room-id={r.id} key={r.id}>
     <div className="at-setup-main"><Toggle on={!r.hidden} label={`${t('setup.show')}: ${r.name || t('room.none')}`} onToggle={() => patch(c => { c.rooms[r.id] = { ...(c.rooms[r.id] ?? {}), hidden: !r.hidden }; })} /><span className="hm-row-text"><strong>{r.name || t('room.none')}</strong><small>{t('setup.roomDevices', { n: count })}</small>{r.id !== NO_ROOM && <small className="at-setup-id">{r.id}</small>}</span></div>
     <div className="at-setup-form"><label className="at-field"><span>{t('setup.name')}</span><DraftInput type="text" label={`${t('setup.name')}: ${rn}`} value={o.name ?? ''} placeholder={r.name || t('room.none')} maxLength={80} autocomplete="off" onCommit={v => patch(c => { c.rooms[r.id] = { ...(c.rooms[r.id] ?? {}), name: v.trim() || undefined }; })} /></label>
       <label className="at-field"><span>{t('setup.order')}</span><DraftInput type="number" label={`${t('setup.order')}: ${rn}`} inputMode="numeric" step="1" autocomplete="off" value={String(o.order ?? r.order)} onCommit={v => patch(c => { c.rooms[r.id] = { ...(c.rooms[r.id] ?? {}), order: Math.round(Number(v)) || 0 }; })} /></label>
       {(feeds.length > 0 || o.feed) && <label className="at-field"><span>{t('setup.feed')}</span><select aria-label={`${t('setup.feed')}: ${rn}`} value={o.feed ?? ''} onChange={e => patch(c => { const v = (e.target as HTMLSelectElement).value; c.rooms[r.id] = { ...(c.rooms[r.id] ?? {}), feed: v || undefined }; })}><option value="">{t('setup.feed.none')}</option>{feeds.map(f => <option value={f.key}>{f.name}</option>)}{o.feed && !feeds.some(f => f.key === o.feed) && <option value={o.feed}>{o.feed}</option>}</select></label>}
+      {airFields(r.id, rn)}
       <PhotoField label={t('setup.photo')} subject={rn} value={o.photo ?? null} fallback={stockRoomArt(r.name, config.home.theme)} photos={photos} t={t} ask={ask} onChange={url => save(c => { c.rooms[r.id] = { ...(c.rooms[r.id] ?? {}), photo: url }; })} /></div>
   </div>; })}</div>;
 }

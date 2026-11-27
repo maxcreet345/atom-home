@@ -38,6 +38,7 @@ import time
 
 from .helpers_check import Lease, missing_helpers, short_helpers, to_create
 from .timer_done import TimerDone
+from .panel_log import STORAGE_KEY as PANEL_LOG_KEY, STORAGE_VERSION as PANEL_LOG_VERSION, Budget, PanelLog, log_line
 from .const import (
     DOMAIN, FRONTEND_FILE, MAX_PHOTO_BYTES, PANEL_ICON, PANEL_TITLE, PANEL_URL_PATH, PHOTOS_DIR, PHOTOS_URL, STATIC_URL, STORAGE_KEY, STORAGE_VERSION,
 )
@@ -255,7 +256,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     timer_done = TimerDone(hass)
     timer_done.start()
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"air_tasks": air_tasks, "layouts": layouts, "store": store, "state": state, "alarms": scheduler, "light_sleep": sleep, "timer_done": timer_done, "check_helpers": check_helpers, "helpers_lease": Lease(time.monotonic), "helpers_unsub": async_at_started(hass, check_helpers)}
+    log_store: Store[dict] = Store(hass, PANEL_LOG_VERSION, PANEL_LOG_KEY)
+    panel_log = PanelLog(log_store.async_load, log_store.async_save)
+    await panel_log.async_load()
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"air_tasks": air_tasks, "layouts": layouts, "store": store, "state": state, "alarms": scheduler, "light_sleep": sleep, "timer_done": timer_done, "panel_log": panel_log, "log_store": log_store, "log_budget": Budget(), "check_helpers": check_helpers, "helpers_lease": Lease(time.monotonic), "helpers_unsub": async_at_started(hass, check_helpers)}
     hass.data[DOMAIN]["_version"] = version
 
     photos_dir = Path(hass.config.path(PHOTOS_DIR))
@@ -344,7 +348,7 @@ def _register_ws(hass: HomeAssistant) -> None:
     @callback
     def ws_capabilities(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
         """What this backend supports; a panel that gets `unknown_command` here is talking to an older integration."""
-        connection.send_result(msg["id"], {"configRevision": 1, "composition": 1, "assist": 0, "alarms": 1, "lightSleep": 1, "automations": 1, "feederLog": 1, "airTasks": 1, "layouts": 1, "helpers": 1})
+        connection.send_result(msg["id"], {"configRevision": 1, "composition": 1, "assist": 0, "alarms": 1, "lightSleep": 1, "automations": 1, "feederLog": 1, "airTasks": 1, "layouts": 1, "helpers": 1, "log": 1})
 
     @websocket_api.websocket_command({
         vol.Required("type"): f"{DOMAIN}/config/set",
@@ -430,6 +434,45 @@ def _register_ws(hass: HomeAssistant) -> None:
                 cancel()
             bucket["helpers_recheck"] = async_call_later(hass, 60, check)
         connection.send_result(msg["id"], {"create": missing, "busy": False})
+
+    @websocket_api.websocket_command({
+        vol.Required("type"): f"{DOMAIN}/log/write",
+        vol.Required("where"): str,
+        vol.Required("text"): str,
+        vol.Optional("version"): str,
+        vol.Optional("device"): str,
+    })
+    @callback
+    def ws_log_write(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+        """A panel tells what went wrong on it (panel_log.py): any signed-in user, limited per socket, kept across restarts."""
+        bucket = _entry_data(hass) or {}
+        log: PanelLog | None = bucket.get("panel_log")
+        budget: Budget | None = bucket.get("log_budget")
+        if log is None or budget is None:
+            connection.send_error(msg["id"], "not_loaded", "Atom Home is not set up")
+            return
+        key = id(connection)
+        if not budget.knows(key):
+            connection.subscriptions[f"{DOMAIN}/log/budget"] = lambda: budget.forget(key)  # forgotten when the socket closes
+        user = connection.user.name if connection.user else "?"
+        if not budget.take(key, connection.user.id if connection.user else ""):
+            connection.send_result(msg["id"], {"kept": False, "reason": "too_many"})
+            return
+        entry = log.add(user or "?", msg["where"], msg["text"], msg.get("version"), msg.get("device"))
+        if entry is None:
+            connection.send_result(msg["id"], {"kept": False, "reason": "empty"})
+            return
+        _LOGGER.warning("%s", log_line(entry))
+        # one write for a burst, and the last one on shutdown (Store's delayed save)
+        bucket["log_store"].async_delay_save(log.data, 10)
+        connection.send_result(msg["id"], {"kept": True})
+
+    @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/log/get"})
+    @websocket_api.require_admin
+    @callback
+    def ws_log_get(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+        log: PanelLog | None = (_entry_data(hass) or {}).get("panel_log")
+        connection.send_result(msg["id"], {"entries": list(log.entries) if log else []})
 
     @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/alarm/stop"})
     @websocket_api.async_response
@@ -643,6 +686,8 @@ def _register_ws(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_photo_delete)
     websocket_api.async_register_command(hass, ws_alarms_set)
     websocket_api.async_register_command(hass, ws_helpers_claim)
+    websocket_api.async_register_command(hass, ws_log_write)
+    websocket_api.async_register_command(hass, ws_log_get)
     websocket_api.async_register_command(hass, ws_alarm_stop)
     websocket_api.async_register_command(hass, ws_alarm_snooze)
     websocket_api.async_register_command(hass, ws_alarms_state)

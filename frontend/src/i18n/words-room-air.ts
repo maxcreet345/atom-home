@@ -1,0 +1,51 @@
+// A room's place in «Воздух» (owner, 27.11.2026), set in «Настройка → Комнаты»: its kind, whether it counts, what its vent may do. ru = ro = en by keys.
+const ru = {
+  'setup.air.scale': 'Воздух: тип',
+  'setup.air.scale.room': 'Комната',
+  'setup.air.scale.kitchen': 'Кухня',
+  'setup.air.scale.bath': 'Ванная',
+  'setup.air.count': 'Воздух: учёт',
+  'setup.air.count.mean': 'В среднем по дому',
+  'setup.air.count.aside': 'Только показывать',
+  'setup.air.count.off': 'Не учитывать',
+  'setup.air.actions': 'Воздух: кнопки вытяжки',
+  'setup.air.actions.none': 'Нет',
+  'setup.air.actions.dehumidify': 'Убрать влагу',
+  'setup.air.actions.purify': 'Очистить воздух',
+  'setup.air.actions.both': 'Убрать влагу и очистить',
+  'setup.air.hint': 'Кухня и ванная — свои пороги влажности. «Только показывать»: комната видна, но не входит в среднее. «Не учитывать»: видна, но не влияет ни на что.',
+};
+type K = keyof typeof ru;
+const en: Record<K, string> = {
+  'setup.air.scale': 'Air: kind',
+  'setup.air.scale.room': 'Room',
+  'setup.air.scale.kitchen': 'Kitchen',
+  'setup.air.scale.bath': 'Bathroom',
+  'setup.air.count': 'Air: counts',
+  'setup.air.count.mean': 'In the house average',
+  'setup.air.count.aside': 'Show only',
+  'setup.air.count.off': 'Do not count',
+  'setup.air.actions': 'Air: vent buttons',
+  'setup.air.actions.none': 'None',
+  'setup.air.actions.dehumidify': 'Remove humidity',
+  'setup.air.actions.purify': 'Clean the air',
+  'setup.air.actions.both': 'Remove humidity and clean',
+  'setup.air.hint': 'A kitchen and a bathroom have their own humidity limits. «Show only»: the room is shown but not in the average. «Do not count»: shown, but affects nothing.',
+};
+const ro: Record<K, string> = {
+  'setup.air.scale': 'Aer: tip',
+  'setup.air.scale.room': 'Cameră',
+  'setup.air.scale.kitchen': 'Bucătărie',
+  'setup.air.scale.bath': 'Baie',
+  'setup.air.count': 'Aer: se ia în calcul',
+  'setup.air.count.mean': 'În media casei',
+  'setup.air.count.aside': 'Doar se afișează',
+  'setup.air.count.off': 'Nu se ia în calcul',
+  'setup.air.actions': 'Aer: butoanele hotei',
+  'setup.air.actions.none': 'Niciunul',
+  'setup.air.actions.dehumidify': 'Elimină umezeala',
+  'setup.air.actions.purify': 'Curăță aerul',
+  'setup.air.actions.both': 'Elimină umezeala și curăță',
+  'setup.air.hint': 'Bucătăria și baia au praguri proprii de umiditate. «Doar se afișează»: camera se vede, dar nu intră în medie. «Nu se ia în calcul»: se vede, dar nu influențează nimic.',
+};
+export const wordsRoomAir = { ru, en, ro };
