@@ -6,7 +6,7 @@ import { normaliseConfig } from '../model/config.ts';
 import { rememberDiscover, roomClimate, NO_ROOM, type Home, type HomeDevice, type Room, type EntityRef } from '../model/discover.ts';
 import { SECTIONS, type Section, type Kind } from '../model/kinds.ts';
 import type { Host, AutomationRow } from '../runtime/host.ts';
-import { actionsFor, serviceCall, customAction, buttonDoes, type Action } from '../runtime/actions.ts';
+import { actionsFor, serviceCall, customAction, buttonDoes, mayControl, type Action } from '../runtime/actions.ts';
 import { translator, hasDictionary, type Key } from '../i18n/index.ts';
 import { RoomTile, AccessoryTile, ThermostatTile, ClockTile as PlainClockTile, SceneTile, ValueTile, Section as Block, artOf } from './cards.tsx';
 import { ClockTile, ClockSheet, beep } from '../modules/clock.tsx';
@@ -21,6 +21,7 @@ import { stateText, isOn, num, co2Level, withRoom, errorText, nameUnderRoom, wat
 import { createCommands, guardHost } from '../runtime/commands.ts';
 import { metricLabel, modelText, held } from './cards.tsx';
 import { Setup } from './setup.tsx';
+import { AccessGate, type PanelExtras } from './access-gate.tsx';
 import { rememberModules, claimedEntities, type ActiveModule, type TileState, type AutoClose } from '../modules/index.ts';
 import { Fragment } from 'preact';
 import { backLayer } from './back-layer.ts';
@@ -106,7 +107,9 @@ export interface AppProps { registry: Registry; config: HouseConfig; host: Host;
   /** The panel and the integration's Python differ in version (an update without a restart): the administrator is told once. */
   restartNeeded?: boolean }
 /** The whole panel: pure function of (registry + states, config). Commands go through the host and are confirmed by state changes. */
-export function AtomApp({ registry, config: initialConfig, host: bareHost, viewport: outer, navigationWindow = window, store, configWarnings = [], onConfigChange, configPending = false, restartNeeded = false }: AppProps) {
+/** The whole panel, through the access split (ui/access-gate.tsx, docs/ACCESS.md): with the split off or for an administrator, exactly the panel as it was. */
+export function AtomApp(props: AppProps) { return <AccessGate {...props} Panel={AtomPanel} />; }
+function AtomPanel({ registry, config: initialConfig, host: bareHost, viewport: outer, navigationWindow = window, store, configWarnings = [], onConfigChange, configPending = false, restartNeeded = false, deviceFilter, accessBar, onViewAs }: AppProps & PanelExtras) {
   setHouseZone(bareHost.timeZone); // the clock, the sun, «next alarm» and the energy month are the house's, whatever zone this browser is in (runtime/zone.ts)
   // The one command runner of the panel (runtime/commands.ts): the cards get a host whose `call` goes through it, the tiles and sheets get `runner`.
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set()), say = useRef<(text: string) => void>(() => undefined), words = useRef(translator(initialConfig.home.language)), hostNow = useRef(bareHost); hostNow.current = bareHost;
@@ -164,7 +167,7 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
   const found = useMemo(() => discoverHome(registry, config, claimed), [registry, config, claimed]);
   // the cards the installer added from the catalog (model/card-catalog.ts): each its own device of the house, drawn by the panel's own tile and
   // sheet; a card whose required fields are not bound is not drawn for the residents. The heating scheme is drawn by the heating screen.
-  const cardViews = useMemo<InstanceView[]>(() => config.profileInstances ? instanceViews(registry, config.profileInstances, a => found.rooms.find(r => r.id === a)?.name ?? null, undefined, k => t(k as Key)).filter(v => !selfDrawn(v.profile) /* a module or the panel's own card draws itself */) : [], [registry, config.profileInstances, found.rooms, t]);
+  const cardViews = useMemo<InstanceView[]>(() => config.profileInstances ? instanceViews(registry, config.profileInstances, a => found.rooms.find(r => r.id === a)?.name ?? null, undefined, k => t(k as Key)).filter(v => !selfDrawn(v.profile) /* a module or the panel's own card draws itself */ && (!deviceFilter || deviceFilter(v.device))) : [], [registry, config.profileInstances, found.rooms, t, deviceFilter]);
   const home = useMemo(() => { const own = cardViews.filter(v => !v.incomplete.length && v.profile.renderer !== 'heatingRooms').map(v => ({ ...v.device, photo: config.devices[`d:${v.device.haDeviceId}`]?.photo ?? (v.instance.legacyKey ? config.devices[v.instance.legacyKey]?.photo : null) ?? null, ...(v.profile.renderer === 'appliance' ? { tileLine: (() => { try { return familyOf(v.profile.card)?.tileLine?.(registry, v.instance, t, lang) ?? null; } catch { return null; } })() } : {}) }));
     // one HA weather device may carry two entities with its first silent (Met.no: «Home Assistant» unavailable, «Home» alive): the tile AND the sheet
     // read the one that answers; the device's key and its settings stay the same (audit 22.11.2026, H-1)
@@ -172,7 +175,9 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
     const devices = found.devices.map(d => { if (d.kind !== 'weather' || !silent(d.primary)) return d; const lists = ['controls', 'metrics', 'parameters', 'diagnostics'] as const;
       for (const k of lists) { const alive = d[k].find(e => e.domain === 'weather' && !silent(e)); if (alive) return { ...d, primary: alive, available: true, [k]: d[k].filter(e => e !== alive) /* the silent twin is not listed beside it as «Нет связи» */ }; } return d; });
     const changed = devices.some((d, i) => d !== found.devices[i]);
-    return own.length || changed ? { ...found, devices: [...devices, ...own] } : found; }, [found, cardViews, config.devices, registry, t, lang]);
+    const whole = own.length || changed ? { ...found, devices: [...devices, ...own] } : found;
+    // the access split (ui/access-gate.tsx): what only the settings know — a card moved to a room, «Кому видно», «Без комнаты» for the administrator only
+    return deviceFilter ? { ...whole, devices: whole.devices.filter(deviceFilter), rooms: whole.rooms.filter(r => r.id !== NO_ROOM) } : whole; }, [found, cardViews, config.devices, registry, t, lang, deviceFilter]);
   const [view, setView] = useState<View>(() => decode(navigationWindow.location.hash));
   /** The module that plays a camera: its own `camera`, or one of its `cameras` (a two-lens camera). */
   const camerasOf = (m: ActiveModule) => m.def.cameras?.(m.entities) ?? (m.entities.camera ? [m.entities.camera] : []);
@@ -233,6 +238,7 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
   const runner: Runner = {
     busy,
     async run(device, action, value) {
+      if (!mayControl(action.entityId, device.kind)) { notify(t('access.viewOnly' as Key)); return false; } // this screen's role does not press it (model/access.ts)
       if (action.confirm && !(confirm && confirm.device === device && confirm.action === action)) { if (!hostNow.current.online) { notify(t('ui.offline')); return false; } /* nothing to ask about: the answer could not be carried out */ confirmOpener.current = activeIn(mainRef.current); /* now: once the question is drawn everything under it is inert and has lost the focus */ setConfirm({ device, action, value }); return false; }
       if (action.kind !== 'number' && commands.pending(device.key)) { // ST-3: a double tap sends one command; sliders keep streaming
         // «Выполнить» in the question is not a double tap: another command of the same device is still on its way (the key is the device's),
@@ -509,6 +515,7 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
       <header className="hm-head">
         {view.section === 'rooms' && view.room ? <button type="button" className="hm-back" onClick={() => leave({ section: 'rooms' })}><Icon name="back" size={20} />{t('section.rooms')}</button> : null}
         <div className="hm-head-title" key={pageKey}><h1 tabIndex={-1}>{title}</h1>{subtitle && <p>{subtitle}</p>}</div>
+        {accessBar && <div className="at-access-bar">{accessBar}</div>}
         {!wide && <span className="hm-head-time">{time}</span>}
         {!host.online && <span className="hm-badge tone-danger">{t('ui.offline')}</span>}
         {configPending && <span className="hm-badge tone-warning at-config-pending">{t('ui.configPending')}</span>}
@@ -547,7 +554,7 @@ export function AtomApp({ registry, config: initialConfig, host: bareHost, viewp
         {view.section === 'energy' && view.filter !== 'now' && <EnergyPanel chargerOf={config.modules.energy?.options?.chargerOf ?? null} tariffs={config.energy.tariffs} host={host} devices={energyDevices} boilers={boilers} floors={registry.floors ?? []} floorOfArea={id => registry.areas.find(a => a.area_id === id)?.floor_id ?? null} feedOfRoom={id => config.rooms[id]?.feed ?? null} roomFeeds={Object.values(config.rooms).map(r => r.feed).filter((f): f is string => !!f)} roomName={roomName} nameOf={d => meterName(d.name)} onDevice={key => go({ section: 'energy', device: key, filter: view.filter })} place={view.filter} onPlace={place => swap({ section: 'energy', filter: place })} onTariff={host.admin ? () => go({ section: 'setup', filter: 'energy' }) : undefined} t={t} lang={lang} fallback={<EnergyPage devices={energyDevices} go={go} t={t} lang={lang} roomName={roomName} admin={host.admin} boilers={boilers} />}
           layout={parts => <EnergyBlocks parts={parts} gas={gasMeters(registry).length ? <GasCard registry={registry} host={host} t={t} lang={lang} now={now.getTime()} /> : null} cards={pageCards('energy')} admin={host.admin} go={go} t={t} />} />}
         {view.section === 'camera' && <CamerasPanel views={camViews} player={player} host={host} now={now.getTime()} t={t} lang={lang} wide={wide} onCamera={key => go({ section: 'camera', device: key })} filter={view.filter} onFilter={f => swap({ section: 'camera', filter: f })} />}
-        {view.section === 'setup' && <Setup registry={registry} config={config} onChange={applyConfig} admin={host.admin} t={t} lang={lang} storeLabel={store?.label ?? 'memory'} warnings={configWarnings} photos={store?.photos} tab={view.filter} onTab={tab => swap({ section: 'setup', filter: tab })} pending={configPending} sections={SECTIONS.filter(present)} haPrice={haPrice} />}
+        {view.section === 'setup' && <Setup host={host} onViewAs={onViewAs} registry={registry} config={config} onChange={applyConfig} admin={host.admin} t={t} lang={lang} storeLabel={store?.label ?? 'memory'} warnings={configWarnings} photos={store?.photos} tab={view.filter} onTab={tab => swap({ section: 'setup', filter: tab })} pending={configPending} sections={SECTIONS.filter(present)} haPrice={haPrice} />}
         {view.section === 'systems' && <SystemsPage resting={resting} cards={pageCards('systems')} status={status} before={<>{modules.filter(m => m.def.placement.includes('systems') && !APPLIANCE_MODULES.includes(m.def.id)).map(m => m.def.sheetKey ? <div className="ah-grid at-module-row"><Guard where={`card:${m.def.id}`} kind="tile" t={t}><m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} compact onOpen={() => go({ section: 'systems', device: m.def.sheetKey })} /></Guard></div> : <Guard where={`card:${m.def.id}`} kind="tile" t={t}><m.def.Card registry={registry} entities={m.entities} options={m.options} host={host} t={t} lang={lang} /></Guard>)}</>}
           appliances={applianceModules.map(m => moduleItem(m, 'systems'))}
           all={enabled} devices={listed} verdict={verdictOf} look={listLook} runner={runner} toggle={toggle} go={go} t={t} lang={lang} roomName={roomName} rooms={home.rooms} admin={host.admin} filter={view.filter} onFilter={f => swap({ section: 'systems', filter: f })} />}

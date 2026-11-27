@@ -1,6 +1,7 @@
 import { wordsCameras } from './words-cameras.ts';
 import { wordsClimate } from './words-climate.ts';
 import { wordsSetup } from './words-setup.ts';
+import { wordsAccess } from './words-access.ts';
 import { wordsCatalog } from './words-catalog.ts';
 import { wordsLayout } from './words-layout.ts';
 import { wordsHelpers } from './words-helpers.ts';
@@ -1074,6 +1075,7 @@ export const ru = {
   ...wordsCameras.ru,
   ...wordsClimate.ru,
   ...wordsSetup.ru,
+  ...wordsAccess.ru,
   ...wordsCatalog.ru,
   ...wordsLayout.ru,
   ...wordsHelpers.ru,

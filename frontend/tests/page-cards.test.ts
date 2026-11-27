@@ -27,16 +27,16 @@ test('a card may stand on a page; an unknown place is dropped', () => {
 
 test('the settings tabs: a saved order is made whole, the panel\'s own order is not stored', () => {
   assert.deepEqual(setupTabOrder(undefined), [...SETUP_TABS]);
-  assert.deepEqual(setupTabOrder(['home', 'rooms', 'nope', 'home', 7]), ['home', 'rooms', 'devices', 'energy', 'sections', 'buttons', 'modules']);
+  assert.deepEqual(setupTabOrder(['home', 'rooms', 'nope', 'home', 7]), ['home', 'rooms', 'devices', 'energy', 'sections', 'buttons', 'modules', 'access']);
   const cfg = (tabs: unknown) => normaliseConfig({ schemaVersion: 1, home: { name: 'Дом', language: 'ru', theme: 'light' }, setupTabs: tabs }).config;
-  assert.deepEqual(cfg(['home', 'rooms']).setupTabs, ['home', 'rooms', 'devices', 'energy', 'sections', 'buttons', 'modules']);
+  assert.deepEqual(cfg(['home', 'rooms']).setupTabs, ['home', 'rooms', 'devices', 'energy', 'sections', 'buttons', 'modules', 'access']);
   assert.equal('setupTabs' in cfg([...SETUP_TABS]), false); assert.equal('setupTabs' in cfg('home'), false); assert.equal('setupTabs' in cfg([]), false);
 });
 
 test('the panel tells the integration it keeps the look, the tab order and the page places — and the integration asks for exactly that', () => {
   const store = readFileSync(resolve(root, 'frontend/src/runtime/ha-store.ts'), 'utf8'), konst = readFileSync(resolve(root, 'custom_components/atom_home/const.py'), 'utf8'), state = readFileSync(resolve(root, 'custom_components/atom_home/config_state.py'), 'utf8');
   const name = /CLIENT_FEATURE_PAGES = "([a-z0-9_]+)"/.exec(konst)![1];
-  assert.ok(store.includes(`PAGES_FEATURE = '${name}'`)); assert.ok(store.includes('CARDS_FEATURE, PAGES_FEATURE, ...'));
+  assert.ok(store.includes(`PAGES_FEATURE = '${name}'`)); assert.ok(store.includes('CARDS_FEATURE, PAGES_FEATURE, ACCESS_FEATURE, ...'));
   assert.match(state, /has_page_settings\(self\.config\) and CLIENT_FEATURE_PAGES not in/);
   for (const p of PAGE_PLACES) assert.ok(konst.includes(`"${p}"`), `const.py knows the page «${p}»`);
 });

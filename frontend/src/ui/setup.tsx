@@ -18,6 +18,9 @@ import { errorText, iconOfKind, locales, numFixed, stateText, type Lang } from '
 import { ANRE_TARIFFS, channels } from '../model/energy-load.ts';
 import { houseDate } from '../runtime/zone.ts';
 import { customAction } from '../runtime/actions.ts';
+import type { Host } from '../runtime/host.ts';
+import type { AccessUser } from '../model/access.ts';
+import { AccessTab, WhoSees } from './setup-access.tsx';
 
 const TABS = SETUP_TABS;
 type Tab = typeof TABS[number];
@@ -30,7 +33,8 @@ const CODE = { autocomplete: 'off', autocapitalize: 'none', autocorrect: false a
 export interface SetupProps { registry: Registry; config: HouseConfig; onChange: (next: HouseConfig) => Promise<void> | void; admin: boolean; t: T; lang: Lang; storeLabel: string; warnings: string[]; photos?: PhotoStore; /** the open tab, kept in the address (`#setup?filter=energy`) so a reload and «Back» return to it */ tab?: string | null; onTab?: (tab: string | null) => void;
   /** the house's settings have not been read yet (the shell's `configPending`): nothing typed here could be saved, so nothing can be typed */ pending?: boolean;
   /** the price of a kWh in Home Assistant's own Energy settings, when the house has one there (`prefTariff`): what the panel counts by until the first own tariff */ haPrice?: number | null;
-  /** the sections this house has (the shell's `present`); not given: every section is offered in «Разделы» */ sections?: readonly string[] }
+  /** the sections this house has (the shell's `present`); not given: every section is offered in «Разделы» */ sections?: readonly string[];
+  /** «Доступ»: Home Assistant's users and the named screens are read through it; «Посмотреть глазами» hands the user to the shell */ host?: Host; onViewAs?: (u: AccessUser) => void }
 /** A question before something is deleted or replaced: what exactly, a cancel, and the answer's own word on the button. */
 export type Question = { text: string; yes: string; run: () => void };
 type AskFn = (q: Question) => void;
@@ -42,7 +46,7 @@ type Save = (fn: (c: HouseConfig) => void) => Promise<boolean>;
  * host element and never a control of the panel (audit 2026-11-09, round 2). */
 const activeIn = (node: Node | null | undefined): HTMLElement | null => ((node?.getRootNode() ?? document) as Document | ShadowRoot).activeElement as HTMLElement | null;
 /** In-panel configurator: every control edits a copy of HouseConfig and hands it back; the caller saves and re-discovers. */
-export function Setup({ registry, config, onChange, admin, t, lang, warnings, photos, tab: placed, onTab, pending, haPrice, sections }: SetupProps) {
+export function Setup({ registry, config, onChange, admin, t, lang, warnings, photos, tab: placed, onTab, pending, haPrice, sections, host, onViewAs }: SetupProps) {
   const [own, setOwn] = useState<Tab>('devices');
   // the tabs in the owner's order (23.11.2026); the address without a tab opens the first of them, an address that names a tab opens that one
   const order = setupTabOrder(config.setupTabs), first = order[0];
@@ -77,6 +81,7 @@ export function Setup({ registry, config, onChange, admin, t, lang, warnings, ph
     {/* «Погода» is no page of the panel (its tile lives on the main screen), so it is not offered as a section; nor is a section this house
         has nothing for (no cameras, no alarm) — unless it is hidden now, when its switch is the way back */}
     {tab === 'sections' && <div className="hm-rows" inert={lock}>{offeredSections(SECTIONS.filter(s => s !== 'home' && s !== 'rooms' && s !== 'weather'), sections, config.sections).map(s => <div className="hm-setting at-setting-row" data-section={s} key={s}><span>{t(`section.${s}` as Key)}</span><Toggle on={!config.sections[s]?.hidden} label={`${t('setup.show')}: ${t(`section.${s}` as Key)}`} onToggle={() => patch(c => { c.sections[s] = { hidden: !c.sections[s]?.hidden }; })} /></div>)}</div>}
+    {tab === 'access' && <AccessTab registry={registry} config={config} save={save} ask={ask} t={t} host={host} onViewAs={onViewAs} lock={lock} />}
     {tab === 'buttons' && <ButtonsTab config={config} patch={patch} save={save} ask={ask} t={t} registry={registry} lock={lock} />}
     {tab === 'home' && <HomeTab onReorder={() => { if (onTab) onTab('home'); else { setOwn('home'); setOwnPicked(true); } }} config={config} fresh={() => live.current} patch={patch} ask={ask} onImport={cfg => commit(cfg, t('setup.imported'))} t={t} lock={lock} />}
     {note && <div className="hm-badge tone-calm at-note" role="status">{note}</div>}
@@ -152,6 +157,7 @@ function DevicesTab({ home, config, patch, save, ask, t, lang, photos, friendly,
           <label className="at-field"><span>{t('setup.room')}</span><select value={o.roomId ?? d.roomId} onChange={e => patch(c => { c.devices[d.key] = { ...(c.devices[d.key] ?? {}), roomId: (e.target as HTMLSelectElement).value }; })}>{[...home.rooms, ...(home.rooms.some(r => r.id === NO_ROOM) ? [] : [{ id: NO_ROOM, name: t('room.none') }])].map(r => <option value={r.id}>{r.name || t('room.none')}</option>)}</select></label>
           <label className="at-field"><span>{t('setup.kind')}</span><select value={o.kind ?? d.kind} onChange={e => patch(c => { c.devices[d.key] = { ...(c.devices[d.key] ?? {}), kind: (e.target as HTMLSelectElement).value as Kind }; })}>{KINDS.map(k => <option value={k}>{t(`kind.${k}` as Key)}</option>)}</select></label>
           <label className="at-field"><span>{t('setup.icon')}</span><select value={o.icon ?? ''} onChange={e => patch(c => { c.devices[d.key] = { ...(c.devices[d.key] ?? {}), icon: (e.target as HTMLSelectElement).value || undefined }; })}><option value="">—</option>{ICONS.map(i => <option value={i}>{t(`setup.icon.${i}` as Key)}</option>)}</select></label>
+          <WhoSees value={o.roles} roles={config.access?.roles} t={t} onChange={v => patch(c => { const next = { ...(c.devices[d.key] ?? {}) }; if (v) next.roles = v; else delete next.roles; c.devices[d.key] = next; })} />
           <label className="at-field"><span>{t('setup.favorite')}</span><Toggle on={!!o.favorite} label={t('setup.favorite')} onToggle={() => patch(c => { c.devices[d.key] = { ...(c.devices[d.key] ?? {}), favorite: !o.favorite || undefined }; })} /></label>
           <label className="at-field at-art-field"><span>{t('setup.art')}</span><select value={o.art ?? ''} onChange={e => patch(c => { c.devices[d.key] = { ...(c.devices[d.key] ?? {}), art: (e.target as HTMLSelectElement).value || undefined }; })}><option value="">{t('setup.art.auto')}</option><option value="none">{t('setup.art.none')}</option>{DEVICE_ART_TYPES.map(a => <option value={a}>{t(`art.${a}` as Key)}</option>)}</select></label>
           <label className="at-field"><span>{t('setup.mergeInto')}</span><select value={o.mergeInto ?? ''} onChange={e => patch(c => { c.devices[d.key] = { ...(c.devices[d.key] ?? {}), mergeInto: (e.target as HTMLSelectElement).value || undefined }; })}><option value="">{t('setup.noMerge')}</option>{home.devices.filter(x => x.key !== d.key && x.roomId === d.roomId && !config.devices[x.key]?.mergeInto).map(x => <option value={x.key}>{shownName(x, t)} · {t(`kind.${x.kind}` as Key)}</option>)}</select></label>

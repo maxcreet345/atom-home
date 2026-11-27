@@ -1,6 +1,7 @@
 import { wordsCameras } from './words-cameras.ts';
 import { wordsClimate } from './words-climate.ts';
 import { wordsSetup } from './words-setup.ts';
+import { wordsAccess } from './words-access.ts';
 import { wordsCatalog } from './words-catalog.ts';
 import { wordsLayout } from './words-layout.ts';
 import { wordsHelpers } from './words-helpers.ts';
@@ -1074,6 +1075,7 @@ export const ro: Dictionary = {
   ...wordsCameras.ro,
   ...wordsClimate.ro,
   ...wordsSetup.ro,
+  ...wordsAccess.ro,
   ...wordsCatalog.ro,
   ...wordsLayout.ro,
   ...wordsHelpers.ro,

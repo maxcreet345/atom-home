@@ -16,6 +16,7 @@ export function errorText(e: unknown, t: T): string {
   const o = (typeof inner === 'object' && inner !== null ? inner : {}) as { code?: unknown; message?: unknown };
   const code = typeof e === 'number' ? e : o.code;
   if (e instanceof CommandError || code === 'offline' || code === 1 || code === 3) return t('ui.offline'); // 1 / 3: cannot connect / connection lost (home-assistant-js-websocket)
+  if (code === 'access_view_only') return t('access.viewOnly' as Key); // this screen's role does not press it (model/access.ts): nothing was sent
   if (code === 'unauthorized' || code === 'not_allowed' || code === 2) return t('error.unauthorized');
   if (code === 'timeout') return t('error.timeout');
   if (code === 'not_found' || code === 'unknown_command' || code === 'not_supported') return t('error.notFound');

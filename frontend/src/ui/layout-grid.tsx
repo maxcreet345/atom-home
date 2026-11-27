@@ -16,7 +16,11 @@ import { arrange, keep, moveBy, moveTo, normaliseProfiles, profileIdFor, resize,
 const lk = (t: T, k: string, p?: Record<string, string | number>) => t(`lay.${k}` as Key, p);
 const POINTER_KEY = 'atom-home:layout-device';
 const readPointer = () => { try { return localStorage.getItem(POINTER_KEY); } catch { return null; } };
-const writePointer = (id: string | null) => { try { if (id) localStorage.setItem(POINTER_KEY, id); else localStorage.removeItem(POINTER_KEY); } catch { /* private mode: asked again next time */ } };
+/** This screen's named device (its layout profile), for the access split (ui/access-gate.tsx: a bound tablet shows its building); the event
+ * says it changed on this screen, `storage` that it changed in another tab. */
+export const readLayoutPointer = readPointer;
+export const LAYOUT_POINTER_EVENT = 'atom-home:layout-device';
+const writePointer = (id: string | null) => { try { if (id) localStorage.setItem(POINTER_KEY, id); else localStorage.removeItem(POINTER_KEY); } catch { /* private mode: asked again next time */ } try { dispatchEvent(new Event(LAYOUT_POINTER_EVENT)); } catch { /* no window (tests) */ } };
 const reduced = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export interface LayItem { key: string; node: ComponentChildren; label?: string; /** the card is drawn in a list of rows without a layout (a room's plain devices): it starts as one cell */ unit?: boolean; min?: Span; /** the size it takes when it first appears on an arranged screen (a camera, the heating: two by two) */ span?: Span;

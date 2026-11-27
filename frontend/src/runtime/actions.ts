@@ -35,8 +35,16 @@ const TOGGLE_DOMAINS = ['light', 'switch', 'fan', 'input_boolean', 'media_player
 const domOf = (e: EntityRef) => e.domain || e.id.split('.')[0];
 const tdom = (e: EntityRef) => TOGGLE_DOMAINS.includes(domOf(e)) ? domOf(e) : 'homeassistant';
 
+/** Who may press what on this screen (model/access.ts, set by ui/access-gate.tsx; null — anything, as before). Like the house's zone
+ * (runtime/zone.ts) it is one value for the whole panel: every list of controls below asks it, so a card of a building shown «только просмотр»
+ * draws no switch, no slider and no button. */
+let controlPolicy: ((entityId: string, kind?: string | null) => boolean) | null = null;
+export function setControlPolicy(p: ((entityId: string, kind?: string | null) => boolean) | null): void { controlPolicy = p; }
+/** Whether this entity may be commanded on this screen (`kind`: the card's kind when known — a socket is the `switch` domain). */
+export const mayControl = (entityId: string, kind?: string | null): boolean => !controlPolicy || controlPolicy(entityId, kind);
 /** White-listed actions for the device's primary entity: only standard HA services that match the entity's declared features. */
 export function actionsFor(device: HomeDevice): Action[] {
+  if (!mayControl(device.primary.id, device.kind)) return [];
   const e = device.primary, id = e.id, a = e.attributes, out: Action[] = [];
   const push = (x: Omit<Action, 'entityId' | 'confirm' | 'risk'> & { confirm?: boolean; risk?: Risk }) => out.push({ entityId: id, confirm: false, risk: 'normal', ...x });
   switch (device.kind) {
@@ -157,6 +165,7 @@ export function customAction(b: CustomButton): Action {
 
 /** Actions for a secondary entity of the device (settings: switch / number / select / button and their input_* twins). Read-only domains yield nothing. */
 export function entityActions(e: EntityRef): Action[] {
+  if (!mayControl(e.id, e.kind)) return [];
   const a = e.attributes, id = e.id;
   switch (e.domain) {
     case 'switch': case 'input_boolean': return [{ id: 'toggle', label: e.name, kind: 'toggle', domain: e.domain, service: 'toggle', entityId: id, confirm: false, risk: 'normal', current: e.state === 'on' }];
