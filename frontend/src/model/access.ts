@@ -51,8 +51,8 @@ export const defaultRoles = (): Record<string, AccessRole> => structuredClone(DE
 export const defaultAccess = (): AccessConfig => ({ enabled: false, newUsers: 'none', roles: defaultRoles(), members: {}, profiles: {} });
 
 const plain = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
-const KEY = /^[\w.:\-]{1,64}$/;
-const USER = /^[A-Za-z0-9_-]{1,64}$/;
+const KEY = /^(?!(?:__proto__|constructor|prototype)$)[\w.:\-]{1,64}$/;
+const USER = /^(?!(?:__proto__|constructor|prototype)$)[A-Za-z0-9_-]{1,64}$/;
 const PROFILE = /^[a-z0-9][a-z0-9_-]{0,39}$/;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const key = (v: unknown) => typeof v === 'string' && KEY.test(v) ? v : undefined;
@@ -98,19 +98,24 @@ export function buildingsOf(floors: readonly FloorRow[] | undefined): FloorRow[]
 /** What a viewer may see. `today` — the house's day (`dayKey(houseDate())`); `floorIds` — the buildings the house has now. */
 export function resolveAccess(access: AccessConfig | undefined, viewer: Viewer, today: string, floorIds: readonly string[]): Access {
   if (!access?.enabled || viewer.admin) return { kind: 'open' };
-  const roleOk = (r: string | undefined): r is string => !!r && !!access.roles[r];
-  const prof = viewer.profile ? access.profiles[viewer.profile] : undefined;
-  if (prof && roleOk(prof.role) && floorIds.includes(prof.building)) return { kind: 'some', buildings: { [prof.building]: prof.role }, via: 'profile' };
-  const m = viewer.id ? access.members[viewer.id] : undefined;
-  if (!m) return access.newUsers === 'default' && access.defaultBuilding && floorIds.includes(access.defaultBuilding) && roleOk(access.defaultRole) ? { kind: 'some', buildings: { [access.defaultBuilding]: access.defaultRole }, via: 'default' } : { kind: 'none', why: 'unassigned' };
-  if (m.until && today > m.until) return { kind: 'none', why: 'expired' };
-  if (m.all) return roleOk(m.role) ? { kind: 'some', buildings: Object.fromEntries([...floorIds, NO_BUILDING].map(f => [f, m.role!])), via: 'member' } : { kind: 'none', why: 'unassigned' };
-  const b = Object.fromEntries(Object.entries(m.buildings ?? {}).filter(([f, r]) => floorIds.includes(f) && roleOk(r)));
-  return Object.keys(b).length ? { kind: 'some', buildings: b, via: 'member' } : { kind: 'none', why: 'unassigned' };
+  const own = (o: object, k: string | undefined) => !!k && Object.hasOwn(o, k);
+  const roleOk = (r: string | undefined): r is string => own(access.roles, r);
+  const m = viewer.id && own(access.members, viewer.id) ? access.members[viewer.id] : undefined;
+  let mine: Access;
+  if (!m) mine = access.newUsers === 'default' && access.defaultBuilding && floorIds.includes(access.defaultBuilding) && roleOk(access.defaultRole) ? { kind: 'some', buildings: { [access.defaultBuilding]: access.defaultRole }, via: 'default' } : { kind: 'none', why: 'unassigned' };
+  else if (m.until && today > m.until) mine = { kind: 'none', why: 'expired' };
+  else if (m.all) mine = roleOk(m.role) ? { kind: 'some', buildings: Object.fromEntries([...floorIds, NO_BUILDING].map(f => [f, m.role!])), via: 'member' } : { kind: 'none', why: 'unassigned' };
+  else { const b = Object.fromEntries(Object.entries(m.buildings ?? {}).filter(([f, r]) => floorIds.includes(f) && roleOk(r))); mine = Object.keys(b).length ? { kind: 'some', buildings: b, via: 'member' } : { kind: 'none', why: 'unassigned' }; }
+  // a bound screen decides the ROLE on it, in its building, and narrows the screen to that building — but only for a person who has that
+  // building already: any resident can pick a named screen in «Расставить», and that must never open a building that is not theirs
+  // (security review 27.11.2026)
+  const prof = viewer.profile && own(access.profiles, viewer.profile) ? access.profiles[viewer.profile] : undefined;
+  if (prof && roleOk(prof.role) && floorIds.includes(prof.building) && mine.kind === 'some' && own(mine.buildings, prof.building)) return { kind: 'some', buildings: { [prof.building]: prof.role }, via: 'profile' };
+  return mine;
 }
 /** The buildings the switcher offers (in the house's order; the areas without a building last), and «Все здания» when there are several. */
 export function switchChoices(access: Extract<Access, { kind: 'some' }>, floors: readonly FloorRow[] | undefined): string[] {
-  const own = [...buildingsOf(floors).map(f => f.floor_id), NO_BUILDING].filter(f => f in access.buildings);
+  const own = [...buildingsOf(floors).map(f => f.floor_id), NO_BUILDING].filter(f => Object.hasOwn(access.buildings, f));
   return own.length > 1 ? [...own, ALL_BUILDINGS] : own;
 }
 /** The building shown: the one chosen last on this screen if it is still allowed, else the first one. */
@@ -121,7 +126,7 @@ export function pickBuilding(choices: readonly string[], remembered: string | nu
 /** What one screen shows: the buildings (with their roles) on it now, and the roles themselves. */
 export interface Scope { buildings: Record<string, string>; roles: Record<string, AccessRole> }
 export function scopeOf(access: AccessConfig, granted: Extract<Access, { kind: 'some' }>, shown: string): Scope {
-  const buildings = shown === ALL_BUILDINGS || !(shown in granted.buildings) ? granted.buildings : { [shown]: granted.buildings[shown] };
+  const buildings = shown === ALL_BUILDINGS || !Object.hasOwn(granted.buildings, shown) ? granted.buildings : { [shown]: granted.buildings[shown] };
   return { buildings, roles: access.roles };
 }
 export const areaBuilding = (a: Pick<AreaRow, 'floor_id'>): string => a.floor_id || NO_BUILDING;
@@ -151,7 +156,7 @@ export function entityArea(e: EntityRow, device: DeviceRow | undefined, devices:
 }
 /** The building of a room id, and the role that building has on this screen (undefined: not shown). */
 export function roomRole(scope: Scope, areaToBuilding: ReadonlyMap<string, string>, roomId: string | null): string | undefined {
-  if (!roomId) return undefined; const b = areaToBuilding.get(roomId); return b === undefined ? undefined : scope.buildings[b];
+  if (!roomId) return undefined; const b = areaToBuilding.get(roomId); return b === undefined || !Object.hasOwn(scope.buildings, b) ? undefined : scope.buildings[b];
 }
 export const areaIndex = (areas: readonly AreaRow[]) => new Map(areas.map(a => [a.area_id, areaBuilding(a)]));
 
@@ -189,9 +194,9 @@ function scopeShape(reg: Registry, scope: Scope, devicesCfg: HouseConfig['device
     if (!ok) dropped.add(e.entity_id); else if (e.device_id) keptDevices.add(e.device_id);
     return ok;
   });
-  const areas = reg.areas.filter(a => areaBuilding(a) in scope.buildings);
+  const areas = reg.areas.filter(a => Object.hasOwn(scope.buildings, areaBuilding(a)));
   const devices = reg.devices.filter(d => keptDevices.has(d.id));
-  const floors = reg.floors?.filter(f => f.floor_id in scope.buildings);
+  const floors = reg.floors?.filter(f => Object.hasOwn(scope.buildings, f.floor_id));
   return { rows: { areas, devices, entities, ...(reg.floors ? { floors } : {}) }, dropped };
 }
 function scopeStates(states: Registry['states'], dropped: ReadonlySet<string>): Registry['states'] {

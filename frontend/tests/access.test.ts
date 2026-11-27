@@ -61,8 +61,21 @@ test('a bound tablet: its building and role win over the person\'s own, never ov
   assert.deepEqual(tab.buildings, { contabilitate: 'tablet' }); assert.equal(tab.via, 'profile');
   assert.equal(some(resolveAccess(a, { id: 'tableta', admin: false, profile: 'other' }, TODAY, FLOORS)).via, 'member');
   assert.equal(resolveAccess(a, { id: 'adm', admin: true, profile: 'planshet-buh' }, TODAY, FLOORS).kind, 'open');
-  // even a person with no access of their own sees the tablet's building on the tablet
-  assert.equal(some(resolveAccess(a, { id: 'nobody', admin: false, profile: 'planshet-buh' }, TODAY, FLOORS)).via, 'profile');
+  // the binding never WIDENS: anyone may pick a named screen in «Расставить» (security review 27.11.2026)
+  const b = access({ members: { guest: { buildings: { office: 'guest' } }, buh: { buildings: { contabilitate: 'guest' } }, old: { buildings: { contabilitate: 'staff' }, until: '2026-11-01' } }, profiles: { 'planshet-buh': { building: 'contabilitate', role: 'manager' } } });
+  assert.equal(resolveAccess(b, { id: 'nobody', admin: false, profile: 'planshet-buh' }, TODAY, FLOORS).kind, 'none', 'a person with nothing gets nothing on a bound screen');
+  assert.deepEqual(some(resolveAccess(b, { id: 'guest', admin: false, profile: 'planshet-buh' }, TODAY, FLOORS)).buildings, { office: 'guest' }, 'another building\'s screen: their own access, not the screen\'s');
+  assert.deepEqual(some(resolveAccess(b, { id: 'buh', admin: false, profile: 'planshet-buh' }, TODAY, FLOORS)).buildings, { contabilitate: 'manager' }, 'their building: the screen\'s role decides there');
+  assert.deepEqual(resolveAccess(b, { id: 'old', admin: false, profile: 'planshet-buh' }, TODAY, FLOORS), { kind: 'none', why: 'expired' }, 'an ended access stays ended on a bound screen');
+});
+test('inherited object keys are never buildings or roles', () => {
+  const a = access({ members: { u1: { buildings: { contabilitate: 'staff' } } } });
+  const r = resolveAccess(a, { id: 'u1', admin: false }, TODAY, [...FLOORS, 'constructor', 'toString']);
+  assert.deepEqual(some(r).buildings, { contabilitate: 'staff' });
+  assert.deepEqual(switchChoices(some(r), [...reg.floors!, { floor_id: 'constructor', name: 'X', level: 9 }]), ['contabilitate']);
+  assert.equal(resolveAccess(a, { id: 'constructor', admin: false }, TODAY, FLOORS).kind, 'none');
+  const n = normaliseAccess({ roles: { __proto__: { name: 'x' }, constructor: { name: 'y' }, ok: { name: 'z' } }, members: { constructor: { all: true, role: 'ok' } } })!;
+  assert.deepEqual(Object.keys(n.roles), ['ok']); assert.deepEqual(n.members, {});
 });
 
 const scopeFor = (a: AccessConfig, user: string, shown = ALL_BUILDINGS) => scopeOf(a, some(resolveAccess(a, { id: user, admin: false }, TODAY, FLOORS)), shown);

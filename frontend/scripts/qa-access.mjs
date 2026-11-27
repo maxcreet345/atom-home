@@ -150,17 +150,26 @@ try {
     await page.click('.at-sec-tabs button').catch(() => undefined); await page.waitForTimeout(200);
     await page.screenshot({ path: `${out}/watcher-security-light-1070.png` });
     await close(); }
-  // 3d. a bound tablet: vasile has nothing of his own, but on «Планшет бухгалтерия» he sees that building with the tablet's role
-  { const bound = { ...ACCESS, profiles: { 'planshet-buh': { building: 'contabilitate', role: 'tablet' } } };
+  // 3d. a bound tablet: on «Планшет бухгалтерия» the tablet's role decides in that building for vasile (a guest there), and a person of
+  // another building who picks that screen gets nothing more than their own
+  { const bound = { ...ACCESS, members: { ...ACCESS.members, u_vasile: { buildings: { contabilitate: 'guest' } } }, profiles: { 'planshet-buh': { building: 'contabilitate', role: 'tablet' } } };
     const ctx = await browser.newContext({ viewport: { width: 1070, height: 764 } }), page = await ctx.newPage();
     page.on('pageerror', e => report.errors.push(`tablet: ${e.message}`));
     await page.goto(origin + '/#home'); await page.waitForFunction(() => window.ready);
     await page.evaluate(async ([cfg, users]) => { localStorage.setItem('atom-home:layout-device', 'planshet-buh'); localStorage.setItem('atom-home:preview-layouts', JSON.stringify({ profiles: { 'planshet-buh': { name: 'Планшет бухгалтерия', scopes: {}, rev: 1, updated: 0 } } })); window.__userId = 'u_vasile'; window.__authUsers = users; window.__beforeDraw = h => h.setAdmin(false); window.fx = await (await fetch('/fixture.json')).json(); await window.mountPreview(document.getElementById('root'), window.fx, cfg); }, [config('light', bound), USERS]);
     await page.waitForSelector('.at-shell'); await page.waitForTimeout(500);
-    check('bound tablet: vasile sees «Бухгалтерия» there, by the tablet\'s role', JSON.stringify(await lightsShown(page)) === JSON.stringify(['Свет бухгалтерии', 'Свет главбуха']));
+    check('bound tablet: vasile («Гость» of «Бухгалтерия») sees it there', JSON.stringify(await lightsShown(page)) === JSON.stringify(['Свет бухгалтерии', 'Свет главбуха']));
     await go(page, '#lights'); check('bound tablet («Планшет»): its lights can be switched', await switches(page) > 0);
     await go(page, '#climate'); await page.waitForTimeout(200);
     await page.screenshot({ path: `${out}/tablet-bound-light-1070.png` });
+    await ctx.close(); }
+  { const bound = { ...ACCESS, profiles: { 'planshet-buh': { building: 'contabilitate', role: 'manager' } } };
+    const ctx = await browser.newContext({ viewport: { width: 1070, height: 764 } }), page = await ctx.newPage();
+    await page.goto(origin + '/#home'); await page.waitForFunction(() => window.ready);
+    await page.evaluate(async ([cfg, users]) => { localStorage.setItem('atom-home:layout-device', 'planshet-buh'); window.__userId = 'u_daniela'; window.__authUsers = users; window.__beforeDraw = h => h.setAdmin(false); window.fx = await (await fetch('/fixture.json')).json(); await window.mountPreview(document.getElementById('root'), window.fx, cfg); }, [config('light', bound), USERS]);
+    await page.waitForSelector('.at-shell'); await page.waitForTimeout(400);
+    const l = await lightsShown(page);
+    check('a screen of another building picked in «Расставить» opens nothing: daniela still sees only her own', !l.includes('Свет бухгалтерии') && l.length > 0, JSON.stringify(l));
     await ctx.close(); }
   // 4. vasile: nothing assigned — the calm screen, nothing of the house
   for (const [theme, w, h] of [['light', 1070, 764], ['dark', 360, 792], ['light', 360, 792], ['dark', 1070, 764]]) {
