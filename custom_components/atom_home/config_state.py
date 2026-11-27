@@ -9,7 +9,7 @@ import json
 from typing import Any, Awaitable, Callable, Optional
 from urllib.parse import unquote, urlsplit
 
-from .const import CLIENT_FEATURE_PAGES, PAGE_PLACES, CLIENT_FEATURE_CARDS, CLIENT_FEATURE_COMPOSITION, CLIENT_FEATURE_ROOM_FEED, CLIENT_FEATURE_TARIFF, MAX_CONFIG_BYTES, WIZARD_DEVICE_FIELDS
+from .const import CLIENT_FEATURE_ACCESS, CLIENT_FEATURE_PAGES, PAGE_PLACES, CLIENT_FEATURE_CARDS, CLIENT_FEATURE_COMPOSITION, CLIENT_FEATURE_ROOM_FEED, CLIENT_FEATURE_TARIFF, MAX_CONFIG_BYTES, WIZARD_DEVICE_FIELDS
 
 
 class ConfigWriteError(Exception):
@@ -68,6 +68,32 @@ def has_page_settings(config: Optional[dict]) -> bool:
             if isinstance(place, list) and any(p in PAGE_PLACES for p in place):
                 return True
     return False
+
+
+def has_access(config: Optional[dict]) -> bool:
+    """True when a stored config holds what a panel before access_v1 drops on save: the access split by building (`access`) or a device's «кому видно» (`devices.<key>.roles`)."""
+    cfg = config or {}
+    access = cfg.get("access")
+    if isinstance(access, dict) and len(access) > 0:
+        return True
+    devices = cfg.get("devices")
+    return isinstance(devices, dict) and any(isinstance(d, dict) and "roles" in d for d in devices.values())
+
+
+def check_access(config: dict) -> None:
+    """The shape of `access` (docs/ACCESS.md); the panel's own normaliser decides the rest. The split is the interface's, not a permission: nothing here guards a command."""
+    access = config.get("access")
+    if access is None:
+        return
+    if not isinstance(access, dict):
+        raise ConfigWriteError("bad_schema", "access must be an object")
+    if "enabled" in access and not isinstance(access["enabled"], bool):
+        raise ConfigWriteError("bad_schema", "access.enabled must be true or false")
+    for key in ("roles", "members", "profiles"):
+        if key in access and not isinstance(access[key], dict):
+            raise ConfigWriteError("bad_schema", f"access.{key} must be an object")
+    if len(access.get("roles", {})) > 32 or len(access.get("members", {})) > 500 or len(access.get("profiles", {})) > 64:
+        raise ConfigWriteError("too_large", "Too many roles, people or devices in access")
 
 
 # What `alarms/set` builds on when nothing is stored yet (a non-admin may set an alarm before the owner opens «Настройка»).
@@ -148,6 +174,7 @@ class ConfigState:
             raise ConfigWriteError("too_large", f"Configuration exceeds {MAX_CONFIG_BYTES} bytes")
         if config.get("schemaVersion") != 1:
             raise ConfigWriteError("bad_schema", "schemaVersion must be 1")
+        check_access(config)
         async with self._lock:
             if expected_revision is not None and expected_revision != self.revision:
                 raise ConfigWriteError("conflict", "Configuration was changed elsewhere")
@@ -162,6 +189,8 @@ class ConfigState:
                 raise ConfigWriteError("client_outdated", "This panel version cannot keep the cards added from the catalog; reload the page")
             if has_page_settings(self.config) and CLIENT_FEATURE_PAGES not in (client_features or []):
                 raise ConfigWriteError("client_outdated", "This panel version cannot keep the look, the order of the settings tabs or the cards put on pages; reload the page")
+            if has_access(self.config) and CLIENT_FEATURE_ACCESS not in (client_features or []):
+                raise ConfigWriteError("client_outdated", "This panel version cannot keep who sees which building; reload the page")
             auth = self._auth_for((self.config or {}).get("alarms", []), config.get("alarms", []), alarm_auth_update)
             revision = self.revision + 1
             try:

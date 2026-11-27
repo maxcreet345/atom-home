@@ -1,9 +1,10 @@
 import type { Section } from './kinds.ts';
 import type { Kind } from './kinds.ts';
 import { normaliseInstances, type ProfileInstance } from './card-catalog.ts';
+import { normaliseAccess, normaliseRoles, type AccessConfig } from './access.ts';
 
 export type Language = 'ru' | 'ro' | 'en';
-export const SETUP_TABS = ['devices', 'rooms', 'energy', 'sections', 'buttons', 'modules', 'home'] as const;
+export const SETUP_TABS = ['devices', 'rooms', 'energy', 'sections', 'buttons', 'modules', 'access', 'home'] as const;
 export type SetupTab = typeof SETUP_TABS[number];
 /** The saved order made whole: unknown names go, the tabs it does not name follow in the panel's own order. */
 export function setupTabOrder(saved: unknown): SetupTab[] {
@@ -18,7 +19,7 @@ export type Look = typeof LOOKS[number];
 export function isLook(v: unknown): v is Look { return typeof v === 'string' && (LOOKS as readonly string[]).includes(v); }
 
 export interface RoomOverride { name?: string; photo?: string | null; hidden?: boolean; order?: number; /** the house feed (an SPM channel key) the room hangs on: the Energy panel splits the rooms by apartment with it */ feed?: string }
-export interface DeviceOverride { enabled?: boolean; name?: string; roomId?: string; icon?: string; kind?: Kind; mergeInto?: string; order?: number; photo?: string | null; /** stock illustration: a DeviceArtType, 'none', or unset = guessed */ art?: string; /** pinned to the Home face */ favorite?: boolean }
+export interface DeviceOverride { enabled?: boolean; name?: string; roomId?: string; icon?: string; kind?: Kind; mergeInto?: string; order?: number; photo?: string | null; /** stock illustration: a DeviceArtType, 'none', or unset = guessed */ art?: string; /** pinned to the Home face */ favorite?: boolean; /** «Кому видно» (docs/ACCESS.md): only these roles see it; absent — everyone who has its room */ roles?: string[] }
 export interface ModuleOverride { enabled?: boolean; entities?: Record<string, string>; options?: Record<string, string> }
 export interface EntityOverride { hidden?: boolean; name?: string }
 /** A room alarm the integration rings: when, where, how (speaker phrase or music, a dimmable light fading in, push), and how often it repeats. */
@@ -43,6 +44,8 @@ export interface HouseConfig {
   energy: { tariffs: Tariff[] };
   /** cards the installer added from the catalog (model/card-catalog.ts), by their own stable id; absent in a house that never added one */
   profileInstances?: Record<string, ProfileInstance>;
+  /** who sees which building (model/access.ts, docs/ACCESS.md); absent in a house that never opened «Acces» */
+  access?: AccessConfig;
 }
 export function defaultConfig(name = 'Мой дом'): HouseConfig {
   return { schemaVersion: 1, home: { name, logo: null, language: 'ru', theme: 'light' }, rooms: {}, devices: {}, entities: {}, buttons: [], sections: {}, modules: {}, alarms: [], energy: { tariffs: [] } };
@@ -73,7 +76,7 @@ export function normaliseConfig(input: unknown): { config: HouseConfig; warnings
   const bool = (v: unknown) => typeof v === 'boolean' ? v : undefined;
   const photo = (v: unknown) => typeof v === 'string' && /^(\/atom_home_photos\/[a-z0-9]{12,32}\.(jpg|png|webp)|\/local\/[\w./-]+|https?:\/\/[^\s"']+|data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+)$/.test(v) && v.length <= 1_200_000 ? v : v === null ? null : undefined;
   out.rooms = map(input.rooms, v => ({ name: str(v.name), photo: photo(v.photo), hidden: bool(v.hidden), order: num(v.order), feed: typeof v.feed === 'string' && SAFE_KEY.test(v.feed) ? v.feed : undefined })) as HouseConfig['rooms'];
-  out.devices = map(input.devices, v => ({ enabled: bool(v.enabled), name: str(v.name), roomId: str(v.roomId), icon: str(v.icon, 40), kind: str(v.kind, 20), art: str(v.art, 20), favorite: bool(v.favorite), mergeInto: str(v.mergeInto, 160), order: num(v.order), photo: photo(v.photo) })) as HouseConfig['devices'];
+  out.devices = map(input.devices, v => ({ enabled: bool(v.enabled), name: str(v.name), roomId: str(v.roomId), icon: str(v.icon, 40), kind: str(v.kind, 20), art: str(v.art, 20), favorite: bool(v.favorite), mergeInto: str(v.mergeInto, 160), order: num(v.order), photo: photo(v.photo), roles: normaliseRoles(v.roles) })) as HouseConfig['devices'];
   out.modules = map(input.modules, v => ({ enabled: bool(v.enabled), entities: plain(v.entities) ? Object.fromEntries(Object.entries(v.entities).filter(([k, e]) => /^\w{1,32}$/.test(k) && typeof e === 'string' && /^[a-z_]+\.[a-z0-9_]+$/.test(e))) : undefined, options: plain(v.options) ? Object.fromEntries(Object.entries(v.options).filter(([k, e]) => /^\w{1,32}$/.test(k) && typeof e === 'string' && /^[\w.\-]{1,64}$/.test(e))) : undefined })) as HouseConfig['modules'];
   out.entities = map(input.entities, v => ({ hidden: bool(v.hidden), name: str(v.name) })) as HouseConfig['entities'];
   if (Array.isArray(input.buttons)) for (const b of input.buttons.slice(0, 64)) {
@@ -85,6 +88,7 @@ export function normaliseConfig(input: unknown): { config: HouseConfig; warnings
   out.energy = { tariffs: normaliseTariffs(plain(input.energy) ? input.energy.tariffs : undefined) };
   // added only when the house has some: a house that never used the catalog saves exactly what it saved before
   if (input.profileInstances !== undefined) { const inst = normaliseInstances(input.profileInstances, w => warnings.push(w)); if (Object.keys(inst).length) out.profileInstances = inst; }
+  if (input.access !== undefined) { const access = normaliseAccess(input.access); if (access) out.access = access; }
   if (plain(input.sections)) for (const [k, v] of Object.entries(input.sections)) if (plain(v) && typeof v.hidden === 'boolean') (out.sections as Record<string, { hidden?: boolean }>)[k] = { hidden: v.hidden };
   return { config: out, warnings };
 }

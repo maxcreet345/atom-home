@@ -118,7 +118,7 @@ class CardCatalogGuard(unittest.TestCase):
     def test_feature_name_is_what_the_panel_sends(self):
         ha_store = (pathlib.Path(__file__).parents[3] / "frontend/src/runtime/ha-store.ts").read_text(encoding="utf-8")
         self.assertIn(f"CARDS_FEATURE = '{const.CLIENT_FEATURE_CARDS}'", ha_store)
-        self.assertIn("CARDS_FEATURE, PAGES_FEATURE, ...", ha_store, "the panel always declares it")
+        self.assertIn("CARDS_FEATURE, PAGES_FEATURE, ACCESS_FEATURE, ...", ha_store, "the panel always declares it")
 
     def test_cards_are_detected(self):
         self.assertFalse(cs.has_profile_instances(None))
@@ -239,6 +239,52 @@ class PageSettingsGuard(unittest.TestCase):
             self.assertEqual(e.exception.code, "client_outdated")
         self.assertEqual(save.calls, [])
         self.assertEqual(run(s.write(BASE, 5, self.NEW)), 6, "the new panel may change the look back to the classic one")
+
+class AccessGuard(unittest.TestCase):
+    """Who sees which building (27.11.2026): a panel that does not know `access` or a device's `roles` cannot save them away; the shape is checked."""
+    OLD = PageSettingsGuard.NEW
+    NEW = OLD + [const.CLIENT_FEATURE_ACCESS]
+    ACCESS = {**BASE, "access": {"enabled": True, "roles": {"staff": {"name": "Сотрудник", "sections": ["lights"], "modules": [], "mode": "lights"}}, "members": {"u1": {"buildings": {"contabilitate": "staff"}}}, "profiles": {}}}
+
+    def test_feature_name_is_what_the_panel_sends(self):
+        ha_store = (pathlib.Path(__file__).parents[3] / "frontend/src/runtime/ha-store.ts").read_text(encoding="utf-8")
+        self.assertIn(f"ACCESS_FEATURE = '{const.CLIENT_FEATURE_ACCESS}'", ha_store)
+
+    def test_what_counts(self):
+        f = cs.has_access
+        self.assertFalse(f(None)); self.assertFalse(f(BASE)); self.assertFalse(f({**BASE, "access": {}}))
+        self.assertTrue(f(self.ACCESS))
+        self.assertTrue(f({**BASE, "devices": {"d:x": {"roles": ["staff"]}}}), "«кому видно» alone counts too")
+
+    def test_an_old_panel_cannot_save_them_away_and_a_new_one_can(self):
+        save = Saved(); s = cs.ConfigState(self.ACCESS, 7, save)
+        for features in (None, [], self.OLD):
+            with self.assertRaises(cs.ConfigWriteError) as e:
+                run(s.write(BASE, 7, features))
+            self.assertEqual(e.exception.code, "client_outdated")
+        self.assertEqual(save.calls, [])
+        self.assertEqual(run(s.write(BASE, 7, self.NEW)), 8, "the new panel may remove the split on purpose")
+
+    def test_a_house_without_access_is_not_affected(self):
+        s = cs.ConfigState(BASE, 1, Saved())
+        self.assertEqual(run(s.write(self.ACCESS, 1, self.OLD + [const.CLIENT_FEATURE_ACCESS])), 2)
+
+    def test_the_shape_is_checked(self):
+        s = cs.ConfigState(BASE, 1, Saved())
+        for bad in ([], {"enabled": "yes"}, {"roles": []}, {"members": "x"}, {"profiles": 3}):
+            with self.assertRaises(cs.ConfigWriteError) as e:
+                run(s.write({**BASE, "access": bad}, 1, self.NEW))
+            self.assertEqual(e.exception.code, "bad_schema")
+        with self.assertRaises(cs.ConfigWriteError) as e:
+            run(s.write({**BASE, "access": {"members": {f"u{i}": {} for i in range(501)}}}, 1, self.NEW))
+        self.assertEqual(e.exception.code, "too_large")
+        self.assertEqual(s.revision, 1)
+
+    def test_alarms_set_keeps_the_access(self):
+        s = cs.ConfigState(self.ACCESS, 3, Saved())
+        run(s.write_alarms(lambda a: [{"id": "a1", "time": "07:00"}], 3))
+        self.assertEqual(s.config["access"], self.ACCESS["access"])
+
 
 if __name__ == "__main__":
     result = unittest.main(exit=False).result
