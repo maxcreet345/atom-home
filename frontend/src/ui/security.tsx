@@ -197,7 +197,7 @@ export function SecurityPanel({ s, registry, config, host, commands, t, lang, no
   const persons = Object.keys(registry.states).filter(id => id.startsWith('person.')).map(id => ({ user: typeof registry.states[id].attributes.user_id === 'string' ? registry.states[id].attributes.user_id as string : null, name: String(registry.states[id].attributes.friendly_name ?? id) }));
   const armedWord = (mode: string | undefined) => mode === 'armed_away' ? sk(t, 'ev.away') : mode === 'armed_vacation' ? sk(t, 'ev.vacation') : sk(t, 'ev.guard');
   const tabs: Array<[SecTab, string]> = [['guard', sk(t, 'tab.guard')], ['sensors', problems ? `${sk(t, 'tab.sensors')} · ${problems}` : sk(t, 'tab.sensors')], ['log', sk(t, 'tab.log')], ['settings', sk(t, 'tab.settings')]];
-  const head = <div className="ah-segments hm-range-tabs at-sec-tabs" role="group" aria-label={sk(t, 'title')}>{tabs.map(([k, label]) => <button type="button" aria-pressed={tab === k} className={tab === k ? 'is-active' : ''} onClick={() => setTab(k)}>{label}</button>)}</div>;
+  const head = <div className="ah-segments hm-range-tabs at-sec-tabs" role="group" aria-label={sk(t, 'title')}>{tabs.map(([k, label]) => <button type="button" data-keep /* a tab, not a command: kept on a read-only panel */ aria-pressed={tab === k} className={tab === k ? 'is-active' : ''} onClick={() => setTab(k)}>{label}</button>)}</div>;
   // the panel as blocks (owner, 23.11.2026: «Безопасность» is arranged like Home): the tabs stay on top, each part of a tab is a block of the page
   const guardOn = tab === 'guard' || tab === 'all', cls = `at-osec-wrap at-sec-panel ${offline ? 'is-stale' : ''} ${readOnlyClass(s.alarm.id, 'alarm_panel')}`;
   const blocks = ([

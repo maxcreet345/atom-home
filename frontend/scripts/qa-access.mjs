@@ -32,7 +32,7 @@ const text = page => page.evaluate(() => document.querySelector('.at-shell')?.in
 const roomsShown = async page => { await go(page, '#rooms'); return text(page); };
 const lightsShown = async page => { await go(page, '#lights'); const t = await text(page); return lightNames.filter(n => t.includes(n)); };
 /** the controls a page draws: switches, tiles that switch on a tap (aria-pressed), sliders */
-const switches = page => page.evaluate(() => [...document.querySelectorAll('.hm-main [role=switch], .hm-main [aria-pressed], .hm-main input[type=range]')].filter(e => !e.closest('.hm-toolbar') /* a filter of the list («Внимание»), not a device */).length);
+const switches = page => page.evaluate(() => [...document.querySelectorAll('.hm-main [role=switch], .hm-main [aria-pressed], .hm-main input[type=range]')].filter(e => !e.closest('.hm-toolbar') && !e.hasAttribute('data-keep') /* a filter of the list («Внимание»), a tab: not a device */).length);
 /** Opens every card of the page and presses every enabled button inside each sheet (not its «×»): on a screen that only looks, no press may
  * be refused with «только просмотр» — a refusal means a control was drawn that should not have been. */
 const stats = { sheets: 0, pressed: 0 };
@@ -142,11 +142,12 @@ try {
     const { page, close } = await open('u_faur', { access: watch });
     await page.evaluate(() => { window.atomPreview.host.log.length = 0; });
     await go(page, '#security');
-    const panel = await page.evaluate(() => { const p = document.querySelector('.at-sec-panel, .at-osec-wrap'); return p ? { readonly: p.classList.contains('is-readonly'), shown: [...p.querySelectorAll('button, [role=switch], input, select')].filter(e => e.getClientRects().length && !/-open|-hit/.test(e.className)).length } : null; });
+    const panel = await page.evaluate(() => { const p = document.querySelector('.at-sec-panel, .at-osec-wrap'); return p ? { readonly: p.classList.contains('is-readonly'), shown: [...p.querySelectorAll('button, [role=switch], input, select')].filter(e => e.getClientRects().length && !/-open|-hit/.test(e.className) && !e.hasAttribute('data-keep')).length } : null; });
     check('a watcher (view + «Охрана»): the alarm panel is there, read-only, no button drawn', !!panel && panel.readonly && panel.shown === 0, JSON.stringify(panel));
     await pressAll(page, 'watcher #security');
     const sent = await page.evaluate(() => window.atomPreview.host.log.filter(x => x.domain !== 'ws' || !/^(history|logbook|energy|recorder)|\/state$|\/get$|^config\/auth\/list$/.test(x.service)));
     check('a watcher: nothing was sent to the house', sent.length === 0, JSON.stringify(sent));
+    await page.click('.at-sec-tabs button').catch(() => undefined); await page.waitForTimeout(200);
     await page.screenshot({ path: `${out}/watcher-security-light-1070.png` });
     await close(); }
   // 3d. a bound tablet: vasile has nothing of his own, but on «Планшет бухгалтерия» he sees that building with the tablet's role
